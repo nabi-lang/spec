@@ -1,0 +1,186 @@
+# 1.10. Punctuation and operator tokens
+
+This document covers the tokenization rules for operator and punctuation character sequences, limited to their lexical form. The meaning of each token (precedence, associativity, which trait it dispatches to, and so on) is defined in [3. Expressions](../003-expressions/README.md).
+
+## 1.10.1. Tokenization principles
+
+Tokenization of operators and punctuation works at two levels. First, there is a fixed token table: the character sequences listed in this document are always separated into fixed tokens. Second, there is an extension token table: character sequences additionally registered by the standard libraries through the meta-system also become tokens. The registration mechanism is defined in [`#[infix]` / `#[prefix]` / `#[postfix]` magic](../006-meta-system/607-operator-magic.md).
+
+A conflict between the two tables is rejected at registration time; fixed tokens cannot be overridden.
+
+## 1.10.2. Longest match
+
+> [!IMPORTANT]
+> When an input admits several token candidates, the longest match is chosen. Registered extension tokens ([1.10.4](#1104-extension-tokens)) are candidates too.
+
+| Input | Tokenization                                |
+|-------|---------------------------------------------|
+| `==`  | One token                                   |
+| `=`   | One token                                   |
+| `= =` | Two tokens (separated by whitespace)        |
+| `..=` | One token (`..=` is longer than `..`)       |
+| `..`  | One token                                   |
+| `<<=` | One token (`<<=` is longer than `<<`)       |
+| `<-`  | One token where `<-` is registered (longer than `<`); otherwise `<` and `-` |
+
+## 1.10.3. Fixed token table
+
+The following is the complete list of operator and punctuation character sequences in the ASCII range reserved by the language. The standard libraries only give these tokens meaning, i.e. a trait method mapping; the token form itself is determined by this table.
+
+### Arithmetic / comparison / logic
+
+```
++       -       *       /       %       %%      **
+==      !=      <       >       <=      >=
+&&      ||      !
+&       |       ^       ~       <<      >>
+```
+
+`%` is the arithmetic remainder (Rem; the sign follows the dividend), and `%%` is floored modulo (the sign of the result follows the divisor, so it is always in `[0, divisor)` for a positive divisor; Python's `%`). The two tokens map to distinct traits and have different meanings.
+
+The mapping of each token to the trait method it calls is defined in the standard library operator specification. This document guarantees only lexical tokenization.
+
+`**` is power (`Pow`; `**=` its compound form, `.**` the element-wise one); by the longest-match rule `**=` is matched before `**`, `**` before `*=` or `*`, and `.**` before `.*`. `^` stays bitwise XOR. `use a::**` (a recursive glob) is the same token.
+
+### Broadcast (`.` prefix)
+
+These are dot-prefixed forms for element-wise (broadcast) operations. Each arithmetic, comparison, logical, bitwise and shift operator above, prefixed with a single dot, is separated as a distinct token.
+
+```
+.+      .-      .*      ./      .%      .%%     .**
+.==     .!=     .<      .>      .<=     .>=
+.&&     .||
+.&      .|      .^      .<<     .>>
+.??
+```
+
+`.??` is the element-wise `??` (3.3.8); it has no trait.
+
+Each of these forms maps to a different trait method from its dotless form. For example, `+` maps to `Add::add` and `.+` to `DotAdd::dot_add`; these mappings are defined in the standard libraries. Unlike their dotless forms, the dot-prefixed logical operators (`.&&`, `.||`) do **not** short-circuit: because broadcast is lowered to a fused loop, both operands are evaluated (see [2.6 broadcast](../../refs-standard-libraries/200-core/206-broadcast.md) for details).
+
+#### Distinguishing from floating-point literals
+
+Because floating-point literals such as `1.` or `1.5` contain a dot, the tokenization of the following two inputs depends on position.
+
+| Input  | Tokenization   | Reason                                                       |
+|--------|----------------|--------------------------------------------------------------|
+| `1.+2` | `1.`, `+`, `2` | `.` immediately follows a digit, so it is absorbed into the floating-point literal |
+| `a.+b` | `a`, `.+`, `b` | `.` does not immediately follow a digit, so it starts a broadcast token |
+
+In summary, a `.` in the middle of a numeric literal is always part of the floating-point literal, and a `.` elsewhere gives priority to other token forms (see the `.` handling rules in [Numeric literals](106-numeric-literals.md)).
+
+### Unicode mathematical operators
+
+The following Unicode operators are also fixed tokens. Their precedence is given by the table in [3.2.3](../003-expressions/302-precedence-and-associativity.md#323-precedence-and-associativity-table), and the traits they connect to are given by the standard library [2.3 ops](../../refs-standard-libraries/200-core/203-ops.md).
+
+```
+×       ⋅       ÷       ∘       √
+≡       ≠       ≤       ≥
+∈       ∉       ⊂       ⊆       ∪       ∩
+```
+
+| Token | Code point | Meaning (ASCII-named method)          |
+|------|------------|----------------------------------------|
+| `×`  | U+00D7     | Cross product (`cross`)                |
+| `⋅`  | U+22C5     | Dot product (`dot`)                    |
+| `÷`  | U+00F7     | Division (`div`, synonym for `/`)      |
+| `∘`  | U+2218     | Function composition (`compose`)       |
+| `√`  | U+221A     | Square root, prefix (`sqrt`)           |
+| `≡ ≠ ≤ ≥` | U+2261, U+2260, U+2264, U+2265 | Synonyms for `== != <= >=` |
+| `∈ ∉` | U+2208, U+2209 | Membership (`contains`)            |
+| `⊂ ⊆` | U+2282, U+2286 | Subset (`is_proper_subset`, `is_subset`) |
+| `∪ ∩` | U+222A, U+2229 | Union, intersection (`union`, `intersection`) |
+
+`∈ ∉` also have ASCII spellings, `in` and `!in`, read by the parser rather than the lexer: in operator position the word `in` is `∈`, and `!` written directly before `in` (no space) is `∉`. `x ! in xs` and Python's `x not in xs` are errors whose help says to write `!in`.
+
+Operator characters are all chosen from code points with the Unicode `Pattern_Syntax` property. `∑ ∏ ∫` are `Pattern_Syntax` but have been designated identifier characters ([1.4.1](104-identifiers.md#mathematical-notation-profile)), so they are not operators.
+
+### Assignment / compound assignment
+
+```
+=       +=      -=      *=      /=      %=      %%=     **=
+&=      |=      ^=      <<=     >>=
+.=      .+=     .-=     .*=     ./=     .%=     .%%=    .**=
+.&=     .|=     .^=     .<<=    .>>=
+```
+
+The last two rows are in-place broadcast ([3.3.7](../003-expressions/303-broadcast-operators.md#337-in-place-broadcast)). By the longest-match rule `.+=` is matched before `.+`, and `.**=` before `.**`; `.=` is a token only when no second `=` follows, so `.==` stays the element-wise comparison.
+
+The meaning of compound assignment (how many times the left-hand side is evaluated, the trait mapping, etc.) is defined in the expression specification. `%%=` is the compound assignment form of `%%` (floored modulo); by the longest-match rule, `%%=` is matched before `%=` or `%`.
+
+### Range / slice
+
+```
+..      ..=     :       ::
+```
+
+`..` and `..=` are used for range notation. `:` is used as the position separator in slices, the introducer of format specifiers, and in various other contexts. `::` is the path separator, used to access static items of modules or types.
+
+### Dot / question mark
+
+```
+.       ?.      ??      ?
+```
+
+`.` is used for member or method access. `?.` is dot access that passes through a sum type. `??` is the binary operation that fills an empty slot (`none`) with a fallback value. Finally, `?` alone is the postfix unary operator that, when a `T | none` value is `none`, returns `none` early from the enclosing function. Its detailed meaning and desugaring rules are defined in the `?` operator section of [Error control flow](../003-expressions/314-error-control-flow.md#31410-the--operator---early-return-of-none).
+
+`try?` and `try!` are not single tokens. Lexical analysis produces the keyword `try` and the punctuation `?` or `!` as separate tokens, and parsing interprets a `?` / `!` attached to `try` with no whitespace as the [`try?` / `try!`](../003-expressions/314-error-control-flow.md#3143-try-and-try) prefix operator. With whitespace, as in `try !ready()`, it is interpreted as `try` and logical negation `!`. `?` is not a prefix operator, so `try ? f()` is an error whose help asks for `try?`.
+
+### Single-quote token: character literal vs label
+
+The `'` token branches into two forms. The first is the form `'X'` or `'\X'`, a single character (or escape) followed by a closing `'`, which is a [character literal](108-character-literals.md). The second is the form `'identifier`, an identifier with no closing `'`, which is a label token (see [Labels](../003-expressions/313-loop-expressions.md#3134-labels-controlling-nested-loops) and [Labeled blocks](../003-expressions/309-block-expressions.md#3910-labeled-blocks-label---)).
+
+Lexical analysis decides by looking at the two bytes after `'`. If an identifier start is followed by a closing `'`, it is a character; if an identifier start is followed by a token other than a closing `'`, such as an identifier character, a colon or whitespace, it is a label; an escape (`'\...`) is always a character literal. An identifier run followed by a `\` is a character literal too: `'e\u{301}'` is two code points, an error (E0007), not a label.
+
+### Lambda / arrows
+
+```
+|       ||      |>      ->      =>
+```
+
+`|>` is the pipe: `x |> f(a)` is `f(x, a)` ([3.18](../003-expressions/318-pipe-expression.md)). `|` is used, depending on context, as bitwise OR, the sum type separator, and the lambda parameter delimiter. `||` is used for logical OR or to start a parameterless lambda. `->` is the function return type arrow, and `=>` is the `match` arm arrow.
+
+### Punctuation
+
+```
+(   )   [   ]   {   }
+,   ;   @
+```
+
+The uses of each punctuation mark are as follows. `( )` is used for grouping, tuples and calls. `[ ]` is used for indexing, slices, capture lists and array literals. `{ }` is used for blocks, compound literals and struct literals. `,` is the argument or item separator, and `;` is the statement terminator (see [Statement terminator](103-statement-terminator.md)). Finally, `@` is a meta-system token; its exact meaning is covered in Chapter 6.
+
+### Attribute introducers
+
+```
+#[      #![
+```
+
+`#[` introduces an attribute attached to the following item, i.e. an outer attribute. `#![` introduces an attribute attached to the enclosing item or module, i.e. an inner attribute.
+
+Each of these two introducers is separated as a single fixed token. Whitespace must not appear between `#` and `[`; a separate token `#` followed by `[` is undefined.
+
+The outer/inner pair follows the same pattern as the doc comments `///` and `//!` in [Lexical structure](102-lexical-structure.md). Only the direction of attachment differs; the meaning is grouped in the same way.
+
+## 1.10.4. Extension tokens
+
+Beyond the fixed table above, a character sequence that the standard libraries or users can register must satisfy the following conditions: every character must be a `Pattern_Syntax` code point; it must contain no identifier characters ([1.4.1](104-identifiers.md#141-format)); it must contain no whitespace or line terminators; and it must not be identical to a fixed token. The fixed tokens `@` and `~` are the exception: a registration may bind their binary position, which the language leaves unused ([6.7.9](../006-meta-system/607-operator-magic.md#679-user-defined-operators)).
+
+Identifier characters are never operator characters: letters of any script, the letterlike symbols among them (`ℱ`, `α`), digits, and the primes `′ ″ ‴ ⁗` (they continue a name: `f′`) and `∑ ∏ ∫`, which Unicode lists as `Pattern_Syntax` but Nabi makes identifier characters. So `ℱx` and `f′` are names, and a transform or a transpose is written as a function (`fourier(x)`), a method (`a.t()`) or another symbol (`a†`). What remains to register is the rest of `Pattern_Syntax`: ASCII punctuation, the general punctuation block without the primes (`† ‡ ‰`), arrows (U+2190-21FF), mathematical operators (U+2200-22FF), the technical, geometric and supplemental arrow and operator blocks up to U+2BFF, and the supplemental punctuation U+2E00-2E7F.
+
+Examples include `⊕`, `⊗`, `⋆` and `°`. The precedence of an extension token follows the existing token specified with `like` at registration ([6.7.2](../006-meta-system/607-operator-magic.md#672-arguments)).
+
+Once such a sequence is registered, the lexer cuts it out as a single token, by the longest match of 1.10.2: a registered `<-` wins over the fixed `<`, and a fixed `<=` wins over a registered `<`.
+
+A registered sequence that starts with a character a fixed token starts with (`~ @ + - * / % ^ = ! < > & | . : ?`), such as `<-` or `<~`, is a token in the files of the package that registers it and, when its trait is `pub`, in the files of every package that depends on that package, its tests and benchmarks included. Other packages' files keep the fixed tokens, so `a<-1` there is still `a < -1`. A sequence that starts with any other character, such as `⊕` or `$$`, is a token in every file of the build.
+
+A `Pattern_Syntax` character outside the fixed table that nothing in the build registers is not a token: `1 ⊛ 2` without a trait that binds `⊛` is an error that names the character (`U+229B CIRCLED ASTERISK OPERATOR`) and says to add the package that registers it or to register it. A character that only looks like a fixed token (`−` U+2212 for `-`) is an error that names the token to write ([1.1.2](101-source-files.md#112-character-encoding)).
+
+The formatter (`nabi fmt`) and the language server lex a file with the same tokens as the compiler: those registered in its package and the ones its dependencies export, read from their sources or their prebuilt interfaces.
+
+The registration time, syntax and meaning are defined in [`#[infix]` / `#[prefix]` / `#[postfix]` magic](../006-meta-system/607-operator-magic.md).
+
+## 1.10.5. What is not tokenized
+
+The following elements are not tokens but parts of larger units. The `f` of `f"..."` is the format string prefix of [String literals](107-string-literals.md). The `r` of `r"..."` and the `r#` of `r#"..."#` are raw string prefixes. The `b` of `b"..."` is the byte string prefix. The `c` of `c'...'` is the C-compatible character prefix of [Character literals](108-character-literals.md). Type suffixes attached to numeric literals also belong here; see [Numeric literals](106-numeric-literals.md) for details.
+
+These do not appear in the token table of this document, and in their positions they are not tokenized as identifiers or ordinary tokens either.

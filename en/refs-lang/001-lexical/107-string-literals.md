@@ -1,0 +1,211 @@
+# 1.7. String literals
+
+A string literal is a token representing a sequence of characters. This document covers only the lexical form; which library type the result evaluates to is decided by the standard library's literal handlers. A byte string (1.7.5) is the exception: its type is fixed by the language.
+
+## 1.7.1. Ordinary strings
+
+```
+string_lit  ::= '"' string_item* '"'
+string_item ::= string_char | escape_seq
+string_char ::= <any unicode codepoint except '"' or '\'>
+escape_seq  ::= "\\" ("\\" | "\"" | "'" | "n" | "r" | "t" | "0")
+              | "\\x" hex_digit hex_digit
+              | "\\u" "{" hex_digit ("_"? hex_digit){0,5} "}"
+              | "\\" line_terminator whitespace*
+```
+
+An ordinary string is enclosed in double quotes (`"`).
+
+```nabi
+"hello"
+"hello, 세계"
+""
+"a string
+spanning
+several lines"
+```
+
+It may contain any Unicode code point, including line breaks as is. A string that is never closed is a compile error: the closing `"` must be in the same file, so a string left unclosed through the end of the file is an error.
+
+### Escape sequences
+
+The following escape sequences are recognized.
+
+| Sequence   | Meaning                                                              |
+|------------|----------------------------------------------------------------------|
+| `\\`       | Backslash (`U+005C`)                                                 |
+| `\"`       | Double quote (`U+0022`)                                              |
+| `\'`       | Single quote (`U+0027`)                                              |
+| `\n`       | Line feed (`U+000A`)                                                 |
+| `\r`       | Carriage return (`U+000D`)                                           |
+| `\t`       | Tab (`U+0009`)                                                       |
+| `\0`       | NULL (`U+0000`)                                                      |
+| `\xHH`     | One byte (two hex digits; only the ASCII range `U+0000`-`U+007F`) |
+| `\u{H...}` | Any Unicode scalar value (1-6 hex digits, at most `U+10FFFF`, not a surrogate `U+D800`-`U+DFFF`) |
+
+Hex digits inside `\u{...}` may be separated with `_` (e.g. `\u{1_F600}`). Any backslash sequence other than those listed above is a lexical error; an unknown escape is never silently left as its original characters. The error points at the escape itself and says what to write: a surrogate (`\u{D800}`, half of a UTF-16 pair) names the character's own code point instead, `\x80` and above in a string point to `\u{80}`, and a backslash before a character that needs no escape (`\%`) says to drop it.
+
+### Line continuation
+
+When a backslash in a string immediately precedes a line terminator, the backslash, the line terminator and the leading whitespace of the next line are all omitted.
+
+```nabi
+"a long string that \
+ reads as one line"
+// resulting contents: "a long string that reads as one line"
+```
+
+This rule lets a long string be split across several lines in source code without inserting line breaks into the resulting value.
+
+## 1.7.2. Raw strings
+
+A raw string is written with the `r` prefix followed by double quotes.
+
+```nabi
+r"raw\n"
+r"C:\path\to\file"
+```
+
+No escapes are processed inside a raw string, so `\n` is kept as two characters. If the contents of a raw string need a closing `"`, the delimiter can be changed by surrounding it with the same number of `#` on both sides.
+
+```nabi
+r#"a string may contain "double quotes""#
+r##"even r#"this form"# works"##
+```
+
+An opening `r##"` must end with a closing `"##` with exactly the same number of `#`; the count that matters is the number of `#` on the opening side. Raw strings do not support line continuation (`\` + line terminator), since by definition a raw string preserves every character as is.
+
+## 1.7.3. Format strings
+
+Format strings come in two forms, `f"..."` and `f"""..."""` (the same rules as Python 3.12 / PEP 701).
+
+```nabi
+f"x = {x}"
+f"sum = {a + b}, diff = {a - b}"
+f"""
+  name: "{name}"
+  total: {items
+      .len()}
+"""
+```
+
+- `{{` and `}}` in text are a single brace.
+- The text of `f"""..."""` may contain `"` as is, and the code in a hole may span several lines. A hole in `f"..."` is a single line. There is no `"""` string without `f`.
+
+An f-string is a `str`. In a slot of type `fmt::Arguments` it is an `Arguments` instead: the holes are evaluated there, and the text is made only when the value is formatted, piece by piece ([stdlib 2.10.15](../../refs-standard-libraries/200-core/210-fmt.md#21015-arguments-an-f-string-formatted-later)).
+
+### Holes
+
+The inside of a hole `{ .. }` consists of ordinary tokens read by the ordinary lexer.
+
+- The outer quotes may be reused (`f"{s.split(" ")}"`, `f"{d["k"]}"`). f-strings nest to any depth.
+- A string literal inside a hole keeps its own escapes (`f"{"a\tb"}"`).
+- A `\` outside a string literal is an error. The diagnostic advises writing `"` as is.
+- The expression ends at a `}` or `:` at parenthesis depth 0. `::` is a path separator.
+- `{expr=}`: a `=` at depth 0 followed (after spaces) by `}` or `:` ends the expression and echoes it. The hole writes its own source text through the `=` and the spaces, then the value's `Debug` form, or the value under the spec when one follows (`f"{x=}"` is `x=5`, `f"{x = :.2f}"` is `x = 5.00`).
+
+```nabi
+f"name = {user.name ?? "anon"}"     // OK
+f"name = {user.name ?? \"anon\"}"   // ERROR: \ inside a hole
+f"{\"ab\".replace("a", "b")}"  // ERROR: write f"{"ab".replace("a", "b")}"
+```
+
+### Format specifiers
+
+A format specifier may follow the expression after a colon (`:`).
+
+```nabi
+f"{x:.2f}"        // two decimal places
+f"{n:0>5d}"       // 5 digits, zero-filled, right-aligned
+f"{val:?}"        // debug format
+```
+
+The grammar of format specifiers is as follows.
+
+```
+spec  := [fill][align][sign]['#'][0][width][grouping]['.'precision][type]
+grouping := ',' | '_'
+align := '<' | '>' | '^' | '='
+sign  := '+' | '-' | ' '
+type  := 'd' | 'g' | 's' | 'f' | 'b' | 'o' | 'x' | 'X' | 'e' | 'E' | '?' | '%'
+```
+
+If `width` is present and `align` is not, numbers (integers and floating-point) are right-aligned and other types are left-aligned. When `<` `>` `^` is given (with a fill character), any type follows that alignment. An f-string is turned into formatting code at the stage where the types of the holes are known, so the alignment default and spec checking are determined by type. Holes are written in sequence into the buffer of a single `Formatter`, without creating an intermediate string per hole ([stdlib 2.10.1](../../refs-standard-libraries/200-core/210-fmt.md#2101-dispatch)).
+
+| Part         | Meaning                                                                                      |
+|--------------|----------------------------------------------------------------------------------------------|
+| `fill`       | Fill character (default space). Must be immediately followed by `align`                     |
+| `align`      | `<` left, `>` right, `^` center, `=` pad between sign and digits (numbers only)              |
+| `sign`       | `+` shows `+` for positives too, space shows a space for positives, `-` is the default (`-` for negatives only) |
+| `#`          | `0b` / `0o` / `0x` prefix for `b` / `o` / `x` / `X`; `g` keeps its trailing zeros; `?` pretty-prints (`{x:#?}`) |
+| `0`          | Zero-pad numbers (same as `=` alignment with fill `0`)                                       |
+| `grouping`   | Numbers only: `,` between groups of 3 integer digits (decimal forms only), `_` between groups of 3 (4 for `b` `o` `x` `X`) |
+| `.precision` | Digits after the decimal point for floating-point (without conversion); maximum length (truncation) for strings etc.; ignored for integers |
+
+| `type`          | Applies to              | Meaning                                                           |
+|-----------------|-------------------------|-------------------------------------------------------------------|
+| (none), `d`, `s` | All types              | `Display`                                                         |
+| `g`             | Numbers                 | General format (`precision` significant digits)                  |
+| `f`             | Numbers                 | Fixed point (`precision` digits)                                  |
+| `b` `o` `x` `X` | Integers                | Base 2 / 8 / 16, at the width of the integer type (`{-1i8:x}` is `ff`) |
+| `e` `E`         | Integers, floating-point | Exponent notation                                                |
+| `?`             | All types               | `Debug`. May be combined with width / align                       |
+| `%`             | Numbers                 | Times 100 in the `f` form (6 places by default), then `%`        |
+
+`g` is the general format of C and Python: `precision` significant digits (6 when absent, 1 when 0), in exponent form when the exponent is below -4 or not below the precision, else fixed; trailing zeros and a bare `.` are dropped unless `#`. The exponent has a sign and at least two digits: `{1234.5678:.3g}` is `1.23e+03`, `{1e20:g}` is `1e+20`, `{0.0001:g}` is `0.0001`, `{1234567:g}` is `1.23457e+06`.
+
+A static spec is checked at compile time against the hole's type; a mismatch is an error pointing at that hole (`{s:x}` with `s: str`, etc.). A type of one's own with `Display` takes every type letter, sign and grouping and hands them to its `Display::fmt`, which passes them on to the numbers it writes (`{q:.2e}` of a quantity is `1.50e3 m`). The trait invoked by each type letter is defined by the standard library formatting specification ([stdlib 2.10](../../refs-standard-libraries/200-core/210-fmt.md)).
+
+### Dynamic format specifiers
+
+Expressions may be embedded inside a format specifier. Both `{expr}` (Python style) and `${expr}` are accepted.
+
+```nabi
+f"{x:.{prec}f}"           // dynamic precision
+f"{x:>${width}.${prec}f}" // dynamic width + precision
+f"{val:{full_spec}}"      // entire specifier dynamic
+```
+
+- An embedded expression is evaluated, converted to a string, and becomes part of the specifier text. The expanded result must satisfy the `spec` grammar and the hole's type; otherwise it is a runtime panic.
+- Nested holes have no specifiers of their own.
+- `$$` inside a specifier is a single `$`. A lone `$` not forming `${` is kept as is.
+
+### Lexical processing
+
+The lexer splits a format string into the following tokens.
+
+```
+FStrStart                     f" or f"""
+  FStrText    "x = "          ({{ / }} folded into braces)
+  HoleStart
+    (ordinary tokens: expression)
+    HoleSpec                  (optional) :
+      SpecText / nested hole
+  HoleEnd
+  FStrText    ", y = "
+FStrEnd
+```
+
+The expression inside a hole is processed by the ordinary expression parser.
+
+## 1.7.4. Automatic concatenation of adjacent strings
+
+C- and Python-style automatic concatenation of adjacent strings (`"abc" "def"` → `"abcdef"`) is not adopted. Concatenation requires an explicit operator or method.
+
+## 1.7.5. Byte strings
+
+```
+byte_string_lit  ::= 'b"' byte_string_item* '"'
+byte_string_item ::= <any ASCII byte except '"' or '\'> | byte_escape
+```
+
+A byte string is the `b` prefix followed by double quotes. It evaluates to a fixed array `[u8; N]` holding its bytes, where `N` is their count.
+
+```nabi
+let magic = b"\x7FELF";          // [u8; 4]
+let req: Slice<u8> = b"GET /\r\n";
+```
+
+Characters written directly must be ASCII; any other byte is written as an escape. Escape sequences follow the table of 1.7.1 as for `c'A'` ([1.8.1](108-character-literals.md#181-three-kinds)): `\xHH` may be any value `\x00`-`\xFF`, and every escape's value must lie within `U+0000`-`U+00FF`. A non-ASCII character written directly, or an escape above `U+00FF`, is a lexical error. Line continuation (1.7.1) does not apply: a `\` before a line terminator is an unknown escape and a lexical error.
+
+Where the expected type is `Slice<u8>`, or a sum type with a `Slice<u8>` member and no array member, the literal is instead a `Slice<u8>` view of that array, as if written `b"..."[:]`.

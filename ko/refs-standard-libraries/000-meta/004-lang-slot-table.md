@@ -1,0 +1,238 @@
+# 0.4. `#[lang]` 슬롯 매핑 표
+
+`#[lang(slot_name)]` 속성([refs-lang 6.4](../../refs-lang/006-meta-system/604-lang-magic.md))은 표준 라이브러리 항목을 컴파일러가 찾을 수 있는 **슬롯**에 등록합니다. 이 장은 모든 슬롯의 이름과 의미, 붙는 항목을 표 하나에 모읍니다.
+
+이 표가 슬롯에 관한 사양의 권위 있는 출처입니다. 컴파일러, 표준 라이브러리, 사용자 모두 이 표를 기준으로 맞춥니다. 슬롯 이름이 흔들리면 언어와 라이브러리 사이의 약속이 깨집니다. 그래서 슬롯을 바꿀 때는 항상 이 표부터 고칩니다.
+
+## 0.4.1. 슬롯 분류
+
+슬롯 100개는 맡은 책임에 따라 네 그룹으로 나뉩니다. 아래 표는 그룹마다 역할과 슬롯 수를 보여 줍니다. 이어지는 절의 세부 표가 어느 그룹에 속하는지도 이 표로 알 수 있습니다.
+
+| 그룹   | 책임                                                                 | slot 수 |
+|--------|----------------------------------------------------------------------|---------|
+| 타입   | Nabi가 **구체 타입**으로 인식하는 표준 라이브러리 타입               | 20      |
+| 트레잇 | Nabi가 **연산자 / 제어 흐름 풀어 쓰기**, derive, 스레드 경계 검사에 쓰는 트레잇 | 37      |
+| 메서드 | Nabi가 **자동으로 호출**하는 메서드 (drop)                           | 1       |
+| 함수   | Nabi가 **intrinsic처럼 호출**하는 표준 라이브러리 함수, 낮춘 코드가 호출하는 훅 | 42 |
+| 합계   |                                                                      | **100** |
+
+## 0.4.2. 타입 슬롯(20)
+
+타입 슬롯은 컴파일러가 리터럴이나 키워드를 만났을 때 낮출 구체 타입을 가리킵니다. 이 그룹은 다시 두 부류로 나뉩니다. 첫째는 소문자 식별자로 바로 드러나는 언어 기본 타입입니다. 이 타입은 키워드를 따로 등록하지 않아도 되고, 사용자가 매일 쓰는 원시 타입입니다.
+
+다음은 언어 기본 타입(내장 원시 타입, `#[keyword]` 불필요)입니다.
+
+| slot 이름    | 의미                         | 표준 라이브러리 항목    | 참조 |
+|--------------|------------------------------|-------------------------|------|
+| `i32_type`   | `i32` primitive              | 내장 (메서드: `core::num`) | 2.1  |
+| `i64_type`   | `i64` primitive              | 내장 (메서드: `core::num`) | 2.1  |
+| `f32_type`   | `f32` primitive              | 내장 (메서드: `core::num`) | 2.1  |
+| `f64_type`   | `f64` primitive              | 내장 (메서드: `core::num`) | 2.1  |
+| `usize_type` | `usize` primitive            | 내장 (메서드: `core::num`) | 2.1  |
+| `isize_type` | `isize` primitive            | 내장 (메서드: `core::num`) | 2.1  |
+| `bool_type`  | `bool` primitive             | 내장 (메서드: `core::num`) | 2.1  |
+| `cchar_type` | `c_char` primitive (FFI)     | 내장 (impl: `core::num`) | 2.15 |
+| `str_type`   | `str` primitive (UTF-8 view) | 내장 (메서드: `core::str`) | 2.15 |
+| `char_type`  | `char` primitive (Unicode scalar) | 내장 (메서드: `core::str`) | 2.15 |
+
+둘째는 언어 문법과 직접 얽힌 슬롯입니다. 자동으로 승격(auto-promote)하는 `int`와 `float`, 저장용 부동소수점 `f16`과 `bf16`, `none` sentinel, `Range` 리터럴이 여기에 속합니다. `int`, `float`, `f16`, `bf16`은 `#[keyword(...)]`로 소문자 이름을 드러내는 PascalCase 라이브러리 struct입니다. `none`은 내장입니다. 라이브러리는 `pub type NoneSentinel = none`으로 그 타입에 `NoneSentinel`이라는 이름을 붙입니다.
+
+다음은 문법과 얽힌 슬롯입니다.
+
+| slot 이름    | 의미                      | 표준 라이브러리 항목                                      | 참조 |
+|--------------|---------------------------|-----------------------------------------------------------|------|
+| `none_type`  | `none` 리터럴의 타입      | 내장 (별칭: `core::marker::NoneSentinel`) | 2.13 |
+| `int_type`   | `int` auto-promote 타입   | `core::num::bigint::Int` + `#[keyword("int")]` | 2.1  |
+| `float_type` | `float` auto-promote 타입 | `core::num::bigfloat::Float` + `#[keyword("float")]` | 2.1  |
+| `f16_type`   | `f16` 저장용 부동소수점 (IEEE 754 binary16) | `core::num::half::F16` + `#[keyword("f16")]` | 2.1  |
+| `bf16_type`  | `bf16` 저장용 부동소수점 (bfloat16) | `core::num::half::BF16` + `#[keyword("bf16")]` | 2.1  |
+| `range_type` | `Range<T>` (`a..b`)       | `core::range::Range` + `#[literal( expr ".." expr )]`  | 2.7  |
+| `slice_arg_type` | 여러 부분 인덱스의 슬라이스 부분 `a:b:k` | `core::index::SliceArg` | 2.3  |
+| `rest_axis_type` | 축 인덱스에서 다른 부분 옆의 `..` | `core::index::Rest` | 2.3  |
+| `new_axis_type`  | 축 인덱스의 `none`        | `core::index::NewAxis` | 2.3  |
+| `ndarray_type`   | 그 슬롯의 중첩 리스트 리터럴 | `core::array::Array` | 2.9.14 |
+
+기본 타입을 내장한 컴파일러는 `i32_type` ... `str_type`, `none_type`, `char_type`에 아무것도 붙이지 않아도 됩니다. 참조 컴파일러가 그렇습니다. 참조 컴파일러는 이 슬롯 이름을 받아들이지만 라이브러리는 여기에 어떤 항목도 붙이지 않습니다. `str`과 `c_char`는 라이브러리 struct가 아니고, `NoneSentinel`은 `#[lang]` 항목이 아니라 별칭입니다. 0.4.6에서 이 가운데 하나를 찾는 자리에서는 컴파일러가 내장 타입을 씁니다.
+
+## 0.4.3. 트레잇 슬롯(37)
+
+트레잇 슬롯은 컴파일러가 사용자가 쓴 문법을 표준 라이브러리 트레잇 호출로 풀어 쓸 때 찾아갈 트레잇을 가리킵니다. `for` 루프, 인덱싱, 슬라이싱, 포맷, `await` 같은 핵심 문법이 모두 여기 등록된 트레잇으로 풀립니다. 그래서 이 표는 언어 문법과 라이브러리를 잇는 가장 굵은 다리입니다.
+
+| slot 이름             | 의미                       | 표준 라이브러리 트레잇         | 참조 |
+|-----------------------|----------------------------|--------------------------------|------|
+| `iterator_trait`      | `for x in xs`의 단계 진행 | `core::iter::Iterator`     | 2.7  |
+| `into_iterator_trait` | `for x in xs`의 시작       | `core::iter::IntoIterator` | 2.7  |
+| `try_iterator_trait`  | `try for x in xs`의 단계 진행 | `core::iter::TryIterator` | 2.7.13 |
+| `index_trait`         | `arr[i]` 읽기              | `core::index::Index` | 2.3  |
+| `index_set_trait`     | `arr[i] = v` 쓰기          | `core::index::IndexSet` | 2.3  |
+| `slice_trait`         | `s[1:3]` 슬라이싱          | `core::index::Sliceable` | 2.3  |
+| `display_trait`       | `f"{x}"` 기본 포맷         | `core::fmt::Display`       | 2.10 |
+| `debug_trait`         | `f"{x:?}"` 디버그 포맷     | `core::fmt::Debug`         | 2.10 |
+| `future_trait`        | `await expr`의 단계 진행   | `core::future::Future`     | 2.20 |
+| `axis_indexed_trait`  | 인덱스 부분을 축 인자로    | `core::index::AxisIndexed` | 2.3  |
+| `broadcastable_trait` | 융합된 점 식의 피연산자    | `core::ops::Broadcastable` | 2.6.6 |
+| `broadcast_scalar_trait` | 융합된 점 식의 스칼라 래퍼 | `core::ops::BroadcastScalar` | 2.6.6 |
+| `materialize_trait`   | 융합된 점 식의 결과        | `core::ops::Materialize`   | 2.6.6 |
+| `close_trait`         | 실패할 수 있는 닫기: 주인이 닫음 | `core::io::Close`     | 2.23 |
+
+다음은 연산자 트레잇 슬롯입니다. 연산자 토큰을 어느 메서드로 디스패치할지는 각 트레잇 메서드에 붙은 `#[infix]` / `#[prefix]`([refs-lang 6.7](../../refs-lang/006-meta-system/607-operator-magic.md))가 정합니다. 우선순위는 [refs-lang 3.2](../../refs-lang/003-expressions/302-precedence-and-associativity.md) 표가 고정합니다. 아래 슬롯은 고정된 자리입니다. 컴파일러는 원시 타입 연산을 낮추거나 진단을 낼 때 이 자리로 "덧셈 트레잇", "비교 트레잇" 등을 이름으로 찾습니다. 복합 대입(`AddAssign` 등, 2.4), broadcast(`DotAdd` 등, 2.6), 거듭제곱(`Pow`, `**`), floored modulo(`Modulo`, `%%`) 트레잇은 `#[infix]` 등록만으로 충분하므로 슬롯이 없습니다. 낮추기와 진단이 이 트레잇을 이름으로 찾는 일이 없습니다. 원시 타입에서 `**`는 일반 메서드(`pow`, `powi`)를 부르고 `%%`는 `#[intrinsic]` 메서드이므로([0.3](003-intrinsics.md)) 낮추기에도 슬롯이 필요 없습니다.
+
+| slot 이름             | 의미                                | 표준 라이브러리 트레잇                | 참조   |
+|---------------------|-----------------------------------|-----------------------------|------|
+| `add_trait`         | `a + b`                           | `core::ops::Add`        | 2.3  |
+| `sub_trait`         | `a - b`                           | `core::ops::Sub`        | 2.3  |
+| `mul_trait`         | `a * b`                           | `core::ops::Mul`        | 2.3  |
+| `div_trait`         | `a / b`                           | `core::ops::Div`        | 2.3  |
+| `rem_trait`         | `a % b`                           | `core::ops::Rem`        | 2.3  |
+| `neg_trait`         | `-a` (전위)                         | `core::ops::Neg`        | 2.3  |
+| `not_trait`         | `!a`                              | `core::ops::Not`        | 2.3  |
+| `bitnot_trait`      | `~a`                              | `core::ops::BitNot`     | 2.3  |
+| `bitand_trait`      | `a & b`                           | `core::ops::BitAnd`     | 2.3  |
+| `bitor_trait`       | `a \| b`                          | `core::ops::BitOr`      | 2.3  |
+| `bitxor_trait`      | `a ^ b`                           | `core::ops::BitXor`     | 2.3  |
+| `shl_trait`         | `a << b`                          | `core::ops::Shl`        | 2.3  |
+| `shr_trait`         | `a >> b`                          | `core::ops::Shr`        | 2.3  |
+| `logical_and_trait` | `a && b`                          | `core::ops::LogicalAnd` | 2.3  |
+| `logical_or_trait`  | `a \|\| b`                        | `core::ops::LogicalOr`  | 2.3  |
+| `call_trait`        | 함수가 아닌 값의 `v(a)`           | `core::ops::Call`       | 2.3  |
+| `eq_trait`          | `==` / `!=`, literal 패턴           | `core::ops::PartialEq` | 2.5  |
+| `cmp_trait`         | `<` / `>` / `<=` / `>=`, range 패턴 | `core::ops::PartialOrd` | 2.5  |
+| `ord_trait`         | 완전 순서 (`#[derive(Ord)]`)          | `core::cmp::Ord`        | 2.5  |
+| `hash_trait`        | 해시 (`#[derive(Hash)]`)            | `core::cmp::Hash`       | 2.5  |
+| `clone_trait`       | 복제 (`#[derive(Clone)]`)           | `core::marker::Clone`   | 2.13 |
+| `send_trait`        | 자동 marker: 스레드 이동 안전       | `core::marker::Send`    | 2.13 |
+| `sync_trait`        | 자동 marker: 스레드 공유 안전       | `core::marker::Sync`    | 2.13 |
+
+> [!NOTE]
+> 비교 슬롯 이름과 트레잇 이름은 일대일로 대응하지 않습니다. `eq_trait`는 동등 연산자를 정의하는 `PartialEq`에, `cmp_trait`는 순서 비교 연산자를 정의하는 `PartialOrd`에 붙습니다. marker 트레잇 `Eq`, `Copy`, `Default`에는 슬롯이 없습니다. 합 타입이 이 트레잇을 구조적으로 얻기 때문입니다. `T`가 `Eq`이면 `T | none`도 `Eq`이고, 그 `Default`는 `none`입니다. 컴파일러는 이 트레잇을 `core`의 고정 경로로 찾습니다.
+
+## 0.4.4. 함수 슬롯(42)
+
+함수 슬롯은 컴파일러가 intrinsic처럼 직접 호출하는 표준 라이브러리 함수를 가리킵니다. 주로 비정상 종료 경로(`throw`, OOM, 도달 불가)가 여기에 모입니다. 정상 흐름 밖에서 진입점을 하나로 모아야 할 때 씁니다.
+
+| slot 이름        | 의미                             | 표준 라이브러리 함수            | 참조 |
+|------------------|----------------------------------|---------------------------------|------|
+| `panic_fn`       | panic이 일어나면 호출하는 abort 함수 | `core::panic::panic`       | 2.14 |
+| `oom_fn`         | OOM abort (런타임 할당 실패는 `nabi_oom` 직접) | `core::panic::oom`         | 2.14 |
+| `unreachable_fn` | 컴파일러가 unreachable 자리 호출 | `core::panic::unreachable` | 2.14 |
+
+나머지 서른아홉은 **훅**입니다. 컴파일러가 만든 코드가 음수 인덱스, 슬라이스 경계, 쓰기 가능한 뷰, 펼치기(spread), f-string 자리, 취소 지점, 컬렉션 브로드캐스트, 중첩 배열 리터럴, 융합된 점 식에서 호출하는 함수입니다. 낮추기는 각 훅을 경로가 아니라 슬롯으로 찾습니다. 그래서 훅은 그 코드가 들어가는 자리에서 보이지 않아도 됩니다. 훅은 API가 아닙니다. 모두 `core` 안에서 `pub(pkg)`이며, 다른 패키지에서 직접 적은 호출은 에러입니다.
+
+| slot 이름            | 호출되는 자리                                  | 표준 라이브러리 함수                      | 참조 |
+|----------------------|------------------------------------------------|-------------------------------------------|------|
+| `spread_len_fn`      | `List` / `Slice` 펼치기 `f(..xs)`의 길이 검사  | `core::index::spread_len`            | 2.3  |
+| `spread_names_fn`    | `Dict` 펼치기 `f(..d)`의 키 검사               | `core::index::spread_names`          | 2.3  |
+| `spread_misfit_fn`   | `Dict` 펼치기가 채울 수 없는 매개변수의 키     | `core::index::spread_misfit`         | 2.3  |
+| `index_from_end_fn`  | 부호 있는 인덱스 `xs[i]`, 음수는 끝에서부터    | `core::index::index_from_end`        | 2.3  |
+| `slice_bound_fn`     | 부호 있는 슬라이스 경계 `xs[i:]`               | `core::index::slice_bound`           | 2.3  |
+| `slice_range_fn`     | 간격 있는 슬라이스 `xs[a:b:k]`                 | `core::index::slice_range`           | 2.3  |
+| `slice_mut_fn`       | `SliceMut`을 기대하는 자리의 리스트 `xs`나 `xs[a:b]` | `core::index::slice_mut`(`pub(pkg)`) | 2.9  |
+| `view_live_fn`       | 리스트나 뷰를 도는 `for ref` 루프의 각 단계: 낡은 뷰면 panic | `core::index::view_live`(`pub(pkg)`) | 2.9  |
+| `fstr_display_fn`    | f-string 자리 `{v}`                            | `core::fmt::fstr_display`            | 2.10 |
+| `fstr_debug_fn`      | f-string 자리 `{v:?}`                          | `core::fmt::fstr_debug`              | 2.10 |
+| `fstr_num_fn`        | spec이 있는 `int` / `float` 자리               | `core::fmt::fstr_num`                | 2.10 |
+| `fstr_pack_fn`       | spec을 실행 중에 계산하는 자리 `{v:{spec}}`    | `core::fmt::fstr_pack`               | 2.10 |
+| `fstr_text_any_fn`   | 숫자가 아닌 값의 계산된 spec                   | `core::fmt::fstr_text_any`           | 2.10 |
+| `fstr_args_fn`       | `Arguments` f-string: 조각들을 담은 클로저        | `core::fmt::fstr_args`               | 2.10 |
+| `fstr_put_str_fn`    | `Arguments` f-string: 리터럴 조각, 또는 텍스트로 만든 자리 | `core::fmt::fstr_put_str` | 2.10 |
+| `fstr_put_display_fn` | `Arguments` f-string: 자리 `{v}`                 | `core::fmt::fstr_put_display`        | 2.10 |
+| `fstr_put_debug_fn`  | `Arguments` f-string: 자리 `{v:?}`                | `core::fmt::fstr_put_debug`          | 2.10 |
+| `cancel_point_fn`    | poll이 `Pending`인 `await` (취소 지점)          | `core::task::cancel_point`           | 2.18 |
+| `cancel_left_fn`     | poll이 `Ready`인 `await`                        | `core::task::cancel_left`            | 2.18 |
+| `cleanup_running_fn` | 취소로 떠난 프레임이 정리 코드에 들어감         | `core::task::cleanup_running`        | 2.18 |
+| `cleanup_done_fn`    | 그 프레임이 정리 코드를 마침                    | `core::task::cleanup_done`           | 2.18 |
+| `broadcast_len_fn`   | 브로드캐스트 `xs .+ ys`가 길이가 같은지 검사    | `core::collections::broadcast::check_len` | 2.6 |
+| `axis_from_u64_fn`   | 축 인덱스의 부호 없는 위치                      | `core::index::axis_from_u64`         | 2.3  |
+| `axis_from_i64_fn`   | 축 인덱스의 넓은 부호 있는 위치                 | `core::index::axis_from_i64`         | 2.3  |
+| `array_literal_fn`   | `Array` 슬롯의 중첩 리스트 리터럴               | `core::array::array_literal`         | 2.9.14 |
+| `fused_shape_fn` | 융합된 점 식: 피연산자가 늘어날 모양 | `core::array::fused_shape` | 2.6.6 |
+| `fused_view_fn` | 융합된 점 식: 그 모양으로 본 피연산자 | `core::array::fused_view` | 2.6.6 |
+| `fused_alloc_fn` | 융합된 점 식: 새 결과 배열 | `core::array::fused_alloc` | 2.6.6 |
+| `fused_flat_fn` | 융합된 점 식: 뷰가 연속인지 | `core::array::fused_flat` | 2.6.6 |
+| `fused_inner_fn` | 융합된 점 식: 행의 길이(마지막 축) | `core::array::fused_inner` | 2.6.6 |
+| `fused_rows_fn` | 융합된 점 식: 행의 수 | `core::array::fused_rows` | 2.6.6 |
+| `fused_row_fn` | 융합된 점 식: 행의 버퍼 위치 | `core::array::fused_row` | 2.6.6 |
+| `fused_step_fn` | 융합된 점 식: 마지막 축의 보폭 | `core::array::fused_step` | 2.6.6 |
+| `fused_at_fn` | 융합된 점 식: 연속 구간의 원소 | `core::array::fused_at` | 2.6.6 |
+| `fused_put_fn` | 융합된 점 식: 연속 구간에 저장 | `core::array::fused_put` | 2.6.6 |
+| `fused_get_fn` | 융합된 점 식: 보폭 있는 행의 원소 | `core::array::fused_get` | 2.6.6 |
+| `fused_set_fn` | 융합된 점 식: 보폭 있는 행에 저장 | `core::array::fused_set` | 2.6.6 |
+| `fused_dest_fn` | 융합된 점 식: 제자리 결과가 대상에 맞는지 | `core::array::fused_dest` | 2.6.6 |
+| `fused_source_fn` | 융합된 점 식: 대상과 겹치는 제자리 원천은 복사 | `core::array::fused_source` | 2.6.6 |
+| `fused_list_alloc_fn` | 리스트 위의 융합된 점 식: 인덱스로 채우는 결과 리스트 | `core::collections::broadcast::fused_list_alloc` | 2.6.6 |
+
+### 계층끼리 공유하는 항목: `#[internal]`
+
+컴파일러가 아니라 toolchain의 다른 계층이 부르는 `pub` 항목이 몇 있습니다. `std`가 `core`의 항목을, `core`가 `bare`의 항목을 씁니다. 이 항목에는 `#[internal]`([refs-lang 6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-toolchain-패키지끼리-공유))이 붙습니다. `bare`, `core`, `std`는 쓸 수 있고, 다른 패키지가 쓰면 "internal to the Nabi toolchain" 에러입니다. 문서와 언어 서버에서도 빠집니다.
+
+| 항목                                   | 쓰는 곳                                                   | 참조 |
+|----------------------------------------|-----------------------------------------------------------|------|
+| `core::marker::hand_over`         | `std::thread` (스레드 결과를 넘김)                    | 2.13 |
+| `core::marker::Handoff::new`     | `std::thread` (스레드 결과가 join하는 쪽으로 돌아옴)  | 2.13 |
+| `core::marker::view`              | `std::net` (리스너의 `incoming` 뷰)                   | 2.13 |
+| `core::task::wake_io`             | `std::net` (close나 shutdown 뒤에 대기자를 깨움)      | 2.18 |
+| `core::task::host_enter`          | `std::wit` (컴포넌트 export가 호스트 루프에 들어감)   | 2.18 |
+| `core::task::host_run`            | `std::wit` (호스트 루프 한 바퀴)                      | 2.18 |
+| `core::task::host_leave`          | `std::wit` (`host_enter`를 끝냄)                      | 2.18 |
+| `core::task::readable` / `writable` | `std::net` (소켓이 준비될 때까지 대기)             | 2.18 |
+| `core::io::IoError::retold`       | `std::fs` (경로를 붙여 다시 말한 에러)                | 2.23 |
+| `core::io::IoError::resolver`     | `std::net` (실패한 이름 조회)                         | 2.23 |
+| `core::io::Owned::of`            | `std::net` (`TcpListener::into_incoming`)             | 2.23 |
+| `core::io::Read::copy_handle` / `Write::copy_handle` | `std`의 fs, net, process, `os::unix::net` (`io::copy`가 커널에 넘기는 OS 핸들) | 2.23 |
+| `core::num::bigint::Int::from_literal` / `bigfloat::Float::from_literal` | `std::nabion` (수 리터럴의 숫자열) | 2.1 |
+| `bare::gc::Pinnable::gc_object`   | `core::marker` (`GcPtr`를 복사하는 hand-off)          | 1.6  |
+
+## 0.4.5. 메서드 슬롯(1)
+
+메서드 슬롯은 사용자가 호출을 적지 않아도 컴파일러가 자동으로 부르는 메서드를 가리킵니다. 여기에는 `using` 바인딩을 해제할 때 부르는 폐기 메서드 하나뿐입니다. `?` 연산자는 컴파일러가 `T | none`에 맞게 직접 풀어 쓰므로 메서드 슬롯이 없습니다([refs-lang 3.14.10](../../refs-lang/003-expressions/314-error-control-flow.md#31410--연산자-none-조기-반환)). 값을 복제하는 `Clone::clone`은 자동으로 호출되지 않습니다([2.13.2](../200-core/213-marker.md#2132-clone-깊은-복제)). 그래서 메서드 슬롯이 아니라 트레잇 슬롯 `clone_trait`로 등록합니다.
+
+| slot 이름     | 의미                    | 표준 라이브러리 메서드          | 참조 |
+|---------------|-------------------------|---------------------------------|------|
+| `drop_method` | 값을 해제하는 곳(`using`, 주인이 스코프를 벗어나는 곳)에서 호출 | `core::marker::Drop::drop` | 2.13 |
+
+## 0.4.6. 슬롯 사용처: 컴파일러가 슬롯을 찾는 위치
+
+앞 절은 "어떤 슬롯이 있는가"를 나열했습니다. 이 절은 거꾸로 "컴파일러가 언제 어떤 슬롯을 찾는가"를 정리합니다. 사용자가 쓴 문법 한 줄이 표준 라이브러리의 어떤 항목으로 풀리는지 추적하려면 다음 표에서 출발하세요.
+
+| 컴파일러 동작                                | lookup 슬롯                              |
+|----------------------------------------------|------------------------------------------|
+| `none` 리터럴 낮추기                         | `none_type`                              |
+| `42` (기대 타입 없음) 리터럴 타입             | `i64_type`                               |
+| `3.14` (기대 타입 없음) 리터럴 타입           | `f64_type`                               |
+| 기대 타입이 `int`, `float`, `f16`, `bf16`인 수 리터럴, `f16` / `bf16` 리터럴 접미사 | `int_type`, `float_type`, `f16_type`, `bf16_type` |
+| `"hello"` 리터럴 타입                        | `str_type`                               |
+| `for x in xs` 풀어 쓰기                      | `into_iterator_trait`, `iterator_trait`, `try_iterator_trait` |
+| `arr[i]` 풀어 쓰기                           | `index_trait`                            |
+| `arr[i] = v` 풀어 쓰기                       | `index_set_trait`                        |
+| `s[1:3]` 풀어 쓰기                           | `slice_trait`                            |
+| `f"{x}"` 기본 자리 풀어 쓰기                 | `display_trait`                          |
+| `f"{x:?}"` 풀어 쓰기                         | `debug_trait`                            |
+| `await expr` 풀어 쓰기                       | `future_trait`                           |
+| 산술 / 비트 / 논리 연산자의 원시 타입 낮추기 | `add_trait` ... `logical_or_trait`         |
+| `==` / `!=`, literal 패턴 매칭               | `eq_trait`                               |
+| `<` / `>` / `<=` / `>=`, range 패턴 매칭     | `cmp_trait`                              |
+| `#[derive(Clone / Ord / Hash)]` 확장         | `clone_trait`, `ord_trait`, `hash_trait` |
+| panic 낮추기 (`try!` 실패 포함)              | `panic_fn`                               |
+| OOM 발생 시                                  | `oom_fn`                                 |
+| `match`의 모든 가지를 검사한 뒤 도달 불가 자리 | `unreachable_fn`                       |
+| 음수 인덱스와 슬라이스 경계, 간격 있는 슬라이스 | `index_from_end_fn`, `slice_bound_fn`, `slice_range_fn` |
+| `SliceMut`을 기대하는 자리의 리스트나 그 범위 | `slice_mut_fn`                              |
+| 리스트나 뷰를 도는 `for ref` 루프의 각 단계 | `view_live_fn`                              |
+| 펼치기 `f(..xs)` / `f(..d)`                  | `spread_len_fn`, `spread_names_fn`, `spread_misfit_fn` |
+| f-string 자리                                | `fstr_display_fn` ... `fstr_text_any_fn` |
+| `await`, 취소가 실행하는 정리 코드           | `cancel_point_fn`, `cancel_left_fn`, `cleanup_running_fn`, `cleanup_done_fn` |
+| 컬렉션 둘 이상에 대한 브로드캐스트           | `broadcast_len_fn`                       |
+| 값 해제(`using` 블록 끝, 또는 마지막 주인이 스코프를 벗어남) | `drop_method`                 |
+| `Send` / `Sync` 자동 구현, `+ Send` 검사     | `send_trait`, `sync_trait`               |
+
+## 0.4.7. 중복 / 누락 검출
+
+같은 슬롯에 표준 라이브러리 항목이 두 개 붙으면 컴파일러가 거부합니다(refs-lang 6.4.6의 중복 검출 규칙). 반대로 `iterator_trait` 같은 필수 슬롯이 비어 있으면 컴파일러는 그 슬롯에 의존하는 기능을 컴파일하지 않습니다. 여기서는 `for` 루프가 그런 기능입니다. 두 규칙 모두 슬롯이라는 약속에 진실의 원천이 하나만 있도록 강제합니다.
+
+실제로 붙는 항목은 [200-core/](../200-core/)의 각 장에 적혀 있습니다. 붙는 트레잇, 메서드, 타입, 중단 함수 슬롯은 모두 "참조" 열이 가리키는 장에 `#[lang(...)]`을 붙이는 위치가 있습니다. 훅 `_fn` 슬롯(`spread_len_fn` ... `fused_list_alloc_fn`)은 컴파일러용이라 이 표에만 이름이 나오고, 0.4.2가 붙이지 않고 두는 내장 타입 슬롯에는 붙는 위치가 없습니다. 이 표에 없는 슬롯 이름은 [refs-lang 6.4.8](../../refs-lang/006-meta-system/604-lang-magic.md)에 따라 컴파일 에러입니다. 예를 들어 `Stream`에는 슬롯이 없습니다([2.8.10](../200-core/208-stream.md)).
+
+## 0.4.8. 슬롯 이름 정책
+
+마지막으로 새 슬롯을 추가하거나 기존 이름을 바꿀 때 따를 명명 규칙을 정리합니다. 이름이 일관되면 표를 훑기만 해도 슬롯의 종류를 짐작할 수 있습니다. 그래서 이 정책을 가볍게 다루지 않습니다.
+
+이름은 snake_case로 씁니다. 타입 슬롯에는 `_type`, 트레잇 슬롯에는 `_trait`, 함수 슬롯에는 `_fn`, 메서드 슬롯에는 `_method` 접미사를 붙입니다(`drop_method`). 트레잇 전체를 가리키는 슬롯은 `_trait` 하나로 통일합니다. 컴파일러가 그 트레잇의 여러 메서드나 derive를 다루더라도 마찬가지입니다. 메서드 슬롯은 컴파일러가 **특정 메서드 하나를 자동으로 호출**하는 경우로 한정합니다. 이 기준에 따라 `Clone`은 `clone_method`가 아니라 `clone_trait`로 등록합니다. 접미사는 붙는 위치도 정합니다. `_trait` 슬롯은 **트레잇 선언 자체**에, `_method` 슬롯은 **트레잇 안의 해당 메서드**에 붙습니다. `_type` 슬롯은 타입 선언에, `_fn` 슬롯은 함수 선언에 붙습니다. 다른 위치에 붙이면 [refs-lang 6.4.7](../../refs-lang/006-meta-system/604-lang-magic.md)의 시그니처 검사에서 컴파일러가 거부합니다.

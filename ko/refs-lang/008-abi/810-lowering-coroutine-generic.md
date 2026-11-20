@@ -1,0 +1,215 @@
+# 8.10. Lowering: 코루틴과 제네릭
+
+이 절은 [제너레이터](../004-functions/411-generators.md), [비동기](../004-functions/412-async.md), [스트림](../004-functions/413-stream.md)을 코루틴으로 낮추는 규칙과 [제네릭](../002-types/210-generics.md), [const 제네릭](../002-types/211-const-generics.md)을 단형화로 낮추는 규칙을 정의합니다.
+
+## 8.10.1. 상태 기계
+
+[코루틴](../007-runtime/708-coroutine.md)은 컴파일러가 만든 상태 기계로 낮춥니다.
+
+1. HIR: `yield` / `async` / `async yield` 블록을 클로저처럼 body 함수로 끌어올립니다. 블록 자리에는 프레임을 만드는 식이 남습니다.
+2. MIR: body 함수를 resume 함수로 바꿉니다. suspend 지점마다 state 번호를 매깁니다. 그 지점을 넘어서도 살아 있는 지역 변수는 프레임 필드로 옮깁니다.
+3. 프레임 타입은 `(i32 state, locals..)`이며 ScanTable이 있습니다. 프레임은 일반 할당 경로로 만듭니다([8.9.9](809-lowering-control.md#899-gc-할당-fast--slow-path)).
+4. resume 함수의 입구는 `state`로 분기합니다. `state`를 각 상태 번호와 비교하는 두 갈래 분기의 사슬입니다(8.9.3).
+
+## 8.10.2. 제너레이터(`yield fn`)
+
+```nabi
+yield fn count_up_to(n: i32) -> i32 {
+    let i = 0;
+    while i < n {
+        yield i;
+        i = i + 1;
+    }
+}
+```
+
+개념상 resume 함수(`next`)는 다음과 같습니다.
+
+```
+next(frame) -> i32 | none:
+    switch frame.state:
+      0: frame.i = 0; goto loop
+      1: frame.i = frame.i + 1; goto loop
+      2: return none
+    loop:
+      if frame.i < frame.n:
+          frame.state = 1
+          return frame.i          // yield i
+      frame.state = 2
+      return none
+```
+
+`count_up_to(n)`은 프레임을 할당하고, `state = 0`으로 둔 래퍼(`GenIter<i32>`)를 돌려줍니다.
+
+## 8.10.3. 비동기(`async fn`)
+
+```nabi
+async fn fetch() -> Data {
+    let r = await op1();
+    process(r)
+}
+```
+
+```
+poll(frame, cx) -> Poll<Data>:
+    switch frame.state:
+      0: frame.fut = op1(); frame.state = 1; goto await1
+      1: goto await1
+    await1:
+      match frame.fut.poll(cx):
+        Pending  => return Pending
+        Ready(r) => frame.state = 2; return Ready(process(r))
+```
+
+`await`는 대상 future를 프레임에 두고 폴링합니다. 결과가 Pending이면 state를 그대로 둔 채 Pending을 돌려줍니다. 다음 폴링은 같은 지점에서 이어 갑니다.
+
+## 8.10.4. 스트림(`async yield fn`)
+
+[스트림](../004-functions/413-stream.md)은 둘을 합칩니다. 한 프레임의 state 번호가 `yield` 지점과 `await` 지점을 함께 셉니다. `poll_next`는 `yield`에서 `Ready(값)`을, `await`가 Pending이면 `Pending`을, 끝에서 `Ready(none)`을 돌려줍니다.
+
+## 8.10.5. 프레임 할당
+
+프레임은 코루틴을 호출할 때마다 할당합니다. 호출자가 끝까지 실행하는 코루틴이라고 따로 할당을 생략하지는 않습니다. 밖으로 나가지 않는 프레임은 다른 할당처럼 없어질 수 있습니다([7.2.12](../007-runtime/702-allocation.md#7212-할당-생략)).
+
+## 8.10.6. 제네릭 단형화
+
+[제네릭](../002-types/210-generics.md)을 단형화하면 호출 지점의 타입 튜플마다 별개의 인스턴스가 생깁니다.
+
+```nabi
+fn id<T>(x: T) -> T { x }
+
+let a = id(42i32);     // id<i32>
+let b = id(3.14f64);   // id<f64>
+```
+
+단형화를 거치면 프로그램에는 인스턴스마다 함수가 하나씩 있습니다.
+
+```
+fn id<i32>(x: i32, tls) -> i32:
+    return x
+
+fn id<f64>(x: f64, tls) -> f64:
+    return x
+
+fn main(tls):
+    a = call id<i32>(42, tls)
+    b = call id<f64>(3.14, tls)
+```
+
+구체 타입 튜플마다 별개의 함수가 만들어집니다(`id<i32>`는 아래의 맹글링된 심볼을 뜻합니다).
+
+### 단형화의 시점
+
+단형화는 다음 흐름으로 진행됩니다.
+
+```
+nabi-hir -> specialize(hir, type_tuple) -> nabi-mir -> machine code
+```
+
+[AOT](../000-meta/007-glossary.md#aot-ahead-of-time) 모드에서는 모든 호출 지점을 모은 뒤 한꺼번에 특수화([specialize](../000-meta/007-glossary.md#specialize))합니다. [JIT](../000-meta/007-glossary.md#jit-just-in-time) 모드에서는 첫 호출 때 특수화하고 결과를 캐시합니다([실행 엔진과 사용자 표면](../000-meta/001-execution-modes.md) 참고). 두 모드는 같은 특수화 메커니즘을 씁니다.
+
+### 심볼 명명
+
+[컴파일 파이프라인](../000-meta/002-pipeline.md)에서 쓰는 심볼 맹글링 규칙은 다음과 같습니다.
+
+```
+_Y<pkg_hash_8>_<path>_<name>_<typehash_16>
+```
+
+패키지는 해시로 나타내므로 패키지 루트의 함수는 `<path>`가 비어 있습니다. 예를 들어 `id<i32>`는 `_Y3f8a1c2b__id_a7c91d8e44b2f190`(예시) 같은 형태가 됩니다. 이 심볼이 object 안 함수의 이름입니다. 제네릭이 아닌 항목은 `<typehash>`가 비어 있습니다(`_Y3f8a1c2b__main_`). 식별자 안의 `_`는 `_0`으로 이스케이프합니다([9.5](../009-tools/905-symbol-mangling.md)).
+
+## 8.10.7. `const` 제네릭 단형화
+
+[const 제네릭](../002-types/211-const-generics.md)의 예입니다.
+
+```nabi
+fn dot<T: Num, const N: usize>(a: [T; N], b: [T; N]) -> T { ... }
+
+let r = dot([1.0, 2.0, 3.0], [4.0, 5.0, 6.0]);  // T=f64, N=3
+```
+
+이 코드는 다음과 같이 단형화됩니다.
+
+```
+fn dot<f64, 3>(a: [f64; 3], b: [f64; 3], tls) -> f64:
+    ; ... a loop of 3 iterations
+```
+
+`const` N=3이 컴파일 타임 상수이므로 인스턴스 안에서 루프 경계와 배열 크기가 상수입니다. 최적화기는 그에 기대는 계산을 접습니다.
+
+## 8.10.8. 제네릭 트레잇 디스패치
+
+```nabi
+fn process<T: Describe>(x: T) -> str {
+    x.describe()
+}
+```
+
+구체 타입 T는 호출 지점에서 정해집니다. `T = Point`이면 다음과 같이 낮춥니다.
+
+```
+fn process<Point>(x: (f64, f64), tls) -> (ptr, usize):
+    ; call Point's Describe::describe directly
+    r = call Point.describe(x, tls)
+    return r
+```
+
+`Point`는 값 struct(8.8.3)로, `str`은 `(ptr, usize)` 쌍(8.8.1)으로 넘깁니다. vtable을 거치는 간접 호출은 없고 모두 직접 함수 호출입니다. 이 모델과 [트레잇-as-타입 금지](../002-types/212-trait-as-type-banned.md)가 함께 vtable 비용이 0임을 보장합니다.
+
+## 8.10.9. 합 타입의 분기 디스패치
+
+[합 타입](../002-types/206-sum-types.md)의 매칭은 두 갈래 분기의 사슬인 tag 검사로 낮춥니다(8.9.3).
+
+```nabi
+let v: i32 | str = ...;
+match v {
+    n: i32 => use_int(n),
+    s: str => use_str(s),
+}
+```
+
+64비트 타깃에서 `i32 | str`은 `(i32, [u64; 2])`입니다. tag 0은 `i32`, tag 1은 `str`이며, `str`이 GC 참조를 담은 두 워드 쌍이므로 페이로드는 두 워드입니다(8.8.6). 블록으로는 다음과 같습니다.
+
+```
+bb0:
+    if v.0 == 0 then bb_use_int else bb_test_str
+bb_test_str:
+    if v.0 == 1 then bb_use_str else bb_unreachable
+
+bb_use_int:
+    n = v.1 as i32                 ; the payload read as i32
+    call use_int(n, tls)
+    goto bb_end
+
+bb_use_str:
+    s = v.1 as str                 ; the payload read as the (ptr, usize) pair
+    call use_str(s, tls)
+    goto bb_end
+
+bb_end:
+    ...
+```
+
+match는 망라적이므로 `bb_unreachable`에는 닿지 않습니다. tag 검사와 분기는 모두 정적인 코드입니다.
+
+## 8.10.10. 트레잇 메서드의 트레잇 바운드 디스패치
+
+```nabi
+fn add_all<T: Add<T, Output = T>>(items: List<T>) -> T {
+    let r: T = ...;
+    for x in items {
+        r = r.add(x);
+    }
+    r
+}
+```
+
+단형화 뒤에는 호출 지점의 T마다 별개의 함수가 만들어집니다. `T = i32`이면 `r.add(x)`는 i32의 `Add::add`를 직접 호출하는 코드로 풀립니다. 이 호출은 인라인할 수도 있습니다.
+
+## 8.10.11. 정리
+
+컴파일러는 코루틴을 직접 상태 기계로 낮춥니다(8.10.1). 제네릭은 단형화로 구체 타입마다 별개의 코드를 만들어 낮추고, vtable은 쓰지 않습니다.
+
+이 두 메커니즘이 이 [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) 블록에서 가장 복잡한 lowering입니다. 나머지인 [Lowering: 데이터 타입과 표현식](808-lowering-types.md)과 [Lowering: 제어 흐름과 GC 통합](809-lowering-control.md)은 기계 연산에 거의 그대로 대응합니다.
+
+8장(런타임 ABI / lowering / 코드 생성)은 여기까지입니다.

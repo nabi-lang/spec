@@ -1,0 +1,309 @@
+# 2.18. task: M:N 스케줄러 task API
+
+`core::task` 모듈은 M:N 스케줄러 위에서 동작하는 협력적 task API입니다. Rust Tokio와 Go 고루틴에서 영감을 받았습니다. task는 work-stealing 스케줄러 위의 **스택 없는 코루틴**(stackless coroutine)으로 구현됩니다.
+
+모듈 `task`와 `Task<T>`는 [prelude](../000-meta/002-import.md)에 들어 있으므로 `task::spawn`, `task::race`, `Task<T>` 등은 가져오지 않고 쓸 수 있습니다. 모듈 접두 `task::`는 그대로 남습니다. 비동기 코드임을 드러내 흐름을 눈에 띄게 나누고 싶은 자리에서는 `use core::task::*;`를 권장합니다.
+
+## 2.18.1. 핵심 API
+
+핵심 API의 시그니처입니다.
+
+```nabi
+fn block_on<F: Future>(f: F) -> F::Output;              // sync 진입점: executor 에 붙어 f 를 끝까지 실행
+fn try_block_on<T, E>(f: TryAsyncFuture<T, E>) throws (E) -> T;   // throw 하는 async body 용 block_on. 그 에러를 여기서 throw
+fn spawn<F: Future + Send>(f: F) -> Task<F::Output> where F::Output: Send;
+fn spawn_local<F: Future>(f: F) -> Task<F::Output>;     // non-Send future, 현재 worker 에 고정 (OS 스레드가 아님)
+fn spawn_blocking<T: Send>(f: fn() -> T + Send) -> Task<T>;   // blocking 작업을 executor 밖 OS 스레드에서
+fn spawn_blocking_with_arg<V: Send, T: Send>(arg: V, f: fn(V) -> T + Send) -> Task<T>;   // arg 를 f 에 넘기는 spawn_blocking
+fn worker_count() -> usize;                               // executor 안에서는 pool 크기, 밖에서는 1
+fn cpu_count() -> usize;                                // 온라인 CPU 수 (pool 크기)
+async fn race<I: IntoIterator<Item = Task<T>>, T>(tasks: I) -> T;   // 첫 완료 task 결과. 나머지는 취소
+const fn select<I: IntoIterator<Item = F>, F: Future>(iter: I) -> SelectFuture<F>;   // await: (index, 결과), spawn 하지 않음
+fn id() -> TaskId;                                      // 현재 task 의 id, task 밖이면 panic
+fn current_id() -> TaskId | none;                       // 현재 task 의 id, task 밖이면 none
+async fn join<I: IntoIterator<Item = Task<T>>, T>(tasks: I) -> List<T>;   // 모두 완료 후
+async fn timeout<T>(dur: Duration, task: Task<T>) throws (TimeoutError) -> T;   // try await 에서 던짐. task 를 취소
+async fn sleep(dur: Duration);
+async fn sleep_until(when: Instant);
+async fn yield_now();                                   // await: 다른 ready task 에 한 번 양보
+fn registrations() -> usize;                            // 진단용: 실행 중 pool 의 park 한 waker + 대기 timer 수 (구현이 정함)
+```
+
+`sleep`과 `timeout`은 첫 poll부터 시간을 잽니다. 직접 작성한 `Future`는 `Waker`로 기다립니다([2.20](220-future.md)). `ctx.waker()`를 보관하고 `Pending`을 돌려주면, 상태를 바꾸는 쪽이 그 waker의 `wake()`를 부릅니다.
+
+이 함수들이 돌려주는 future와 에러는 다음과 같습니다.
+
+```nabi
+struct SelectFuture<F> { /* ... */ }
+impl<F: Future> Future for SelectFuture<F> { type Output = (usize, F::Output); ... }
+
+struct Join<T> { /* ... */ }                        // Task::join, try await 로 기다림
+impl<T> Join<T> {
+    fn poll(ref self, ref ctx: Context) throws (CancellationError) -> Poll<T>;
+}
+
+struct TimeoutError;                                // task::timeout 시간 초과; message() 와 Display 는 "timed out"
+```
+
+### 사용 예
+
+사용 예입니다.
+
+```nabi
+use core::task::*;
+
+let t = task::spawn(async { compute_heavy() });
+let result = await t;
+
+let results = await task::join([
+    task::spawn(async { fetch("a") }),
+    task::spawn(async { fetch("b") }),
+    task::spawn(async { fetch("c") }),
+]);
+
+let first = await task::race([
+    task::spawn(async { source_a() }),
+    task::spawn(async { source_b() }),
+]);
+
+await task::sleep(Duration::ms(100));
+await task::yield_now();
+```
+
+`spawn`은 클로저가 아니라 future를 받습니다. 그래서 `task::spawn(async { ... })`처럼 `async` 블록이나 `async fn` 호출 결과를 넘깁니다. `Send`가 아닌 future는 `spawn_local`로 현재 워커에서 실행합니다. `join` / `race` / `timeout`은 `await`로 기다려 결과를 받습니다.
+
+`join`, `race`, `select`는 task나 future의 `IntoIterator`를 받습니다. 목록 리터럴도 됩니다.
+
+`race`와 `timeout`은 진 쪽을 취소합니다. `race`는 처음 끝난 task를 보면(목록 순서로 보므로 동시에 끝나면 앞의 task가 이깁니다) 받은 나머지 task마다 `cancel`([2.18.4](#2184-협력적-취소-taskcancel))을 부릅니다. `timeout`은 시간이 다 되면 그 task를 취소하고 `TimeoutError`를 던집니다. 그러면 진 task는 `cancel`로 취소한 task와 같습니다.
+
+- 취소 지점을 지났다면 `is_cancelled()`는 true이고, `try await t.join()`은 `CancellationError`를 던지고, 그냥 `await t`는 원인을 밝히는 메시지로 panic합니다: ``awaited a task cancelled by `task::race`; use `try await t.join()` ``(또는 `task::timeout`).
+- 이미 끝났거나 다른 취소 지점을 지나지 않고 끝났다면 `await t`와 `join`은 그 task 자신의 값을 돌려줍니다. 진 task가 `race`의 결과를 내는 일은 없습니다.
+
+둘 다 진 task의 정리를 기다리지 않습니다. `select`처럼 취소를 요청하면 바로 돌아옵니다. 진 task의 정리가 끝나야 하는 코드는 `try await loser.join()`을 씁니다. 이것은 정리가 끝난 뒤에 완료됩니다. `race`나 `timeout`을 기다리는 task를 취소하면 거기에 넘긴 task도 취소됩니다. 그 `Task`의 복사본을 다른 곳에서 들고 있으면 그 취소가 보입니다. task 없이 부른 `race`는 panic합니다.
+
+### `spawn_blocking`: 블로킹 작업
+
+`spawn_blocking(f)`는 `f`를 실행기(executor)의 워커가 아니라 블로킹 풀의 OS 스레드에서 실행합니다. 그리고 그 결과로 끝나는 `Task<T>`를 돌려줍니다. `spawn`이 돌려주는 것과 같은 핸들입니다(2.18.2). readiness로 기다릴 수 없는 블로킹 시스템 호출(일반 파일 I/O 등, [stdlib 3.1.4a](../300-std/301-fs.md#314a-비동기-파일-io_async))을 task 안에서 기다릴 때 씁니다.
+
+- `f`는 첫 poll이 아니라 **호출하는 즉시** 시작합니다. 풀이 가득 차 있으면 먼저 큐에 들어갑니다.
+- 블로킹 풀은 프로세스 전체에 하나입니다. 필요할 때 스레드를 늘리고(상한 있음), 한동안 일이 없는 스레드는 끝냅니다. 작업은 들어온 순서(FIFO)로 처리합니다. 상한은 스레드 512개이고, 상한에 닿으면 작업을 큐에 쌓습니다. 10초 동안 일이 없는 스레드는 끝납니다. 작업 하나는 쉬고 있는 스레드 하나에 넘깁니다.
+- `f`에는 취소 지점이 없습니다. 풀 스레드가 작업을 가져가기 전에 `cancel()`하면 `f`는 실행되지 않고 `join`은 `CancellationError`를 던집니다. 일단 `f`가 실행되면 끝까지 가고, `await` / `join`은 그 결과를 돌려줍니다.
+- `await`로 기다리던 task가 취소되면 다른 `Task`를 기다릴 때처럼 그 `await`를 떠납니다. 블로킹 task는 취소되지 않고, 결과는 핸들에 남습니다.
+
+```nabi
+let n = await task::spawn_blocking(|| heavy_checksum(path));
+```
+
+`f`는 일반 캡처를 자기를 만든 코드와 공유하므로, 그 캡처는 `Send + Sync`여야 합니다([refs-lang 4.6.9](../../refs-lang/004-functions/406-capture-semantics.md#469-병렬과-동시성-문맥의-추가-제약)). 블로킹 작업만 쓰는 값(컬렉션, `Command`)은 두 방식 가운데 하나로 그 작업에 줍니다.
+
+- `f`의 캡처 리스트에 `[move x]`를 적으면 `x`를 클로저로 옮깁니다([refs-lang 4.6.11](../../refs-lang/004-functions/406-capture-semantics.md#4611-move-캡처-move-x-캡처-리스트)).
+- `spawn_blocking_with_arg(arg, f)`는 채널 send와 같은 방식으로 `arg`를 넘기고, 풀 스레드에서 `f(arg)`를 부릅니다. 그 스레드는 `arg`가 닿는 모든 컬렉션의 복사본을 받고, 그 뒤에 `arg`를 쓰면 컴파일 에러입니다([2.13.9](213-marker.md#2139-send--sync-스레드-경계-마커)). `arg`는 `Send`만 요구합니다.
+
+어느 쪽이든 띄우는 쪽 코드는 그 값을 더 쓸 수 없습니다. move 캡처를 가진 클로저도 함께 넘어가므로, `spawn_blocking(f)` 뒤에 그 클로저를 다시 부르면 컴파일 에러입니다.
+
+```nabi
+let rows: List<str> = load();
+let n = await task::spawn_blocking([move rows] || write_all(rows));
+let m = await task::spawn_blocking_with_arg(load(), |rows: List<str>| write_all(rows));
+```
+
+### `spawn`의 `Send` 검사
+
+`task::spawn`은 결과 타입도 `Send`여야 합니다(`where F::Output: Send`). 또 **프레임**이 `Send`가 아닌 future를 거부합니다([2.13.9](213-marker.md#2139-send--sync-스레드-경계-마커)). future가 어디서 왔든 같습니다. 컴파일러는 `async` 블록이나 `async fn` 호출만 검사하지 않습니다. 매개변수, struct / 튜플 / 합의 필드, 도우미 함수의 결과, 리스트의 원소, 클로저가 들고 있는 future, 다른 코루틴 프레임 안의 future도 검사합니다. future의 프레임은 다음으로 이루어집니다.
+
+- 캡처한 값.
+- `await`를 넘어 살아 있는 지역 변수와 임시값.
+- 프레임이 들고 있는 다른 future. 그 프레임도 재귀로 봅니다.
+
+```nabi
+let c = Cell::new(0);                      // Cell: !Send
+task::spawn(async { c.set(1); });          // ERROR: !Send 캡처
+task::spawn_local(async { c.set(1); });    // OK: 현재 worker 에 고정
+
+fn make() -> AsyncFuture<()> { let c = Cell::new(0); async { c.set(1); } }
+task::spawn(make());                       // ERROR: helper 가 만든 future 의 frame 도 검사
+```
+
+같은 검사가 클로저를 다른 스레드로 보내는 자리에도 적용됩니다. 그런 자리는 `thread::spawn`, `thread::Builder::spawn`, `par`의 `Scope::spawn`, `task::spawn_blocking`입니다. 클로저가 `Send`가 아닌 프레임의 future를 들고 있으면 ``` `X` would move a future to another thread: ... ``` 에러입니다.
+
+이 검사는 보수적으로 근사해도 됩니다. 구현은 실제로는 `Send`인 future를 거부해도 됩니다. 하지만 `Send`가 아닌 값을 다른 스레드로 넘기는 future를 받아들이면 안 됩니다. 검사는 다음 값 안으로는 들어가지 않습니다.
+
+- 타입이 함수 값을 담을 수 없는 값. 이런 값은 future의 프레임을 숨길 수 없습니다.
+- `unsafe impl Send`를 명시한 타입의 값(예: `Task<T>`). 그 타입이 안전성을 책임집니다.
+
+`async fn`의 결과 타입 `AsyncFuture<T>`는 `T: Send`일 때 `Send`입니다. 에러를 던지는 판인 `TryAsyncFuture<T, E>`는 `T`와 `E`가 모두 `Send`일 때 그렇습니다. 캡처와 프레임은 위 검사가 따로 봅니다. 캡처가 `Send`이지만 `Sync`가 아닌 프레임은 받아들입니다. `async fn`이 받는 리스트, `async` 블록이 캡처하는 리스트나 future가 그런 예입니다. `task::spawn`은 채널 send처럼 future를 넘기기 때문입니다([2.13.9](213-marker.md#2139-send--sync-스레드-경계-마커)). task는 future가 캡처한 것의 복사본을 담은 자기 프레임을 받습니다. 이 복사본은 넘김 한 번으로 만듭니다. 그래서 캡처끼리 공유하던 것(같은 리스트 두 번, 리스트와 그 위의 future)은 계속 공유됩니다. spawn 뒤에 그 future나 그것이 캡처한 것을 쓰면 send 뒤와 마찬가지로 컴파일 에러(`E0105`)입니다. 한 번도 폴링되지 않은 future만 넘길 수 있습니다. 다음 future를 넘기면 panic이 일어나고, 아무것도 공유하지 않습니다. 이미 시작한 것(`select`, 사용자의 `Future`, 또는 직접 한 번 폴링한 것), 끝난 것, 그리고 자기 프레임이나 캡처한 future의 프레임에 `[ref x]` 캡처가 있는 것입니다. 채널로 보내거나 `Mutex`나 `Frozen`에 넣는 코루틴 future도 같은 방식으로 넘겨지고, 그때마다 자기 프레임을 받습니다. `Task`가 넘겨진 task(`Frozen::get`, 채널, 락, `par` 항목)를 `await`하면 매번 결과의 복사본을 따로 받습니다. 한 스레드 안의 `Task` 복사본은 그 결과를 공유합니다.
+
+### `select`: 먼저 끝나는 future
+
+```nabi
+const fn select<I: IntoIterator<Item = F>, F: Future>(iter: I) -> SelectFuture<F>;   // Output = (usize, F::Output)
+
+let (i, v) = await task::select([fetch_a(), fetch_b()]);
+```
+
+`race`와 달리 future를 띄우지 않고, 기다리는 task **안에서** 실행합니다.
+
+- 목록 순서대로 폴링합니다. 같은 poll에서 둘 이상이 끝나면 인덱스가 낮은 쪽이 이깁니다.
+- 하나가 끝나면 이미 시작한 나머지는 모두 취소됩니다. 취소된 상태로 한 번 더 폴링되어 `finally` / `using`이 실행됩니다(2.18.4). 정리 중에 `await`하는 진 future는 따로 task가 되어 백그라운드에서 정리를 마칩니다. `select`는 그것을 기다리지 않습니다. 한 번도 폴링되지 않은 future는 실행되지 않습니다.
+- 진 future가 만든 깨우기 등록(타이머, parking)은 모두 풀립니다.
+- 기다리는 task가 취소되면 자식 future도 취소됩니다.
+- future가 하나도 없으면 panic이 일어납니다.
+- future는 모두 한 타입이어야 합니다. 결과 타입이 다르면 `async { Msg::A(await a) }`처럼 감쌉니다.
+
+`select`와 `sleep`으로 타임아웃을 만들 수도 있습니다.
+
+```nabi
+enum Ev { Line(str), Timeout }
+
+let (_, ev) = await task::select([
+    async { Ev::Line(await read_line()) },
+    async { await task::sleep(Duration::secs(5)); Ev::Timeout },
+]);
+```
+
+### `TaskId`
+
+`task::id()`는 실행 중인 task의 id입니다. task 밖에서 부르면 ``task::id: called outside a task; use `task::current_id()`, which is `none` there``로 panic합니다. `Task::id()`는 그 task의 id입니다. id는 프로세스 전역 카운터에서 나오고 다시 쓰이지 않습니다.
+
+## 2.18.2. `Task<T>` 타입
+
+`Task<T>` 타입의 정의입니다.
+
+```nabi
+struct Task<T> {
+    // 내부: GC heap 의 coroutine frame + 결과 슬롯
+}
+
+impl<T> Task<T> {
+    fn cancel(self);                      // 취소 요청, 다음 await 에서 끝남 (2.18.4)
+    fn is_cancelled(self) -> bool;
+    fn is_finished(self) -> bool;
+    fn join(self) -> Join<T>;             // try await t.join(): 결과 없이 취소됐으면 CancellationError
+    fn id(self) -> TaskId;
+}
+
+struct TaskId { /* u64 */ }
+impl TaskId {
+    fn as_u64(self) -> u64;
+}
+// TaskId: Clone / Copy / PartialEq / Eq / Hash / Display / Debug
+
+struct CancellationError;           // message() 와 Display 는 "task cancelled"
+
+impl<T> Future for Task<T> {              // `await t`: 완료까지 suspend
+    type Output = T;
+    ...
+}
+```
+
+### `IntoFuture` 통합
+
+`Task<T>`는 `Future<Output = T>`를 구현하므로 `await t`로 기다릴 수 있습니다. [2.20 future](220-future.md)의 `IntoFuture` 블랭킷 impl에도 포함되므로 `thread::JoinHandle`(자기 `IntoFuture` impl이 있습니다, 3.4)과 같은 방식으로 기다릴 수 있습니다. `IntoFuture` 트레잇과 lang slot `future_trait`의 권위 있는 정의는 [2.20 future](220-future.md)에 있고, 이 절은 그 정의를 따릅니다.
+
+## 2.18.3. 스케줄러 모델: work-stealing
+
+프로세스에는 실행기(executor)가 하나 있습니다. 실행기는 처음 쓸 때 시작합니다. CPU 수(`cpu_count()`)만큼의 워커 스레드, 블로킹 레인, I/O 드라이버로 이루어집니다. `block_on`은 부른 스레드를 손님 워커로 이 실행기에 붙여 `f`를 끝까지 실행합니다. `block_on`이 돌아올 때 실행 중인 task는 계속 실행됩니다. 다만 `block_on`은 그 스레드에 고정된 `spawn_local` task도 끝난 뒤에야 돌아옵니다. 그 task는 다른 스레드로 옮겨 갈 수 없기 때문입니다. `par::*`와 `spawn_blocking`도 같은 executor를 씁니다.
+
+`spawn`으로 띄운 task는 어느 워커에서든 실행될 수 있습니다. 그래서 `Future + Send`여야 하고 결과도 `Send`여야 합니다. `spawn_local`의 task는 그것을 만든 워커에 고정됩니다. 고정되는 것은 워커이지 OS 스레드가 아닙니다. 워커는 다른 OS 스레드에서 이어질 수 있으므로([refs-lang 7.6.7](../../refs-lang/007-runtime/706-scheduler.md#767-블로킹-syscall-자동-검출)), `spawn_local` task는 어느 OS 스레드에서 도는지나 그 스레드의 스레드 로컬 상태에 기대면 안 됩니다. (참조 런타임은 살아 있는 `spawn_local` task가 있는 워커를 넘기지 않습니다.) 다만 `block_on` 스레드가 폴링하지만 소유하지 않은 task도 있습니다. 기다리는 동안 맡은 `spawn` task입니다. 이런 task에서 부른 `spawn_local`은 대신 풀 워커에 고정됩니다. 그래서 `block_on`은 자기 task의 로컬 task만 기다립니다. 이런 poll 한 번에서 만든 로컬 task는 모두 같은 풀 워커로 가고, 그 poll이 끝난 뒤에야 시작합니다. 원래 그 task를 실행했을 워커에서와 같습니다.
+
+스케줄러 골격은 다음과 같습니다.
+
+```
+Worker 0 ─┐      Worker 1 ─┐    ...    Worker N-1 ─┐
+ Local     │      Local     │            Local      │
+ deque     │      deque     │            deque      │
+ (Chase-Lev)      (Chase-Lev)            (Chase-Lev)│
+           └─ Global Injector Queue ──────┘
+           └─ I/O Driver (포터블)   ──────┘
+           └─ Timer (heap)  ───────────────┘
+           └─ Parked Worker Stack   ──────┘
+```
+
+로컬 큐는 lock-free Chase-Lev 덱입니다. 소유 워커와 훔치는 워커 모두 가장 오래된 task부터 꺼냅니다. 스스로를 계속 다시 깨우는 task가 다른 task를 굶기지 않게 하려는 것입니다([refs-lang 7.6.2](../../refs-lang/007-runtime/706-scheduler.md#762-work-stealing-구조)). 바쁜 워커는 task 32개마다 기한이 지난 타이머를 처리합니다. I/O 드라이버에서는 프로세스당 리액터 스레드 하나가 epoll / kqueue를 edge-triggered로 기다립니다. io_uring / IOCP는 향후 과제입니다([refs-lang 7.7](../../refs-lang/007-runtime/707-io-and-timer.md)). 타이머 구조는 구현이 정합니다(이진 힙이나 타이밍 휠, [refs-lang 7.7.4](../../refs-lang/007-runtime/707-io-and-timer.md#774-타이머-구조)).
+
+표준 라이브러리의 권위는 API 시그니처까지입니다. 알고리듬 본문은 사양 밖의 런타임과 표준 라이브러리 본문에 속합니다.
+
+실행기 자신의 타입과 함수(`TaskRef`, `Pool`, `Worker`, `wake_task`, `cancel_requested`, `unwinding`, `park`, `unpark`)는 `core` 안에서 `pub(pkg)`입니다. 다른 패키지는 이 이름을 쓸 수 없습니다. `await`가 부르는 훅(`cancel_point`, `cancel_left`, `cleanup_running`, `cleanup_done`)도 `pub(pkg)`이고, 낮춘 코드는 lang 슬롯으로 이 훅에 닿습니다([0.4.4](../000-meta/004-lang-slot-table.md)). `readable` / `writable`(소켓 `*_async` 메서드가 await하는 readiness future, [refs-lang 7.7.2](../../refs-lang/007-runtime/707-io-and-timer.md#772-io-대기-패턴)), `wake_io`(close나 shutdown 뒤에 디스크립터의 readable / writable 대기자를 깨움)와 WebAssembly 컴포넌트의 이벤트 루프 진입점인 `host_enter` / `host_leave` / `host_run`은 `#[internal]`입니다. `std`가 부르며, 다른 패키지에서 쓰면 에러입니다([0.4](../000-meta/004-lang-slot-table.md)). `host_enter` 밖에서 부른 `host_leave`는 그렇다고 알리며 panic합니다.
+
+## 2.18.4. 협력적 취소: `Task::cancel`
+
+협력적 취소는 다음과 같이 씁니다.
+
+```nabi
+let t = task::spawn(async { long_running() });
+// ... 다른 일 ...
+t.cancel();              // 협력적 신호. task 가 cancellation point 에서 종료
+```
+
+`cancel()`은 취소를 **요청**합니다. 규칙은 다음과 같습니다([refs-lang 7.7.9](../../refs-lang/007-runtime/707-io-and-timer.md#779-취소)).
+
+- 모든 `await`가 취소 지점(cancellation point)입니다. 취소된 task는 다음 `await`에서 `return`처럼 본문을 떠납니다. 그때 지나는 `finally`와 `using` 정리가 안쪽부터 실행됩니다.
+- 그 정리 안의 `await`는 취소 지점이 아닙니다. 끝까지 완료되고, task는 정리가 끝날 때까지 계속 폴링됩니다. 끝나지 않는 정리는 취소된 task를 계속 살려 둡니다. `task::timeout`으로 시간을 제한하세요.
+- 취소는 task 안에서 `catch`할 수 있는 에러가 아닙니다. task 안으로 `CancellationError`를 던지지 않습니다.
+- 블로킹 시스템 호출은 취소 지점이 아닙니다. task는 그 호출이 끝난 뒤 다음 `await`에서 떠납니다.
+- 소켓 I/O(`*_async`), `sleep` / `timeout`, `lock_async`, `recv_async` / `send_async`에서 기다리던 task는 취소되면 깨어나고 다음 `await`에서 떠납니다.
+- task가 끝나면 그 task의 깨우기 등록(I/O readiness, 타이머, park한 대기)은 모두 풀립니다.
+- 첫 poll 전에 취소된 task는 실행되지 않습니다. 본문은 조금도 실행되지 않고, 결과 없이 끝납니다.
+- `spawn_blocking`이나 그 위의 `fs::*_async`를 기다리다 취소되면 이미 시작된 작업은 백그라운드에서 끝까지 실행됩니다. 쓰기 같은 부수 효과는 일어납니다. task가 다시 poll되기 전에 끝난 결과는 아래처럼 그 poll이 지킵니다.
+- 기다리던 future가 값(메시지, 락 guard)을 넘겨준 poll은 그 값을 지킵니다. 취소 검사는 "기다린 코루틴이 취소 때문에 떠났는가"를 봅니다. 값은 남고, task는 다음 `await`에서 떠납니다([refs-lang 7.7.9](../../refs-lang/007-runtime/707-io-and-timer.md#779-취소)).
+- 마지막 취소 지점을 지난 뒤 취소된 task는 정상적으로 끝나고 결과가 있습니다. `await t` / `join`은 그 결과를 돌려줍니다.
+- `CancellationError`는 결과 없이 끝난 task를 기다리는 쪽이 받습니다. 그런 task를 `try await t.join()`으로 기다리면 `CancellationError`가 던져집니다. `await t`로 기다리면 panic이 일어납니다.
+
+```nabi
+let t = task::spawn(async {
+    using log = open_log();                      // 취소되면 여기서 drop
+    loop {
+        await task::sleep(Duration::secs(1));     // cancellation point
+        tick(log);
+    }
+});
+t.cancel();
+```
+
+```nabi
+let r = try await t.join() catch _: CancellationError { fallback() };
+```
+
+## 2.18.5. `thread::*`: 1:1 OS 스레드
+
+별도 모듈인 `thread`는 M:N 모델을 쓰지 않고 **OS 스레드**를 직접 띄웁니다.
+
+```nabi
+use std::thread;
+
+let t = thread::spawn { os_level_work() };
+let r = try t.join();          // OS-level 동기 대기
+```
+
+두 모델의 차이는 다음과 같습니다.
+
+| 측면        | `task::spawn`              | `thread::spawn`         |
+|-------------|----------------------------|-------------------------|
+| 모델        | M:N (사용자 공간 스케줄러) | 1:1 (OS thread)         |
+| 비용        | 가벼움 (~1KB 프레임)       | 무거움 (~MB 스택)       |
+| 협력적 취소 | ✓                          | ✗ (OS 수준 kill 필요)   |
+| async 통합  | ✓                          | △ (joiner만 await)     |
+| 사용처      | 일반 동시성 (기본)         | CPU-bound, 블로킹 I/O   |
+
+기본으로는 `task::spawn`을 쓰고, OS 스레드가 꼭 필요할 때만 `thread::spawn`을 고르세요.
+
+## 2.18.6. `Duration` / `Instant`
+
+task 함수가 받는 시간 타입은 `core::time::Duration`(부호 있는 `i64` 나노초 간격)과 `core::time::Instant`(단조 시계 값)입니다. 정의는 [3.3](../300-std/303-time.md)(3.3.2, 3.3.5)에 있습니다. 두 타입은 `task` 안이 아니라 그 옆에 있습니다. `sleep`, `sleep_until`, `timeout`은 task를 멈추는 함수이므로 `task`에 남습니다.
+
+`await task::sleep(Duration::ms(100))`, `await task::sleep_until(t)` 같은 호출은 정확한 단조 시간(monotonic time)을 보장합니다.
+
+## 2.18.7. 모듈 매핑
+
+각 항목이 있는 모듈입니다.
+
+| 항목                 | 모듈                                 | 동작                     |
+|----------------------|--------------------------------------|--------------------------|
+| `task::spawn`        | `core::task` + scheduler runtime | scheduler push           |
+| `task::race`         | `core::task`                     | first-completed selector |
+| `task::join`         | `core::task`                     | join all                 |
+| `task::timeout`      | `core::task`                     | race + timer             |
+| `Task<T>`            | `core::task`                     | coroutine frame ref      |
+| `Duration`/`Instant` | `core::time`                     | i64 ns + monotonic clock |
+| `Future` (lang slot) | `core::future`                   | poll-based               |
+| `IntoFuture`         | `core::future`                   | await 진입점             |

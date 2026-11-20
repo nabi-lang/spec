@@ -1,0 +1,444 @@
+# 6.2. Built-in attributes
+
+This section defines the built-in attributes the compiler processes directly. `#[cfg]` is covered separately in [conditional compilation](603-cfg.md), and magic attributes and meta blocks are described in the sections from [`#[lang(...)]` magic](604-lang-magic.md) onward.
+
+```
+derive_attr     ::= "#" "[" "derive" "(" trait_name ("," trait_name)* ","? ")" "]"
+trait_name      ::= identifier
+repr_attr       ::= "#" "[" "repr" "(" repr_arg ("," repr_arg)* ")" "]"
+repr_arg        ::= "C" | "transparent" | "packed" | "align" "(" int_lit ")"
+                  | identifier                          // primitive int repr
+inline_attr     ::= "#" "[" "inline" ("(" ("always" | "never") ")")? "]"
+deprecated_attr ::= "#" "[" "deprecated" ("(" deprecated_args ")" | "=" string_lit)? "]"
+deprecated_args ::= string_lit | deprecated_kv ("," deprecated_kv)*
+deprecated_kv   ::= ("since" | "note") "=" string_lit
+deprecated_safe ::= "#" "[" "deprecated_safe" ("(" string_lit ")" | "=" string_lit)? "]"
+sealed_attr     ::= "#" "[" "sealed" "]"
+internal_attr   ::= "#" "[" "internal" "]"
+discardable_attr ::= "#" "[" "discardable" "]"
+```
+
+## 6.2.1. `#[derive(...)]` automatic trait implementation
+
+```nabi
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+struct Point { x: i64; y: i64; }
+```
+
+The arguments of `#[derive(...)]` are trait names separated by commas. For each listed trait, an automatic implementation suited to the type is generated.
+
+### Built-in derivable traits
+
+Only `Clone`, `Copy`, `Debug`, `Default`, `PartialEq`, `Eq`, `PartialOrd`, `Ord`, `Hash` and `Error` can be derived. The generation rules and requirements for each trait are defined in [stdlib 2.13.11](../../refs-standard-libraries/200-core/213-marker.md#21311-derivable-traits).
+
+- `Display` cannot be derived. The display format is decided by the type's author, with an `impl Display` or with `#[display("..")]` ([stdlib 2.10.14](../../refs-standard-libraries/200-core/210-fmt.md#21014-derive-policy-summary)).
+- `Error` implements `Error` with its default `source()`; `Display` and `Debug` come from their own derive, attribute or impl ([stdlib 2.14](../../refs-standard-libraries/200-core/214-error.md#deriveerror)).
+- Deriving `Eq` / `Ord` without their supertraits (`PartialEq` / `PartialOrd`, `Eq`) is a compile error. `Copy` requires `Clone` and cannot be combined with `Drop`.
+- `#[derive]` on a `union` is a compile error.
+
+### Combining with user-defined derives
+
+User-defined traits can also be derived, as in `#[derive(MyTrait)]`. This requires `MyTrait` to be defined by an `#[impl_derive(MyTrait)]` meta block ([6.8](608-meta-blocks.md)). The built-in derive names above cannot be redefined by a meta block.
+
+Built-in and user-defined derives may be mixed freely in one `#[derive(...)]`.
+
+```nabi
+#[derive(PartialEq, Eq, Clone, MyCustomTrait)]
+struct Foo { ... }
+```
+
+## 6.2.2. `#[repr(...)]` explicit memory representation
+
+```nabi
+#[repr(C)]
+struct CCompatible { x: i32; y: i32; }
+
+#[repr(transparent)]
+struct Wrapped(InnerType);
+
+#[repr(packed)]
+struct Tight { a: u8; b: u32; }
+
+#[repr(align(16))]
+struct Aligned { ... }
+
+#[repr(u32)]
+enum Status { ... }
+```
+
+| Argument                    | Meaning                                                                                              |
+|-----------------------------|------------------------------------------------------------------------------------------------------|
+| `C`                         | C [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) layout: declaration order, natural alignment. Same as the default `struct` layout |
+| `transparent`               | Exactly one field, and no other `repr` argument. Same representation as that field, and crosses the C ABI as it |
+| `packed`                    | Packs tightly, ignoring alignment ([FFI](../000-meta/007-glossary.md#ffi-foreign-function-interface) only). Cannot hold GC references; exclusive with `align(N)` |
+| `align(N)`                  | Forces a minimum alignment of N bytes                                                                |
+| `u8` to `u64` / `i8` to `i64` | The tag type of an `enum`. Widths other than 32 bits only for field-less enums; enums with data accept `i32` / `u32` |
+
+Without `#[repr]`, a [`struct`](../002-types/203-struct.md) uses declaration order and natural alignment (the same as `repr(C)`); the layout of [`enum`](../002-types/204-enum.md) and sums is the compiler's ([2.7](../002-types/207-niche-optimization.md)).
+
+## 6.2.3. `#[link(...)]` naming an external library
+
+```nabi
+#[link("m")]
+extern "C" {
+    fn sin(x: f64) -> f64;
+    fn cos(x: f64) -> f64;
+}
+
+#[link(name = "openssl", kind = "static")]
+extern "C" { ... }
+```
+
+`#[link(...)]` names the external library an [`extern` block](../005-modules/509-extern-block.md) links against; it is attached to `extern` blocks.
+
+| Argument form               | Meaning                     |
+|-----------------------------|-----------------------------|
+| `"libname"`                 | Plain library name          |
+| `name = "..."`              | Library name (key-value)    |
+| `kind = "static" / "dylib" / "framework"` | Link kind (`framework`: an Apple framework) |
+| `wasm_import_module = "m"` | wasm32: the block's functions are imported from core module `m`; ignored elsewhere |
+
+### `#[link_name = "sym"]`
+
+`#[link_name = "sym"]` on an extern function gives the symbol it links to, or its import name inside a `wasm_import_module` block.
+
+```nabi
+#[link(wasm_import_module = "env")]
+extern "C" {
+    #[link_name = "log_line"]
+    fn host_log(ptr: ConstPtr<u8>, len: usize);
+}
+```
+
+## 6.2.4. `#[inline]` inlining hints
+
+```nabi
+#[inline]
+fn small_helper(x: i32) -> i32 { x + 1 }
+
+#[inline(always)]
+fn very_hot() { ... }
+
+#[inline(never)]
+fn never_inline() { ... }
+```
+
+| Argument | Meaning                                       |
+|----------|-----------------------------------------------|
+| (none)   | Inlining recommended (compiler decides)       |
+| `always` | Inlining forced                               |
+| `never`  | Inlining forbidden                            |
+
+`#[inline]` is only an optimization hint; it does not affect the program's meaning.
+
+## 6.2.5. `#[test]` test function marker
+
+```nabi
+#[test]
+fn test_addition() {
+    assert_eq(1i32 + 1i32, 2i32);
+}
+```
+
+`assert_eq` is in [stdlib 2.14.5](../../refs-standard-libraries/200-core/214-error.md#assert--assert_eq--assert_ne). `#[test]` on a function marks it as a test function. `nabic test` collects such functions into a harness and the test runner (`nabi test`, etc.) runs them automatically. In ordinary builds they are excluded, as if `#[cfg(test)]` were also attached. A test function is run whatever its own visibility and that of its enclosing modules; `#[test]` does not change visibility for other code.
+
+Two attributes go with `#[test]` and say what passing means:
+
+```nabi
+#[test]
+#[should_panic(expected = "empty input")]
+fn rejects_empty() {
+    parse_config("");
+}
+
+#[test]
+#[ignore = "needs the network"]
+fn downloads() { }
+```
+
+- `#[should_panic]` passes only when the test panics; `#[should_panic(expected = "text")]` also needs the panic's output to contain `text`. A test that returns, or ends with an uncaught error, fails.
+- `#[ignore]` (or `#[ignore = "reason"]`) keeps the test out of a normal run; it is reported as ignored, with the reason. `nabi test --ignored` runs only such tests, `--include-ignored` runs them too ([9.10.1](../009-tools/910-nabi-frontend.md#9101-subcommands-and-global-options)).
+
+Either one on a function without `#[test]` is an error that says to add `#[test]`; any other argument form is an error that shows the two forms.
+
+`#[bench]` marks a benchmark function and, like `#[test]`, implies `#[cfg(test)]`. `nabic bench` collects them and builds the harness, and `nabi bench` runs it ([9.1.2](../009-tools/901-nabic-cli.md#nabic-bench-benchmarks)). A benchmark function is run whatever its own visibility and that of its enclosing modules; `#[bench]` does not change visibility for other code.
+
+## 6.2.6. `#[cold]` rarely called functions
+
+```nabi
+#[cold]
+fn handle_error() { ... }
+```
+
+`#[cold]` tells the compiler that the function is rarely called. The code generator then places the function outside the hot code path to improve cache friendliness.
+
+## 6.2.7. `#[deprecated]` discouraged-use marker
+
+```nabi
+#[deprecated]
+fn old_api() { ... }
+
+#[deprecated = "use new_api instead"]
+fn old_api2() { ... }
+
+impl Config {
+    #[deprecated(since = "1.2.0", note = "use `Config::load`")]
+    pub fn new() -> Config { ... }
+}
+```
+
+A use of an item marked `#[deprecated]` produces a warning (lint `deprecated`), not an error. A message, given as `= "..."`, `("...")` or `note = "..."`, is shown with the warning; it should say what to write instead. `since = "x.y.z"` names the release that deprecated the item.
+
+The warning covers these items, wherever they are declared (the package itself, a dependency, the standard library):
+
+- functions and methods, called or used as a value; a trait method's mark covers every impl of it;
+- fields, when read, assigned, set in a struct literal or named in a pattern;
+- structs, enums, unions, type aliases and traits, named in a type or as the start of a path (`Old::new`);
+- constants and statics.
+
+Only uses in the package being built warn ([6.2.9](#629-allow--deny--warn-lint-control)). A type's own `impl` does not warn about the type, and a struct's own methods do not warn about its fields. A type is recognized by its full path, or by a last segment no other type shares. The attribute is accepted on any item; on others (variants, impls, modules) it has no effect.
+
+`since` is informational: a deprecation of any release is in `deprecated` and `warnings`. The language server tags the use as deprecated, so editors strike it through.
+
+## 6.2.8. `#[doc = "..."]` doc comment form
+
+```nabi
+#[doc = "Returns the sum of two integers."]
+fn add(x: i32, y: i32) -> i32 { x + y }
+```
+
+A `///` doc comment from [lexical structure](../001-lexical/102-lexical-structure.md#doc-comments) is this attribute.
+
+```nabi
+/// This function ...
+fn f() { ... }
+
+// same meaning
+#[doc = "This function ..."]
+fn f() { ... }
+```
+
+The inner form `#![doc]` likewise has the same effect as `//!`.
+
+### `#[doc(hidden)]`
+
+```nabi
+/// What a dict spread checks (lowered code calls it).
+#[doc(hidden)]
+pub const fn spread_misfit<V>(d: Dict<str, V>, key: str, why: str) { .. }
+```
+
+`#[doc(hidden)]` keeps a public item out of the API docs (`nabi doc`) and out of the language server's completion. It is for items that are `pub` only so code the compiler generates can call them; the item is still public and compiles and resolves as before. On a module it hides everything inside. It may stand beside the item's doc comment, which still serves hover. Any other `#[doc(..)]` form is an error: write `#[doc = ".."]` or `#[doc(hidden)]`. An item the toolchain's packages share but users may not call is `#[internal]` ([6.2.16](#6216-internal-shared-by-the-toolchains-packages)), not `#[doc(hidden)]`.
+
+## 6.2.9. `#[allow(...)]` / `#[deny(...)]` / `#[warn(...)]` lint control
+
+```nabi
+#[allow(unused)]
+fn _placeholder() { }
+
+#[deny(deprecated)]
+fn strict_zone() { ... }
+```
+
+These attributes change the level of lint diagnostics within the scope of the item they are attached to. Lints run in every command that compiles the package: `nabic build`, `test`, `bench`, `emit` and `check` ([9.1.2](../009-tools/901-nabic-cli.md#912-core-subcommands)), `nabi run`, `nabi lint` ([9.10.8](../009-tools/910-nabi-frontend.md#nabi-lint-linter)), the REPL and the language server (not `doc`). They check the package being built, not its dependencies. A `warn` lint is printed and does not fail a build; a `deny` lint is an error, and the build fails with exit code 1. `allow` ignores the diagnostic, `warn` emits it as a warning, and `deny` emits it as an error. Inner forms such as `#![allow(..)]` apply to the enclosing module (the whole file at the file head). The argument is a lint name or a group name. An item's `#[allow]` also covers its variants, fields and methods.
+
+The level is determined in the following order, later overriding earlier: each lint's default level < the `lints` field of `nabi.nabion` (after its `lints_from` chain) ([9.10.3](../009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)) < CLI `-A` / `-W` / `-D` < attributes in source (the innermost wins). `lints` is treated as if prepended to the CLI flags, so CLI flags written after it override it. The code of lint diagnostics is `E0131`.
+
+The default level of every lint is `warn`, except `nan_comparison` and `self_assignment`, which are always a mistake and default to `deny`, and `missing_docs`, which is `allow`. The Since column is the release that added the lint.
+
+| lint                     | Since   | Checks                                                              |
+|--------------------------|---------|---------------------------------------------------------------------|
+| `unused_variables`       | 0.1.0   | Local variables or parameters that are never read. A `ref` parameter that is assigned, or captured by `ref` (`[ref n]`), is used: the write reaches the caller |
+| `unused_imports`         | 0.1.0   | A `use` whose name the module never uses                            |
+| `dead_code`              | 0.1.0   | Non-`pub` functions nobody calls                                    |
+| `unreachable_code`       | 0.1.0   | Statements after `return` / `break` / `continue` / `throw` / `panic` |
+| `unused_must_use`        | 0.1.0   | Discarding the result of a `#[must_use]` function, or a value of a `#[must_use]` type ([6.2.11](#6211-unused-results-unused_result-discardable-must_use)) |
+| `unused_result`          | 0.1.0   | An expression statement whose value is not `()`, `none` or `Never`, unless it calls a `#[discardable]` function; write `_ = expr;` to drop the value on purpose ([6.2.11](#6211-unused-results-unused_result-discardable-must_use)) |
+| `unused_doc_comments`    | 0.1.0   | A doc comment on what is not documented (a statement, match arm, struct literal or tuple field, expression); use `//` for a plain comment |
+| `ignored_error`          | 0.1.0   | A `try? f();` statement silently discarding an error; `let _ = try? f();` marks a deliberate best-effort call and is not reported |
+| `nan_comparison`         | 0.1.0   | Comparison with NaN (always false; `!=` always true); use `.is_nan()` (deny) |
+| `bool_comparison`        | 0.1.0   | Comparing a `bool` with `true` / `false`                            |
+| `self_assignment`        | 0.1.0   | `x = x;` (deny)                                                     |
+| `while_true`             | 0.1.0   | `while true` instead of `loop`                                      |
+| `closed_type_switch`     | 0.1.0   | an `if T is ..` chain whose fallback panics: a trait fits a closed set of types |
+| `deprecated`             | 0.1.0   | Use of a `#[deprecated]` function, method, field, type, constant or static ([6.2.7](#627-deprecated-discouraged-use-marker)) |
+| `deprecated_safe`        | 0.1.0   | A call of a `#[deprecated_safe]` function, or a use of such a static, outside `unsafe` ([6.2.14](#6214-deprecated_safe-safe-today-unsafe-later)) |
+| `redundant_cast`         | 0.1.0   | `x as T` where `x` is already `T`                                   |
+| `redundant_clone`        | 0.1.0   | `.clone()` on a value of a primitive type                           |
+| `non_snake_case`         | 0.1.0   | Function, local variable, parameter, or module names not in snake_case |
+| `non_camel_case_types`   | 0.1.0   | Type, trait, or variant names not in UpperCamelCase: no lowercase first letter, no `__`, and `_` only between characters without case (`V1_0`) |
+| `non_upper_case_globals` | 0.1.0   | `const` / `static` names not in UPPER_SNAKE_CASE                    |
+| `sup_path`               | 0.1.0   | A `sup::` path or a `pub(sub)` outside an inline `mod name { }`; write the path from the package root (`pkg::a::b`, the note names it) or `pub(pkg)` ([5.7](../005-modules/507-paths.md)) |
+| `local_use`              | 0.1.0   | A `use` inside a function body; move it to the top of the file, with the other `use` items ([5.5.8](../005-modules/505-use.md)) |
+| `confusable_idents`      | 0.1.0   | Identifiers that resemble each other ([1.4](../001-lexical/104-identifiers.md)) |
+| `hidden_chars`           | 0.1.0   | An invisible or unassigned character written directly in a string, character literal or comment; write it as a `\u{..}` escape ([1.1.2](../001-lexical/101-source-files.md#112-character-encoding)) |
+| `missing_f_prefix`       | 0.1.0   | A plain string literal containing `{name}` where `name` is a local in scope: the `f` prefix is missing |
+| `literal_spread_mismatch` | 0.1.0   | A `List` or Dict literal spread into fixed parameters that cannot fill them: a length that differs, or a key that names no parameter left ([4.2](../004-functions/402-parameters.md)); the call panics at run time |
+| `assoc_type_shadowing`   | 0.1.0   | An associated type named like an outer type, which it hides inside its trait or `impl` (2.8.3) |
+| `plain_module_doc`       | 0.1.0   | A library's root file, or the file of a public module (every module on its path `pub`), that has no `//!` doc but starts with `//` lines: they read as the module's doc and are not one ([9.10.8](../009-tools/910-nabi-frontend.md#nabi-doc-documentation-generation)); the help shows the `//!` line to write |
+| `missing_docs`           | 0.1.0   | A `pub` item, a `pub` method of an inherent impl, a method of a `pub` trait or an inline `pub mod` without a `///` doc comment; `#[doc(hidden)]` counts as documented, a trait impl's methods are not checked (allow) |
+| `resize_while_iterating` | 0.1.0   | `for x in xs` over a `List` whose body changes the length of `xs` (`push`, `remove`, ...) with no `break`, `return` or `throw` after it in the same block: the loop sees the new length ([3.13.3](../003-expressions/313-loop-expressions.md#3133-for-iterator-based-repetition)) |
+
+| Group               | Includes                                                                                     |
+|---------------------|----------------------------------------------------------------------------------------------|
+| `unused`            | `unused_variables`, `unused_imports`, `dead_code`, `unreachable_code`, `unused_must_use`, `unused_result`, `unused_doc_comments` |
+| `nonstandard_style` | `non_snake_case`, `non_camel_case_types`, `non_upper_case_globals`, `sup_path`, `local_use` |
+| `warnings`          | Every lint whose level is warn, including those later releases add                           |
+| `all`               | Every lint, including those later releases add                                               |
+
+`warnings` takes rustc's meaning: denying it (`"warnings": "deny"` in `lints`, `-D warnings` or `#![deny(warnings)]`) turns every warning into an error, including the lints and deprecations a later release adds. A build that must keep building across releases pins its toolchain (`toolchain` in `nabi.nabion`, [9.10.6](../009-tools/910-nabi-frontend.md)). Each lint's Since column is informational.
+
+Some warnings come from the compiler itself rather than from a lint pass, and still belong to a lint: a confusable identifier is `confusable_idents`, an invisible character in a string or comment is `hidden_chars`, and a misplaced doc comment is `unused_doc_comments`. Their level is set by the lint's name, as for any other lint.
+
+Each lint diagnostic says where its level came from: `` `#[warn(unused_variables)]` on by default ``, `` `-D unused` on the command line ``, `` `"unused_variables": "deny"` in `lints` of nabi.nabion `` for a level from the manifest, or a label on the attribute that set it. An unknown lint or group name is a warning that names the closest known one and points to `nabi lint --list`. A removed lint (most became errors) named in an attribute, `-A` / `-W` / `-D` or `lints` is accepted and does nothing; it is not reported, even under `-D warnings`.
+
+`nabi lint --list` prints the lints with their default levels and the release that added each, then the groups.
+
+Some findings carry an edit that resolves them (`while true` -> `loop`, an unused `use` deleted); editors offer it as a quick fix, and `nabi fix` ([9.10.8](../009-tools/910-nabi-frontend.md#nabi-fix-apply-fixes)) applies them across the package.
+
+`nabic check --check-library` ([9.1.2](../009-tools/901-nabic-cli.md#nabic-check-diagnostics)) and `nabi lint --check-library` ([9.10.8](../009-tools/910-nabi-frontend.md#nabi-lint-linter)) also lint the standard library's own code at its levels: every default, with `missing_docs` at `deny`: every public item of the standard libraries has a doc comment ([stdlib 0.5.14](../../refs-standard-libraries/000-meta/005-notation.md#0514-docs-and-attributes)).
+
+## 6.2.10. `#[non_exhaustive]` opting out of external exhaustiveness
+
+```nabi
+#[non_exhaustive]
+pub enum ApiError {
+    NotFound,
+    Unauthorized,
+}
+```
+
+`#[non_exhaustive]` may be attached to an `enum` or `struct`. On an `enum`, a `match` on the type from an external package requires an additional catch-all (`_ => ...`) even if it handles every variant. This lets library authors add new variants later without breaking SemVer compatibility.
+
+```nabi
+#[non_exhaustive]
+pub struct ClientOptions {
+    pub retries: i32 = 3;
+    pub verbose: bool = false;
+}
+
+let o = ClientOptions { retries: 5 };           // OK in another package
+let p = ClientOptions { verbose: true, ..o };   // OK
+let ClientOptions { retries, .. } = p;          // `..` required in another package
+```
+
+On a `struct` it marks a record whose package may add fields:
+
+- A struct pattern on it from an external package ends in `..` (`let`, `match`, `if let`); without `..` it is an error that shows the pattern with `..` added. The defining package may list every field.
+- Every field added after the first release of the struct has a default ([2.3.3](../002-types/203-struct.md#233-field-default-values)), so literals that omit it keep compiling. The compiler cannot see a struct's history; this rule is the author's, and a later semver check enforces it.
+- Unlike Rust, struct literals and `..base` spreads ([2.3.4](../002-types/203-struct.md#234-field-spread)) stay allowed from other packages: a literal leaves out the defaulted fields and names the rest. Fields with no sensible default are required in every literal.
+
+## 6.2.11. Unused results: `unused_result`, `#[discardable]`, `#[must_use]`
+
+```nabi
+fn calculate() -> i32 { ... }
+
+#[discardable]
+fn insert(self, k: K, v: V) -> V | none { ... }
+
+#[must_use("thread is never joined")]
+pub struct JoinHandle<T> { ... }
+```
+
+An expression statement whose value is not `()`, `none` or `Never` warns with lint `unused_result`: `calculate();` drops an `i32`. Through `try`, `try!` and `await` the value is the call's. A `try? f();` statement is reported by `ignored_error` instead, and a block-like statement (`if`, `match`, a block, a loop) is not checked: its value is its arms'. To drop a value on purpose, write `_ = expr;` ([4.2](../004-functions/402-parameters.md)) or `let _ = expr;`.
+
+`#[discardable]` on a function or method says its result may be dropped: a statement that calls it does not warn. It takes no argument. On a trait method it covers every impl. The standard library marks the methods that return a value they displace or report on the side: `Dict::insert` / `remove`, `Set::insert` / `remove`, `List::pop` / `remove` / `drain`, `Deque::pop_front` / `pop_back`, `BinaryHeap::pop`, `Atomic::swap` / `fetch_*`, `Cell::replace` / `take`, `marker::replace` / `take`, `mem::replace`, `Dir::copy`, `fs::copy`, `io::copy` and `io::copy_async`. A short write (`Write::write -> usize`), `checked_*` and pure methods such as `str::trim` are not discardable.
+
+`#[must_use]` may be attached to a function or method, a `struct` or an `enum`, with an optional message (`#[must_use("..")]`). On a function it adds the message: dropping its result warns `unused_must_use` instead of `unused_result`. On a type it is stronger: an expression statement whose value has that type, or a local of that type that is never read, produces the `unused_must_use` warning with the attribute's message, even when a `#[discardable]` function returned it. The value of an `async fn` call or `async` block (a future never awaited never runs) and `thread::JoinHandle` ([stdlib 3.4.2](../../refs-standard-libraries/300-std/304-thread.md#342-api); a thread never joined may not finish before the program ends; `detach` says it runs on its own) are `#[must_use]`; [stdlib 0.5.14](../../refs-standard-libraries/000-meta/005-notation.md#0514-docs-and-attributes) lists the rest. A `#[must_use]` type is the one the attribute is on: a type of another package with the same name is not.
+
+A type's message is written to follow "this": the warning reads `this <message>`. Text after the first `": "` becomes a `help:` line, where `{}` stands for the dropped expression's source (or the local's name): `#[must_use("future is never awaited, so its body never runs: write `await {}`")]` warns ``this future is never awaited, so its body never runs`` with ``help: write `await fetch()` ``. Without a message the warning names the type: ``this value of type `T` is never used``.
+
+## 6.2.12. `#[track_caller]` passing the call site
+
+```nabi
+#[track_caller]
+fn expect_positive(n: i32) -> i32 {
+    if n <= 0 { panic("not positive") }      // location: where expect_positive was called
+    n
+}
+```
+
+- The function receives the call site as a hidden trailing `str` argument. Panics inside it report that location ([4.14.13](../004-functions/414-throws.md#41413-panics-and-fatal-errors)).
+- When a tracked function calls another tracked function, it passes on the location it received.
+- A function value of a tracked function reports the location where the value was created.
+- On an `async fn`, only the call is tracked, not the coroutine body.
+- On an `extern` (runtime) declaration, the symbol takes an extra location argument ([8.5.7](../008-abi/805-extern-symbols.md#857-diagnostic-area)).
+- It cannot be attached to `main`, `extern "C" fn`, or `#[export_name]` functions.
+
+Standard library functions that panic on invalid input (`panic`, `unreachable`, `assert*`, indexing, slicing, `unwrap`, `List::insert` / `remove`, etc.) are `#[track_caller]`.
+
+## 6.2.13. Summary
+
+The attributes above are built-in attributes recognized directly by the compiler and tools; they need no user definition through meta blocks.
+
+Magic attributes such as `#[lang]` and `#[literal]` are bound to the meaning of the language itself and are defined in separate documents.
+
+### Other built-in attributes
+
+The compiler also recognizes the following attributes. Each is specified where its feature is.
+
+| Attribute                      | Placement                     | Meaning |
+|--------------------------------|-------------------------------|---------|
+| `#[path("file.nabi")]`          | `mod name;`                   | Loads the module from that file instead of `name.nabi` ([5.4.6](../005-modules/504-modules.md#546-custom-paths-path)) |
+| `#![no_implicit_nabi]`          | file (inner)                  | Turns off the implicit `use core::prelude::*;` for that file ([stdlib 0.2.6](../../refs-standard-libraries/000-meta/002-import.md#026-opting-out---no_implicit_nabi)) |
+| `#[export_name("sym")]`        | `extern "C"` / `extern "system"` fn | Exports the function under the unmangled symbol `sym` (a wasm export of that name on wasm32); a root for unreachable-function elimination ([9.5.8](../009-tools/905-symbol-mangling.md)). On a plain function an error ([5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-definitions-exposed-externally)) |
+| `#[export]`                    | `extern "C"` / `extern "system"` fn | `#[export_name]` with the function's own name ([5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-definitions-exposed-externally)) |
+| `#[on_panic(return = v)]`, `#[on_panic]` | `extern "C"` / `extern "system"` fn | A panic in the function is reported, then the function returns `v` (an integer, float or `bool` literal, `0` for a null pointer; nothing without a result) instead of aborting the process ([5.9.10](../005-modules/509-extern-block.md#on_panic---a-value-for-c-instead-of-an-abort)) |
+| `#[errno]`                     | `extern "C"` / `extern "system"` block or declaration | Each call saves errno (and `GetLastError` on Windows) right after it returns, for `bare::ffi::errno()` ([stdlib 1.7.11](../../refs-standard-libraries/100-bare/107-ffi.md#1711-errno---errno-and-getlasterror)); an error on an `extern "nabi"` block and on a function |
+| `#[leaf]`                      | `extern "C"` / `extern "system"` block or declaration | The call skips the park around it: cheaper, but the function must neither block nor call back ([stdlib 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf---short-calls)); an error on an `extern "nabi"` block |
+| `#[no_mangle]`                 | function                      | Exempts the function from the naming and unused-function lints. It does not change the symbol; use `#[export_name]` for that |
+| `#[wit::export]`               | function, `pub struct`        | Implements a WIT export: a function, or a resource ([stdlib 1.8](../../refs-standard-libraries/100-bare/108-wit.md)) |
+| `#[niche(..)]`                 | newtype struct                | Declares values the type never holds, used as the niche of `T \| none` ([2.7.4](../002-types/207-niche-optimization.md#274-opt-in-niches-niche)) |
+| `#[display("text")]`          | `struct`, `enum`, enum variant | Implements `Display` by writing `f"text"` ([stdlib 2.10.14](../../refs-standard-libraries/200-core/210-fmt.md#21014-derive-policy-summary)) |
+| `#[intrinsic("nabi.OP.TYPE")]`  | standard library only         | Binds a function or method to a compiler operation; an error in user code ([stdlib 0.3](../../refs-standard-libraries/000-meta/003-intrinsics.md)) |
+| `#[no_safepoint]`              | `extern "nabi"` block          | Toolchain-internal: the block's functions neither allocate nor block, so calls to them are not safepoints; an error on other blocks ([5.9.2](../005-modules/509-extern-block.md#592-abi-specifiers)) |
+| `#[sealed]`                    | `trait`                       | Only the defining package implements the trait ([6.2.15](#6215-sealed-impls-only-in-the-defining-package)) |
+| `#[internal]`                  | function, method, `const`, `static`, field | Shared by `bare`, `core` and `std` only ([6.2.16](#6216-internal-shared-by-the-toolchains-packages)) |
+| `#[runtime_attribute(name)]`   | `struct`                      | Declares the runtime attribute `#[name(..)]`, kept in `Inspect` descriptions ([6.10.8](610-reflection.md#6108-runtime-attributes)) |
+| `#[inspect(skip)]`             | field                         | Leaves the field out of its type's `Inspect` description ([6.10.7](610-reflection.md#6107-typeinfo---the-types-description)) |
+| `#[renamed_from("old")]`       | field                         | Records the field's earlier name in its description ([6.10.8](610-reflection.md#6108-runtime-attributes)) |
+| `#[available(macos = "13.0")]` | function, method, method of an `extern "objc"` block | The macOS the API needs: a call is an error unless the deployment target or an enclosing `if objc::available(macos: "13.0")` covers it ([stdlib 1.10.13](../../refs-standard-libraries/100-bare/110-objc.md#11013-availability-and-the-deployment-target)) |
+| `#[objc::class(..)]`, `#[objc::protocol(..)]`, `#[objc::category(..)]`, `#[selector("..")]`, `#[returns_retained]`, `#[returns_not_retained]` | `extern "objc"` block, its methods | Objective-C classes and their methods ([stdlib 1.10.2](../../refs-standard-libraries/100-bare/110-objc.md#1102-extern-objc-blocks)) |
+
+## 6.2.14. `#[deprecated_safe]` safe today, `unsafe` later
+
+```nabi
+#[deprecated_safe("`ptr` must point at a NUL-terminated string")]
+pub fn from_ptr(ptr: Ptr<u8>) -> CStr { ... }
+```
+
+`#[deprecated_safe("note")]` marks a library function, method, extern function or static that a later release makes `unsafe`. A call of it, or a use of the static, outside an `unsafe` block or `unsafe fn` warns with lint `deprecated_safe` and the note: wrap the call in `unsafe { .. }`, which compiles now and stays correct when the item becomes `unsafe`. Inside `unsafe` there is no warning.
+
+It is for the standard library and library packages. On a function of the program being built it is an error: make that function `unsafe fn` instead. On an item other than a function, method, extern function or static it is an error.
+
+## 6.2.15. `#[sealed]` impls only in the defining package
+
+```nabi
+/// The element types `Atomic<T>` supports.
+#[sealed]
+pub trait AtomicPrimitive {}
+```
+
+`#[sealed]` on a trait means that only the package defining the trait implements it. An `impl` of the trait in any other package is an error that names the trait as sealed and the package that owns it. Everything else works as for any trait: other packages use it in bounds (`T: AtomicPrimitive`), call its methods, and name it in `use`.
+
+Seal a trait when the library depends on knowing every type that implements it: for soundness (the atomic operations exist only for those types) or because other impls would be ignored. The standard library seals `AtomicPrimitive` ([stdlib 2.16](../../refs-standard-libraries/200-core/216-sync.md)).
+
+Each tier of the toolchain is its own package ([5.6.4](../005-modules/506-visibility.md#564-pubpkg-within-the-package)): a trait `core` seals has its impls in `core`. `#[sealed]` takes no arguments; on anything other than a trait it is an error.
+
+## 6.2.16. `#[internal]` shared by the toolchain's packages
+
+```nabi
+/// Wake every task waiting on `fd`'s readiness.
+#[internal]
+pub fn wake_io(fd: i32) { .. }
+```
+
+`#[internal]` marks a `pub` item that the toolchain's own packages, `bare`, `core` and `std`, share with one another but that is not part of their API. It may be attached to a function, method, `const`, `static` or field.
+
+- A use from any other package (a call, a function value, a read) is an error: "internal to the Nabi toolchain". The item still resolves, so the error names it.
+- `#[internal("..")]` names what to write instead, and the error shows it (`Int::from_literal` names `s.parse::<Int>()`). With no note, the error says the item is compiler-only.
+- It is left out of the API docs (`nabi doc`), the language server's completion and hover lists, and "did you mean" suggestions, as `#[doc(hidden)]` items are.
+- It is no new visibility level ([5.6.1](../005-modules/506-visibility.md#561-four-levels)): the item is `pub`, and the check is separate from visibility.
+- Only the toolchain's packages may write it. On an item of any other package it is an error; to keep an item inside a package, make it `pub(pkg)`.
+
+The items that carry it are listed in [stdlib 0.4.4](../../refs-standard-libraries/000-meta/004-lang-slot-table.md). An item used inside one tier only is `pub(pkg)`, and a function the compiler calls from lowered code is reached through a lang slot, so neither needs `#[internal]`.

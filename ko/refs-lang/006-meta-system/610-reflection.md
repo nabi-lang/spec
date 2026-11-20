@@ -1,0 +1,234 @@
+# 6.10. 리플렉션
+
+표준 라이브러리에는 두 단계의 리플렉션 트레잇 `Reflect`와 `Inspect`가 있습니다.
+
+```
+Reflect    자동 구현: 모든 타입이 공짜로 들고 있는 얕은 메타정보
+Inspect    opt-in via #[derive(Inspect)]: 풍부한 필드/메서드 명세
+```
+
+두 단계로 나누면 바이너리 크기를 통제할 수 있습니다. 그러면서도 `any` 슬롯, 합 타입, REPL 자동 출력에 꼭 필요한 정보는 모든 타입에 비용 없이 들어갑니다.
+
+## 6.10.1. `Reflect`: 자동 구현 트레잇
+
+`Reflect`는 모든 타입에 자동으로 붙는 최소한의 타입 내부 조회(introspection)입니다. 사용자가 `#[derive(Reflect)]`를 쓰지 않아도 컴파일러가 모든 타입의 구현을 자동으로 합성합니다.
+
+```nabi
+trait Reflect {
+    // 정적: 타입에 직접 호출
+    fn type_name() -> str;
+    fn size() -> usize;
+    fn align() -> usize;
+
+    // 인스턴스: any 슬롯 / 합 타입에서 런타임 dispatch
+    fn type_name_of_val(self) -> str;
+    fn size_of_val(self) -> usize;
+}
+```
+
+```nabi
+i32::type_name() == "i32"
+i32::size()      == 4
+i32::align()     == 4
+
+let x: any = 42i32;
+x.type_name_of_val() == "i32"    // 런타임 type tag 검사
+
+let v: i32 | f64 = pick();
+v.type_name_of_val()              // "i32" 또는 "f64" (합 타입 variant 검사)
+```
+
+자동으로 구현되므로 사용자 코드는 필요 없습니다. 컴파일러는 모든 타입의 `type_name`, `size`, `align`을 이미 알고 있으므로 비용 없이 합성합니다.
+
+`Reflect`는 컴파일러가 모든 타입에 붙입니다. 소스에는 구현이 없습니다.
+
+- 손으로 쓴 `impl Reflect for T`는 에러입니다. `T: Reflect` 바운드는 항상 성립합니다.
+- 타입에 `size()` / `type_name()`처럼 이름이 같은 메서드가 있으면 그 메서드가 리플렉션 메서드를 가립니다.
+- 이름(`type_name`)에는 모듈 경로가 붙지 않습니다(`List<i64>`, `Config`). 합 타입의 정적 이름은 정규 순서([2.6.4](../002-types/206-sum-types.md#264-집합-의미론))로 씁니다(`f64 | i32`, `none`은 마지막). `type_name_of_val(self)` 같은 인스턴스 형태는 런타임에 실제로 들어 있는 것을 보고합니다. 합 타입이면 그 항을, `any`면 그 내용을 보고합니다.
+- `core::reflect::cast<T>(value: any) -> T | none`은 `set_field`와 같은 규칙으로 `any`에서 `T`를 꺼냅니다. 타입의 메서드와 필드는 `T::methods()` / `T::fields()`([6.10.2](#6102-inspect-opt-in-트레잇))로 얻습니다. 이를 돌려주는 자유 함수는 없습니다.
+
+## 6.10.2. `Inspect`: opt-in 트레잇
+
+`Inspect`는 `#[derive(Inspect)]`로 직접 켜는(opt-in) 상세한 리플렉션입니다. 타입의 설명(`TypeInfo`, 6.10.7), 필드 이름, 동적 필드 읽기와 수정, 메서드 설명까지 드러냅니다.
+
+```nabi
+trait Inspect: Reflect {
+    fn type_info() -> TypeInfo;                             // 설명 (6.10.7)
+    fn field_names() -> List<str>;
+    fn get_field(self, name: str) -> any | none;            // 비공개 필드도
+    fn set_field(ref self, name: str, value: any) -> bool;  // 성공 여부
+
+    // 모든 메서드에 `type_info()`를 읽는 기본 본문이 있습니다.
+    fn fields() -> List<FieldInfo>;          // the field table of Self
+    fn methods() -> List<MethodInfo>;        // the method table of Self
+    fn variant_names() -> List<str>;         // struct 는 빈 목록
+    fn variant_name(self) -> str;            // struct: self.type_name_of_val()
+    fn field_names_of_val(self) -> List<str>; // self 가 지닌 필드
+}
+
+struct FieldInfo {
+    name: str;                 // 튜플 필드는 "0", "1", ..
+    type_name: str;            // 인스턴스화된 타입: Box<f64> 의 `v: T` 는 f64
+    is_pub: bool;              // 그냥 `pub` 인 필드만 true
+}
+
+struct MethodInfo {
+    name: str;
+    arity: usize;              // self 를 뺀 인자 수
+    is_static: bool;           // self 를 받지 않는 메서드
+    arg_types: List<str>;      // self 를 뺀 인자 타입 이름
+    return_type: str;
+}
+```
+
+- `get_field`는 그 필드의 값을 `any`로 돌려줍니다. 없는 이름이면 `none`입니다. 비공개 필드도 꺼낼 수 있습니다.
+- `set_field`는 두 경우에 대입하고 `true`를 돌려줍니다. 값의 타입이 필드의 타입과 **정확히 같을 때**, 그리고 정수가 다른 정수 타입이더라도 **손실 없이 들어갈 때**(`u.set_field("id", 42)`를 `u64` 필드에)입니다. 그 밖에는 대입하지 않고 `false`를 돌려줍니다. 그 외의 변환(예: `i32` → `f64`)은 없습니다.
+- `methods()`는 그 타입의 **고유 메서드만**(트레잇 메서드 제외) 이름순으로 돌려줍니다. 제네릭 `impl`의 메서드는 타입을 쓰인 그대로(`T`) 보여 줍니다.
+- `fields()`는 모든 필드를 선언 순서대로 타입 이름, `pub` 여부와 함께 돌려줍니다. **비공개 필드도 나옵니다.** `get_field`와 마찬가지로 `Inspect`를 derive로 구현하는 것이 곧 타입 작성자의 동의입니다. 타입 이름은 인스턴스화된 타입입니다(`Box<f64>`는 `v: f64`, `items: List<f64>`). `type_name`처럼 모듈 경로가 없습니다.
+- `enum`에는 타입 수준의 필드가 없습니다(`field_names()`와 `fields()`는 빈 목록). `variant_names()`는 변형을 선언 순서대로 돌려줍니다. 값에서 `variant_name()`은 지금 들고 있는 변형(`"Circle"`)을 돌려줍니다. `field_names_of_val()`는 그 변형의 필드를 돌려줍니다. 튜플 변형은 `"0"`, `"1"`이고, 이름 있는 변형은 필드 이름입니다. 이 필드는 `get_field`로 읽을 수 있습니다. 변형의 페이로드는 `Inspect`로는 읽기만 할 수 있습니다. enum의 `set_field`는 `false`를 돌려줍니다.
+- struct에서 `variant_names()`는 빈 목록, `variant_name()`은 그 타입 이름(`type_name_of_val()`), `field_names_of_val()`는 그 필드입니다.
+- 모든 메서드에 기본 본문이 있습니다. `get_field`, `set_field`와 이름 목록은 `type_info()`를 읽습니다. derive가 쓰는 것은 `type_info()`가 부르는 접근 함수뿐입니다(6.10.7). 손으로 쓰는 `impl Inspect`는 어느 메서드든 덮어쓸 수 있습니다.
+- derive로 구현하지 않은 타입에서 `Inspect` 메서드를 부르면 에러입니다. 도움말은 ``add `#[derive(Inspect)]` to `Point` ``처럼 무엇을 써야 하는지 알려 줍니다.
+
+사용 예는 다음과 같습니다.
+
+```nabi
+#[derive(Inspect)]
+struct Config { host: str; port: i32; }
+
+let c = Config { host: "localhost", port: 8080 };
+Config::field_names()              // ["host", "port"]
+c.get_field("port")                // any 안의 8080
+c.set_field("port", 9090)          // true (성공)
+c.set_field("xxx", 1)              // false (없는 필드)
+Config::fields()[1].type_name      // "i32"
+```
+
+`Inspect`는 메타데이터를 바이너리에 저장해야 하므로 직접 켜야 합니다. 모든 타입에 자동으로 붙이면 바이너리 크기 부담이 너무 커집니다. derive를 붙여도 프로그램이 묻기 전에는 아무것도 저장하지 않습니다. `type_info()`, `info::<T>()`나 그 위에 만든 메서드를 부르지 않는 프로그램은 derive가 없을 때와 같은 코드로 빌드됩니다.
+
+`#[derive(Inspect)]`는 `core::reflect`에 있는 [메타 블록](608-meta-blocks.md) `#[impl_derive(Inspect)]`로 구현합니다. 메타 시스템으로 표준 라이브러리 트레잇을 구현하는 예입니다([stdlib 2.12.3](../../refs-standard-libraries/200-core/212-reflect.md#2123-inspect-opt-in-필드--메서드)).
+
+## 6.10.3. REPL / Jupyter 자동 출력
+
+REPL은 평범한 마지막 식을 `Display`로 출력하고, 그것이 없으면 `Debug`로 출력합니다. 뒤에 `?`를 붙이면 `Debug`로 출력합니다. `:type`은 식을 실행하지 않고 타입 검사로 얻은 정적 타입을 출력합니다([9.7.7](../009-tools/907-jit-cells.md#977-시각화--출력)).
+
+```
+>>> let x = 42i32;
+>>> x
+42
+
+>>> [1, 2, 3]
+[1, 2, 3]
+
+>>> Config { host: "h", port: 80 }
+Config { host: "h", port: 80 }
+
+>>> Opaque { id: 1 }
+Opaque
+```
+
+평범한 식은 `Display`를, 없으면 `Debug`를 쓰고, 뒤에 `?`를 붙이면 `Debug`를 씁니다. 둘 다 없는 값(뒤에 `?`를 붙였다면 `Debug`가 없는 값)은 타입 이름만 출력합니다. REPL과 Jupyter의 셀 세션([9.7](../009-tools/907-jit-cells.md))이 이 방식으로 출력합니다.
+
+## 6.10.4. 전역 `typeof` / `sizeof` 함수 없음
+
+다른 언어는 `typeof`나 `sizeof` 같은 키워드로 내부 조회 기능을 드러냅니다. Nabi에서는 트레잇 메서드로만 쓸 수 있습니다.
+
+```nabi
+// nabi: 메서드 호출
+T::size()
+x.type_name_of_val()
+
+// 다른 언어: 키워드
+sizeof(T)        // C / C++
+typeof(x)        // JS / TS
+```
+
+이렇게 하면 언어 구문을 하나도 늘리지 않아도 됩니다. 내부 조회는 모두 `Reflect` 트레잇 하나로 해결됩니다.
+
+## 6.10.5. `any` 슬롯과 합 타입의 디스패치
+
+`any` 슬롯과 `T1 | T2` 형태의 합 타입은 실제 타입이 런타임에 정해지므로 `type_name_of_val` 호출이 중요합니다.
+
+```nabi
+fn handle(x: any) {
+    if x.type_name_of_val() == "i32" { handle_int(x); }
+    else if x.type_name_of_val() == "str" { handle_str(x); }
+}
+
+fn classify(v: i32 | f64) -> str {
+    match v {
+        n: i32 => "integer",
+        f: f64 => "float",
+    }
+}
+```
+
+컴파일러는 타입 검사 패턴(`v: T => ...`)을 `Reflect`의 태그 검사로 풉니다.
+
+## 6.10.6. 단계 간 관계
+
+`Inspect: Reflect`라는 표기대로 `Inspect`의 상위 트레잇은 `Reflect`입니다. 따라서 `Inspect`를 구현한 타입은 항상 `Reflect`도 구현합니다. 상위 트레잇은 어차피 모든 타입에 자동으로 구현되므로 당연한 결과입니다.
+
+```
+모든 타입            Reflect          (자동, 비용 0)
++ #[derive(Inspect)] Inspect+Reflect  (opt-in, 메타데이터 박힘)
+```
+
+## 6.10.7. `TypeInfo`: 타입의 설명
+
+`T::type_info()`(모든 `T`에 대해서는 `core::reflect::info::<T>()`)는 `TypeInfo`를 돌려줍니다. 컴파일러가 읽기 전용 데이터에 둔 `T`의 설명입니다([8.13](../008-abi/813-type-descriptor.md)). `Inspect` 타입이면 필드와 그 타입, 바이트 오프셋, enum의 variant와 그 필드, 인스턴스의 타입 인자, 런타임 속성(6.10.8)을 담고, `any`를 거쳐 값에도 닿습니다.
+
+```nabi
+use core::reflect::{Field, TypeInfo, TypeKind};
+
+#[derive(Inspect)]
+struct Enemy { name: str; hp: i32 = 100; }
+
+let t = Enemy::type_info();
+t.name()                           // "Enemy"
+t.kind()                           // TypeKind::Struct
+t.size() == Enemy::size()          // true
+t.field("hp")                      // Field: 이름, type_ref, 오프셋, 플래그
+let e: any = Enemy { name: "orc" };
+let hp = t.field("hp") ?? panic("no hp");
+hp.get(e)                          // any 안의 100
+```
+
+- 설명을 읽을 때는 메모리를 할당하지 않습니다: `name`, `kind`, `size`, `field_count`, `field_at`, `field(name)`, `variant_at`, `attr::<A>()`. `List`를 돌려주는 메서드(`fields()`, `variants()`)는 그 리스트를 할당합니다.
+- `Field::get(owner: any)`는 필드의 값을 돌려주고, `owner`가 그 필드의 타입이 아니면 `none`입니다. `Field::get_as::<T>(owner)`는 값을 `T`로 돌려줍니다. `Field::set(ref owner: any, value: any)`는 `set_field`와 같은 규칙을 따르고, 바뀐 복사본을 `owner`에 넣습니다. struct는 값이기 때문입니다.
+- enum의 필드는 variant의 필드입니다(`Variant::fields()`). `TypeInfo::variant_of(value)`는 값이 담은 variant입니다. 다른 variant의 값에서 variant 필드를 읽으면 `none`입니다. variant의 payload는 읽기 전용입니다.
+- `TypeInfo::build(fields: Dict<str, any>)`는 이름 붙은 필드로 값을 만듭니다. 빠진 필드는 `= expr` 기본값을 쓰고, 기본값이 없는 필드는 그 이름을 알리는 에러입니다. enum에서는 `Variant::build`가 같은 일을 합니다. `new_default()`는 모든 필드가 기본값인 값이고, 없으면 `none`입니다.
+- 리스트, 배열, 딕셔너리의 `TypeInfo`로 항목에 닿습니다: `list_items`, `list_len`, `list_get`, `list_from`, `dict_items`, `dict_from`. `element()`와 `key()`는 항목의 타입입니다.
+- `info_of(value: any)`는 `value`가 담은 타입의 설명이고, `find(path)`는 `"game::Player"` 같은 경로의 설명입니다. 프로그램이 그 타입을 설명하지 않으면 둘 다 `none`입니다. 프로그램이 묻는 타입과 그 타입을 이루는 타입이 설명됩니다.
+- 두 `TypeInfo`는 같은 타입을 설명할 때(키로, [8.13.2](../008-abi/813-type-descriptor.md#8132-키)) 같습니다. 모듈이 달라도 마찬가지입니다.
+- 필드에 붙인 `#[inspect(skip)]`은 그 필드를 설명에서, 그리고 `field_names`, `get_field`, `set_field`에서 뺍니다.
+
+## 6.10.8. 런타임 속성
+
+`#[runtime_attribute(name)]`을 붙인 struct는 속성 `#[name(..)]`을 선언합니다. 타입, 필드, enum variant에 쓰면, 인자는 그 struct의 리터럴처럼(필드 순서대로 위치로, 또는 필드 이름으로) 검사되고 값은 설명에 남습니다. `TypeInfo`, `Field`, `Variant`의 `attr::<A>()`가 그 값을 타입대로 읽습니다.
+
+```nabi
+/// 에디터에서 슬라이더로 보입니다.
+#[runtime_attribute(range)]
+pub struct Range { pub min: f64; pub max: f64; }
+
+#[derive(Inspect)]
+struct Enemy {
+    #[range(0, 100)] hp: i32 = 100;
+    #[range(min = 0.5, max = 4.0)] speed: f64 = 1.0;
+}
+
+let hp = Enemy::type_info().field("hp") ?? panic("no hp");
+hp.attr::<Range>()                 // Range { min: 0.0, max: 100.0 }
+```
+
+- 속성 struct의 필드는 수, `bool`, `char`, `str`입니다. 정수 리터럴은 부동소수점 필드를 채울 수 있습니다.
+- 인자가 틀리면 무엇을 써야 하는지 알리는 에러입니다: ``#[range] takes `min: f64, max: f64`; write `#[range(0, 10)]` ``. 선언된 이름과 비슷한 이름이면 ``no attribute `rnage`; did you mean `range` (`Range`)?``가 나옵니다.
+- 두 패키지가 같은 이름을 선언하면, 쓰는 쪽 패키지의 선언이 이깁니다. 그렇지 않으면 두 선언을 모두 알리는 에러입니다.
+- 이렇게 선언한 속성만 남습니다. `doc`, `cfg`와 다른 내장 속성은 남지 않습니다.
+
+필드에 붙인 `#[renamed_from("old")]`은 필드의 예전 이름을 설명에 남깁니다(`Field::renamed_from`). 예전 이름으로 쓰인 데이터를 읽는 도구가 씁니다.
+
+## 6.10.9. 플러그인과 핫 리로드에서
+
+설명은 타입을 정의한 모듈에 있습니다. 모든 모듈은 시작하거나 로드될 때 자신의 설명을 런타임에 등록하고, `info_of`와 `find`는 거기서 찾습니다. `find`는 한 경로에 대해 가장 최근 모듈의 설명을 돌려줍니다. 같음은 키로 정하므로, 두 모듈이 같은 제네릭 인스턴스를 설명해도 같다고 비교됩니다.

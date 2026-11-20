@@ -1,0 +1,137 @@
+# 0.7. Glossary
+
+The same concepts recur across many chapters of this specification, so it helps readers to collect frequently used terms in one place. This document gathers the core terms that appear throughout the Nabi specification, so that a reader can consult it directly whenever a concept becomes unclear while reading the body. Each entry gives a short definition together with its specific Nabi context, indicating not just the dictionary meaning but the place the term occupies within the specification.
+
+## ABI (Application Binary Interface)
+
+The ABI is the binary-level contract that compiled code must follow at link and run time. It includes object layout, calling conventions, symbol naming and so on. Nabi's ABI is defined in [Chapter 8: ABI / lowering](../008-abi/README.md).
+
+## AOT (Ahead-of-Time)
+
+AOT is the mode that compiles source ahead of time into a static artifact (`.a` or an executable), in contrast to JIT. Nabi supports both the JIT and AOT engines, and the two share the same pipeline up to nabi-mir.
+
+## archive
+
+An archive is the output of a compiled package: a `.a` file in standard ar format. It holds the objects for concrete code; the library's interface (NABIHIR) is the `<name>.nabihir` file beside it.
+
+## block
+
+A block is a group of statements and expressions enclosed in `{ ... }`. It is itself an expression, and its last expression becomes the block's value.
+
+## block (Immix)
+
+An Immix block is the GC's memory unit, a 32 KiB region of the heap. In the Immix algorithm it is divided into lines and serves as the unit of mark / sweep. It is a different concept from the code block above.
+
+## concrete fn / generic fn
+
+A concrete fn is a function whose types at the call site are all concrete; a generic fn is a function with remaining type parameters. Under AOT, a generic fn is specialized at the call site into a concrete fn.
+
+## dispatch
+
+Dispatch is the process of determining which implementation a name, operator or method call is bound to. Dispatch is static except on a value in an `any` slot, which is dispatched at run time by its tag ([2.2.3](../002-types/202-any-slot.md#223-dynamic-dispatch)); because of the trait-as-type ban, no value carries a vtable pointer.
+
+## extern "C" symbol
+
+An extern "C" symbol is a symbol exposed or called through the C ABI; such symbols form the interface between the compiler and the runtime.
+
+## FFI (Foreign Function Interface)
+
+FFI is the interface for calling functions in other languages (mainly C) or being called from other languages. It is defined with `extern "C"` blocks.
+
+## GC (Garbage Collector)
+
+The GC is the automatic memory management mechanism. Nabi's GC combines Immix mark-region with Sticky Mark-Bit generational collection.
+
+## generic
+
+A generic is a function or type that takes types as parameters. It is monomorphized at call and instantiation sites.
+
+## HIR (High-level IR) / MIR (Mid-level IR)
+
+HIR and MIR are intermediate representations of the compilation pipeline. The overall flow is source → AST → HIR → MIR → machine code (Nabi's code generator).
+
+## Immix
+
+Immix is the GC algorithm published by Blackburn and McKinley in 2008. It uses mark-region in units of 32 KB blocks and 128 B lines, and handles fragmentation with opportunistic evacuation.
+
+## JIT (Just-in-Time)
+
+JIT is the mode that compiles code immediately at run time, with Nabi's code generator. The REPL and Jupyter use this mode; it contrasts with AOT.
+
+## lang slot / magic
+
+A lang slot is the mechanism by which the language identifies specific library items. `#[lang(slot_name)]` connects a standard library item to a compiler slot.
+
+## LOS (Large Object Space)
+
+The LOS is the GC's space dedicated to large objects. Objects of 8 KiB or more, or with an alignment greater than 8 bytes, are kept in the LOS without being moved ([7.2](../007-runtime/702-allocation.md)).
+
+## monomorphization
+
+Monomorphization is the process of compiling a generic function separately for each concrete type at its call sites. It gains zero indirect-call cost at the price of compile time and binary size.
+
+## NABIHIR (Nabi HIR bytecode)
+
+NABIHIR is the interface file (`<name>.nabihir`) of a prebuilt library package. It sits beside the archive and lets downstream packages read declarations and specialize generic fns. Its body is the package source with concrete function bodies stripped out ([9.4](../009-tools/904-nabihir-bytecode.md)).
+
+## niche optimization
+
+Niche optimization is an optimization that eliminates the tag slot by using unused bit patterns of a sum type or enum. The canonical example is `none = null pointer` in `Ptr | none`.
+
+## scan_table
+
+A scan_table is the meta table the GC uses to find which slots of an object are GC pointers. It is mapped `type_id → scan_table` and registered by the compiler at build time.
+
+## shadow stack
+
+The shadow stack is an auxiliary stack the GC uses to trace live objects. The compiler directly emits code that links and unlinks, at function entry and exit, a frame holding the slots of GC object variables. Frames live on the machine stack, and the head of the chain is kept per thread in TLS.
+
+## specialize
+
+Specialize is another name for [monomorphization](#monomorphization). It is used as the name of a stage in the AOT / JIT pipelines.
+
+## registry package
+
+A Nabi package published to a registry. Its name is `[a-z0-9_-]+` (starting with a letter), and in code `-` is written as `_`. The registry treats `-` / `_` and differing case as the same name. In `nabi.nabion` it is required with `Dep::version("req")` or the string `"req"` ([9.10.4a](../009-tools/910-nabi-frontend.md#9104a-registry-packages)).
+
+## sticky mark-bit
+
+The sticky mark-bit is the generation-tracking bit of the generational GC. It is set on the first mark, making the object an "old object". A young GC skips sticky objects to reduce cost.
+
+## sum type
+
+A sum type is a type of the form `A | B` that holds one of the alternatives; it is a form of tagged union. It is a closed slot: all variants are explicit, so exhaustiveness checking of pattern matching is possible.
+
+## TLAB (Thread-Local Allocation Buffer)
+
+A TLAB is a thread-local memory buffer owned by each worker thread. Fast-path allocation is done with only a bump pointer, with zero synchronization cost.
+
+## work-stealing
+
+Work-stealing is the scheduler's load-balancing mechanism. Each worker has a local deque, and a worker that runs out of work steals tasks from the end of another worker's deque.
+
+## unsafe block / unsafe fn
+
+The `unsafe { ... }` block expression and the `unsafe fn` function modifier are Nabi's single mechanism for visibly confining regions outside the guarantees of safe abstractions. Raw pointer dereference, calls to `unsafe fn`, etc. are allowed only inside an unsafe scope. See [4.15 unsafe](../004-functions/415-unsafe.md) for details.
+
+## nabic / nabi / nabils / nabir
+
+The executables and runtime that make up the toolchain. `nabic` is the compiler (the counterpart of rustc, [9.1](../009-tools/901-nabic-cli.md)), with its own code generator and linker; `nabi` is the cargo-like front-end that handles the manifest, dependencies, environments and toolchain pins, invokes `nabic`, and runs the tools (run, lint, REPL, Jupyter, LSP, formatter, ...) with the compiler linked in ([9.10](../009-tools/910-nabi-frontend.md)); `nabicc` is the C compiler (`nabi cc`, [9.13](../009-tools/913-c-compiler.md)); `nabils` is the LSP server executable for editors (`nabi lsp`); and `nabir` is the runtime (`libnabir.a`). The executables in `$NABI_HOME/bin/` are proxies to the active toolchain (`$NABI_HOME/toolchains/<version>-<triple>/`), and `nabic` finds the standard libraries and runtime in a sysroot relative to its own executable ([9.2.19](../009-tools/902-aot-pipeline.md#9219-installation-layout)).
+
+## NABION
+
+Nabi Object Notation. A data format for writing values using a subset of Nabi's literal syntax, with the extension `.nabion`. The manifest `nabi.nabion` and the lockfile `nabi.lock` use this format ([stdlib 3.8](../../refs-standard-libraries/300-std/308-nabion.md)).
+
+## packages.nabi-lang.org
+
+Nabi's default package registry, at `https://packages.nabi-lang.org`. Its index is the separate git repository `packages-index` ([9.10.4a](../009-tools/910-nabi-frontend.md#9104a-registry-packages)).
+
+## nabi.nabion / nabi.lock
+
+The manifest and lockfile at the package root. The names are spelled exactly this way (all lowercase), and both use the [NABION](#nabion) format. A package without dependencies does not need them ([0.3.4](003-source-units.md#034-the-manifest-nabinabion-is-optional)). `nabi.nabion` declares dependencies and toolchain pins as a single `Package { .. }` value, and `nabi.lock` pins the results resolved by `nabi update`.
+
+## environment
+
+The unit in which `nabi` keeps a dependency set. Every directory containing `nabi.nabion` is an environment, and there is no activation step. Outside a project, a named environment in `$NABI_HOME/envs/` (default `default`) is used ([9.10.5](../009-tools/910-nabi-frontend.md#9105-environments)).
+
+The entries collected here are not mere word translations; they also form a compact index of the foundations Nabi stands on: the compilation pipeline, memory management, the type system, the concurrency model and so on. Whenever a concept blurs while reading the body, returning to this chapter clarifies the place each term occupies in the specification as a whole.

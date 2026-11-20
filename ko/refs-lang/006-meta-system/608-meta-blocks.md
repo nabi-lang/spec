@@ -1,0 +1,405 @@
+# 6.8. 사용자 정의 메타 정의
+
+**메타 정의(meta definition)**는 사용자 정의 코드 생성기입니다. 형태는 여럿이지만 메커니즘은 하나입니다. 정의는 입력의 일부를 바인딩하고 템플릿을 전사합니다. 템플릿은 Nabi 코드와 템플릿 토큰([6.9](609-template-tokens.md))으로 되어 있습니다. 전사는 위생적이고([6.8.9](#689-토큰-스트림-조작-없음)), 고정점에 이를 때까지 되풀이합니다([6.8.8](#688-고정점-확장)). 형태끼리 다른 점은 **무엇으로 트리거되고 어떤 입력을 바인딩하는가**뿐입니다. 형태는 네 가지입니다. 앞의 셋은 항목에 붙인 속성으로, 넷째는 호출로 트리거됩니다.
+
+| 형태                                    | 정의                                 | 트리거                 | 바인딩                                  |
+|-----------------------------------------|--------------------------------------|------------------------|-----------------------------------------|
+| derive                                  | `#[impl_derive(T)] @derive {}`       | 타입에 `#[derive(T)]`  | 타입의 shape (`@Self`, `@for_fields`)   |
+| 속성                                    | `#[impl_attribute(n)] @attribute {}` | 항목에 `#[n]`          | 항목 (`@item`)                          |
+| 필드별 derive 속성                      | `#[impl_derive_attribute(T, a)] @derive {}` | `#[derive(T)]` + 필드 `#[a]` | shape + 필드 속성               |
+| **macro**                               | `#[impl_macro(n)] @macro { (m) => {t} }` | `n!(..)` 호출      | 호출의 토큰 (`@x: expr`, `@rep`)        |
+
+앞의 셋은 '작성자가 붙인 타입이나 항목에서' 코드를 생성합니다. macro는 '호출하는 쪽이 쓴 내용에서' 코드를 생성합니다. 다른 형태로는 채울 수 없는 수요입니다([6.8.12](#6812-macro-형태)). 네 형태는 템플릿 엔진, `@` 토큰, 위생, 아래에서 설명할 도구 보장을 함께 씁니다. 바인딩하는 입력이 다른 부분은 이 장과 [6.9](609-template-tokens.md)에서 따로 짚습니다. 이 넷이 Nabi 메타프로그래밍의 전부입니다. 넷이 함께 Rust의 derive 매크로, attribute 매크로, 함수형 매크로를 대신합니다. 절차적 코드나 원시 토큰 조작은 없습니다.
+
+```
+meta_block      ::= meta_attr visibility? meta_kind block
+meta_attr       ::= "#" "[" meta_kind_attr "(" meta_args ")" "]"
+meta_kind_attr  ::= "impl_derive" | "impl_attribute" | "impl_derive_attribute" | "impl_macro"
+meta_kind       ::= "@derive" | "@attribute" | "@macro"
+meta_args       ::= identifier ("," identifier)*
+
+# @macro 블록은 평평한 템플릿 대신 규칙들을 담습니다:
+macro_body      ::= macro_rule+
+macro_rule      ::= "(" matcher ")" "=>" block
+```
+
+## 6.8.1. 속성이 트리거하는 형태
+
+속성으로 트리거되는 세 형태는 다음과 같습니다.
+
+```nabi
+#[impl_derive(TraitName)] pub @derive {
+    impl TraitName for @Self { ... }
+}
+
+#[impl_attribute(name)] pub @attribute {
+    @item                                    // 원본 항목 재사용
+    fn additional_helper() { ... }            // 추가 항목 생성
+}
+
+#[impl_derive_attribute(Trait, attr)] pub @derive {
+    @for_fields {
+        @apply_if(@has_derive_attr(attr)) {
+            // 그 attr 가 부착된 필드만 처리
+        }
+    }
+}
+```
+
+각 형태의 용도는 다음과 같습니다.
+
+| 형태                                    | 용도                                 |
+|-----------------------------------------|--------------------------------------|
+| `#[impl_derive(TraitName)]`             | 사용자 정의 derive                   |
+| `#[impl_attribute(name)]`               | 사용자 정의 속성 (항목 래퍼)         |
+| `#[impl_derive_attribute(Trait, attr)]` | 필드별 derive 속성                   |
+
+호출로 트리거되는 넷째 형태 `macro`는 [6.8.12](#6812-macro-형태)에서 정의합니다.
+
+## 6.8.2. `#[impl_derive(TraitName)]` 사용자 정의 derive
+
+사용자 정의 derive의 예입니다.
+
+```nabi
+#[impl_derive(MyHash)] pub @derive {
+    impl MyHash for @Self {
+        fn my_hash(self) -> u64 {
+            let h: u64 = 0u64;
+            @for_fields {
+                h = combine_hash(h, self.@field.my_hash());
+            }
+            h
+        }
+    }
+}
+
+// 사용처
+#[derive(MyHash)]
+struct Point { x: f64; y: f64; }
+// → 자동 생성됨.
+//   impl MyHash for Point {
+//       fn my_hash(self) -> u64 {
+//           let h: u64 = 0u64;
+//           h = combine_hash(h, self.x.my_hash());
+//           h = combine_hash(h, self.y.my_hash());
+//           h
+//       }
+//   }
+```
+
+이 형태는 `#[impl_derive(이름)]`와 본체(템플릿 블록)로 이루어집니다. 사용처에 `#[derive(이름)]`가 있으면 컴파일러가 템플릿을 그 타입에 맞게 확장해 코드를 생성합니다.
+
+## 6.8.3. `#[impl_attribute(name)]` 사용자 정의 속성
+
+사용자 정의 속성의 예입니다.
+
+```nabi
+#[impl_attribute(timed)] pub @attribute {
+    @accept(fn)                                  // fn 항목에만 부착 가능
+
+    fn @item.name(@item.params) -> @item.return_type {
+        let start = Instant::now();
+        let result = {
+            @item.body
+        };
+        log(f"@item.name took {Instant::now() - start}");
+        result
+    }
+}
+
+// 사용처
+#[timed]
+fn process(x: i32) -> i32 {
+    expensive(x)
+}
+// → 자동 생성됨.
+//   fn process(x: i32) -> i32 {
+//       let start = Instant::now();
+//       let result = { expensive(x) };
+//       log(f"process took {Instant::now() - start}");
+//       result
+//   }
+```
+
+이 형태는 항목을 감싸는 래퍼입니다. 원본 항목(`@item`)의 내용과 시그니처를 재사용해 변환된 항목을 생성합니다. 함수뿐 아니라 `struct`, `enum`, `impl`에도 붙일 수 있습니다. 붙일 수 있는 대상은 `@accept`로 제한합니다.
+
+## 6.8.4. `#[impl_derive_attribute(Trait, attr)]` 필드별 derive 속성
+
+필드별 derive 속성의 예입니다.
+
+```nabi
+#[impl_derive_attribute(Serialize, rename)] pub @derive {
+    impl Serialize for @Self {
+        fn serialize(self) -> Json {
+            let obj = JsonObj::new();
+            @for_fields {
+                @apply_if(@has_derive_attr(rename)) {
+                    obj.set(@derive_attr(rename), self.@field.serialize());
+                }
+                @apply_if(!@has_derive_attr(rename)) {
+                    obj.set(@field.name.as_str(), self.@field.serialize());
+                }
+            }
+            obj.into()
+        }
+    }
+}
+
+// 사용처
+#[derive(Serialize)]
+struct User {
+    #[rename("user_name")]
+    name: str;
+    age: i32;
+}
+// → 자동 생성.
+//   impl Serialize for User {
+//       fn serialize(self) -> Json {
+//           let obj = JsonObj::new();
+//           obj.set("user_name", self.name.serialize());
+//           obj.set("age", self.age.serialize());
+//           obj.into()
+//       }
+//   }
+```
+
+이 형태는 인자 두 개를 받습니다. 하나는 derive로 구현할 트레잇이고, 다른 하나는 필드별 정보를 표시하는 속성입니다. derive 본체 안에서 필드의 속성 정보를 읽어 분기합니다.
+
+속성은 `attr(k, ..)` 형태로 받는 키를 선언할 수 있습니다: `#[impl_derive_attribute(Nabion, nabion(deny_unknown_fields))]`. 이때 타입, 그 variant, 그 필드에 붙은 `#[attr(..)]`에는 선언된 키만 쓸 수 있고, 그 밖의 것은 유효한 키를 알려 주는 에러입니다. `@Self.has_derive_key(k)`는 타입에 그 키가 있는지 읽습니다([6.9.6](609-template-tokens.md#696-derive_attribute-토큰)).
+
+## 6.8.5. 본체(템플릿 블록)
+
+모든 형태에서 본체는 템플릿 블록입니다. 본체에는 일반 Nabi 코드와 템플릿 토큰이 함께 들어갑니다. 속성으로 트리거되는 형태는 `@Self`, `@field`, `@for_fields`를 쓰고, macro는 `@x`, `@rep`, `@for`, `@concat`을 씁니다([6.8.12](#6812-macro-형태)).
+
+템플릿 토큰의 전체 목록은 [템플릿 토큰과 확장](609-template-tokens.md)에서 정의합니다.
+
+## 6.8.6. `pub` / 가시성
+
+가시성은 다음과 같이 표기합니다.
+
+```nabi
+pub @derive { ... }
+pub(pkg) @attribute { ... }
+@derive { ... }                  // 비공개
+```
+
+가시성 키워드는 템플릿 블록에 붙입니다. 효과는 다음과 같습니다.
+
+| 가시성                  | 쓸 수 있는 곳                                     |
+|-------------------------|---------------------------------------------------|
+| `pub` (`pub(pkg)` 포함) | 빌드 전체. 다른 패키지는 이 패키지 이름을 붙여 `#[derive(dep::X)]` / `#[dep::x]` / `dep::x!(..)`로 씀 (6.8.11) |
+| 비공개                  | 메타 블록을 정의한 파일 안                        |
+
+메타 이름에는 모듈 경로가 없습니다. 이름은 그것을 등록한 메타 블록의 패키지에 속하고, 그 패키지 안에서는 이름만, 다른 패키지에서는 패키지 이름을 붙여 씁니다(6.8.11). 메타 블록의 템플릿은 그 모듈이 보는 것을 봅니다. 템플릿이 쓴 이름은 그 모듈에서 해소되고 접근도 그 모듈에서 검사합니다([6.9.9](609-template-tokens.md#확장-안의-이름)). 메타 블록이나 키워드 핸들러의 `#[cfg]`는 그것을 정의한 패키지의 cfg로 평가합니다. 그 패키지 자신의 feature([9.10.4c](../009-tools/910-nabi-frontend.md#9104c-feature))를 쓴다는 뜻입니다.
+
+## 6.8.7. 본체 시작자(`@derive` / `@attribute`)
+
+본체 시작자는 템플릿의 종류를 나타냅니다.
+
+| 시작자       | 용도                                                 |
+|--------------|------------------------------------------------------|
+| `@derive`    | derive 정의 (`impl_derive`, `impl_derive_attribute`) |
+| `@attribute` | 속성 정의 (`impl_attribute`)                         |
+| `@macro`     | macro 정의 (`impl_macro`). 블록에 규칙을 담음 ([6.8.12](#6812-macro-형태)) |
+
+본체 안에서 어떤 템플릿 토큰이 의미가 있는지는 시작자가 정합니다. 예를 들어 `@item`은 속성 정의 전용이고, 매처 토큰(`@x: expr`, `@rep`)은 `@macro` 전용입니다.
+
+## 6.8.8. 고정점 확장
+
+템플릿 확장 결과로 derive나 속성이 붙은 항목이 또 생기면 그 항목도 재귀적으로 확장합니다.
+
+```nabi
+#[impl_attribute(adds_helper)] pub @attribute {
+    @item                                       // 원본 항목 그대로
+
+    #[derive(MyHelper)]                          // 새 항목: 다시 derive 처리됨
+    struct Helper { ... }
+}
+```
+
+위 속성을 적용하면 본체의 `#[derive(MyHelper)]`를 다음 확장 패스에서 다시 처리합니다.
+
+확장은 더 확장할 derive나 속성이 남지 않은 고정점(fixed-point)에 이르면 끝납니다.
+
+순환 확장(A가 B를 호출하고 B가 다시 A를 호출하는 경우)은 에러입니다. 컴파일러가 찾아내 보고합니다. 메시지에는 순환 경로(`A → B → A`)가 나옵니다.
+
+## 6.8.9. 토큰 스트림 조작 없음
+
+모든 메타 정의(속성으로 트리거되는 세 형태와 macro)는 템플릿 토큰만으로 코드를 생성합니다. Rust의 `syn`이나 `quote` 같은 임의의 토큰 변환 기능도, 컴파일 타임에 코드를 실행하는 절차적 형태도 Nabi에는 없습니다.
+
+이 제약 덕분에 메타 정의의 출력은 언제나 컴파일러가 이해할 수 있는 Nabi 코드입니다. 그래서 도구가 따라가기 쉽고 디버깅도 쉽습니다.
+
+## 6.8.10. proc macro와 비교
+
+Rust의 proc macro와 Nabi 메타 블록을 비교하면 다음과 같습니다.
+
+| 측면   | Rust proc macro           | Nabi 메타 블록                    |
+|--------|---------------------------|----------------------------------|
+| 입력   | 임의 토큰 스트림          | 항목의 구조 정보 (필드, 변형 등) |
+| 출력   | 임의 토큰 스트림          | Nabi 코드와 템플릿 토큰           |
+| 위생   | proc macro가 정함         | 자동 (hygienic)                  |
+| 디버깅 | 출력 토큰 확인            | 확장된 AST 확인                  |
+| 표현력 | 매우 높음                 | 제한적                           |
+
+Nabi는 표현력을 제한하는 대신 예측 가능성과 디버깅 용이성을 택했습니다.
+
+## 6.8.11. 등록/가시성과 결합
+
+`#[impl_derive(TraitName)]`가 붙은 메타 블록은 `TraitName`이라는 derive를 등록합니다. `#[impl_attribute(name)]`는 `#[name]` 속성을, `#[impl_macro(name)]`는 `name!` 매크로를 등록합니다. 컴파일러는 파싱 전에 라이브러리와 사용자 패키지의 모든 파일에서 메타 블록을 모읍니다. 그래서 정의 위치나 파일 순서와 상관없이 쓸 수 있습니다. 메타 블록에 붙은 `#[cfg]`가 거짓이면 그 블록은 등록되지 않습니다([6.9.9](609-template-tokens.md#cfg와-관계)).
+
+메타 이름은 그것을 등록한 메타 블록의 패키지에 속합니다. 그 패키지 안에서는 이름만 쓰거나(`#[derive(MyHash)]`, `#[x]`, `x!(..)`) `pkg::`를 붙입니다. 다른 패키지는 정의한 패키지의 이름을 앞에 붙입니다. 그 패키지의 경로와 같은 루트입니다. `#[derive(dep::MyHash)]`, `#[dep::x]`, `dep::x!(..)`처럼 씁니다. 한정자는 패키지 이름뿐입니다. 메타 블록은 이름 공간의 항목이 아니어서 모듈 경로가 없습니다.
+
+모듈 수준의 `use dep::x!;`는 매크로 `x!`를 가져옵니다. 그러면 그 파일에서 `x!(..)`로 호출할 수 있습니다. 이 `use`는 항목을 가져오지 않고, 이름을 바꾸거나(`as`) 다시 내보낼(`pub use`) 수 없습니다. derive와 이름이 같은 항목, 보통 그 트레잇을 가져오는 `use`(`use dep::MyHash;`)는 derive도 함께 가져옵니다. `use dep::*;`는 `dep`의 메타 이름을 모두 가져옵니다.
+
+```nabi
+// json 패키지
+#[impl_macro(log)] pub @macro { ... }
+#[impl_derive(MyHash)] pub @derive {
+    impl pkg::MyHash for @Self { ... }
+}
+
+// json에 의존하는 패키지
+use json::log!;
+
+#[derive(json::MyHash)]
+struct Foo { ... }
+
+fn main() {
+    json::log!("start");
+    log!("imported");
+}
+```
+
+이름만 쓴 메타 이름은 이 패키지의 블록, 없으면 `use`로 가져온 블록, 없으면 표준 라이브러리의 블록으로 해소됩니다(표준 라이브러리의 메타 이름은 이름만 씁니다: `#[derive(Inspect)]`). 그 밖에는 한정한 형태들을 알려 주는 에러입니다: `` `log!` is package `json`'s macro, which a bare name does not reach ``, help ``write `json::log!`, or add `use json::log!;` ``. 두 패키지의 같은 이름을 모두 `use`로 가져왔다면 모호하므로 역시 에러입니다. 확장 안에서 템플릿이 쓴 메타 이름은 정의한 패키지와 파일에서 같은 규칙으로 찾으므로, 의존성의 매크로는 어디서 확장되든 그대로 동작합니다. 사용처가 넘긴 이름은 사용처에서 찾습니다([6.9.9](609-template-tokens.md#확장-안의-이름)).
+
+다음은 에러입니다.
+
+- 한 패키지의 두 메타 블록이 같은 derive, 속성, macro 이름을 등록하는 것. macro 하나는 모든 규칙을 담은 `@macro` 블록 하나입니다. 서로 다른 두 패키지는 같은 이름을 각각 등록할 수 있습니다.
+- 지정한 패키지가 등록하지 않은 한정 macro, 속성, derive(`dep::x!`, `#[dep::x]`, `#[derive(dep::X)]`).
+- 메타 블록이 내장 derive([6.2.1](602-built-in-attributes.md): `Clone`, `Copy`, `Default`, `Debug`, `PartialEq`, `Eq`, `PartialOrd`, `Ord`, `Hash`, `Error`)나 내장 속성(`cfg`, `derive`, `test`, `inline`, `repr`, `keyword`, `bench`, `path` 등 6.2~6.7의 속성)의 이름을 다시 정의하는 것. help는 새 이름을 제안합니다(`#[impl_attribute(my_bench)]`).
+
+## 6.8.12. macro 형태
+
+**macro**는 호출로 트리거되는 메타 정의입니다. derive나 속성은 자신이 붙은 타입이나 항목에서 코드를 생성합니다. macro는 `name!(..)`처럼 '호출'되어 그 자리에서 코드로 확장됩니다. 코드는 호출하는 쪽이 쓴 내용에서 생성합니다. macro는 속성으로 트리거되는 형태로는 할 수 없는 일을 맡습니다. 타입의 필드가 아니라 호출이 주도하는 반복과 생성입니다.
+
+### 정의
+
+다른 형태와 마찬가지로 macro는 `#[impl_macro(name)]`, 가시성, `@macro` 시작자, 블록으로 이루어집니다. 블록에는 평평한 템플릿 대신 **규칙**이 하나 이상 들어갑니다. 각 규칙은 괄호 안의 매처, `=>`([`match`](../003-expressions/312-match-expression.md)의 가지와 같은 화살표), 중괄호 안의 템플릿으로 이루어집니다.
+
+```nabi
+#[impl_macro(name)] pub @macro {
+    ( <matcher> ) => { <template> }
+    ( <matcher> ) => { <template> }
+    ..
+}
+```
+
+`#[impl_macro(name)]`는 `#[impl_derive(T)]`가 derive `T`를 등록하는 것과 똑같이 매크로 `name!`을 등록합니다. 호출하면 컴파일러가 규칙을 위에서 아래로 시도하고, 매처가 처음으로 맞는 규칙을 확장합니다. 맞는 규칙이 없으면 그 호출 위치에서 컴파일 에러입니다. macro 이름도 derive나 속성처럼 자기 패키지에 속합니다. 그 패키지에서는 `name!`, 다른 패키지에서는 `dep::name!`이나 `use dep::name!;`으로 씁니다([6.8.11](#6811-등록가시성과-결합)). 모든 호출 끝의 `!`는 함수가 아니라 매크로라는 표시입니다.
+
+```nabi
+#[impl_macro(twice)] pub @macro {
+    ( @e: expr ) => { { let v = @e; (v, v) } }
+}
+
+let p = twice!(compute());      // (그 값, 같은 값)
+```
+
+### 호출
+
+macro는 `name!( .. )`, `name![ .. ]`, `name!{ .. }`로 호출하고, 다른 패키지에서는 `dep::name!( .. )`로 호출합니다. 어느 구분자를 써도 의미가 같습니다. 인자는 임의의 **토큰 트리**입니다. 토큰 트리는 `()` `[]` `{}`의 짝이 맞는 토큰 열입니다. 그래서 렉서와 포매터는 매크로를 몰라도 호출을 토큰 단위로 읽을 수 있습니다. macro는 다음 위치에서 확장되고, 템플릿이 내놓아야 하는 것은 위치에 따라 다릅니다.
+
+| 위치   | 예                                        | 템플릿이 내는 것      |
+|--------|-------------------------------------------|-----------------------|
+| 식     | `let xs = grid![1, 2; 3, 4];`             | 식                    |
+| 문     | `debug!("here");`                         | 0개 이상의 문         |
+| 항목   | `int_impl!(i8, i16, i32);` (모듈 수준)    | 0개 이상의 항목       |
+| 타입   | `let f: fn_ptr!(i32, i32) = ..;`          | 타입                  |
+| 패턴   | `match x { pair!(a, b) => .. }`           | 패턴                  |
+
+식 자리의 호출은 기본 식입니다. 확장 결과는 괄호로 감싼 것처럼 피연산자 하나이고, 뒤에 후위 형태가 붙습니다(`grid![1, 2; 3, 4].len()`, `table!{ .. }.head(5)`, `first!(xs)?`).
+
+### 매처와 fragment
+
+매처는 토큰 패턴입니다. 매처 안의 리터럴 토큰은 호출에 그대로 나와야 합니다. **메타변수** `@name: <fragment>`는 템플릿에서 쓸 수 있도록 호출의 일부를 캡처합니다. 조각(fragment)은 토큰을 얼마나 캡처할지 정합니다. `ident`는 식별자 하나, `literal`은 리터럴 토큰 하나, `tt`는 토큰 트리 하나(토큰 하나 또는 짝이 맞는 묶음)를 받습니다. `expr`, `stmt`, `block`, `ty`, `pat`, `path`, `item`은 비어 있지 않은 토큰 열을 받습니다. 토큰 열은 괄호 깊이 0에서 매처의 다음 리터럴 토큰까지, 또는 호출이나 그 토큰을 감싼 묶음의 끝까지입니다. 매처 안의 괄호 묶음 `( .. )`, `[ .. ]`, `{ .. }`는 호출의 짝이 맞는 묶음과 매칭하고, 그 안쪽은 따로 하나의 매처로 매칭합니다. `[ @rep[sep = ","] { @x: expr } ]`는 `[5, 6]`과 매칭합니다. 모든 조각은 원시 토큰으로 캡처하고, 매칭할 때 파싱하지 않습니다. 컴파일러는 전사를 마친 확장 결과 전체를 파싱합니다. 그래서 템플릿이 놓은 자리에 맞지 않는 인자는 확장 결과의 구문 에러가 되고, 호출 위치에 보고됩니다.
+
+```nabi
+#[impl_macro(clamp)] pub @macro {
+    ( @x: expr , @lo: expr , @hi: expr ) => {
+        { let v = @x; if v < @lo { @lo } else if v > @hi { @hi } else { v } }
+    }
+}
+```
+
+### 반복
+
+`@rep`은 하위 패턴을 0회 이상 매칭하고, `@for`는 원소마다 한 번씩 전사합니다. 이 반복자는 [6.9.3](609-template-tokens.md#693-필드-반복)의 `@for_fields`와 같은 반복자이고, 여기서는 캡처한 시퀀스를 돕니다.
+
+```nabi
+#[impl_macro(list)] pub @macro {
+    ( @rep[sep = ","] { @x: expr } ) => {
+        { let acc = List::new(); @for @x { acc.push(@x); } acc }
+    }
+}
+
+let xs = list![a, b, c];        // acc.push(a); acc.push(b); acc.push(c);
+```
+
+`@rep[sep = ","] { <하위 패턴> }`은 하위 패턴을 `sep` 토큰으로 구분해 반복 매칭합니다. `sep`은 선택입니다. `trailing`이면 끝에 구분자 하나를 허용합니다. `@rep` 안에서 캡처한 메타변수는 시퀀스를 바인딩합니다. `@for @x { <본체> }`는 원소마다 본체를 하나씩 냅니다. 한 `@rep`의 메타변수 여러 개는 보조를 맞춰 함께 돌고, 길이가 같아야 합니다. `@rep`과 `@for`는 중첩할 수 있습니다. `@rep` 두 겹 안의 메타변수는 시퀀스의 시퀀스를 바인딩하고, 안쪽 `@for @x`는 바깥 `@for`의 현재 원소를 돕니다(`(@rep[sep = ";"] { @rep[sep = ","] { @x: expr } }) => { [@for @x { [@for @x { @x, }], }] }`는 `1, 2; 3`을 `[[1, 2], [3]]`으로 바꿉니다). shape 토큰(`@Self`, `@field`, `@apply_if` 등)은 타입이 주도하는 형태의 토큰이고 macro의 토큰이 아닙니다. macro에는 검사할 shape가 없으므로 쓰면 에러입니다.
+
+### 이름 합성
+
+`@concat(..)`은 이름 토큰과 문자열 리터럴을 이어 식별자 하나를 만듭니다. macro는 이것으로 이름이 서로 다른 항목을 생성할 수 있습니다.
+
+```nabi
+#[impl_macro(accessors)] pub @macro {
+    ( @s: ident ; @rep[sep = ","] { @f: ident : @t: ty } ) => {
+        impl @s { @for @f { fn @concat(get_, @f)(self) -> @t { self.@f } } }
+    }
+}
+// accessors!{ P; x: i32, y: i32 } -> impl P { fn get_x(self) -> i32 { self.x } .. }  (그리고 get_y)
+```
+
+`@concat`이 만든 이름은 **기록**됩니다. 컴파일러가 생성된 항목을 생성된 이름으로 인덱싱하므로 심볼 검색, 정의로 이동, 참조 찾기로 그 항목에 닿을 수 있습니다. `@concat`은 정의 위치나 경로 위치에서만 식별자를 만듭니다. 조각은 이름 토큰과 문자열 리터럴뿐이며, 임의의 구문을 조립할 수는 없습니다.
+
+### 라이브러리의 보일러플레이트
+
+macro를 쓰는 대표적인 이유는 작성자가 적은 고정 목록의 항목마다 정의를 반복하는 것입니다. 속성으로 트리거되는 형태로는 할 수 없는 일입니다. [`core::num`](../../refs-standard-libraries/200-core/README.md)에서 손으로 복사하던 타입별 구현을 이것으로 대신합니다.
+
+```nabi
+#[impl_macro(nonzero_div)] pub @macro {
+    ( @rep[sep = ","] { @t: ty } ) => {
+        @for @t {
+            impl Div<NonZero<@t>> for @t {
+                type Output = @t;
+                const fn div(self, rhs: NonZero<@t>) -> @t { self / rhs.0 }
+            }
+        }
+    }
+}
+
+nonzero_div!(i8, i16, i32, i64, u8, u16, u32, u64);
+```
+
+### 재귀
+
+템플릿은 다른 매크로를 호출할 수 있고, 그 호출도 이어서 확장됩니다. 매크로는 자기 자신을 호출할 수 없습니다. 자기 확장 안에서 자신을 호출하면 직접이든 다른 매크로를 거치든 컴파일러가 바로 거부합니다. 그 호출을 가리키는 컴파일 에러(`` `name!` expands too deeply or cyclically ``)입니다. 서로 다른 매크로의 중첩 확장은 256단계까지이고, 넘으면 같은 에러입니다. 목록을 반복하려면 재귀 대신 `@rep` / `@for`를 쓰세요.
+
+### 내장 `!`-폼은 예약
+
+`cfg!`([6.3](603-cfg.md))와 `include_str!` / `include_bytes!`([6.11](611-include.md))는 `!`로 끝나지만 매크로가 아닙니다. 고정된 컴파일러 내장 형태입니다. 다시 정의하거나, 가리거나, 매크로 이름으로 쓸 수 없습니다. 컴파일러에 있는 `!`-폼은 이것뿐이고, 그 밖의 모든 `name!`은 Nabi로 정의한 매크로입니다.
+
+### 도구 지원과 위생
+
+macro는 모든 메타 정의가 지키는 보장([6.8.9](#689-토큰-스트림-조작-없음))을 지킵니다. 호출 위치 때문에 더해지는 세부 사항은 다음과 같습니다.
+
+- **위생**은 자동입니다. 템플릿이 묶는 이름(`let`이나 `for` 루프의 변수)은 새 이름이므로 호출 위치의 이름을 캡처하지도, 호출 위치에 캡처되지도 않습니다. 메타변수로 넘어온 이름은 호출 위치에서 해석됩니다. 템플릿이 쓰는 그 밖의 이름, 예를 들어 `impl Tr for E` 머리의 타입이나 가져온 `Complex`는 매크로를 정의한 곳의 항목을 가리킵니다.
+- **span**: 확장된 모든 토큰에 호출의 span이 붙습니다. 그래서 진단은 호출을 가리키고, 확장 내용은 참고(note)로 보여 줍니다.
+- **해석**: 확장 결과를 보통 코드처럼 파싱하고 합성된 이름을 인덱싱합니다. 그래서 호버, 정의로 이동, 참조 찾기가 매크로가 생성한 항목에 닿습니다.
+- **요청 시 확장**: 언어 서버는 호출을 그 자리에서 펼쳐 보여 줄 수 있습니다([9.9.13](../009-tools/909-debug-tools.md)).
+- **포매팅**: 포매터는 호출 인자가 Nabi 조각이면 포맷합니다. 원시 `tt` DSL은 짝이 맞는 구분자 안에 쓴 그대로 둡니다.
+
+## 6.8.13. 정리
+
+네 형태(derive, 속성, 필드별 derive 속성, 호출로 트리거되는 macro)는 템플릿 엔진 하나 위에서 Nabi 메타프로그래밍의 전부를 이룹니다. 절차적 매크로만큼 표현력이 크지는 않습니다. 하지만 derive, 속성, 필드별 속성, 호출 지점의 코드 생성이라는 주요 사용 사례를 모두 다룹니다. 어느 것이든 위생적이고 도구가 따라갈 수 있습니다.
+
+[템플릿 토큰과 확장](609-template-tokens.md)은 템플릿 토큰의 정확한 목록(타입이 주도하는 입력과 호출이 주도하는 입력 모두)과 확장 메커니즘을 정의합니다.

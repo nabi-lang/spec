@@ -1,0 +1,197 @@
+# 3.7. `path::` - UTF-8 Path (Python-style)
+
+The `std::path` module defines path representation. The key point is that it puts a UTF-8 newtype first, to avoid the ergonomic burden of Rust's split between `Path` and `OsStr` while adopting the intuitiveness of Python's `pathlib.Path`.
+
+## 3.7.1. Two types - `Path` / `RawPath`
+
+Nabi's path representation is split into two types.
+
+| Type      | Meaning                                       | Frequency of use      |
+|-----------|-----------------------------------------------|-----------------------|
+| `Path`    | UTF-8 path (95%+)                             | Default for ordinary code |
+| `RawPath` | OS native bytes (Unix bytes / Windows WTF-16) | 1% (non-UTF-8 file names) |
+
+Most code needs only `Path`. `RawPath` is needed only where legacy bytes are truly required, such as when dealing with old unix systems.
+
+## 3.7.2. `Path` - UTF-8
+
+`Path` is an immutable value. `join`, `/` and `with_*` all return a new `Path`; there is no `PathBuf` / `push` that modifies a path in place. `p /= q` is `p = p / q` under the ordinary compound assignment rule.
+
+The `Path` interface is as follows.
+
+```nabi
+struct Path { /* UTF-8 str newtype, GC heap */ }
+
+impl Path {
+    fn new(s: str) -> Path;
+    fn empty() -> Path;
+    fn from_components<I: IntoIterator<Item = str>>(components: I) -> Path;
+
+    // decomposition
+    fn parent(self) -> Path | none;
+    fn file_name(self) -> str | none;
+    fn file_stem(self) -> str | none;
+    fn extension(self) -> str | none;
+    fn components(self) -> Components;   // implements Iterator<Item = Component>
+    fn ancestors(self) -> Ancestors;     // implements Iterator<Item = Path>
+
+    // manipulation
+    fn join<P: AsPath>(self, other: P) -> Path;   // a str too
+    fn with_file_name(self, name: str) -> Path;
+    fn with_extension(self, ext: str) -> Path;
+    fn strip_prefix<P: AsPath>(self, base: P) -> Path | none;   // none when base is not a prefix
+
+    fn is_absolute(self) -> bool;
+    fn is_relative(self) -> bool;
+    fn has_root(self) -> bool;
+    fn starts_with<P: AsPath>(self, base: P) -> bool;
+    fn ends_with<P: AsPath>(self, suffix: P) -> bool;
+    fn normalize(self) -> Path;             // resolve "." / ".." (lexical)
+
+    // OS interaction (convenience; fs::* internally)
+    fn exists(self) -> bool;
+    fn is_file(self) -> bool;
+    fn is_dir(self) -> bool;
+    fn is_symlink(self) -> bool;
+    fn metadata(self) throws (IoError) -> Metadata;
+    fn canonicalize(self) throws (IoError) -> Path;     // realpath (verified against the filesystem)
+
+    fn as_str(self) -> str;
+    fn to_raw(self) -> RawPath;
+}
+
+enum Component {
+    RootDir,                    // "/"
+    Prefix(str),                // "C:" (Windows)
+    CurDir,                     // "."
+    ParentDir,                  // ".."
+    Normal(str),                // "data"
+}
+
+impl Component {
+    fn as_str(self) -> str;     // as written in a path: "/", ".", "..", the name
+}
+```
+
+## 3.7.3. The `/` operator - Python pathlib style
+
+The `/` operator is introduced to make path joining more readable.
+
+```nabi
+impl Div<str> for Path {
+    type Output = Path;
+    #[infix("/")]
+    fn div(self, rhs: str) -> Path { self.join(Path::new(rhs)) }
+}
+
+impl Div<Path> for Path { ... }
+
+impl From<str> for Path { ... }   // Path::new
+impl Display for Path { ... }     // the text: /etc/nginx
+impl Debug for Path { ... }       // the quoted text: "/etc/nginx"
+```
+
+`p /= "x"` and `p /= q` (`q: Path`) are also allowed and mean `p = p / ..`.
+
+The **effect** is clear from the following example.
+
+```nabi
+let p = Path::new("/etc") / "nginx" / "nginx.conf";
+                                          //→ "/etc/nginx/nginx.conf"
+
+let home = env::home_dir()? / ".config" / "myapp" / "settings.toml";
+```
+
+This provides **the same ergonomics** as Python's `Path("/etc") / "nginx" / "nginx.conf"`, and avoids the verbosity of Rust's `PathBuf::join` and `push`.
+
+## 3.7.3a. `AsPath` - path arguments
+
+```nabi
+trait AsPath {
+    fn as_path(self) -> Path;
+}
+impl AsPath for str { ... }
+impl AsPath for Path { ... }
+```
+
+Path arguments of `fs` are taken as `AsPath`, so both `str` and `Path` can be passed (`fs::read("a.txt")`, `fs::read(dir / "a.txt")`).
+
+## 3.7.4. UTF-8 invariant
+
+`Path` is **always UTF-8**. `Path::new(s)` takes a `str`, which is already UTF-8, so it converts and validates nothing.
+
+The OS can hold names that are not UTF-8: arbitrary bytes on Unix, unpaired surrogates in Windows' UTF-16. `fs` and `env` never convert such a name lossily: a call that would return one as a `Path` throws `IoError` with `InvalidData`. A `RawPath` (3.7.5), built from OS bytes the code got elsewhere (through FFI, for one), converts explicitly:
+
+```nabi
+let raw: RawPath = ...;
+let p: Path = try Path::try_from(raw);    // throws Utf8Error if not UTF-8
+let q: Path = try raw.try_into();          // same
+```
+
+This conversion is `impl TryFrom<RawPath> for Path { type Error = Utf8Error; ... }` ([2.11.4](../200-core/211-conversion.md#2114-tryfromu-trait---fallible-conversion)).
+
+## 3.7.5. `RawPath` - bytes / WTF-16
+
+`RawPath` exists for places that need the OS's native representation as is.
+
+```nabi
+struct RawPath { /* windows: List<u16>, elsewhere: List<u8> */ }   // + Clone, PartialEq, Eq, Hash, Debug
+
+impl RawPath {
+    fn from_bytes<B: AsBytes>(bytes: B) -> RawPath;    // every target but windows
+    fn from_wide(wide: Slice<u16>) -> RawPath;         // windows
+
+    fn as_bytes(self) -> Slice<u8>;                    // every target but windows
+    fn as_wide(self) -> Slice<u16>;                    // windows only
+
+    fn to_path(self) throws (Utf8Error) -> Path;       // as RawStr::to_str
+    fn to_path_lossy(self) -> Path;
+}
+```
+
+`to_path` throws `Utf8Error` ([2.15.6](../200-core/215-string.md)), the error of `str::from_utf8` and `RawStr::to_str`; on Windows its `valid_up_to()` counts UTF-16 units. `to_path_lossy` replaces each maximal ill-formed subsequence (Unix) / each lone surrogate (Windows) with one U+FFFD.
+
+Most code never encounters this type. It appears only where code exchanges syscalls directly with the OS.
+
+## 3.7.6. canonicalize vs. normalize
+
+These two functions look similar but differ clearly in behavior and cost.
+
+| Function         | Meaning                       | File system access  |
+|------------------|-------------------------------|---------------------|
+| `normalize()`    | Purely lexical cleanup (resolves "..") | **No**     |
+| `canonicalize()` | Resolves symlinks + converts to an absolute path | **Yes** (`realpath`) |
+
+```nabi
+Path::new("/a/b/../c").normalize();              //→ "/a/c" (lexical)
+try Path::new("/a/b/../c").canonicalize();       //→ absolute path with symlinks resolved
+```
+
+`normalize` is fast and makes no syscalls, so it does the job in 90% of places.
+
+## 3.7.7. WASI compatibility
+
+`Path` also integrates naturally with WASI Preview 2's **capability paths**.
+
+```nabi
+let dir: Dir = try Dir::root().open_dir("data");
+let f = try dir.open(Path::new("config.toml"));
+                                          // Path is relative to dir; escape rejected
+```
+
+The capability model is covered in detail in [3.1 fs](301-fs.md).
+
+## 3.7.8. Comparison with other languages
+
+To pin down the design decision, compare with neighboring languages.
+
+| Aspect        | Rust                      | Python `pathlib` | Go `filepath`   | Nabi                         |
+|---------------|---------------------------|------------------|-----------------|-----------------------------|
+| Type          | `Path` / `PathBuf`        | `Path`           | `string`        | `Path`                      |
+| owned vs view | borrowed `&Path` / owned  | **immutable**    | **immutable**   | **immutable** (`/` gives a new Path) |
+| `/` operator  | **none** (explicit `.join()`) | `/`          | **none**        | `/`                         |
+| non-UTF-8     | `OsStr` (mixed)           | `bytes` (separate) | `string` (confusing) | separate `RawPath`   |
+| canonicalize  | `.canonicalize()`         | `.resolve()`     | `filepath.Abs`  | `.canonicalize()`           |
+| Method chaining | OK (mostly)             | excellent        | OK              | excellent                   |
+
+In summary, Nabi's **biggest decision** is the combination of a UTF-8 default and the `/` operator, which brings Python pathlib's ergonomics together with Rust-level performance.

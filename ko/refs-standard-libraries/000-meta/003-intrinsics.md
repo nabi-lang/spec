@@ -1,0 +1,138 @@
+# 0.3. intrinsic 메커니즘: 컴파일러 ↔ 표준 라이브러리 경계
+
+`i32::add` 같은 표준 라이브러리 트레잇 메서드의 본문은 결국 기계의 `add` 명령어로 낮춰야 합니다. 이 장은 표준 라이브러리 메서드 본문이 컴파일러 백엔드(PrimOp / MIR / 코드 생성)로 이어지는 경로를 정의합니다.
+
+## 0.3.1. 문제: 부트스트랩 순환
+
+문제의 핵심은 표준 라이브러리와 컴파일러 사이의 부트스트랩 순환입니다. 다음 흐름을 보면 어디서 막히는지 보입니다.
+
+```
+사용자 코드:       let r = a + b;        (a, b: i32)
+↓
+컴파일러:         Add::add(a, b) 호출 dispatch     (refs-lang 3.1)
+↓
+표준 라이브러리:    impl Add for i32 { fn add(self, rhs) { ... } }
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              여기 "..." 자리에 무엇을 적나?
+              intrinsic 이 없으면 "self + rhs" 가 또 Add::add 디스패치 → 무한 재귀
+              기계의 `add` 를 그대로 적을 수도 없음 (사용자 언어 표면 아님)
+↓
+기계어:            add w0, w0, w1          (aarch64)
+```
+
+그래서 표준 라이브러리 본문이 자기 자신을 호출하지 않고 컴파일러 백엔드의 `add` 명령으로 곧장 이어질 경로가 필요합니다.
+
+## 0.3.2. 해결: `#[intrinsic("nabi.OP.TYPE")]` 속성
+
+표준 라이브러리 메서드 본문에 컴파일러가 알아보는 속성을 붙이면 됩니다. 컴파일러는 그런 호출을 만나면 본문을 낮추지 않고 곧바로 PrimOp / MIR로 변환합니다.
+
+```nabi
+impl Add for i32 {
+    type Output = i32;
+
+    #[intrinsic("nabi.add.i32")]
+    fn add(self, rhs: i32) -> i32 {
+        // 본문이 비어 있어도 OK. 컴파일러가 intrinsic 경로 사용
+        // 본문이 있어도 컴파일러가 우선
+    }
+}
+```
+
+자유 함수(`mem::size_of`, `ptr::addr_of`)와 고유 메서드(`MaybeUninit::as_ptr`)에도 같은 방식으로 `#[intrinsic]`을 붙입니다. 그 호출이 곧 intrinsic입니다.
+
+컴파일러는 다음 순서로 동작합니다. `Add::add(a, b)` 호출을 디스패치할 때 method_table에서 `i32::add`를 찾습니다. 그다음 그 메서드에 `#[intrinsic("nabi.add.i32")]`가 붙어 있는지 확인합니다. 붙어 있으면 본문을 낮추는 대신 `PrimOp::Add { ty: i32 }`를 직접 내보냅니다. 이 PrimOp는 MIR와 코드 생성을 거쳐 결국 타깃의 32비트 `add` 명령이 됩니다.
+
+이 메커니즘 덕분에 컴파일러의 가로채기가 트레잇 디스패치 안에 녹아듭니다.
+
+## 0.3.3. intrinsic 이름 규약
+
+intrinsic 이름은 세 형태 중 하나입니다.
+
+- `nabi.<OP>.<TYPE>`: 한 타입의 primitive 연산(`nabi.add.i32`). 복합 대입 `nabi.<OP>_assign.<TYPE>`(`nabi.add_assign.i32`)도 이 형태입니다.
+- `nabi.<area>.<op>`: `ptr`, `atomic` 같은 한 영역의 연산(`nabi.ptr.read`, `nabi.atomic.cas`).
+- `nabi.<name>`: 이름에 타입이 없는 제네릭 연산(`nabi.size_of`, `nabi.align_of`, `nabi.addr_of`, `nabi.drop_in_place`, `nabi.hand_over`). GC 버퍼와 hand-off 계열 `nabi.buf_<op>`, `nabi.transfer_<op>`(`nabi.buf_get`, `nabi.transfer_keep`)도 이 형태입니다.
+
+primitive 형태는 다음과 같습니다.
+
+```
+nabi.add.i32        i32 + i32
+nabi.add.i64
+nabi.add.f32
+nabi.add.f64
+nabi.sub.i32
+nabi.mul.i32
+nabi.div.i32
+nabi.rem.i32
+nabi.and.i32        bitwise AND
+nabi.or.i32
+nabi.xor.i32
+nabi.shl.i32
+nabi.shr.i32
+nabi.eq.i32
+nabi.lt.i32
+...
+nabi.neg.i32        unary
+nabi.not.bool       logical not (bool)
+nabi.not.i32        bitwise not (정수)
+nabi.cast.i32.i64   type cast
+```
+
+primitive 형태의 각 OP는 컴파일러의 `PrimOp` enum과 1:1로 대응합니다. 이름은 흔히 쓰는 명령어 이름과 Rust의 intrinsic 명명 규약을 따릅니다.
+
+## 0.3.4. 본문 fallback 정책
+
+intrinsic이 붙은 메서드에도 본문이 있을 수 있습니다. 다음 예가 그렇습니다.
+
+```nabi
+impl Add for BigInt {
+    type Output = BigInt;
+
+    // BigInt 는 fixed-width 가 아니라 intrinsic 없음. 본문이 권위
+    fn add(self, rhs: BigInt) -> BigInt {
+        // 실제 BigInt 덧셈 구현
+        ...
+    }
+}
+
+impl Add for i32 {
+    type Output = i32;
+
+    #[intrinsic("nabi.add.i32")]
+    fn add(self, rhs: i32) -> i32 {
+        // 본문: fn 값으로 꺼내 부르거나 intrinsic 을 모르는 환경에서 실행
+        self + rhs                    // primitive 연산자는 기계 연산으로 직접 lower
+    }
+}
+```
+
+규칙을 요약하면 다음과 같습니다. intrinsic을 켠 정상 컴파일 경로에서는 본문을 무시합니다. intrinsic을 알아보지 못하는 실험용 백엔드나 인터프리터 환경에서는 본문을 실제로 씁니다. 본문이 비어 있으면 stub `panic("intrinsic not available")`로 처리합니다.
+
+메서드를 `fn` 값으로 꺼내면(`let f = i32::add;`) 그 값을 호출할 때 본문이 실행됩니다. intrinsic은 직접 호출 지점에만 적용됩니다. 그래서 intrinsic 메서드의 본문도 같은 의미의 올바른 구현이어야 합니다. 본문 안의 primitive `self + rhs`는 그 자체가 이 intrinsic의 직접 호출이므로 본문으로 돌아가지 않고 기계 연산으로 낮아집니다.
+
+intrinsic은 본문 없는 선언(`pub fn size_of<T>() -> usize;`)일 수도 있습니다. 이 경우 fallback이 없습니다. intrinsic이 유일한 구현이고, 직접 호출로만 씁니다.
+
+## 0.3.5. 사용자 코드의 intrinsic 사용
+
+`#[intrinsic(...)]`은 표준 라이브러리가 컴파일러와 맞물리는 경계에서만 동작하는 메커니즘입니다. 그래서 사용자 코드는 이 속성을 직접 붙일 수 없습니다. 함수, 제네릭 함수, 메서드 모두 마찬가지입니다.
+
+```nabi
+// 사용자 코드: 거부.
+#[intrinsic("nabi.add.i32")]
+fn my_add(a: i32, b: i32) -> i32 { ... }
+// error[E0115]: `#[intrinsic]` on `my_add`: the intrinsic attribute is for the standard library only
+```
+
+이 제약이 있으므로 표준 라이브러리 트레잇 밖에서 컴파일러 백엔드를 마음대로 호출하는 탈출구(escape hatch)가 생기지 않습니다.
+
+## 0.3.6. 다른 메커니즘과 비교
+
+intrinsic은 컴파일러와 표준 라이브러리를 잇는 여러 매직 가운데 하나입니다. 각 매직의 역할은 다음 표와 같습니다.
+
+| 메커니즘              | 용도                                                        | 사양                                                                   |
+|-----------------------|-------------------------------------------------------------|------------------------------------------------------------------------|
+| `#[intrinsic("...")]` | 표준 라이브러리 메서드 ↔ 컴파일러 백엔드 PrimOp             | 이 문서                                                                |
+| `#[lang(...)]`        | 표준 라이브러리 항목 ↔ 컴파일러 슬롯 (none, iter, index 등) | [refs-lang 6.4](../../refs-lang/006-meta-system/604-lang-magic.md)     |
+| `#[infix(...)]`       | 토큰 ↔ 표준 라이브러리 트레잇 메서드                        | [refs-lang 6.7](../../refs-lang/006-meta-system/607-operator-magic.md) |
+| `#[literal(...)]`     | 리터럴 형태 ↔ 표준 라이브러리 핸들러                        | [refs-lang 6.5](../../refs-lang/006-meta-system/605-literal-magic.md)  |
+
+네 매직은 서로 직교합니다. `#[intrinsic]`은 컴파일러 백엔드와 맞물리는 일을 맡고, 나머지는 모두 언어 문법(syntax)과 맞물리는 일을 맡습니다.

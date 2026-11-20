@@ -1,0 +1,437 @@
+# 2.11. Conversion traits
+
+The `core::convert` module defines the family of traits that move a value from one type to another. The central principle of Nabi's conversion policy is to reject silent information loss. `.into()` therefore allows only lossless conversions; for a conversion that may lose information, the user must choose the policy explicitly.
+
+The syntax of [refs-lang 2.14 Conversions](../../refs-lang/002-types/214-cast-and-conversion.md) dispatches to these traits.
+
+## 2.11.1. Conversion policy - four kinds
+
+Nabi separates conversions into four kinds by **intent**. The user must state which kind applies each time.
+
+| Kind         | Method                              | Meaning                                    | On failure                  |
+|--------------|-------------------------------------|--------------------------------------------|-----------------------------|
+| **lossless** | `.into::<T>()`                      | zero information loss; always succeeds     | compile error (no `From` impl) |
+| **fallible** | `.try_into::<T>()`                  | may lose information; caller handles it    | throws the target's `TryFrom::Error` |
+| **saturate** | `.saturating_into::<T>()`           | out of range clamps to i32::MAX / MIN      | explicit saturate (user's choice) |
+| **bit**      | `.wrapping_into::<T>()` or `as T`   | bit reinterpretation: modular arithmetic / bit pattern  | explicit wrap (user's choice) |
+
+Each kind's method name states the intent by itself. Writing `.into()` means **lossless** intent; writing `.saturating_into()` means **saturate** intent. The compiler does not guess the meaning.
+
+### Design rationale
+
+A silent saturate or silent wrap alters a value without the user knowing, producing bugs that are hard to debug. Nabi adopts both the lesson JS learned in introducing Number → BigInt and the lesson NumPy learned in moving from wrap to OverflowError.
+
+For the same reason fixed-width arithmetic (`+ - *`, unary `-`) panics on overflow in every profile, as in Swift. The checks cost little: measured with `bench/` at `-O2` on Apple M-series (instructions retired, best of 3), `fannkuch` (integer lists) +5.6%, `jsontokenizer` (byte scanning) +9.2%, and `nbody` (f64) within noise (-2.8%). A program that needs the last few percent turns them off with `-C overflow-checks=no` or a `nabi.nabion` profile (`profile: { "release": { overflow_checks: false } }`, [refs-lang 9.10.3](../../refs-lang/009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)), and then overflow wraps.
+
+## 2.11.2. `From<U>` trait - lossless conversion
+
+```nabi
+trait From<U> {
+    fn from(value: U) -> Self;
+}
+```
+
+`From::from(u)` is a conversion that always succeeds with no information loss.
+
+### Example
+
+```nabi
+let n: i32 = 42;
+let big: i64 = i64::from(n);     // i32 → i64 (always lossless)
+
+let x: int = int::from(42i32);   // i32 → int (lossless)
+```
+
+### import
+
+`From` is in [the prelude](../000-meta/002-import.md), so no separate `use` declaration is needed.
+
+## 2.11.3. `Into` trait - mirror of `From`
+
+```nabi
+trait Into {
+    fn into<T: From<Self>>(self) -> T;
+}
+
+impl<S> Into for S {
+    fn into<T: From<S>>(self) -> T { T::from(self) }
+}
+```
+
+`Into` is a trait with no type parameter and a single generic method `into`. One blanket impl gives every type `into`, so `x.into()` is `T::from(x)`. The target type `T` is determined by the expected type (a `let` annotation, an argument position, etc.) or by `x.into::<T>()`. Users do not implement `Into`; they write only `From`.
+
+A convertibility bound is written on the `From` side. There is no bound `T: Into<U>`.
+
+```nabi
+fn widen<T, U: From<T>>(x: T) -> U { x.into() }      // OK (U: From<T>)
+fn widen2<T: Into<U>, U>(x: T) -> U { x.into() }     // ERROR: Into takes no type argument
+```
+
+### Example
+
+```nabi
+let n: i32 = 42;
+let big: i64 = n.into();         // i32::into::<i64>() automatically, using From<i32> for i64
+let big_typed: i64 = (42i32).into();
+```
+
+### Prefer `From` - design pattern
+
+An explicit conversion can be written in either of two forms.
+
+```nabi
+// form 1: From directly
+let big = i64::from(42i32);
+
+// form 2: into method
+let big: i64 = (42i32).into();
+```
+
+The two forms are semantically equivalent. With `from` the target type is visible at the call site; with `into` the **annotation** determines the target type. Choose whichever suits readability or the pattern.
+
+### Compile-time check of losslessness
+
+Attempting a combination for which `From<U> for T` is not implemented is a compile error.
+
+```nabi
+let big: i64 = 1000;
+let small: i32 = big.into();   // compile error: no From<i64> for i32
+                                //   (not lossless)
+```
+
+In that case one of `try_into`, `saturating_into` or `as` must be chosen explicitly.
+
+```nabi
+let small: i32 = try big.try_into();       // throws, caller handles it
+let small: i32 = big.saturating_into();    // explicit saturate
+let small: i32 = big as i32;               // explicit wrap
+```
+
+## 2.11.4. `TryFrom<U>` trait - fallible conversion
+
+```nabi
+trait TryFrom<U> {
+    type Error = ConversionError;
+    fn try_from(value: U) throws (Self::Error) -> Self;
+}
+```
+
+`try_from` expresses in its signature that the conversion may fail. The error type is the associated type `Error`, whose default is [`ConversionError`](214-error.md) (an impl that omits it gets the default, [refs-lang 2.8.3](../../refs-lang/002-types/208-trait.md)). Numeric conversion impls (integer ↔ integer, floating-point → integer, `int` / `float` conversions, `TryFrom<u32> for char`) declare `type Error = OverflowError;`. Because the signature is `throws`, the user marks the call with `try` to propagate, handles it with `catch`, or receives `T | none` with `try?`.
+
+```nabi
+let big: i64 = 9999999999;
+let small_result: i32 = try i32::try_from(big);  // propagate with try
+let small_catch: i32 = try i32::try_from(big) catch e: OverflowError { default };
+let small_opt: i32 | none = try? i32::try_from(big);
+```
+
+### Automatic `TryInto` mirror
+
+The same pattern as `From` ↔ `Into` applies.
+
+```nabi
+trait TryInto {
+    fn try_into<T: TryFrom<Self>>(self) throws (T::Error) -> T;
+}
+impl<S> TryInto for S { ... }            // = try T::try_from(self)
+```
+
+In the `OverflowError` ([2.14](214-error.md)) thrown by a numeric `try_from`, `operation()` is `"try_from"` and `type_name()` is the target type's name (`"i32"`, etc.).
+
+```nabi
+let small: i32 = try big.try_into();     // = try i32::try_from(big)
+```
+
+## 2.11.5. `saturating_into` / `wrapping_into` - explicit policy
+
+For a conversion that may lose information, the user states the value-altering policy explicitly. Two methods are provided for this.
+
+```nabi
+trait SaturatingFrom<U> {
+    fn saturating_from(value: U) -> Self;    // out of range: nearest end
+}
+trait SaturatingInto {
+    fn saturating_into<T: SaturatingFrom<Self>>(self) -> T;
+}
+
+trait WrappingFrom<U> {
+    fn wrapping_from(value: U) -> Self;      // keeps the low bits (= as)
+}
+trait WrappingInto {
+    fn wrapping_into<T: WrappingFrom<Self>>(self) -> T;
+}
+```
+
+The shape matches `From` / `Into`. The conversion itself is the `SaturatingFrom` / `WrappingFrom` impl; `saturating_into` / `wrapping_into` are generic methods supplied by a blanket impl.
+
+### `saturating_into` - clamp to the range ends
+
+```nabi
+let big: i64 = 9999999999;
+let small: i32 = big.saturating_into();    //→ i32::MAX (= 2147483647)
+
+let big_neg: i64 = -9999999999;
+let small_neg: i32 = big_neg.saturating_into();  //→ i32::MIN
+```
+
+This policy is useful in DSP, signal processing, UI clamping and similar domains.
+
+### `wrapping_into` - modular arithmetic
+
+```nabi
+let big: i64 = 0x100000001;
+let small: i32 = big.wrapping_into();      //→ 1 (low 32 bits)
+```
+
+It means the same as `as i32`, but expresses the intent as an explicit method call. This policy suits hashing and bit-masking domains.
+
+## 2.11.6. `as T` - bit reinterpretation / numeric cast
+
+The `as` keyword ([refs-lang 2.14](../../refs-lang/002-types/214-cast-and-conversion.md)) is the means of making a numeric / bit conversion **explicit**.
+
+```nabi
+let n: i32 = 256;
+let b: u8 = n as u8;             // low 8 bits = 0
+let b2: u8 = 257 as u8;          // 1
+let b_neg: u8 = -1i32 as u8;     // 255
+
+let f: f64 = 1.7;
+let i: i32 = f as i32;            // 1 (truncation, IEEE 754 → integer)
+let big: i32 = 1e10 as i32;       // i32::MAX (saturates)
+let nan: i32 = f64::NAN as i32;   // 0
+let f2: f32 = 3.14f64 as f32;     // 3.14 → f32 (IEEE 754 narrowing)
+```
+
+`as` behaves as follows.
+
+| Conversion                                         | Meaning                                            |
+|----------------------------------------------------|----------------------------------------------------|
+| integer → integer of the same width (signed/unsigned) | same bit pattern; only the sign interpretation changes  |
+| narrow integer → wide integer                      | sign-extend (signed) or zero-extend (unsigned)     |
+| wide integer → narrow integer                      | truncation (low bits only)                         |
+| integer → floating-point                           | to IEEE 754 representation (may lose precision)    |
+| floating-point → integer                           | truncate toward zero; out of range saturates to MIN/MAX, NaN → 0 (every optimization level) |
+| floating-point → floating-point of same/other width | IEEE 754 round                                    |
+| `u8` → `char`                                      | that code point (U+0000..=U+00FF)                  |
+| `char` → integer                                   | code point (truncated for a narrow integer)        |
+
+`as` to `char` works only from `u8`. Other integers / floating-point / `bool` / `c_char` are a type error; a wider value is converted with `char::from_u32(n)` (`char | none`) ([2.15.4](215-string.md)). `as` to `bool` works only from `bool`; compare instead (`x != 0`, `x != 0.0`).
+
+### Limits of `as`
+
+`as` is limited to numeric and bit conversions. Conversion between arbitrary types is rejected.
+
+```nabi
+struct Vec3 { x: f64; y: f64; z: f64; }
+let v = Vec3 { x: 1.0, y: 2.0, z: 3.0 };
+let s: str = v as str;     // compile error: `as` rejects user structs
+```
+
+Conversion between user types must be stated with the `From` / `Into` traits.
+
+## 2.11.7. Literal-context auto-From - compile-time range check
+
+For an annotated literal, a compile-time range check and a lossless conversion apply together.
+
+```nabi
+let x: i32 = 42;             // OK: 42 is in i32 range
+let y: i32 = 9999999999;     // compile error: literal outside i32 range
+let z: f32 = 3.14;           // OK: round to nearest f32
+let w: u8 = 256;             // compile error: 256 ∉ u8 0..=255
+```
+
+The rule for selecting an impl from a literal, as in `T::from(1)` / `1.into()`, follows [refs-lang 3.1.3](../../refs-lang/003-expressions/301-operator-dispatch.md#selecting-an-impl). This mechanism works because the literal is a value known at compile time. Converting a runtime value requires one of `from`, `into`, `try_into` or `as` to be written explicitly.
+
+## 2.11.8. `From` impl matrix - between primitives
+
+The `From<U> for T` impls provided by the standard library are tabulated below (lossless only).
+
+### Integer → integer (signed)
+
+| from \ to | i8 | i16 | i32 | i64           | isize         | int |
+|-----------|----|-----|-----|---------------|---------------|-----|
+| `i8`      |    | ✓   | ✓   | ✓             | ✓             | ✓   |
+| `i16`     |    |     | ✓   | ✓             | ✓             | ✓   |
+| `i32`     |    |     |     | ✓             | ✓ (target≥32) | ✓   |
+| `i64`     |    |     |     |               |               | ✓   |
+| `isize`   |    |     |     | ✓ (target≤64) |               | ✓   |
+
+### Integer → integer (unsigned)
+
+| from \ to | u8 | u16 | u32 | u64           | usize         | int (always lossless) |
+|-----------|----|-----|-----|---------------|---------------|-----------------------|
+| `u8`      |    | ✓   | ✓   | ✓             | ✓             | ✓                     |
+| `u16`     |    |     | ✓   | ✓             | ✓             | ✓                     |
+| `u32`     |    |     |     | ✓             | ✓ (target≥32) | ✓                     |
+| `u64`     |    |     |     |               |               | ✓                     |
+| `usize`   |    |     |     | ✓ (target≤64) |               | ✓                     |
+
+`u64` → `usize` and `i64` → `isize` have no `From`: they are narrowing on a 32-bit target, and a conversion that builds on one target must build on every target. Use `TryFrom<u64> for usize` / `TryFrom<i64> for isize` (`usize::try_from(n)`), which exist everywhere and never throw on a 64-bit target.
+
+### Unsigned → signed (lossless only)
+
+| from \ to | i8 | i16 | i32 | i64 | isize | int |
+|-----------|----|-----|-----|-----|-------|-----|
+| `u8`      |    | ✓   | ✓   | ✓   | ✓     | ✓   |
+| `u16`     |    |     | ✓   | ✓   | ✓     | ✓   |
+| `u32`     |    |     |     | ✓   |       | ✓   |
+| `u64`     |    |     |     |     |       | ✓   |
+
+A conversion from unsigned to a signed type of the same or smaller width (e.g. u32 → i32) is not guaranteed lossless, so `try_into` or `as` must be used. `isize` and `usize` are at least 32 bits on every supported target, so `u8` / `u16` → `isize` are lossless everywhere and have `From`, as `i8` / `i16` / `i32` → `isize` and `u8` / `u16` / `u32` → `usize` do. `u32` → `isize` is lossless only on a 64-bit target, so it is `TryFrom` only (`isize::try_from(n)`), as `u64` → `usize` is. A pair with `From` has no separate `TryFrom`.
+
+### Integer → floating-point
+
+| from \ to | f32 | f64                         |
+|-----------|-----|-----------------------------|
+| `i8`      | ✓   | ✓                           |
+| `i16`     | ✓   | ✓                           |
+| `i32`     |     | ✓                           |
+| `i64`     |     | (no `From`: loses precision) |
+| `u8`      | ✓   | ✓                           |
+| `u16`     | ✓   | ✓                           |
+| `u32`     |     | ✓                           |
+| `u64`     |     | (no `From`: loses precision) |
+
+f32 has a 24-bit mantissa and f64 a 53-bit mantissa, so losslessness holds only within that bit width. A wider integer converts with `as`, which rounds to the nearest value.
+
+### Between floating-point types
+
+| from \ to | f32 | f64 | float |
+|-----------|-----|-----|-------|
+| `f32`     |     | ✓   | ✓     |
+| `f64`     |     |     | ✓     |
+
+f64 → f32 is a narrowing conversion, so one of `try_into`, `saturating_into` or `as` must be used.
+
+### int / float and fixed primitives
+
+| from \ to | i32                   | i64             | f64                                             |
+|-----------|-----------------------|-----------------|-------------------------------------------------|
+| `int`     | `try_into` only       | `try_into` only | `to_f64`, `try_into`, `saturating_into` (round) |
+| `float`   | `try_into` (truncates) | `try_into`     | `to_f64`, `try_into`, `saturating_into` (round) |
+
+`From` is lossless with no exceptions, so `int` and `float` have no `From` into `f64`, and no `WrappingFrom` into `f64` / `f32` either (wrapping keeps the low bits, and a float has none): `x as f64` is a compile error that names `to_f64`. All three forms round to the nearest `f64` (ties to even) and differ only past `±f64::MAX`: `to_f64()` gives `±inf`, `try_into` throws `OverflowError` (the rule of `TryFrom<f64> for f32`), and `saturating_into` gives `±f64::MAX`. A `float` too small for `f64` becomes a subnormal or `±0` in all three.
+
+`int → fixed` is not guaranteed lossless (the `int` may be outside the fixed range), so `try_into` or `saturating_into` must be used.
+
+Conversely, `fixed → int` is always lossless (`From<i32> for int` and the rest are all implemented).
+
+## 2.11.9. `From` impls - user types
+
+Conversion between user types is defined by writing `impl From<U> for T` directly.
+
+```nabi
+struct Celsius { degree: f64; }
+struct Fahrenheit { degree: f64; }
+
+impl From<Celsius> for Fahrenheit {
+    fn from(c: Celsius) -> Fahrenheit {
+        Fahrenheit { degree: c.degree * 9.0 / 5.0 + 32.0 }
+    }
+}
+
+let c = Celsius { degree: 100.0 };
+let f: Fahrenheit = c.into();   //→ Fahrenheit { degree: 212.0 }
+```
+
+The blanket `Into` routes `c.into()` to `Fahrenheit::from(c)`, so the user does not write `Into`.
+
+### `try_from` follows the same pattern
+
+```nabi
+impl TryFrom<str> for i32 {
+    type Error = ParseError;
+    fn try_from(s: str) throws (Self::Error) -> i32 {
+        // i32::from_str(s): an integer string within i32 range, else ParseError
+        ...
+    }
+}
+
+let n: i32 = try "42".try_into();
+```
+
+Every fixed-width integer type implements `TryFrom<str>` this way, on top of its `FromStr`: it is `FromStr::from_str`, so empty text, an invalid digit or an out-of-range value throws the same `ParseError` (0.5.9: a failure caused by the input text is a `ParseError`). Floating-point types, `bool` and `char` provide only `FromStr`.
+
+## 2.11.10. Automatic conversion of arithmetic results - none
+
+Auto-From for arithmetic results ([refs-lang 2.14](../../refs-lang/002-types/214-cast-and-conversion.md)) applies only in **literal context**. The result of arithmetic on values is not converted automatically.
+
+```nabi
+let a: i32 = 5;
+let b: i32 = 3;
+let c: i32 = a + b;          // OK: i32 + i32 = i32
+
+let big: i32 = a + b * 1000000;
+// → OK if a + b * 1000000 is within i32 range; otherwise a panic (a wrap with overflow checks off)
+// no silent saturate / silent promote
+
+let auto: i64 = a + b;       // compile error: no silent promotion of an i32 result to i64
+let auto: i64 = (a + b) as i64;  // explicit conversion OK
+let auto: i64 = (a + b).into();  // explicit From<i32> for i64 (lossless)
+```
+
+## 2.11.11. Comparison with other languages - design rationale
+
+| Language | Conversion model                                         | Difference from Nabi                                                               |
+|----------|----------------------------------------------------------|-----------------------------------------------------------------------------------|
+| Rust     | `From`/`Into` lossless, `as` wrap, `try_into` Result     | closest to Nabi; Nabi adds explicit `saturating_into`/`wrapping_into` methods       |
+| Swift    | all integer conversions trap by default, `.init(clamping:)` opt-in | fixed-width arithmetic traps too (a panic in every profile); conversions are explicit methods instead of trapping initializers |
+| Julia    | `Int32(big)` traps, `convert` function family            | Nabi unifies on trait methods (`from`/`into`)                                      |
+| Python   | `int(x)`/`float(x)` functions, always arbitrary precision  | Nabi's `int` / `float` share the spirit; fixed primitives are a separate world   |
+| C        | implicit conversion (`int` → `long` automatically)       | Nabi explicitly rejects it, blocking silent type mixing                            |
+
+From this comparison, Nabi's key design decisions are: reject silent information loss (influenced by Rust); force expression of intent by making the four kinds (`into`, `try_into`, `saturating_into`, `as`) explicit; allow auto-From only in literal context and require explicit conversion for runtime values; and separate the auto-promotion of `int` / `float` from fixed primitives, a decision influenced by Python and Smalltalk.
+
+## 2.11.12. Module mapping
+
+| Trait               | lang slot              | Standard library location |
+|---------------------|------------------------|---------------------------|
+| `From<U>`           | (none)                 | `core::convert`     |
+| `Into`              | (blanket impl)         | `core::convert`     |
+| `TryFrom<U>`        | (none)                 | `core::convert`     |
+| `TryInto`           | (blanket impl)         | `core::convert`     |
+| `SaturatingFrom<U>` | (none)                 | `core::convert`     |
+| `SaturatingInto`    | (blanket impl)         | `core::convert`     |
+| `WrappingFrom<U>`   | (none)                 | `core::convert`     |
+| `WrappingInto`      | (blanket impl)         | `core::convert`     |
+| `AsBytes`           | (none)                 | `core::convert`     |
+
+Every lossless conversion impl between primitives carries `#[intrinsic("nabi.cast.FROM.TO")]`.
+
+```nabi
+impl From<i32> for i64 {
+    #[intrinsic("nabi.cast.i32.i64")]
+    fn from(value: i32) -> i64 { ... }
+}
+```
+
+The numeric cast of `as T` uses the same intrinsic; the compiler chooses between the lossless and wrapping branches.
+
+## 2.11.13. `AsBytes` trait - bytes as a view
+
+`core::convert::AsBytes` is what every byte argument of the standard library takes: `str::from_utf8` ([2.15.6](215-string.md#2156-utf-8-invariant---every-in-process-string)), `hex` and `base64` ([2.22](222-encoding.md)), `crypto` ([2.21](221-crypto.md)), `CString::new` ([1.7.2](../100-bare/107-ffi.md)), the `fs` and `net` write functions ([2.23.3](223-io.md)) and `Slice<u8>::find` ([2.9.7](209-collections.md)). Such a parameter is written `<B: AsBytes>`, with one type parameter per byte argument, so a key and a message need not have the same type.
+
+```nabi
+trait AsBytes {
+    fn byte_slice(self) -> Slice<u8>;      // the bytes as a view, no copy; need not be UTF-8
+}
+impl AsBytes for str;                      // its UTF-8 bytes
+impl AsBytes for List<u8>;
+impl AsBytes for Slice<u8>;
+impl<const N: usize> AsBytes for [u8; N];  // a view of a copy (b"...", include_bytes!)
+impl AsBytes for crypto::Secret;           // the bytes in place (2.21)
+```
+
+A type of the program's own passes wherever bytes are taken once it implements `AsBytes`:
+
+```nabi
+struct Frame { body: List<u8>; }
+impl AsBytes for Frame {
+    fn byte_slice(self) -> Slice<u8> { self.body[:] }
+}
+
+let tag = crypto::Hmac::mac(crypto::HashAlgorithm::Sha256, key, frame);
+let text = encoding::hex::encode(frame);
+```
+
+`AsBytes` has this one path; `core::io` does not re-export it.

@@ -1,0 +1,552 @@
+# 2.15. Strings - `str` / `char` / `c_char`
+
+The `core::str` module provides the authoritative definitions of the string and character types. Nabi follows a **UTF-8 first** policy: every in-process string is handled as UTF-8, and `c_char` is used only at FFI boundaries.
+
+`str`, `char` and `c_char` are primitive types built into the compiler, not structs. The compiler leaves their lang slots (`str_type`, `char_type`, `cchar_type`) unattached ([0.4](../000-meta/004-lang-slot-table.md)); this module defines their methods and trait impls.
+
+## 2.15.1. String model - immutable `str` and mutable `StrBuf`
+
+`str` is an immutable UTF-8 string value; the mutable buffer for building strings is the separate type `StrBuf`.
+
+| Type     | Meaning                                            | Memory representation        | Mutability          |
+|----------|----------------------------------------------------|------------------------------|---------------------|
+| `str`    | UTF-8 string value                                 | `(ptr, len)` value; bytes are an immortal constant or a GC object  | **immutable** |
+| `StrBuf` | growable UTF-8 buffer                              | GC heap object               | mutable             |
+| `char`   | Unicode scalar value (language built-in)           | 4B (u32)                     | (value, cannot change)  |
+| `c_char` | C ABI 1-byte char (FFI primitive)                  | 1B (i8 or u8, target-dependent)  | (value)         |
+
+### Rust / Python / Nabi model comparison
+
+How the three languages handle strings:
+
+| Aspect         | Rust             | Python             | Nabi                        |
+|----------------|------------------|--------------------|----------------------------|
+| Value          | `&str`           | `str`              | `str` (immutable `(ptr, len)`) |
+| Mutable buffer | `String`         | `io.StringIO`, etc. | `StrBuf`                  |
+| Memory         | borrow checker   | refcount           | GC                         |
+
+Nabi's `str` is close to Python's immutable `str` in needing no lifetime tracking, and is represented like Rust's `&str` as a `(ptr, len)` pair. The bytes of strings created at runtime live in a GC object (type id `1`, [refs-lang 8.2.12](../../refs-lang/008-abi/802-scan-table.md#8212-runtime-reserved-type-ids)).
+
+## 2.15.2. `str` - immutable UTF-8 string
+
+`str` is a primitive type built into the compiler, so it needs no declaration, struct or `#[keyword]`. Its value is a `(ptr, len)` pair: the address of its bytes and their length in bytes (not the char count).
+
+`str` is a `(ptr, len)` pair passed by value, and the bytes it points to never change. Every operation that modifies a string returns a new `str`.
+
+### Core methods
+
+```nabi
+impl str {
+    fn new() -> str;                        // ""
+    fn from_utf8<B: AsBytes>(bytes: B) throws (Utf8Error) -> str;
+    fn from_utf8_lossy<B: AsBytes>(bytes: B) -> str;   // each ill-formed sequence → U+FFFD
+    fn from_utf16<U: IntoIterator<Item = u16>>(units: U) throws (Utf16Error) -> str;
+    fn from_utf16_lossy<U: IntoIterator<Item = u16>>(units: U) -> str;   // each unpaired surrogate → U+FFFD
+
+    fn len(self) -> usize;                  // byte length
+    fn char_count(self) -> usize;           // number of chars, same as chars().count()
+    fn is_empty(self) -> bool;
+    fn as_bytes(self) -> Slice<u8>;         // read-only view without copying
+    fn byte(self, i: usize) -> u8;          // O(1), panics when out of range
+    fn as_ptr(self) -> ConstPtr<u8>;        // FFI
+    fn encode_utf16(self) -> List<u16>;     // UTF-16 code units, no NUL (2.15.6)
+
+    // reading methods
+    fn chars(self) -> Chars;            // Unicode scalar iterator
+    fn bytes(self) -> Bytes;            // u8 iterator
+    fn char_indices(self) -> CharIndices;
+    fn lines(self) -> Lines;            // strips a trailing \r, does not yield a final empty line
+    fn split(self, sep: str) -> Split;  // keeps empty pieces ("a,,b" → "a", "", "b")
+    fn split_whitespace(self) -> SplitWhitespace;   // splits on Unicode White_Space (same set as trim)
+    fn splitn(self, n: usize, sep: str) -> SplitN;    // at most n pieces; the last is the unsplit rest
+    fn rsplit(self, sep: str) -> RSplit;              // split's pieces, last first
+    fn rsplitn(self, n: usize, sep: str) -> RSplitN;  // at most n pieces from the end, last first
+    fn match_indices(self, pat: str) -> MatchIndices; // (byte offset, match), non-overlapping
+
+    fn starts_with(self, pat: str) -> bool;
+    fn ends_with(self, pat: str) -> bool;
+    fn contains(self, pat: str) -> bool;
+    fn find(self, pat: str) -> usize | none;
+    fn rfind(self, pat: str) -> usize | none;
+
+    fn strip_prefix(self, prefix: str) -> str | none;   // the rest after removing the prefix, if present
+    fn strip_suffix(self, suffix: str) -> str | none;
+    fn split_once(self, sep: str) -> (str, str) | none; // before / after the first sep
+    fn repeat(self, n: usize) -> str;
+
+    fn trim(self) -> str;                   // strips Unicode White_Space
+    fn trim_start(self) -> str;
+    fn trim_end(self) -> str;
+    fn trim_matches(self, pat: str) -> str;           // strips every leading and trailing repeat of pat
+    fn trim_start_matches(self, pat: str) -> str;
+    fn trim_end_matches(self, pat: str) -> str;
+
+    fn to_lowercase(self) -> str;           // new str (full Unicode mapping: 1:N, including context rules)
+    fn to_uppercase(self) -> str;
+    fn replace(self, from: str, to: str) -> str;   // empty from matches at every char boundary: "ab".replace("", "-") == "-a-b-"
+
+    fn parse<T: FromStr>(self) throws (T::Err) -> T;
+}
+
+// UTF-8-safe slicing: s[a:b] dispatches here and validates byte boundaries
+impl Sliceable<Range<usize>> for str { type Output = str; }   // shares bytes
+```
+
+`splitn` and `rsplitn` yield at most `n` pieces; the last piece is the rest of the string, unsplit, and `n == 0` yields nothing. `rsplitn` searches from the end, so `"a.b.c".rsplitn(2, ".")` yields `"c"`, then `"a.b"`. Like `split`, an empty `sep` yields the whole string as one piece. `match_indices` yields a `(usize, str)` pair for each match, left to right; after a match the search resumes past it, so `"aaaaa".match_indices("aa")` yields offsets 0 and 2. An empty `pat` matches nothing. `trim_matches` removes whole repeats of `pat` from both ends (`"--x--".trim_matches("-") == "x"`, `"aaa".trim_matches("aa") == "a"`); an empty `pat` leaves the string unchanged.
+
+```nabi
+"key=a=b".splitn(2, "=");               //→ "key", "a=b"
+"x.tar.gz".rsplitn(2, ".");             //→ "gz", "x.tar"
+"ab-ab".match_indices("ab");            //→ (0, "ab"), (3, "ab")
+"--x--".trim_start_matches("-");        //→ "x--"
+```
+
+`as_ptr` returns a pointer to the string's bytes in place. The GC does not move the string, and the pointer stays valid, while a variable holding the `str` is in scope in a function where a pointer value can appear: a variable's or an expression's type names a `bare::ptr` type, also as a type argument (`List<ConstPtr<u8>>`) or in a function type. In a generator or `async` body this holds across `yield` / `await`. Elsewhere a variable holds the string only up to its last use, and a string reachable only through another object may be moved by the GC: it is not pinned ([stdlib 1.6](../100-bare/106-gc-pin.md)). To keep the bytes in place longer, pin the string ([1.6.6](../100-bare/106-gc-pin.md#166-extraction-methods)).
+
+### Python-named gaps
+
+```nabi
+fn reversed(self) -> str;                       // characters in reverse order; Python s[::-1]
+fn count(self, pat: str) -> usize;              // non-overlapping occurrences; "" counts len+1
+fn replacen(self, from: str, to: str, n: usize) -> str;   // the first n occurrences
+fn to_titlecase(self) -> str;                   // each word's first letter titlecased, the rest lowercased
+```
+
+`reversed` reverses code points. `count("")` is the number of characters plus one, as Python. In `to_titlecase` a word starts at a letter that does not follow a letter, a digit or an apostrophe, so `"don't"` stays one word (unlike Python's `title()`); the mappings are the full Unicode ones (2.15.4).
+
+### `StrBuf` - mutable buffer
+
+Use `StrBuf` to build a string piece by piece.
+
+```nabi
+struct StrBuf { /* GC heap handle: len / capacity / bytes */ }
+
+impl StrBuf {
+    fn new() -> StrBuf;                     // capacity 16
+    fn with_capacity(cap: usize) -> StrBuf;
+    fn len(self) -> usize;                  // byte length
+    fn is_empty(self) -> bool;
+    fn capacity(self) -> usize;             // in bytes
+    fn clear(self);                         // length 0, capacity kept
+    fn reserve(self, additional: usize);    // room for `additional` more bytes (grows by doubling)
+    fn push(self, c: char);                 // appends one char (UTF-8 encoded)
+    unsafe fn push_byte(self, b: u8);       // caller keeps the contents UTF-8; the safe byte path is str::from_utf8
+    fn push_str(self, s: str);
+    fn to_str(self) -> str;                 // immutable copy of the current contents
+}
+
+impl !Sync for StrBuf {}
+```
+
+Like a collection, `StrBuf` is a reference handle, so its methods take `self` ([2.9](209-collections.md)); copies of the handle share one buffer, so it is not `Sync` ([2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)). It displays as its contents.
+
+```nabi
+let buf = StrBuf::new();
+for x in xs {
+    buf.push_str(f"{x},");
+}
+let s: str = buf.to_str();
+```
+
+### String literals - `"hello"`
+
+```nabi
+let s: str = "hello";        // a str pointing to immortal constant bytes
+```
+
+A `"hello"` literal lowers to a `str` value pointing to constant bytes in the immortal region. Because `str` is immutable, there is no copying or copy-on-write.
+
+### Trait implementations
+
+| Trait                       | impl                           | Behavior                                   |
+|-----------------------------|--------------------------------|--------------------------------------------|
+| `Display`                   | ✓                              | self as is                                 |
+| `Debug`                     | ✓                              | `"..."` with escapes                       |
+| `Clone`                     | ✓                              | same value (immutable, so bytes are shared) |
+| `Copy`                      | ✓                              | copies the `(ptr, len)` value              |
+| `PartialEq`                 | ✓                              | content comparison (byte-wise)             |
+| `Eq`                        | ✓                              |                                            |
+| `PartialOrd`                | ✓                              | lexicographic by byte                      |
+| `Ord`                       | ✓                              |                                            |
+| `Hash`                      | ✓                              |                                            |
+| `IntoIterator`              | **none**                       | explicit `.chars()`; avoids byte vs char ambiguity  |
+| `Add<str>` (`s + t`)        | ✓ → str (concat, new str)      |                                            |
+| `Add<char>` (`s + c`)       | ✓ → str (`c` appended, new str) |                                           |
+| `AddAssign<str>`, `AddAssign<char>` (`s += t`, `s += c`) | ✓ | `s = s + t`: a new str replaces `s`     |
+| `FromIterator<char>`        | ✓                              | `(chars).collect::<str>()`                 |
+| `FromIterator<str>`         | ✓                              | `(strs).collect::<str>()`                  |
+
+> [!NOTE]
+> `str` is an immutable value, so `let t = s;` only copies `(ptr, len)`, and neither side can change the contents.
+
+## 2.15.3. `s[a:b]` slicing - UTF-8 safe
+
+```nabi
+let s: str = "hello, 세계!";
+s.len();                       //→ 14  (byte length: "hello, " 7 + Korean 3 bytes × 2 + "!" 1)
+s.chars().count();             //→ 10  (char count)
+s.char_count();                //→ 10  (same, without an iterator)
+
+let s2 = s[7:13];              //→ "세계"  (byte boundary OK)
+let s3 = s[8:9];               // panic: byte in the middle of a UTF-8 sequence
+let s4 = s[7:100];             //→ "세계!" (end clamped to the length)
+let s5 = s[-1:];               //→ "!"
+```
+
+The bounds of `str` / `StrBuf` are byte offsets. Bounds are first clamped as in Python (negative counts from the end, [refs-lang 3.6.2](../../refs-lang/003-expressions/306-indexing-and-slicing.md#362-slicing-arrstartend)); if the resulting position is in the middle of a UTF-8 sequence, it panics. The result is a `str` sharing the original bytes (below). `str` slices have no step; `s[::2]` is a type error.
+
+### Char boundaries and slicing that cannot panic
+
+```nabi
+impl str {
+    fn is_char_boundary(self, i: usize) -> bool;       // i starts a char, or i == len()
+    fn floor_char_boundary(self, i: usize) -> usize;   // the boundary at or before i
+    fn ceil_char_boundary(self, i: usize) -> usize;    // the boundary at or after i
+    fn get(self, r: Range<usize>) -> str | none;       // none instead of a panic or a clamp
+    fn char_slice(self, a: usize, b: usize) -> str;    // chars a..b, counted like chars()
+}
+```
+
+```nabi
+let s = "hello, 세계!";
+s.is_char_boundary(8);         //→ false (inside "세")
+s.floor_char_boundary(8);      //→ 7
+s.ceil_char_boundary(8);       //→ 10
+s.get(7..10);                  //→ "세"
+s.get(8..10);                  //→ none (off a boundary)
+s.get(7..100);                 //→ none (past the end: no clamping)
+s.char_slice(7, 9);            //→ "세계"
+s.char_slice(0, 5);            //→ "hello" (the first 5 chars)
+```
+
+`get` returns `none` when `r.start > r.end`, when either bound is past `len()` or when either is not a char boundary; otherwise it is `s[r.start:r.end]`. `floor_char_boundary` and `ceil_char_boundary` return `len()` for any `i >= len()`. `char_slice` counts chars from 0 as `chars()` yields them; both bounds clamp to `char_count()` and `a >= b` gives `""`. It walks the string, O(b). By user-perceived character, use `grapheme_slice` ([2.15.10](#21510-unicode-text---normalization-case-folding-segmentation)).
+
+A slice off a char boundary panics with a message that names these:
+
+```text
+string slice is not on a char boundary: byte 8 is inside `세` (bytes 7..10)
+string offsets count bytes; to work by character, use `chars()`, `char_indices()` or `char_slice(a, b)`
+to cut at a boundary, use `floor_char_boundary(i)`; `get(a..b)` gives `none` instead of a panic
+```
+
+### Direct indexing rejected
+
+```nabi
+let s: str = "hello";
+let c = s[0];                  // ERROR: `Index<usize>` is not defined
+                               //         reason: byte vs char ambiguity + UTF-8 safety
+```
+
+The intent must be stated explicitly, as in `s.chars().next()` or `s.byte(0)`.
+
+### Substrings are not copied
+
+For a `str` `s`, the results of `s[a:b]`, `lines`, `split*`, `rsplit*`, `split_whitespace`, `split_once`, `match_indices`, `trim*` and `strip_*` are `str` values sharing the original bytes, in O(1) ([refs-lang 8.8.1](../../refs-lang/008-abi/808-lowering-types.md#881-primitive-integers--floating-point)). A small piece therefore keeps a large original alive. There is no API to detach it. `as_bytes()` is likewise a read-only `Slice<u8>` view without copying. A slice of a `StrBuf` is a new `str` holding a copy of the range, O(b − a): `str` is immutable, so it cannot share a buffer that may still change.
+
+## 2.15.4. `char` - Unicode scalar value
+
+`char` is a language built-in type ([2.1](201-numbers.md)): a 4-byte Unicode scalar value, not a struct. This module defines its methods.
+
+The Unicode scalar value range is the union of 0..=0xD7FF and 0xE000..=0x10FFFF. The surrogate range 0xD800..=0xDFFF is used as an **automatic niche**, so `char | none` can be encoded in 4B.
+
+### Literals / methods
+
+```nabi
+let c: char = 'A';                   //→ U+0041
+let k: char = '한';                  //→ U+D55C
+let e: char = '😀';                  //→ U+1F600
+
+c.to_lowercase();                    //→ "a"
+c.is_alphabetic();                   //→ true
+c.is_ascii();                        //→ true
+'1'.to_digit(10);                    //→ 1 (u32 | none; none if not a digit)
+c.len_utf8();                        //→ 1 (number of bytes when UTF-8 encoded)
+e.len_utf8();                        //→ 4
+```
+
+```nabi
+impl char {
+    fn from_u32(n: u32) -> char | none;                  // none for a surrogate / out of range
+    unsafe fn from_u32_unchecked(n: u32) -> char;        // no check; the caller guarantees a scalar value
+    fn from_digit(d: u32, radix: u32) -> char | none;    // none if d >= radix; panics if radix is outside 2..=36
+    fn to_digit(self, radix: u32) -> u32 | none;         // none if not a digit; panics if radix is outside 2..=36
+    fn is_digit(self, radix: u32) -> bool;               // panics if radix is outside 2..=36
+    fn len_utf8(self) -> usize;
+    fn len_utf16(self) -> usize;
+
+    // Unicode properties
+    fn is_alphabetic(self) -> bool;
+    fn is_lowercase(self) -> bool;
+    fn is_uppercase(self) -> bool;
+    fn is_whitespace(self) -> bool;
+    fn is_numeric(self) -> bool;
+    fn is_alphanumeric(self) -> bool;
+    fn is_control(self) -> bool;
+    fn to_lowercase(self) -> str;           // the full mapping, 1:N included
+    fn to_uppercase(self) -> str;
+    fn to_titlecase(self) -> str;
+    fn to_simple_lowercase(self) -> char;   // UCD simple mappings (slc / suc / stc), 1:1
+    fn to_simple_uppercase(self) -> char;
+    fn to_simple_titlecase(self) -> char;
+
+    // ASCII
+    fn is_ascii(self) -> bool;
+    fn is_ascii_uppercase(self) -> bool;     fn is_ascii_lowercase(self) -> bool;
+    fn is_ascii_alphabetic(self) -> bool;    fn is_ascii_digit(self) -> bool;
+    fn is_ascii_alphanumeric(self) -> bool;  fn is_ascii_hexdigit(self) -> bool;
+    fn is_ascii_whitespace(self) -> bool;    fn is_ascii_control(self) -> bool;
+    fn is_ascii_graphic(self) -> bool;       fn is_ascii_punctuation(self) -> bool;
+    fn to_ascii_uppercase(self) -> char;     fn to_ascii_lowercase(self) -> char;
+    fn eq_ignore_ascii_case(self, other: char) -> bool;
+}
+```
+
+`char`'s `to_lowercase` / `to_uppercase` / `to_titlecase` return a `str` with the full Unicode mapping, which may be several characters (`'ß'.to_uppercase() == "SS"`, `'ß'.to_titlecase() == "Ss"`, `'ǆ'.to_titlecase() == "ǅ"`, `'ﬁ'.to_titlecase() == "Fi"`, `'\u{130}'.to_lowercase() == "i\u{307}"`). The `to_simple_*` forms return one `char` with the UCD simple mapping, the character itself when it has none (`'ß'.to_simple_uppercase() == 'ß'`, `'ǆ'.to_simple_titlecase() == 'ǅ'`); they never allocate. `str`'s `to_lowercase` / `to_uppercase` apply the full mapping, including 1:N mappings and context rules (Greek final sigma `Σ` → `ς`) (`"ß".to_uppercase() == "SS"`). Case mapping is locale-independent. For caseless comparison, use full case folding (`casefold`, [2.15.10](#21510-unicode-text---normalization-case-folding-segmentation)), not `to_lowercase`.
+
+The Unicode property and case tables are UCD 18.0.0.
+
+### Conversion
+
+```nabi
+char::from_u32(0x41);                //→ 'A' (char | none; none for a surrogate)
+char::from_digit(5, 10);             //→ '5' (char | none; none if 5 is not a digit of the radix)
+
+let n: u32 = c as u32;               //→ 65 (lossless)
+let c2: char = n as char;            //→ ERROR: only u8 can `as char`
+let b: u8 = 0x41;
+let c4: char = b as char;            //→ 'A' (a u8 is always a scalar value)
+let c3 = try char::try_from(n);      //→ char (TryFrom<u32>: via from_u32, OverflowError if none)
+```
+
+### Trait implementations
+
+`char` implements every cmp / fmt trait as well as `Copy`, `Clone` and `Hash`. The niche applies automatically, so `char | none` is 4B.
+
+## 2.15.5. `c_char` - C ABI 1-byte (language built-in)
+
+`c_char` is an FFI primitive built into the compiler, not a struct. It is one byte; whether it is signed (`i8`) or unsigned (`u8`) depends on the target (OS / arch). This module compares, orders and hashes it as its byte (`c as u8`). It implements `Clone`, `Copy`, `PartialEq`, `Eq`, `PartialOrd`, `Ord`, `Hash` and `Debug`, which prints the byte as a number (`65`); it has no `Display`.
+
+It is ABI-compatible with C's `char`; it is a raw byte, not a UTF-8 encoding unit. Its use is FFI only:
+
+```nabi
+extern "C" {
+    fn strlen(s: ConstPtr<c_char>) -> usize;
+    fn strcmp(a: ConstPtr<c_char>, b: ConstPtr<c_char>) -> i32;
+}
+```
+
+### Literals
+
+```nabi
+let c: c_char = c'A';        //→ 65 (i8/u8, target-dependent)
+let n: c_char = c'\n';       //→ 10
+```
+
+The prefixed form `c'...'` separates it from `char`.
+
+### char vs c_char
+
+Comparing the two types makes the difference clear.
+
+| Aspect       | `char`                              | `c_char`                      |
+|--------------|-------------------------------------|-------------------------------|
+| Size         | 4 bytes                             | 1 byte                        |
+| Meaning      | Unicode scalar (code point)         | C ABI byte                    |
+| Range        | 0..=0x10FFFF (excluding surrogates) | 0..=255 or -128..=127         |
+| Multibyte    | a single char covers both BMP / SMP | a multibyte char = byte sequence |
+| Literal      | `'A'`                               | `c'A'`                        |
+| Registration | language built-in                   | language built-in             |
+| Used for     | general string processing           | FFI / byte-level processing   |
+
+Standard library functions therefore use **`char` first** as a rule, and `c_char` only at explicit FFI boundaries.
+
+## 2.15.6. UTF-8 invariant - every in-process string
+
+A `str` is always guaranteed to be valid UTF-8, for these reasons. Constructors validate: `str::from_utf8(bytes)` throws `Utf8Error` on an invalid byte sequence (`throws (Utf8Error)`). Slicing validates byte boundaries and rejects positions in the middle of a multibyte sequence. In-place modifications such as `StrBuf::push` or `push_str` also preserve UTF-8 integrity. Only `unsafe` code can bypass validation: `StrBuf::push_byte` (an `unsafe fn` that appends one byte unchecked) and `bare::mem::transmute_unchecked`.
+
+### Why validation bypass is restricted
+
+Consider what goes wrong if the UTF-8 invariant **breaks**: `chars()` may panic or loop forever, a truncated multibyte sequence may display incorrectly, and security issues such as overlong encodings may arise.
+
+Because the standard library guarantees validation at construction time, `str.chars()` and the like always behave safely in user code. The invariant cannot be broken without entering unsafe code.
+
+### byte ↔ str conversion
+
+```nabi
+let bytes: List<u8> = [0x68, 0x65, 0x6C, 0x6C, 0x6F];
+let s: str = try str::from_utf8(bytes);
+                                          //→ "hello"
+
+let invalid: List<u8> = [0xFF, 0xFE];
+let t: str = try str::from_utf8(invalid);
+                                          //→ throws a Utf8Error, valid_up_to() == 0
+```
+
+```nabi
+struct Utf8Error { .. }       // private fields (0.5.10)
+impl Utf8Error {
+    fn valid_up_to(self) -> usize;   // length of the valid UTF-8 prefix, in bytes
+    fn message(self) -> str;         // "invalid UTF-8 at byte {valid_up_to}"
+}
+```
+
+`Utf8Error` implements `Display` (its `message()`), `Debug`, `Error`, `PartialEq`, `Eq` and `Clone`. It is the one UTF-8 error: every failed UTF-8 check in the standard libraries throws it (`str::from_utf8`, `CStr::to_str`, `RawStr::to_str`, `RawPath::to_path`).
+
+`str::from_utf8_lossy(bytes)` never throws: each maximal subpart of an ill-formed sequence (Unicode §3.9, U+FFFD Substitution of Maximal Subparts; the WHATWG UTF-8 decoder's behavior) becomes one U+FFFD.
+
+### UTF-16
+
+```nabi
+let u = "h\u{E9}\u{1F600}".encode_utf16();    //→ [104, 233, 55357, 56832]
+let s = try str::from_utf16(u);               //→ "hé😀"
+let t = try str::from_utf16([0x61u16, 0x62u16, 0xDC00u16]);
+                                              //→ throws a Utf16Error, valid_up_to() == 2
+str::from_utf16_lossy([0x61u16, 0xD800u16]);  //→ "a\u{FFFD}"
+```
+
+`encode_utf16` gives the string's UTF-16 code units, a char above U+FFFF as a surrogate pair, without a NUL (for a NUL-terminated string to pass to C, `bare::ffi::WideCString`, [stdlib 1.7.12](../100-bare/107-ffi.md#1712-widecstr--widecstring---wchar_t-strings)). `str::from_utf16` takes the units back from any `IntoIterator<Item = u16>`: a `List<u16>`, a `Slice<u16>` or a `[u16; N]`. It throws `str::Utf16Error` at the first unpaired surrogate: a high surrogate not followed by a low one, a low one alone, or a high one at the end. `str::from_utf16_lossy` puts one U+FFFD in place of each unpaired surrogate and never throws.
+
+```nabi
+struct Utf16Error { .. }      // str::Utf16Error; private fields (0.5.10)
+impl Utf16Error {
+    fn valid_up_to(self) -> usize;   // length of the valid prefix, in units
+    fn message(self) -> str;         // "unpaired surrogate at unit {valid_up_to}"
+}
+```
+
+`Utf16Error` implements `Display` (its `message()`), `Debug`, `Error`, `PartialEq`, `Eq` and `Clone`. `bare::ffi::WideCStr::to_str` throws it too.
+
+## 2.15.7. `FromStr` trait - parsing
+
+```nabi
+trait FromStr {
+    type Err;
+    fn from_str(s: str) throws (Err) -> Self;
+}
+```
+
+`str.parse::<T>()` is `throws (T::Err)` and dispatches through this trait. For numeric types, `bool`, `char` and `str`, `Err` is core's `ParseError` (`input()`, `position()`, `message()`) ([2.14.4](214-error.md#2144-built-in-error-types)). `char` parses a string of exactly one character and fails with `empty string` or `too many characters`; `str` returns its input and never throws. Numeric parsing is implemented on top of the runtime helpers `nabi_str_parse_int` / `nabi_str_parse_float` ([refs-lang 8.5](../../refs-lang/008-abi/805-extern-symbols.md#string-helpers)). Float `FromStr` fails with `number out of range` when finite digits exceed the type's range; `inf` / `NaN` text parses.
+
+```nabi
+let n: i32 = try "42".parse();         // FromStr for i32
+let f: f64 = try "3.14".parse();       // FromStr for f64
+let b: bool = try "true".parse();      // FromStr for bool
+let c: char = try "x".parse();         // FromStr for char
+
+// user-defined
+impl FromStr for Color {
+    type Err = ParseColorError;
+    fn from_str(s: str) throws (ParseColorError) -> Color { ... }
+}
+let c: Color = try "red".parse();
+```
+
+`FromStr` is **separate** from `TryFrom<str>` in [2.11 conversion](211-conversion.md). It handles only `str → T` conversion and makes fallibility explicit.
+
+## 2.15.8. Module mapping
+
+How the types are registered and where they are implemented:
+
+| Type     | Registration      | Implementation                       |
+|----------|-------------------|--------------------------------------|
+| `str`    | language built-in | compiler (methods: standard library) |
+| `StrBuf` | ordinary struct   | standard library                     |
+| `c_char` | language built-in | compiler (methods: standard library) |
+| `char`   | language built-in | compiler (methods: standard library) |
+
+The `str` and `char` method bodies call runtime helpers declared as `extern "nabi"` functions in `core::rt`: `nabi_str_*` (length, comparison, search, slicing, case mapping and folding, trimming, parsing, normalization, segmentation) and `nabi_char_*` (Unicode properties and case) ([refs-lang 8.5](../../refs-lang/008-abi/805-extern-symbols.md#string-helpers)). They carry no `#[intrinsic]` attribute.
+
+## 2.15.9. Comparison with other languages
+
+| Aspect          | Rust              | Python 3                | Java                    | Nabi                                |
+|-----------------|-------------------|-------------------------|-------------------------|------------------------------------|
+| Type split      | `&str` + `String` | `str` (single)          | `String`                | `str` + `StrBuf`                   |
+| Mutability      | only `String` mutable | **immutable**       | **immutable**           | `str` immutable, `StrBuf` mutable  |
+| Encoding        | UTF-8             | unspecified (implementation-dependent) | UTF-16   | UTF-8                              |
+| char            | `char` (4B)       | `str` (single-char)     | `char` (2B = code unit) | `char` (4B Unicode scalar)         |
+| FFI byte        | `c_char` / `u8`   | `bytes`                 | `byte`                  | `c_char` (1B, target-dependent)    |
+| Meaning of len  | byte len          | char count              | UTF-16 code unit        | byte len (explicit `.char_count()`)    |
+| index `s[i]`    | **none**          | char (Python str)       | UTF-16 code unit        | **none** (explicit chars/bytes)    |
+
+`str` is an immutable `(ptr, len)` value, and the mutable buffer is split off as `StrBuf`; with a GC, no lifetime distinction is needed, unlike Rust. `len()` means **byte length**, matching Rust; the char count is obtained separately with `char_count()` (or `chars().count()`). By **not providing** `s[i]`, Nabi matches Rust and avoids byte vs char ambiguity. Defining `char` as a 4B Unicode scalar avoids the surrogate pitfalls caused by Java's 2B UTF-16 code units. Finally, `c_char` is a separate type, keeping a clear ABI distinction from `char`.
+
+## 2.15.10. Unicode text - normalization, case folding, segmentation
+
+The module `core::str::unicode` holds what text needs beyond code points: the normalization forms (UAX #15), full case folding, and segmentation into grapheme clusters and words (UAX #29). Its methods are on `str`, so they need no import. The tables are UCD 18.0.0 in the runtime, the version of the `char` properties (2.15.4).
+
+```nabi
+enum NormalForm { Nfc, Nfd, Nfkc, Nfkd }
+
+impl str {
+    fn normalize(self, form: NormalForm) -> str;        // self itself when already in form
+    fn is_normalized(self, form: NormalForm) -> bool;
+    fn casefold(self) -> str;                            // full case folding
+    fn eq_ignore_case(self, other: str) -> bool;         // canonical caseless match
+
+    fn graphemes(self) -> Graphemes;                     // extended grapheme clusters
+    fn grapheme_count(self) -> usize;
+    fn grapheme_slice(self, a: usize, b: usize) -> str;  // clusters a..b
+    fn split_word_bounds(self) -> WordBounds;            // every piece between word boundaries
+    fn words(self) -> Words;                             // the pieces holding a letter or a digit
+}
+```
+
+`Graphemes`, `WordBounds` and `Words` are iterators of `str` slices sharing the original bytes. `Graphemes` is also a `DoubleEndedIterator`: `next_back` and `rev()` give the same clusters from the end, and the two ends meet on a boundary. A bare `Nfc` resolves from the parameter type, so a call needs no import either; code that names the type writes `use core::str::unicode::NormalForm;`.
+
+### Normalization
+
+One text can be spelled with different code points: `"é"` is U+00E9, or `e` followed by U+0301 COMBINING ACUTE ACCENT. `==`, `Hash` and `Dict` keys compare bytes, so they tell the two apart; normalize both sides first.
+
+```nabi
+let a = "caf\u{e9}";                  // é as one code point
+let b = "cafe\u{301}";                // e + combining acute
+a == b;                               //→ false (different bytes)
+a == b.normalize(Nfc);                //→ true
+b.normalize(Nfd).len();               //→ 6
+a.is_normalized(Nfc);                 //→ true
+"ﬁ①".normalize(Nfkc);                 //→ "fi1"
+"\u{1100}\u{1161}".normalize(Nfc);    //→ "가" (Hangul jamo compose)
+```
+
+| Form   | Result                                                                             |
+|--------|------------------------------------------------------------------------------------|
+| `Nfd`  | canonical decomposition, combining marks in canonical order                       |
+| `Nfc`  | `Nfd`, then canonical composition (composition exclusions stay decomposed)         |
+| `Nfkd` | `Nfd` plus the compatibility decompositions (ligatures, full-width and circled forms, superscripts) |
+| `Nfkc` | `Nfkd`, then canonical composition                                                 |
+
+Hangul syllables decompose and compose algorithmically. `Nfc` is the form to store and compare text in. `Nfkc` / `Nfkd` lose distinctions (`"²"` becomes `"2"`), so they suit search keys and identifiers, not storage.
+
+`normalize` first runs the quick check (the `NFC_QC`, `NFD_QC`, `NFKC_QC` and `NFKD_QC` properties): when it answers Yes, the result is `self`, without a copy; otherwise the text after the last stable starter before the first char that is not Yes is normalized. `is_normalized` is that quick check, finished by a comparison where it answers Maybe; it allocates nothing for text that answers Yes or No. A `str` that is not UTF-8 (raw OS bytes) comes back unchanged and is in no form.
+
+### Case folding
+
+```nabi
+"Straße".casefold();                       //→ "strasse"
+"ΣΑΣ".casefold();                          //→ "σασ"
+"STRASSE".eq_ignore_case("straße");        //→ true
+"Cafe\u{301}".eq_ignore_case("CAFÉ");      //→ true
+```
+
+`casefold` applies full case folding (CaseFolding.txt, statuses C and F): mostly the lowercase mapping, but also `ß` → `ss`, `ς` → `σ` and the other differences that matter only to comparison. It is locale-independent (the Turkic `T` mappings are not applied). Folded text is for comparison, not display. `eq_ignore_case` is canonical caseless matching: `NFD(casefold(NFD(x)))` of both sides compared, so it also ignores how accents are spelled. For ASCII-only text, `char::eq_ignore_ascii_case` is enough.
+
+### Grapheme clusters and words
+
+A grapheme cluster is what a reader takes as one character: a letter with its combining marks, a Hangul syllable written in jamo, a flag of two regional indicators, an emoji ZWJ sequence.
+
+```nabi
+let s = "e\u{301}🇰🇷👩\u{200D}💻";
+s.char_count();                                //→ 7
+s.grapheme_count();                            //→ 3
+s.graphemes().to_list();                       //→ ["é", "🇰🇷", "👩‍💻"]
+s.grapheme_slice(0, 2);                        //→ "é🇰🇷"
+
+"can't stop, 3.14!".words().to_list();         //→ ["can't", "stop", "3.14"]
+"a, b".split_word_bounds().to_list();          //→ ["a", ",", " ", "b"]
+```
+
+`graphemes` follows the default extended grapheme cluster rules of UAX #29 (GB1-GB999, Indic conjuncts, emoji ZWJ sequences and regional indicator pairs included). `grapheme_slice` counts clusters as `char_slice` counts chars: both bounds clamp to `grapheme_count()`, `a >= b` gives `""`, O(b); `s.grapheme_slice(0, n)` keeps the first `n` user-perceived characters.
+
+`split_word_bounds` yields every piece between the default word boundaries of UAX #29 (WB1-WB999): words, runs of spaces and each punctuation mark, so joining the pieces gives back the text. `words` keeps the pieces holding an alphabetic or numeric char. The boundaries are the default ones, without dictionaries or locale tailoring: each ideograph is a word of its own, and a run of Thai letters is one piece.
+
+The segmentation passes every line of UCD 18.0.0 `GraphemeBreakTest.txt` and `WordBreakTest.txt`, and normalization every line of `NormalizationTest.txt`.

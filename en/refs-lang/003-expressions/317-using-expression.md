@@ -1,0 +1,155 @@
+# 3.17. `using` expression - deterministic release of resources
+
+The `using` keyword ([keywords](../001-lexical/105-keywords.md)) is an expression form that ties a resource to the lifetime of a block. However the block ends (normal completion, early `return`, `none` return by `?`, error propagation), `Drop::drop` of the bound resource is always called.
+
+The GC reclaims memory automatically, but external resources (files, sockets, mutexes, FFI handles, GC pins, etc.) must be released deterministically. A `Drop` value is affine: the compiler releases it where its owner leaves scope ([stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)). `using` makes that point explicit: it ties the value to its block and releases it when the block ends, and it is the way to close a value whose close can fail without writing `try x.close()`.
+
+## 3.17.1. Form
+
+```
+using_expr     ::= "using" using_binding ("," using_binding)* block
+using_stmt     ::= "using" using_binding ("," using_binding)* ";"
+using_binding  ::= pattern "=" expr
+```
+
+`using_stmt` is the statement form of [3.17.9](#3179-statement-form).
+
+The components mean:
+
+- `pattern` may be any irrefutable pattern defined in [patterns](311-patterns.md) (identifier, tuple, struct destructuring, etc.). In most cases a single identifier is used. What is released is the whole value of `expr`.
+- `expr` is an expression that creates or obtains the resource. Its result type must implement the [`Drop`](../../refs-standard-libraries/200-core/213-marker.md) trait.
+- If acquiring the resource can fail, mark `expr` with `try` (`using f = try fs::open(path) { ... }`). If acquisition raises an error, control leaves with no resource bound, so no `Drop` call occurs. The detailed semantics follow [error control flow](314-error-control-flow.md).
+- Several bindings joined with `,` form multiple resources; the detailed behavior is defined in [3.17.4 multiple resources](#3174-multiple-resources).
+- `block` follows the rules of [block expressions](309-block-expressions.md), and the value of its last expression is the value of the whole `using` expression.
+
+## 3.17.2. Simplest example
+
+```nabi
+using f = try fs::open(path) {
+    try f.read_to_end()               // the last expression is the value of using
+}                                  // ← f.drop() is called automatically here
+```
+
+The return type of `fs::open(path)` is `File`, and `File: Drop`, so it can be the target of `using`. When the block ends, `File::drop` is called and the OS handle is closed.
+
+## 3.17.3. Combining with `try`
+
+When acquiring the resource can itself fail, mark the acquisition expression with `try`.
+
+```nabi
+fn read_text(path: str) throws (IoError) -> str {
+    using f = try fs::open(path) {     // on failure, IoError propagates
+        try f.read_to_str()            // try can propagate inside the body too
+    }                                  // if f was bound, it is dropped on both success and error
+}
+```
+
+This form is semantically equivalent to the following expanded code.
+
+```nabi
+let f = try fs::open(path);
+try {
+    f.read_to_str()
+} finally {
+    f.drop();          // a call inserted by the compiler; writing it directly is an error
+}
+```
+
+Even if an error propagates inside the body, `drop` is called at the position corresponding to `finally`.
+
+## 3.17.4. Multiple resources
+
+To bind several resources to one block, nest `using` or join the bindings with commas. This specification allows both forms, and their meaning is equivalent.
+
+```nabi
+using a = AcquireA() {
+    using b = AcquireB(a) {
+        body
+    }
+}
+
+// or the shorthand form
+using a = AcquireA(), b = AcquireB(a) {
+    body
+}
+```
+
+Both forms follow **reverse-order release**: `b` is dropped first, then `a`. This is the same rule as Java try-with-resources. Releasing in reverse order safely unwinds dependencies (`b` referring to `a`).
+
+## 3.17.5. `using` as an expression
+
+`using` is an expression, not a statement, and its value is the value of the body block.
+
+```nabi
+let content = using f = try fs::open(path) {
+    try f.read_to_end()
+};
+```
+
+This is the biggest structural difference from function-scoped `defer` (Go). The `using` expression follows the relevant rules of [block expressions](309-block-expressions.md) and can be used in any expression position.
+
+## 3.17.6. When drop is called
+
+`using` guarantees `drop` of the bound resource on all five of the following paths:
+
+- normal completion of the block (last expression evaluated)
+- `return` inside the body
+- `break` / `continue` inside the body
+- `none` return by `?` inside the body
+- `throw` inside the body, and error propagation from calls marked with `try`
+
+Panics and fatal errors terminate the process immediately, so `drop` is not called ([3.14.8](314-error-control-flow.md#3148-panics-and-fatal-errors)). This is the general result of a panic, not behavior specific to `using`.
+
+A value is released once ([stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)). `using x = a { .. }` moves `a` into `x`, so a second `using y = a { .. }`, or a use of `a` after the first block, is a compile error (E0133): give each `using` the value it makes (`using g = m.lock() { .. }`), or do all the work inside one `using` block. A value closed inside the block (`try x.close()`) is not released again.
+
+## 3.17.7. Types that can be bound
+
+The type of the right-hand expression of `using` must implement [`Drop`](../../refs-standard-libraries/200-core/213-marker.md) or contain fields that have `Drop` (drop glue, [stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)). Otherwise it is a compile error (E0066).
+
+```nabi
+using x = 42 { ... }   // ERROR (E0066): using requires a type implementing Drop; i64 does not implement Drop
+```
+
+This restriction ensures only meaningful resources are bound with `using`, ruling out `using` on plain values at the specification level.
+
+## 3.17.8. Comparison with other languages
+
+| Language | Form                          | Scope unit   | Notes                                   |
+|----------|-------------------------------|--------------|-----------------------------------------|
+| Nabi      | `using x = try e { ... }`, `using x = e;` | block | expression, multiple resources, `try` integration |
+| C#       | `using (var x = e) { ... }`   | block        | requires `IDisposable`                  |
+| Java     | `try (var x = e) { ... }`     | try block    | requires `AutoCloseable`, multiple resources |
+| Python   | `with x as f: ...`            | block        | `__enter__` / `__exit__`                |
+| Swift    | `defer { x.close() }`         | function     | must be written explicitly              |
+| Go       | `defer x.Close()`             | **function** | not block-scoped                        |
+| Zig      | `defer x.close();`            | block        | `errdefer` variant                      |
+| Rust     | (automatic RAII, no keyword)  | block        | no GC; drop point determined automatically  |
+
+Nabi's `using` combines the explicit block pattern of GC languages (C#, Java, Python) with composability as an expression, `try` integration, and reverse-order release of multiple resources.
+
+## 3.17.9. Statement form
+
+`using x = e;` binds `x` to the rest of the enclosing block and releases it when that block ends:
+
+```nabi
+fn copy_lines(from: Path) throws (IoError) {
+    using r = BufReader::new(try fs::open(from));
+    try for line in r.lines() {
+        println(f"> {line}");
+    }
+}                                  // ← r is released here
+```
+
+It means the block form over the statements that follow it in the same block:
+
+```nabi
+using a = e;
+s1;
+s2
+// is
+using a = e { s1; s2 }
+```
+
+so every rule of the block form holds: release on all the paths of 3.17.6, in reverse order for several bindings and for several `using` statements in one block, the `Drop` requirement of 3.17.7, and the checks on views of the bound value. The value of the block is the value of its statements after the `using`. In the top-level statements of `main.nabi` the rest of the block is the rest of the program.
+
+The statement form starts a statement; elsewhere (`let x = using r = e;`) it is a compile error whose help names the block form. Because no body follows it, a struct literal may end its binding without parentheses (`using r = R { n: 1 };`). The block form stays for a scope shorter than the rest of the block and for `using` as an expression.

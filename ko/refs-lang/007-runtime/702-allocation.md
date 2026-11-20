@@ -1,0 +1,116 @@
+# 7.2. 할당
+
+이 절은 [객체 레이아웃](701-object-layout.md)에서 정의한 객체를 메모리에 놓는 방식을 다룹니다. 할당 알고리듬은 fast path와 slow path 두 단계로 정의합니다.
+
+> [!NOTE]
+> 이 절은 비규범(참고용)입니다. 참조 런타임의 GC를 설명하며, 어느 릴리스에서든 바뀔 수 있습니다. 규범은 [8.1](../008-abi/801-object-header-abi.md)에서 ABI로 고정한 객체 레이아웃뿐입니다.
+
+## 7.2.1. TLAB (Thread-Local Allocation Buffer)
+
+스케줄러 워커마다 자기 TLAB이 있습니다. 워커 하나는 OS 스레드 하나입니다. TLAB은 [Immix](../000-meta/007-glossary.md#immix) 공간에서 받은 [block](../000-meta/007-glossary.md#block-블록) 하나나 그 일부로 이루어집니다. TLAB은 bump pointer 방식으로 빠르게 할당합니다.
+
+```
+TLAB 구조.
+  cursor : ptr      // 다음 할당 위치
+  limit  : ptr      // TLAB 의 끝
+  block  : ptr      // 시작 (재활용용)
+```
+
+cursor가 limit보다 작은 동안에는 공간이 충분합니다. cursor에 size를 더한 값이 limit을 넘으면 [TLAB](../000-meta/007-glossary.md#tlab-thread-local-allocation-buffer)이 바닥난 것입니다. 이때 할당은 slow path로 넘어갑니다.
+
+## 7.2.2. Fast path: 인라인 명령어 4개
+
+> [!IMPORTANT]
+> 대부분의 할당은 인라인 코드로 처리합니다. 기계 명령어 4~5개로 끝나며, 동기화 비용이 없습니다.
+
+```
+1. tmp = cursor
+2. new_cursor = tmp + size
+3. if new_cursor > limit → goto slow
+4. cursor = new_cursor
+   (return tmp)
+```
+
+이 경로는 기계 명령어 4~5개로 끝납니다. 분기는 거의 항상 `false`여서 빠른 경로를 따릅니다. TLAB 자체가 스레드 로컬이므로 동기화 비용이 없습니다.
+
+fast path는 컴파일러가 할당하는 자리마다 만드는 인라인 코드입니다. 런타임은 fast path를 함수로 노출하지 않습니다.
+
+## 7.2.3. Slow path: `nabi_gc_alloc_slow`
+
+TLAB이 부족하거나 객체가 클 때([LOS](../000-meta/007-glossary.md#los-large-object-space)) 씁니다.
+
+```
+extern "C" {
+    fn nabi_gc_alloc_slow(size: usize, align: usize, type_id: u32) -> Ptr<u8>;
+}
+```
+
+런타임에 있는 `extern "C"` 함수입니다. 컴파일러는 fast path가 실패하면 이 함수를 호출합니다.
+
+slow path는 다음 일을 합니다.
+
+1. 객체가 8 KiB 이상이거나 정렬이 8바이트보다 크면 LOS에 할당합니다(7.2.9).
+2. 한 line보다 크고 남은 TLAB에 들어가지 않는 객체는 스레드의 medium 구간에서 bump 방식으로 할당합니다. medium 구간은 TLAB처럼 다시 채우는 또 하나의 빈 line 구간이며, 덕분에 TLAB의 남은 부분을 계속 쓸 수 있습니다.
+3. 그 밖의 경우에는 TLAB을 새로 채웁니다. 필요하면 먼저 [GC](../000-meta/007-glossary.md#gc-garbage-collector) 수집을 합니다(7.2.8).
+4. 헤더의 `type_id`와 `gc_flags`를 초기화합니다.
+
+## 7.2.4. 객체 헤더 초기화
+
+slow path는 객체 헤더를 초기화합니다. fast path에서도 컴파일러가 인라인 코드로 헤더를 채운 뒤 객체를 씁니다.
+
+```
+*(ptr + 0) = type_id
+*(ptr + 4) = 0u32          // gc_flags 초깃값
+*(ptr + 8) = size          // gc_word: 객체 총 크기 (8.1.4)
+```
+
+페이로드는 이미 0으로 채워져 있고, 사용자 코드가 필드 값을 채웁니다. 수집기는 헤더 앞이나 side table에 자기 관리 정보를 둘 수 있습니다.
+
+## 7.2.5. 정렬
+
+모든 할당은 8바이트로 정렬됩니다. TLAB cursor는 늘 8바이트의 배수이고, 객체 크기도 8바이트 배수로 올립니다. 더 큰 정렬이 필요한 객체(`#[repr(align(N))]`)는 slow path가 처리합니다.
+
+## 7.2.6. TLAB
+
+TLAB은 Immix block 안에서 비어 있는 line이 이어진 구간입니다. 런타임은 TLAB을 다시 채울 때 그 구간을 0으로 지운 뒤 넘깁니다. 그래서 fast path는 0으로 채워진 메모리를 받습니다(OS에서 막 받은 block은 지울 필요가 없습니다).
+
+block은 스레드 하나가 통째로 가집니다. 수집이 끝날 때마다 수집기는 빈 block과 빈 line이 남은 일부 사용 block의 목록을 만듭니다. block이 필요한 스레드는 원자적 커서로 목록의 다음 항목을 가져가고(빈 block 먼저), 그 block의 빈 구간으로 TLAB과 medium 구간을 채웁니다. 다시 채울 때는 락을 잡지 않습니다. 힙을 늘리거나 수집을 시작할 때만 world 락을 잡습니다. 스레드가 쓰지 않고 남긴 line은 다음 수집 때 목록으로 돌아갑니다.
+
+## 7.2.7. TLAB과 work-stealing의 관계
+
+[스케줄러](706-scheduler.md)의 work-stealing으로 한 워커가 다른 워커의 task를 훔칠 수 있습니다.
+
+훔쳐 온 task는 훔친 워커의 TLAB에서 할당합니다. 원래 워커의 TLAB과는 관계가 없습니다.
+
+TLAB은 OS 스레드마다 스레드 로컬로 묶여 있으므로 이 모델이 그대로 작동합니다.
+
+## 7.2.8. GC 트리거
+
+slow path는 다음 경우에 수집을 시작합니다. 조건과 minor / full 선택은 [7.3.2](703-gc-algorithm.md#732-sticky-mark-bit-세대-수집)를 따릅니다.
+
+- 새 TLAB이나 block을 내줄 수 없을 때.
+- 지난 수집 뒤의 할당량이 다음 사이클의 예산을 넘었을 때. block은 스레드가 가져갈 때 통째로 셉니다. young 예산은 지난 사이클에 할당한 스레드마다 8 MiB이고, 32 MiB 이상 128 MiB 이하입니다. 힙이 더 크면 old 바이트만큼이되 128 MiB까지입니다. `NABIR_GC_YOUNG`은 그 값을 그대로 정합니다([9.9.8](../009-tools/909-debug-tools.md#998-메모리--gc-도구)). 일시 정지 목표가 있으면 목표를 따릅니다([bare 1.6.12](../../refs-standard-libraries/100-bare/106-gc-pin.md#1612-set_pause_goal-일시-정지-목표)).
+- 힙 상한이 예산을 제한합니다([bare 1.6.14](../../refs-standard-libraries/100-bare/106-gc-pin.md#1614-set_heap_limit-힙-상한)). 수집하지 않는 구간이 열려 있는 동안에는 어떤 할당도 수집하지 않고, 예산을 넘으면 대신 힙을 늘립니다([bare 1.6.13](../../refs-standard-libraries/100-bare/106-gc-pin.md#1613-no_collect-수집하지-않는-구간)).
+
+`nabi_gc_collect`를 호출하면 바로 full 수집을, `nabi_gc_collect_young`을 호출하면 minor 수집을 합니다.
+
+## 7.2.9. 큰 객체의 LOS 할당
+
+8 KiB 이상이거나 8바이트보다 큰 정렬을 요구하는 객체는 TLAB을 거치지 않고 LOS에 하나씩 할당합니다. 큰 객체를 TLAB에 두면 남은 자리가 낭비됩니다. LOS 객체는 옮기지 않으므로 bump 할당으로 얻는 이점도 없습니다.
+
+8 KiB 이상인 모든 객체에는 두 가지가 보장됩니다.
+
+- **정렬.** payload(16바이트 헤더 바로 뒤 주소)는 64바이트(`LOS_ALIGN`)에 정렬됩니다. 캐시 라인 크기이며 모든 SIMD 폭에 충분합니다. 더 큰 정렬(`align > 64`)을 요구하는 버퍼는 그 정렬을 받습니다.
+- **주소 고정.** 수집기는 이 객체를 옮기지 않습니다. 객체에 도달할 수 있는 동안 payload 주소는 바뀌지 않습니다. 여기서 얻은 포인터(`Array::as_ptr`, `List::as_ptr`, [stdlib 2.9.12](../../refs-standard-libraries/200-core/209-collections.md#2912-gcbuft-원시-gc-버퍼))는 사용하는 동안 소유자에 도달할 수 있기만 하면 고정(pin) 없이 벡터 코드나 C(BLAS, LAPACK)에 넘길 수 있습니다. 더 작은 객체는 옮겨질 수 있으므로(evacuation, 7.3.1) 주소가 고정되어야 하면 고정합니다([7.2.10](#7210-고정된-객체)).
+
+## 7.2.10. 고정된 객체
+
+GC 포인터를 넘긴 `extern "C"` 호출 중에는 따로 고정할 필요가 없습니다([7.4.1](704-barriers-and-roots.md#루트가-가리키는-객체는-옮기지-않음)). C 코드가 호출 뒤에도 포인터를 보관하면 `nabi_gc_pin`으로 고정합니다. 고정은 `PINNED` 비트만 켜고 객체를 복사하지 않습니다. 고정은 `nabi_gc_unpin`으로 풉니다.
+
+## 7.2.11. 할당 시간과 힙 사용량
+
+fast path는 상수 시간이 걸립니다(명령어 약 4개). 평균 할당 비용은 fast path가 정합니다.
+
+## 7.2.12. 할당 생략
+
+최적화기는 객체가 밖으로 빠져나가지 않고 store 뒤에 읽히지도 않는 할당을 없앨 수 있습니다. 그런 할당은 safepoint가 아니고, 수집기 통계에도 잡히지 않습니다. 크기를 표현할 수 없는 할당은 언제나 런타임의 "allocation too large"에 도달합니다. `len * size + header`가 넘치는 경우입니다.

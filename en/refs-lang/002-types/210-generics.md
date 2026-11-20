@@ -1,0 +1,318 @@
+# 2.10. Generics
+
+Generics are the mechanism for giving type parameters to functions, types, traits and `impl` blocks. A separate compilation result is produced for each tuple of concrete types at a call or instantiation site; this process is called monomorphization.
+
+```
+generics        ::= "<" generic_param ("," generic_param)* ","? ">"
+generic_param   ::= type_param | const_param
+type_param      ::= identifier (":" type_bounds)? ("=" type_expr)?
+const_param     ::= "const" identifier ":" type_expr ("=" const_expr)?
+type_bounds     ::= type_expr ("+" type_expr)*
+where_clause    ::= "where" where_pred ("," where_pred)* ","?
+where_pred      ::= type_expr ":" type_bounds
+```
+
+> [!NOTE]
+> `where` is a contextual keyword, a keyword only after a function signature, an `impl` header, or a `struct` / `enum` / `union` / type alias header ([1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)).
+
+## 2.10.1. Where parameters are declared
+
+Generic parameters appear in these positions:
+
+```nabi
+fn id<T>(x: T) -> T { x }                       // function
+struct Pair<A, B> { first: A; second: B; }      // struct
+enum Result<T, E> { Ok(T), Err(E) }              // enum
+union Bits<T> { v: T; raw: u64; }               // union
+trait Convert<Target> { ... }                    // trait
+impl<T> List<T> { ... }                          // impl
+type Maybe<T> = T | none;                        // type alias
+```
+
+The parameter declaration form is the same in every position: parameter names listed in `<...>` after the name, separated by commas.
+
+A method written in an `impl` block may not declare a generic parameter named like one of the impl's: `impl<K> W<K> { fn get<K>(..) }` is an error (E0141), since inside the method `K` could mean either; rename the method's (`fn get<K2>`) or use the impl's. A trait's default method is written in the trait, not in the impl, so its parameters shadow an implementing impl's of the same name: `Iterator::min_by_key<K>` on `impl<K, V> Iterator for DictIter<K, V>` has its own `K`.
+
+## 2.10.2. Kinds of parameters
+
+### Type parameters
+
+```nabi
+fn first<T>(pair: (T, T)) -> T { pair.0 }
+```
+
+Parameter names follow the [identifier](../001-lexical/104-identifiers.md) form. By convention, single uppercase letters such as `T`, `U`, `K`, `V` or short PascalCase names are used, but this is not enforced.
+
+### `const` parameters
+
+These take a value as a parameter. The exact rules are defined separately in [`const` generics](211-const-generics.md).
+
+### Type argument inference
+
+If type arguments are not written at the call site, the compiler infers them. Besides argument types, the expected type (the type annotation of a `let`, the parameter type at an argument position, the return type at a return position) is also used for inference.
+
+```nabi
+fn empty<T>() -> List<T> { [] }
+
+let xs: List<i32> = empty();        // T = i32, from the let's type annotation
+takes_strs(empty());                // T = str, from the parameter type List<str>
+```
+
+A `let` without an expected type is inferred from later uses. In an unannotated `let x = f();`, if the generic return type of `f` is not determined by the call alone, later uses determine it. Signatures are always explicit.
+
+- **Scope**: the variable's scope, i.e. the rest of the block, including closures and async bodies within it.
+- **Uses that fix the type**: uses that pass the value to a position whose type is fixed: function / method arguments, assignment, annotated `let`, struct fields, `return`, the value of the body. An operator fixes the type of an open literal operand from its other operand (`c += x`); otherwise operators, f-string holes, patterns and field reads do not fix the type.
+- **Empty constructors**: the type arguments of `[]`, `Dict::new()`, `Set::new()`, `channel()`, `Mutex::new([])` are fixed the same way, also through `d[k] = v` and a tuple `let` (`let (tx, rx) = channel(); tx.send(1)`).
+- **Mutual fixing**: several open `let`s may fix each other (`let a = List::new(); let b = List::new(); a.push(b); b.push(1);` → `b: List<i32>`, `a: List<List<i32>>`).
+- **Default types of literals**: `i64` / `f64` yield to a later concrete use of the same kind (integer / real). In `ys.push(1); sum_i32(ys)`, `ys` is `List<i32>`. A literal bound by the `let` itself (`let c = 0`) is open the same way ([1.6.3](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)).
+- **Conflicts**: two different uses do not form a sum type; it is an error (`xs.push(none); xs.push(1)`, same as the branch rule of [5.1.7](../005-modules/501-variable-declaration.md#517-type-annotations-and-type-inference)). `let v = none;` alone is still an error.
+- Closure parameters ([4.5.2](../004-functions/405-closure.md)) and method path values ([3.5.3](../003-expressions/305-member-access-and-method-call.md#method-path-values)) without context are likewise fixed by later calls (`let f = |x| x * 2; f(4)`, `let f = Box::get; f(b)`).
+
+Diagnostics:
+
+| Case                 | Location                                                  | Example message                                                            |
+|----------------------|-----------------------------------------------------------|----------------------------------------------------------------------------|
+| Never determined     | That `let`                                                | `` type annotations needed: cannot infer the type of `d` (`Dict<_, _>`) `` |
+| Conflict             | The use site, with the site that fixed the type as a secondary label | `` conflicting uses of `c` (`List<_>`): `str` here, but `i32` fixed at 8:5 `` |
+| Literal used as a float | The use site, with the declaration as a secondary label | `` `t` is used as `f64` here, but it holds an integer (`i64`) from `0` at 3:13 ``, help `` make it a float at the declaration: `let t = 0.0;` `` |
+
+```nabi
+let xs = empty();                   // still List<?>
+takes_ints(xs);                     // T = i32 here (parameter List<i32>)
+let zs = List::new();
+zs.push(1);                         // zs: List<i32>, from a later method argument
+let ys = empty();                   // ERROR: type annotations needed (no concrete use)
+```
+
+Static trait methods with no arguments determine `Self` the same way. A call on a type parameter, `T::zero()`, and a trait-path call, `Tr::m()`, take `Self` from the expected type.
+
+```nabi
+let z: i32 = num::Zero::zero();     // Self = i32 (core::num::Zero)
+fn sum<T: num::Zero + ops::Add<Output = T>>(xs: List<T>) -> T {
+    let acc: T = T::zero();          // Self = T
+    ...
+}
+```
+
+**Associated-type bindings.** A bound with a binding, `T: Add<U, Output = V>`, gives `V` the associated type of the impl it selects. That impl is selected by `T` and by the trait's arguments (`U`), so the binding is read only once `T` and every trait argument are known from the arguments or the expected type; until then `V` stays open. A trait argument that nothing determines leaves `V` undetermined (``type annotations needed``): the compiler never guesses among a type's impls of the trait.
+
+```nabi
+fn plus<T, U, V>(a: T, b: U) -> V where T: Add<U, Output = V> { a + b }
+plus(7.0, 0.5)        // U = f64 from 0.5, so Add<f64> for f64: V = f64
+plus(3.0, 4.0i)       // U = Complex<f64>: V = Complex<f64>
+```
+
+A variant constructor of a generic `enum` determines its instance from its arguments first, then from the type parameters' defaults, then from the `let` inference variable it is bound to; otherwise it is an error, ``type annotations needed``.
+
+```nabi
+enum Pair<A, B> { One(A), Two(A, B) }
+let p = Pair::Two(1, "a");          // Pair<i32, str>, from the arguments
+```
+
+## 2.10.3. Trait bounds
+
+Bounds state the traits a parameter must satisfy.
+
+```nabi
+fn add_all<T: ops::Add<T>>(items: List<T>) -> T { ... }
+fn print_all<T: Display>(items: List<T>) { ... }
+fn sort_all<T: Ord + Clone>(ref items: List<T>) { ... }
+```
+
+A single bound is written as `Param: Trait`; multiple bounds are joined with `+`. Without bounds, only what every type supports applies to the parameter: moving, `Reflect`, storage into `any`, sums with `none`, and `is` (2.10.9).
+
+A trait named in a bound, a `where` clause, an `impl`, a supertrait list or `any Tr` resolves like any other name: a trait of another module needs a `use` or a path ([5.5](../005-modules/505-use.md)). Otherwise it is a cannot-find error naming where it was written: ``cannot find trait `Shape` (named in a bound)``, `(named in an impl)` or `(named as a supertrait)`, with the `use` to add.
+
+## 2.10.4. where clauses
+
+When bounds get long, it is better to move them into a `where` clause.
+
+```nabi
+fn complex<T, U, V>(a: T, b: U) -> V
+where
+    T: ops::Add<U, Output = V>,
+    V: Display + Clone,
+{
+    ...
+}
+```
+
+The `where` keyword goes between the parameter declarations and the body, followed by comma-separated bounds. Constraints on associated types can also be written here (e.g. `T::Output: Foo`).
+
+A type parameter that appears in an associated-type binding (`I: Iterator<Item = (A, B)>`, or `Self: Iterator<Item = (A, B)>` in a `where` clause) is inferred from that associated type of the argument, or of the receiver for `Self`. The binding's type may be structured: `(A, B)`, `(A, List<B>)` and `fn(A) -> B` bind each parameter they contain. If the associated type has another form, the call is an error that says what the items must look like: ``` `unzip` needs `Item` of the form `(A, B)`, but `ListIter<i32>` has `Item = i32` ```.
+
+```nabi
+fn unzip2<I: Iterator<Item = (A, B)>, A, B>(it: I) -> (List<A>, List<B>) { ... }
+unzip2([(1, "a"), (2, "b")].iter());   // A = i32, B = str
+```
+
+A type alias's `where` clause ([2.6.9](206-sum-types.md#269-combining-with-type-aliases)) holds at each use of the alias; a type parameter meets it through the bounds in scope at that use.
+
+## 2.10.5. Defaults
+
+Type parameters can have default values.
+
+```nabi
+trait Add<Rhs = Self> {
+    type Output;
+    fn add(self, rhs: Rhs) -> Output;
+}
+```
+
+A parameter without a default cannot follow one with a default; defaults must be trailing.
+
+In type position, a generic type written without its defaulted arguments is the default instance (`x: Vec3` is `x: Vec3<f32>`). In an expression path (`Vec3::new(..)`, `Vec3 { .. }`, `Vec3::X`, `zero()`), an omitted argument is inferred like any other: from the arguments, the expected type and later uses; its default applies only where nothing else fixes it, and an unsuffixed literal that fills it takes the default as its own default type ([1.6.3](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)). An associated item read through such a path takes its instance from the expected type, else from the one impl that defines it, else the default: `let v: DVec3 = Vec3::X` reads `Vec3<f64>`'s `X`; `let v = Vec3::X` reads `Vec3<f32>`'s. A function's default that is not a number type (`C = List<Self::Item>`) is taken at the call.
+
+```nabi
+struct Vec3<T = f32> { x: T; y: T; z: T; }
+fn zero<T: Num = f32>() -> T { T::zero() }
+
+let a = Vec3::new(1.0, 2.0, 3.0);    // Vec3<f32>: the literals take T's default
+let b: Vec3<f64> = a;                // a later use fixes it first: a is Vec3<f64>
+let r = zero();                      // f32 unless a later use says otherwise
+takes_f64(r);                        // r is f64
+```
+
+Changing the default of a public type's parameter changes the types inferred in code that uses it.
+
+Where a type is shown (diagnostics, help text, `type_name`), trailing arguments equal to their parameter's default are left out: for `struct W<T = i32>`, `W<i32>` is shown as `W`, and `Dict<str, i32, RandomState>` as `Dict<str, i32>`.
+
+### Argument counts
+
+A generic `struct`, `union`, `enum` or type alias takes at most as many arguments as it has parameters, and at least as many as its parameters without defaults. Anything else is an error naming the declaration:
+
+```nabi
+struct P<T, U> { a: T; b: U; }
+struct D<T, U = i32> { a: T; b: U; }
+
+let p: P<i64> = P { a: 1, b: 2 };          // ERROR: `P` takes 2 generic arguments but 1 was given
+                                           //   help: `P` is declared `P<T, U>`; add one for `U`
+let d: D<i32, i32, i32> = D { a: 1, b: 2 }; // ERROR: `D` takes 1 to 2 generic arguments but 3 were given
+let e: D<i32> = D { a: 1, b: 2 };          // OK: `U` is `i32`
+```
+
+A function or method may be given fewer explicit arguments than it has parameters (`f::<i32>(..)`); the rest are inferred. Giving more is the same error, and so is giving a trait bound more arguments than the trait has (`` `Tr` takes at most 1 generic argument but 2 were given ``). Arguments written on an enum's path name its instance: `E::<i64>::A(1)` is an `E<i64>`.
+
+A generic type written without arguments where a type is expected (`x: S` for `struct S<T>`) is an error when a parameter has no default (a type whose parameters all have defaults may be written bare): `` `S` needs generic arguments ``, help `` `S` is declared `S<T>`; write it with them, e.g. `S<i32>` ``.
+
+## 2.10.6. Monomorphization
+
+Generic calls and instantiations produce a separate compilation result for each tuple of concrete types.
+
+```nabi
+fn id<T>(x: T) -> T { x }
+
+let a = id(42i32);          // id<i32> is generated: an i32 → i32 function
+let b = id(3.14f64);        // id<f64> is generated: an f64 → f64 function
+let c = id("hello");         // id<str> is generated
+```
+
+Calls with the same type tuple share the same result, so it is compiled only once. The result performs the same as a direct call, with no indirect call cost. The cost is compile time and binary size, mostly offset by dropping unreachable instances and dead-stripping at link time.
+
+### Monomorphization cache model
+
+An [AOT](../000-meta/007-glossary.md#aot-ahead-of-time) build collects call sites and [specializes](../000-meta/007-glossary.md#specialize) them all at once. In [JIT](../000-meta/007-glossary.md#jit-just-in-time) mode, specialization happens for a type tuple on its first call, and the result is cached. Both modes share the same specialization machinery, which is part of the common pipeline of [Execution engines and user surfaces](../000-meta/001-execution-modes.md).
+
+## 2.10.7. Combination with gradual typing
+
+The gradualness of function parameters described in [The `any` slot](202-any-slot.md) is handled as follows.
+
+```nabi
+fn compute(x, y) { ... }
+```
+
+This code is turned into an implicit generic, `fn compute<T, U>(x: T, y: U)`. No bounds are synthesized ([4.2.2](../004-functions/402-parameters.md#422-omitting-the-type)): each instance is monomorphized at its call site and its body checked there, and an error also points at the call.
+
+If an explicit `any` is written on a parameter, it is not monomorphized but becomes a runtime dynamic slot. This difference is the core of gradual mode.
+
+## 2.10.8. Consistency of generic parameters
+
+A generic parameter denotes only one type within a call. It may denote different types in different calls, but its type cannot change within the same call.
+
+```nabi
+fn pair<T>(a: T, b: T) -> (T, T) { (a, b) }
+
+let p = pair(1i32, 2i32);     // OK: T = i32 for both arguments
+let q = pair(1i32, 3.14f64);  // ERROR: ambiguous whether T is i32 or f64
+```
+
+Multiple parameters (`pair<A, B>`) are each inferred independently.
+
+## 2.10.9. Body checking
+
+The body of a generic function may only use behavior known through its bounds.
+
+```nabi
+fn double<T>(x: T) -> T {
+    x + x       // ERROR: T has no Add bound
+}
+
+fn double<T: ops::Add<T, Output = T>>(x: T) -> T {
+    x + x       // OK
+}
+```
+
+Because of this rule, generic bodies are checked independently of call sites, so the body is guaranteed to compile whatever concrete type a call passes. The rule extends as follows.
+
+- Trait default method bodies are generic bodies: `Self` is opaque and bounded by the trait, and trait parameters are opaque.
+- Every type, bound or not, supports moving, `Reflect` ([6.10.1](../006-meta-system/610-reflection.md#6101-reflect---automatically-implemented-trait)), storage into `any`, sums with `none`, and `is`.
+- A function with any implicit parameter ([4.2.2](../004-functions/402-parameters.md#422-omitting-the-type)) is exempt as a whole.
+- Const parameters are checked with their values unknown; types are equal when their const expressions are equal as values ([2.11.5](211-const-generics.md#2115-arithmetic-in-const-expressions)).
+- A `where` clause on a non-parameter type is assumed in the body.
+- An instance of a body that fails its check adds no errors of its own.
+- A type test (`is`, a type pattern) on a value whose type involves a type parameter is checked as refutable and decided per instance.
+- A type test on the parameter itself (`if T is f32 { .. }`, 2.10.13) checks its branch once with `T` replaced by the tested type; each instance lowers only the branch its type takes.
+
+## 2.10.10. Generics vs trait-as-type
+
+Generics are compile-time polymorphism, called directly through monomorphization.
+
+Trait-as-type is runtime polymorphism using vtable dispatch, which Nabi forbids in the [Type system overview](README.md).
+
+So whenever polymorphism is needed, use generics (this document) or sum types ([Sum types](206-sum-types.md)).
+
+## 2.10.11. Variance
+
+Nabi has no subtyping between generic instances: every type parameter is invariant. `List<i64>` is not a `List<i64 | none>`, `Box<Cat>` is not a `Box<any>`, and a `fn(i64 | none)` is not a `fn(i64)`, even though an `i64` value fits an `i64 | none` slot. The widening into a sum ([2.6.4](206-sum-types.md)) and into `any` ([2.2](202-any-slot.md)) applies to a value as a whole, where the compiler can wrap it; it never reaches inside a generic type, because a `List<i64>` and a `List<i64 | none>` hold their elements in different layouts and share one buffer between all their handles. To get the wider type, write it where the value is made (`let xs: List<i64 | none> = [1, 2]`), or copy the elements into a new collection of the wider type (`let ys: List<i64 | none> = []; for x in xs { ys.push(x) }`).
+
+The one relaxation is on function bounds: a `fn(..) -> R + Send` value fits a `fn(..) -> R` slot ([4.4.9](../004-functions/404-function-type.md#449-subtyping-between-function-types-none)).
+
+## 2.10.12. Inference and defaults at a glance
+
+Type inference is local to a function body; signatures are always written. The rules live with the constructs they concern; this list collects them.
+
+- **Generic arguments** come from the call's argument types and the expected type (2.10.2, "Type argument inference"); `const` arguments the same way ([2.11.6](211-const-generics.md#2116-parameter-inference)). Where nothing fixes one, it is written with `::<..>`; leaving it out is an error.
+- **An unannotated `let`** takes its type from its initializer, and what the initializer leaves open is fixed by later uses in its scope (2.10.2; [5.1.7](../005-modules/501-variable-declaration.md#517-type-annotations-and-type-inference)). Two uses that disagree are an error; they do not form a sum.
+- **Sums** match as sets: `T | none` against `i32 | str | none` gives `T = i32 | str` ([2.6.4](206-sum-types.md#264-set-semantics)). Branch results are not widened into a new sum; differing branch types are an error unless the expected type is a sum, or every branch type is a member of one branch's sum.
+- **Literal defaults**: an integer literal with no expected type is `i64`, a floating-point one `f64` ([1.6.3](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)), unless it fills a parameter with a declared default; a later use of the same kind (integer, real) replaces the default (2.10.2).
+- **Defaults of type parameters** (`Rhs = Self`, 2.10.5) apply only where the parameter is not written and nothing infers it; a literal filling the parameter takes the default as its default type ([1.6.3](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)), so the order is: written argument, then expected type and uses, then the parameter's default, then `i64` / `f64`.
+- **Closures** without parameter types take them from the expected `fn` type, else from later calls ([4.5.2](../004-functions/405-closure.md)).
+
+Nothing else defaults: there is no fallback to `any`, to `()` or to a sum.
+
+## 2.10.13. Type tests on type parameters
+
+`T is X`, where `T` names a type parameter in scope (or `Self` in a trait default method or an impl), tests the type itself, with no value. It is a constant `bool` in each instance: true when every value of the instance's `T` passes `v is X`. For a single type `X` that means `T` is `X`; for a sum `X`, that `T` is a member of `X` or a sub-sum of it ([2.6.4](206-sum-types.md#264-set-semantics)). `T = any` passes only `T is any`.
+
+```nabi
+fn sum<T: num::Num + Clone>(xs: List<T>) -> T {
+    if T is f32 {
+        return sum_f32(xs);          // xs: List<f32>; the f32 result is a T
+    } else if T is f64 {
+        return sum_f64(xs);
+    }
+    let acc = T::zero();             // generic fallback, checked against the bounds
+    for x in xs { acc = acc + x; }
+    acc
+}
+```
+
+- **Refinement.** In `if T is X { B }` with a single type `X` (not a sum, not `any`), `B` is checked once, at the definition, with `T` replaced by `X` everywhere in scope: parameters, locals declared outside the branch, closures in it and the return type. `xs: List<T>` is a `List<f32>` in `B`, and an `f32` is a `T`. A `&&` chain of type tests (`if T is f32 && U is i32`) refines each parameter; other conditions may join the chain. A sum `X` refines nothing.
+- **No refinement elsewhere.** The `else` branch, the code after the `if`, a `||` of type tests and a negated test (`!(T is f32)`) get the normal generic checks. A `||` of type tests whose branch needs one type for `T` is an error that says to write one branch per type.
+- **Per instance.** An instance lowers only the branch its type takes: the other one is never lowered for it, so it may be ill-typed there. The fast path costs no test at run time and no `any` round trip.
+- **No binding.** The type after `is` names closed types or parameters already in scope; `T is List<U>` with no `U` declared is an error, and `T is v: X` is an error: there is no value to bind.
+- **A value.** `let fast = T is f32;` is a `bool` constant per instance; only an `if` condition refines.
+- Types are compared with `is`; `T == f32` is an error with the `is` form as its fix.
+- A value test and a type test differ: with `T = i32 | str`, `x is i32` asks whether this value is an `i32`, and `T is i32` is false, since not every value of `T` is.
+
+Use a trait when the set of types is open. Use `if T is` for a fast path that keeps a generic fallback: a chain whose fallback panics or is `unreachable` is a closed set of types, and the `closed_type_switch` lint suggests a trait with an impl per type instead. A concrete impl that overlaps a blanket impl (E0075) is written as an `if Self is X` branch in the blanket impl.

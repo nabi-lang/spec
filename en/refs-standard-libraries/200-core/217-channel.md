@@ -1,0 +1,170 @@
+# 2.17. channel - Message passing
+
+The `core::channel` module provides channel primitives for exchanging messages between tasks and threads. The design is inspired by Go's channels and Rust's `mpsc::channel`.
+
+The names `channel`, `Sender` and `Receiver` are in the [prelude](../000-meta/002-import.md) and usable without any import, in short forms like `channel::<T>()` or `Sender<T>`. Where the origin should be visible, writing `use core::channel::*;` explicitly is recommended.
+
+## 2.17.1. Basic form
+
+Channels are created by two functions.
+
+```nabi
+const fn channel<T: Send>() -> (Sender<T>, Receiver<T>);
+const fn channel_bounded<T: Send>(cap: usize) -> (Sender<T>, Receiver<T>);
+```
+
+`channel<T>()` creates an **unbounded** channel: its capacity is infinite, so in practice it accepts messages up to the memory limit. `channel_bounded<T>(cap)` creates a **bounded** channel whose capacity is fixed at `cap`; when the queue is full, the sender blocks. `channel_bounded(0)` is a rendezvous channel: `send` waits until a receiver takes the value. On this channel `try_send` throws `TrySendError::Full` if no receiver is waiting. Not only a thread blocked in `recv` but also a task suspended in `recv_async` / `for await` counts as a waiting receiver.
+
+### Example
+
+The simplest usage:
+
+```nabi
+let (tx, rx) = channel::<i32>();
+
+task::spawn(async {
+    try tx.send(1);
+    try tx.send(2);
+    try tx.send(3);
+});
+
+while let v: i32 = rx.recv() {
+    process(v);                  //→ 1, 2, 3
+}
+```
+
+## 2.17.2. `Sender<T>` / `Receiver<T>`
+
+The two types forming the ends of a channel are defined as follows.
+
+```nabi
+struct Sender<T> { /* ... */ }
+struct Receiver<T> { /* ... */ }
+
+impl<T> Sender<T> {
+    fn send(self, value: T) throws (SendError<T>);
+    fn try_send(self, value: T) throws (TrySendError<T>);
+    const fn send_async(self, value: T) -> SendFuture<T>;   // try await tx.send_async(v): suspends only the task, throws (SendError<T>)
+    fn clone(self) -> Sender<T>;             // multiple senders
+    fn close(self);                          // closes this sender
+}
+
+impl<T> Drop for Sender<T> {             // releasing a sender closes it
+    fn drop(ref self);
+}
+
+impl<T> Receiver<T> {
+    fn recv(self) -> T | none;               // none = every sender closed
+    fn try_recv(self) -> T | Empty | Closed; // nothing queued: Empty while a sender is open, else Closed
+    const fn recv_async(self) -> RecvFuture<T>;    // await rx.recv_async(): suspends only the task, Output = T | none
+    fn iter(self) -> ReceiverIter<T>;         // for x in rx { ... }
+}
+
+impl<T> Stream for Receiver<T> {         // for await v in rx: suspends only the task
+    type Item = T;
+    ...
+}
+
+impl<T> IntoIterator for Receiver<T> {   // for x in rx: ends when every sender is closed
+    type Item = T;
+    type IntoIter = ReceiverIter<T>;
+}
+
+enum SendError<T> { Closed(T) }
+enum TrySendError<T> { Full(T), Closed(T) }
+impl<T> SendError<T> { fn message(self) -> str; }      // "sending on a closed channel"
+impl<T> TrySendError<T> { fn message(self) -> str; }   // "sending on a full channel" / "... closed channel"
+// both implement Display (the message), Debug (`Closed(..)`, `Full(..)`) and Error: they name the case, not the value
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+struct Empty;      // try_recv: nothing queued, a sender is still open
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+struct Closed;     // try_recv: nothing queued, every sender closed
+
+struct RecvFuture<T> { /* ... */ }
+impl<T> Future for RecvFuture<T> {
+    type Output = T | none;
+    ...
+}
+
+struct SendFuture<T> { /* ... */ }
+impl<T> SendFuture<T> {
+    // driven by `try await`, like `task::Join` (2.18.1): the error is the send's
+    fn poll(ref self, ref ctx: Context) throws (SendError<T>) -> Poll<()>;
+}
+
+struct ReceiverIter<T> { /* ... */ }    // Iterator<Item = T>, ends when every sender is closed
+```
+
+If `T: Send`, then `Sender<T>` and `Receiver<T>` are also `Send` and can be moved to other tasks or threads ([2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)). `send`, `try_send` and `send_async` queue a copy of the value's collections (2.13.9): the receiver shares no collection with the sender.
+
+`recv` and `send` (when a bounded channel is full, or until a rendezvous value is taken) block the thread. To suspend only the task in async code, use `await rx.recv_async()`, `for await v in rx`, or `try await tx.send_async(v)`. `send_async` suspends the task while a bounded channel is full, or on a rendezvous channel until a receiver takes the value. Like `send`, if this sender has already been `close()`d it throws `SendError::Closed` carrying the value. A cancelled `recv_async` does not take a value, and a cancelled `send_async` does not send its value ([2.18.4](218-task.md#2184-cooperative-cancellation---taskcancel)). `Mutex::lock` / `lock_async` make the same distinction ([2.16](216-sync.md)).
+
+## 2.17.3. Close semantics
+
+When a channel closes and how the signal is delivered: once every sender is closed, by `close()` or by its release, the channel is closed. The receiver then gets the close signal as `recv()` returning `none`.
+
+Closing a channel with `close()`:
+
+```nabi
+let (tx, rx) = channel::<i32>();
+try tx.send(1);
+tx.close();            // explicit close
+
+rx.recv();             //→ 1
+rx.recv();             //→ none  (closed)
+```
+
+A `Sender` is a `Drop` resource ([2.13.4](213-marker.md#2134-drop---cleanup-on-release)): `let tx2 = tx` moves it, `clone()` makes another sender with its own owner, and `close()` closes that sender only. The compiler releases a sender where its last owner leaves scope, and a task releases the senders its `async` block captured when it ends; the channel closes once every sender is closed or released. Releasing a sender cannot fail, so no explicit close is needed. A thread's closure does not release what it captured: close the sender at the end of the thread's work.
+
+## 2.17.4. Multiple producers and consumers
+
+`Sender<T>` implements `Clone`, so multiple tasks can send messages to the same channel.
+
+```nabi
+let (tx, rx) = channel::<str>();
+let tx2 = tx.clone();
+
+task::spawn(async { try tx.send("hello"); });
+task::spawn(async { try tx2.send("world"); });
+
+let v1 = rx.recv();
+let v2 = rx.recv();
+```
+
+`Receiver<T>` does not implement `Clone`, but it is a handle: a copy (`let rx2 = rx;`, or one moved into another task or thread) shares the same queue. A channel is therefore multi-producer, multi-consumer (MPMC). Any number of receiver copies may call `recv` (or `try_recv`, `recv_async`, `for`) at once, and each value sent goes to exactly one of them, whichever takes it first; no receiver sees every value. Once every sender is closed and the queue is empty, every copy gets `none`. To give each value to several consumers, use a fan-out task that forwards it to a channel per consumer.
+
+## 2.17.5. `for` / `Stream` integration
+
+`Receiver<T>` implements `IntoIterator<Item = T>`, so it can be used directly in a `for` statement.
+
+```nabi
+for v in rx {
+    process(v);                  // repeats until the channel is closed
+}
+```
+
+It also implements the asynchronous iterator `Stream<Item = T>`, so `for await` works the same way.
+
+```nabi
+for await v in rx {
+    await handle(v);
+}
+```
+
+See [2.7 iter](207-iter.md) and [2.8 stream](208-stream.md) for details.
+
+## 2.17.6. Module mapping
+
+Every type and function is defined in `core::channel`, its one path ([0.1.6](../000-meta/001-tier-model.md#016-one-path-per-item)):
+
+| Type           | Module               | Internal structure       |
+|----------------|----------------------|--------------------------|
+| `Sender<T>`    | `core::channel` | atomic ref count + queue |
+| `Receiver<T>`  | `core::channel` | queue + parking          |
+| `channel<T>()`, `channel_bounded<T>(cap)` | `core::channel` | Arc-like internal state |
+| `SendError<T>`, `TrySendError<T>` | `core::channel` | errors carrying the unsent value |
+| `Empty`, `Closed` | `core::channel` | `try_recv` results |
+| `ReceiverIter<T>` | `core::channel` | iterator of `for x in rx` |
+| `RecvFuture<T>`, `SendFuture<T>` | `core::channel` | futures of `recv_async` / `send_async` |
+
+For the internal queue, bounded channels use a ring buffer similar to Tokio mpsc, and unbounded channels use a segmented linked list. A bounded channel's queue is lock-free; an unbounded one's segment list may use a lock.

@@ -1,0 +1,164 @@
+# 2.3. `struct`
+
+`struct` is the container syntax that groups several fields into one, defining a product type. This chapter covers the forms a `struct` can take and the rules for structs: instance creation, default values, spread, visibility and memory layout.
+
+## 2.3.1. Three forms
+
+A `struct` declaration follows this grammar.
+
+```
+struct_decl     ::= "struct" identifier generics? where_clause? "{" named_field_list? "}"
+                  | "struct" identifier generics? "(" tuple_field_list? ")" where_clause? ";"   // tuple struct: where comes after the field list
+                  | "struct" identifier generics? where_clause? ";"                              // unit struct
+named_field_list ::= named_field (";" named_field)* ";"?
+named_field     ::= identifier ":" type_expr
+tuple_field_list ::= type_expr ("," type_expr)* ","?
+```
+
+The shape of the body determines one of three forms, covered one by one below.
+
+### Named `struct`: named fields
+
+The most common form is the named `struct`, where each field has a name.
+
+```nabi
+struct Point {
+    x: f64;
+    y: f64;
+}
+
+struct User {
+    id: i64;
+    name: str;
+    age: i32;
+}
+```
+
+Rules: the body is enclosed in `{ ... }`. Each field is written as `name: Type;`, and the `;` at the end of a field is the same terminator as the [statement terminator](../001-lexical/103-statement-terminator.md). Field types are required, because, as established in [The `any` slot](202-any-slot.md), struct fields do not allow gradual typing.
+
+### Tuple `struct`: positional fields
+
+Next, the tuple `struct` identifies fields by position only, without names.
+
+```nabi
+struct Pair(i32, i32);
+struct Wrapper(str);
+struct Color(u8, u8, u8);
+```
+
+In this form the body is enclosed in `( ... )`, and each element has only a type, no name. Fields are accessed by positional index such as `.0`, `.1`; the exact syntax is covered in the expression specification. The single-field form `struct W(T);` is also allowed and can be used as the newtype pattern.
+
+### Unit `struct`: field-less marker
+
+Finally, the unit `struct` has no fields at all.
+
+```nabi
+struct Marker;
+struct Sentinel;
+```
+
+This form has no body and ends with `;` immediately after the declaration. It is mainly used for marker types where only a single instance is meaningful.
+
+A unit struct may take type parameters (`struct Tag<T>;`), as a marker that carries a type. Its value names the arguments, `Tag::<i64>`, or leaves them to the slot it goes into (`let t: Tag<i64> = Tag;`, `f(Tag)` with `fn f(t: Tag<str>)`). With neither, `let t = Tag;` is an error that asks for the type (`let t: Tag<i64> = Tag;`).
+
+## 2.3.2. Instance creation: preview
+
+The instance creation syntax for each form is formally defined in the expression specification. This document only previews what each form looks like.
+
+```nabi
+let p = Point { x: 1.0f64, y: 2.0f64 };    // named
+let q = Pair(1i32, 2i32);                   // tuple
+let m = Marker;                              // unit
+let t = Tag::<i64>;                          // generic unit
+```
+
+## 2.3.3. Field default values
+
+Fields of a named `struct` can have default values.
+
+```nabi
+struct Config {
+    retry: i32 = 3i32;
+    timeout: f64 = 30.0f64;
+    verbose: bool = false;
+}
+```
+
+Default values are constrained as follows. Only `const` expressions are allowed: literals, `const` variables, `const` function calls, and `List` / `Dict` literals of such values (`[]`, `[1, 2]`, `{"a": 1}`). A collection default is checked at compile time and built fresh for each instance, so instances never share it. `const` expressions are defined in [`const`](../005-modules/502-const.md). Expressions that require a runtime call, such as the current time or a random number, cannot be used; such code is a compile error. Referring to another field of the same struct is also forbidden. A default is evaluated only when the field is omitted at instance creation, and it is evaluated for each instance. Because evaluation is deterministic, the compiler may apply caching optimizations.
+
+These constraints ensure determinism, predictable cost, and SemVer safety. If runtime initialization is needed, use a separate factory function, i.e. the `fn new() -> T` pattern. Names in a field default are resolved in the scope of the module that declares the struct, not where the value is built. A derived `Default` uses the declared defaults too ([stdlib 2.13.10](../../refs-standard-libraries/200-core/213-marker.md#21310-default---default-values)).
+
+A literal outside the struct's module may leave out a private field only when it has a default ([5.6.8](../005-modules/506-visibility.md#568-visibility-of-struct-fields)). A `#[non_exhaustive]` struct gives every field added after its first release a default, so literals in other packages keep compiling ([6.2.10](../006-meta-system/602-built-in-attributes.md#6210-non_exhaustive-opting-out-of-external-exhaustiveness)).
+
+## 2.3.4. Field spread
+
+Sometimes a new instance should copy the fields of an existing instance, changing only some of them.
+
+```nabi
+let base = Point { x: 0.0f64, y: 0.0f64 };
+let p = Point { x: 5.0f64, ..base };
+```
+
+Here `..base` means take all fields of base as they are, overriding the explicitly written fields with new values.
+
+Syntactically: an instance value follows the `..` token ([Punctuation and operator tokens](../001-lexical/110-punctuation-and-operator-tokens.md)). `..` may appear only once in an instance creation expression; two or more spreads are not allowed. Placing the spread after the explicit fields is the idiomatic style. The written fields are evaluated first, in field order, then the base.
+
+## 2.3.5. Visibility
+
+Each field can control its external exposure with the visibility keywords defined in [Keywords](../001-lexical/105-keywords.md).
+
+```nabi
+struct Account {
+    pub id: i64;        // readable from outside
+    pub balance: f64;
+        secret: str;    // only within the same module (default = module-private)
+}
+```
+
+Fields of a tuple struct also each have their own visibility (`struct S(pub i32, i32);`, private by default). The rules for construction, `x.N` access and patterns, and the meaning of the visibility levels, are given in [5.6.8](../005-modules/506-visibility.md#568-visibility-of-struct-fields).
+
+## 2.3.6. Memory layout
+
+Fields are laid out in declaration order with natural alignment, the same as `#[repr(C)]` ([6.2.2](../006-meta-system/602-built-in-attributes.md#622-repr-explicit-memory-representation)). `packed` and `align(N)` change this.
+
+## 2.3.7. No duplicate definitions in the same module
+
+Declaring two structs with the same name in the same module is a compile error. Duplicate field names within one struct are also an error. This rule applies regardless of visibility level. A tuple or unit struct's constructor is a value, in the namespace of functions, `const`s and `static`s ([4.1.10](../004-functions/401-function-declaration.md#4110-no-duplicate-definitions-in-the-same-module)): `struct Point(i32, i32);` and a `fn`, `const` or `static` named `Point` in the same module are a duplicate definition (`E0026`).
+
+## 2.3.8. Value semantics
+
+A `struct` is a value type. Assignment, argument passing, returning, and reading an element (`dict[k]`, `list[i]`, `entry(k).or_insert_with(..)`) copy the struct. A change is visible elsewhere only through a `ref` parameter or `ref self` ([4.7](../004-functions/407-ref-keyword.md)), or by writing the value back.
+
+```nabi
+let a = Point { x: 1.0, y: 2.0 };
+let b = a;
+b.x = 5.0;                        // a.x unchanged
+
+let ps: List<Point> = [a];
+let q = ps[0];
+q.x = 9.0;                        // ps[0].x unchanged
+ps[0] = q;                        // written back
+```
+
+A field write on a copy that nothing reads afterwards is a compile error, `E0057`: the change would be lost. The copies checked are a by-value parameter or `self`, a closure's by-value parameter (`xs.for_each(|p| { p.x = 0.0; })`), a `for` binding, and a `let` of an element (`let q = xs[i];`). The write is an error when no later read, loop iteration, return or call can see the change; a read that only feeds another write to the same variable does not count, and a variable a closure or coroutine block captures is not checked. The help names what to write instead: `ref self` or a `ref` parameter ([4.7](../004-functions/407-ref-keyword.md)), `for ref` ([3.13.3](../003-expressions/313-loop-expressions.md#for-ref-elements-as-places)), returning a closure's argument and using the result, or writing the element back.
+
+```nabi
+impl Counter {
+    fn inc(self) { self.n += 1; }   // error[E0057]: `self.n` is set on a copy of the receiver; write `fn inc(ref self)`
+}
+for p in ps { p.x = 0.0; }        // error[E0057]: `p.x` is set on a copy of the element; write `for ref p in ps`
+for ref p in ps { p.x = 0.0; }    // writes every element of ps
+ps.for_each(|p| { p.x = 0.0; });  // error[E0057]: `p.x` is set on a copy of the closure's argument
+let qs = ps.map(|p| { p.x = 0.0; p }).to_list();  // returned: kept
+let c = self;                     // a local copy on purpose: change `c`, then read or return it
+```
+
+Sharing goes through reference handles: collections (`List`, `Dict`, `Set`, `StrBuf`, `Deque`, ..., [stdlib 2.9](../../refs-standard-libraries/200-core/209-collections.md#reference-handles)), `Mutex`, `RwLock`, atomics, channels, and `[ref x]` capture cells. Copying a handle shares the object.
+
+|                         | Value type (`struct`, `enum`, tuple, primitive) | Reference handle (`List`, `Dict`, `Mutex`, ...) |
+|-------------------------|-------------------------------------------------|-----------------------------------------------|
+| `let b = a;`            | independent copy                                | same object                                   |
+| field / element write   | local to the copy                               | seen through every handle                     |
+| independent copy        | the assignment itself                           | `.clone()`                                    |
+
+A struct field holding a handle copies the handle: copying the struct shares that object.

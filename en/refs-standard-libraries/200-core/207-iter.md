@@ -1,0 +1,689 @@
+# 2.7. iter - iteration traits
+
+The `core::iter` module is the **desugaring authority** for `for x in xs`. Every `for` loop dispatches to the traits of this chapter.
+
+The `for` syntax of [refs-lang 3.13 Loop expressions](../../refs-lang/003-expressions/313-loop-expressions.md) desugars to a combination of `IntoIterator::into_iter` and `Iterator::next` calls.
+
+## 2.7.1. `Iterator` - stepping
+
+The first trait is `Iterator`, with the following signature.
+
+```nabi
+#[lang("iterator_trait")]
+trait Iterator {
+    type Item;
+
+    fn next(ref self) -> Item | none;
+}
+```
+
+The core behavior is simple: each call to `next` returns the next element, and returns `none` when there are no more elements.
+
+The signature is `ref self`: the iterator itself holds **state** and updates it in place on every call. Iterators are values: a copied `ListIter` continues independently, and `next(ref self)` advances only that copy.
+
+### Example (user code)
+
+Calling it directly looks like this.
+
+```nabi
+let xs: List<i32> = [10, 20, 30];
+let it = xs.into_iter();         // iterator created by IntoIterator
+let v1 = it.next();              //→ 10
+let v2 = it.next();              //→ 20
+let v3 = it.next();              //→ 30
+let v4 = it.next();              //→ none
+```
+
+In real code, `for` is more common than direct calls.
+
+```nabi
+for x in xs {
+    process(x);
+}
+// → the compiler desugars this to:
+//   let __it = xs.into_iter();
+//   loop {
+//       match __it.next() {
+//           v: i32 => process(v),
+//           none => break,
+//       }
+//   }
+```
+
+### Methods - rich default impls
+
+The only method a user must implement for `Iterator` is `next(ref self)`. All other methods are provided as default impls on top of `next`.
+
+> [!NOTE]
+> The `fn(Item) -> U` in the signatures below is the unified callable type defined by [refs-lang 4.4 Function types](../../refs-lang/004-functions/404-function-type.md), and accepts **both functions and closures**. Both `it.map(some_fn)` and `it.map(|x| x * 2)` fit the same position. This is a single form, unlike Rust's `fn`/`Fn`/`FnMut`/`FnOnce`.
+
+```nabi
+impl Iterator {
+    fn next(ref self) -> Item | none;       // user-defined
+
+    // transforming adapters (lazy)
+    fn map<U>(self, f: fn(Item) -> U) -> Map<Self, U>;
+    fn filter(self, pred: fn(Item) -> bool) -> Filter<Self>;
+    fn enumerate(self, start: usize = 0) -> Enumerate<Self>;   // (index, item) pairs, from `start`
+    fn zip<J: IntoIterator>(self, other: J) -> Zip<Self, J::IntoIter>;    // Item = (Item, J::Item)
+    fn chain<J: IntoIterator<Item = Item>>(self, other: J) -> Chain<Self, J::IntoIter>;
+    fn take(self, n: usize) -> Take<Self>;
+    fn skip(self, n: usize) -> Skip<Self>;
+    fn step_by(self, step: usize) -> StepBy<Self>;
+    fn rev(self) -> Rev<Self>;                    // DoubleEndedIterator only
+    fn flatten(self) -> Flatten<Self> where Item: IntoIterator;
+    fn flat_map<U: IntoIterator>(self, f: fn(Item) -> U) -> FlatMap<Self, U>;
+    fn peekable(self) -> Peekable<Self>;          // peek(ref self) -> Item | none
+    fn take_while(self, pred: fn(Item) -> bool) -> TakeWhile<Self>;
+    fn skip_while(self, pred: fn(Item) -> bool) -> SkipWhile<Self>;
+    fn scan<S>(self, init: S, f: fn(S, Item) -> S) -> Scan<Self, S>;   // Item = S
+    fn inspect(self, f: fn(Item)) -> InspectIter<Self>;    // f sees each item
+    fn cycle(self) -> Cycle<Self>;                // endless repeat
+    fn chunks(self, size: usize) -> Chunks<Self>;     // Item = List<Item>
+    fn windows(self, size: usize) -> Windows<Self>;   // Item = List<Item>
+
+    fn exact_len(self) -> usize | none;           // length without stepping, else none
+
+    // terminal methods (eager)
+    fn count(self) -> usize;
+    fn sum(self) -> Item where Item: Add<Output = Item> + Zero;     // 0 if empty; floats pairwise (2.7.15)
+    fn product(self) -> Item where Item: Mul<Output = Item> + One;  // 1 if empty
+    fn fold<B>(self, init: B, f: fn(B, Item) -> B) -> B;
+    fn try_fold<B, E>(self, init: B, f: fn(B, Item) throws (E) -> B) throws (E) -> B;
+    fn try_for_each<E>(self, f: fn(Item) throws (E)) throws (E);
+    fn partition(self, pred: fn(Item) -> bool) -> (List<Item>, List<Item>);
+    fn unzip<A, B>(self) -> (List<A>, List<B>) where Self: Iterator<Item = (A, B)>;
+    fn reduce(self, f: fn(Item, Item) -> Item) -> Item | none;
+    fn any(self, pred: fn(Item) -> bool) -> bool;
+    fn all(self, pred: fn(Item) -> bool) -> bool;
+    fn find(self, pred: fn(Item) -> bool) -> Item | none;
+    fn position(self, pred: fn(Item) -> bool) -> usize | none;
+    fn min(self) -> Item | none where Item: PartialOrd;      // the first of equal minima; NaN propagates
+    fn max(self) -> Item | none where Item: PartialOrd;      // the last of equal maxima; NaN propagates
+    fn min_by_key<K: Ord>(self, key: fn(Item) -> K) -> Item | none;  // the first of equals
+    fn max_by_key<K: Ord>(self, key: fn(Item) -> K) -> Item | none;  // the last of equals
+    fn collect<C: FromIterator<Item> = List<Item>>(self) -> C;   // a List when nothing picks C
+
+    // materializing, sorting, counting, combinatorics (2.7.15)
+    fn to_list(self) -> List<Item>;
+    fn to_set(self) -> Set<Item> where Item: Hash;
+    fn to_dict<K: Hash, V>(self) -> Dict<K, V> where Self: Iterator<Item = (K, V)>;
+    fn sorted(self, reverse: bool = false) -> List<Item> where Item: Ord;
+    fn sorted_by_key<K: Ord>(self, key: fn(Item) -> K, reverse: bool = false) -> List<Item>;
+    fn sorted_by(self, cmp: fn(Item, Item) -> Ordering) -> List<Item>;
+    fn counts(self) -> Dict<Item, usize> where Item: Hash;
+    fn group_by<K: Hash>(self, key: fn(Item) -> K) -> Dict<K, List<Item>>;
+    fn pairwise(self) -> Pairwise<Self>;                    // Item = (Item, Item)
+    fn combinations(self, k: usize) -> Combinations<Item>;  // Item = List<Item>
+    fn permutations(self, k: usize | none = none) -> Permutations<Item>;
+    fn for_each(self, f: fn(Item));               // side effects only
+    fn last(self) -> Item | none;
+    fn nth(ref self, n: usize) -> Item | none;
+}
+```
+
+### `sum` / `product` and `Zero` / `One`
+
+`sum` starts from `Zero::zero()` and accumulates with `+`; `product` starts from `One::one()` and accumulates with `*`. The sum of an empty iterator is therefore 0 and its product is 1. `Zero` / `One` are traits of `core::num` ([2.1](201-numbers.md)).
+
+### `min` / `max` and floats
+
+`min` and `max` need `PartialOrd`, so float iterators have them: an item unordered with itself (NaN) is the result (2.7.15). `min_by_key` and `max_by_key` need `K: Ord`, a total order; `f32` and `f64` are not `Ord`, since NaN is unordered, and a float key is an error (E0069) whose help gives the `reduce` form. A float list sorts by the total order, `xs.sort_by(f64::total_cmp)`.
+
+### Stopping, running state, groups
+
+- `take_while(pred)` yields items until `pred` first rejects one. That item is taken from the inner iterator and dropped; nothing after it is taken, so side effects past the stop do not run. `skip_while(pred)` drops items until `pred` first rejects one, then yields that one and every later item unchecked.
+- `scan(init, f)` yields the running state: `f(init, x0)`, then `f` of that and `x1`, and so on. It is `fold` that yields every step, so it yields as many items as the inner iterator.
+- `step_by(step)` yields the first item and then every `step`th one. A `step` of 0 panics.
+- `peekable()` returns a `Peekable<Self>` whose `peek(ref self) -> Item | none` gives the next item and leaves it for the following `next`.
+- `inspect(f)` passes each item to `f` and yields it unchanged.
+- `cycle()` restarts from a copy of the iterator as `cycle` received it whenever it runs out, so it is endless unless the iterator is empty, in which case it yields nothing. A generator's copies share one position (2.7.10a), so cycling one does not repeat it.
+- `chunks(size)` yields lists of `size` items in order, the last one shorter when the items run out. `windows(size)` yields lists of `size` consecutive items sliding by one, and nothing when there are fewer than `size` items. A `size` of 0 panics for both. `List` and `Slice` have their own `chunks` / `windows` that yield views ([2.9.7](209-collections.md#297-slicet---view)).
+- `try_fold` and `try_for_each` take a throwing `f`: the first error stops the loop, no later item is visited, and the error is thrown to the caller.
+- `partition(pred)` returns the items `pred` accepts and the rest, as two lists, each in order. `unzip()` splits an iterator of pairs `(A, B)` into a `List<A>` and a `List<B>`. Its items must be pairs: `A` and `B` are inferred from `Item = (A, B)`, and items of any other form are an error at the call.
+
+```nabi
+let xs = [1, 2, 3, 4];
+let small: List<i32> = xs.iter().take_while(|x| x < 3).collect();   //→ [1, 2]
+let sums: List<i32> = xs.iter().scan(0, |acc, x| acc + x).collect(); //→ [1, 3, 6, 10]
+let pairs: List<List<i32>> = xs.iter().windows(2).collect();        //→ [[1, 2], [2, 3], [3, 4]]
+let (even, odd) = xs.iter().partition(|x| x % 2 == 0);              //→ [2, 4], [1, 3]
+let (ns, ss) = [(1, "a"), (2, "b")].iter().unzip();                 //→ [1, 2], ["a", "b"]
+```
+
+### Lazy vs eager
+
+These methods fall into two groups. Transforming adapters such as `map`, `filter` and `take` are **lazy**: they only return a new iterator and perform no computation. Stepping starts only when a terminal method such as `count`, `sum`, `collect` or `for_each` is called.
+
+```nabi
+let xs = [1, 2, 3, 4, 5];
+let r = xs.into_iter()
+    .map(|x| x * 2)            // lazy: nothing computed yet
+    .filter(|x| x > 4)         // lazy
+    .sum();                    // eager: stepping happens here
+//→ 6 + 8 + 10 = 24
+```
+
+### User-defined Iterator
+
+An example of defining an Iterator directly:
+
+```nabi
+struct Counter { n: i32; }
+
+impl Iterator for Counter {
+    type Item = i32;
+
+    fn next(ref self) -> i32 | none {
+        if self.n < 5 {
+            let cur = self.n;
+            self.n = self.n + 1;
+            cur
+        } else {
+            none
+        }
+    }
+}
+
+let c = Counter { n: 0 };
+for x in c {
+    nabi_print_i32(x);          //→ 0, 1, 2, 3, 4
+}
+```
+
+## 2.7.2. `IntoIterator` - where `for` starts
+
+Next is the `IntoIterator` trait, the starting point of a `for` loop.
+
+```nabi
+#[lang("into_iterator_trait")]
+trait IntoIterator {
+    type Item;
+    type IntoIter: Iterator<Item = Item>;
+
+    fn into_iter(self) -> IntoIter;
+}
+```
+
+`IntoIterator` is the adapter that lets a collection create an iterator. `for x in xs` does not treat **xs itself** as an iterator; it creates an iterator with `xs.into_iter()` and calls `next` on it.
+
+### Why they are separate
+
+The two traits are separate because the two viewpoints are fundamentally different.
+
+- A collection itself (List, Dict, etc.) is a stateless container and does not know which position it points to.
+- An iterator has progress state and tracks how far it has gone.
+
+Iterating the same collection twice therefore needs a new iterator each time, and `into_iter` is where it is created.
+
+### Automatic impl
+
+`Iterator` itself gets an automatic impl of `IntoIterator`, whose `into_iter` returns self unchanged.
+
+```nabi
+// every Iterator is automatically an IntoIterator
+impl<I: Iterator> IntoIterator for I {
+    type Item = I::Item;
+    type IntoIter = I;
+    fn into_iter(self) -> I { self }
+}
+```
+
+So `for x in iter` works as is: if iter is already an Iterator, `into_iter` returns self.
+
+### Exact form of the `for` desugaring
+
+The desugaring of a `for` loop, stated more precisely:
+
+```nabi
+for x in expr {
+    body
+}
+```
+
+desugars to:
+
+```nabi
+let __it = expr.into_iter();
+loop {
+    match __it.next() {
+        v: T => {
+            let x = v;
+            body;
+        }
+        none => break,
+    }
+}
+```
+
+See [refs-lang 3.13](../../refs-lang/003-expressions/313-loop-expressions.md) for the detailed desugaring rules.
+
+## 2.7.3. `Step` - the one-step abstraction
+
+Iteration over `Range<T>` rests on the simple operation "move to the next value". This differs in meaning from general arithmetic (`Add`): for example, the next value of a `char` is codepoint + 1, but `char + char` itself is undefined. Nabi therefore puts stepping in a separate trait.
+
+```nabi
+// core::range::Step
+trait Step: PartialOrd + Clone {
+    fn forward_checked(self, count: usize) -> Self | none;
+    fn backward_checked(self, count: usize) -> Self | none;
+    fn steps_between(start: Self, end: Self) -> usize | none;
+}
+```
+
+`Step` lives in `core::range` and is not in the prelude: a user `impl Step for T` needs `use core::range::Step;`.
+
+The methods mean:
+
+- `forward_checked(self, n)`: returns the value `n` steps forward from `self`, or `none` if it exceeds the type's range.
+- `backward_checked(self, n)`: the value moved backward; likewise `none` if out of range.
+- `steps_between(start, end)`: computes how many steps lie from `start` to `end`, returning `none` when that is not representable (e.g. negative, overflow).
+
+### Why it is separate from the arithmetic traits
+
+`Step` is separated from `Add` for three reasons.
+
+- **Separation of meaning**: `+1` is a simple increment, not arbitrary arithmetic. `MyVec3 + MyVec3` is meaningful but `Range<MyVec3>` is not; without a separate `Step` impl it is rejected.
+- **Excluding floating-point**: `f32` / `f64` have no `Step` impl, so a `Range<f64>` is not an iterator: `for x in 0.0..1.0` is a compile error (E0068). `0.0..1.0` still tests membership (`x in 0.0..1.0`).
+- **Efficient skipping**: `Range`, `RangeInclusive` and `RangeFrom` override `Iterator::nth(n)` with one `forward_checked(_, n)` call, so `nth(n)` and `step_by(n)` (which steps through `nth`) run in O(1) on a range. With only `succ`, the same operation would be O(n).
+
+### Step impl matrix
+
+The standard library implements `Step` only for integer primitives and `char`.
+
+| Type                 | impl     | Notes                                                |
+|----------------------|----------|------------------------------------------------------|
+| `i8`..`i64`, `isize` | **yes**  | `forward_checked` returns `none` on overflow         |
+| `u8`..`u64`, `usize` | **yes**  | `backward_checked` returns `none` on underflow       |
+| `int`                | **no**   | no standard library impl                             |
+| `char`               | **yes**  | steps by codepoint, skipping surrogates (`0xD800..=0xDFFF`) |
+| `bool`               | **no**   | no standard library impl                             |
+| `f32`, `f64`         | **no**   | `Range<f64>` is not an iterator: ambiguous step     |
+| `float`              | **no**   | (same as above)                                      |
+
+User-defined types may add `impl Step for MyType` freely, which immediately enables `Range<MyType>`.
+
+```nabi
+use core::range::Step;
+
+enum Weekday { Mon, Tue, Wed, Thu, Fri, Sat, Sun }
+
+impl Step for Weekday {
+    fn forward_checked(self, n: usize) -> Weekday | none { ... }
+    fn backward_checked(self, n: usize) -> Weekday | none { ... }
+    fn steps_between(s: Weekday, e: Weekday) -> usize | none { ... }
+}
+
+for d in Weekday::Mon..=Weekday::Fri {
+    schedule(d);     // the 5 weekdays
+}
+```
+
+## 2.7.4. `Range<T>` / `RangeInclusive<T>` / `RangeFrom<T>` / `RangeTo<T>` / `RangeToInclusive<T>` / `RangeFull`
+
+The `a..b` syntax of [refs-lang 3.7 Range expressions](../../refs-lang/003-expressions/307-range-expressions.md) desugars to these standard library types.
+
+### `Range<T>` - `a..b` (exclusive)
+
+```nabi
+#[lang("range_type")]
+struct Range<T> {
+    pub start: T;
+    pub end: T;
+}
+
+impl<T: Step> Iterator for Range<T> {
+    type Item = T;
+
+    fn next(ref self) -> T | none {
+        if self.start < self.end {
+            let cur = self.start.clone();
+            self.start = self.start.forward_checked(1)?;   // overflow → none
+            cur
+        } else {
+            none
+        }
+    }
+}
+```
+
+Each range form is registered by a `#[literal]` handler of `core::range` (`#[literal(expr ".." expr)]` on the function that builds a `Range`, one handler per form), so notation such as `0..5` desugars to the `Range` struct ([refs-lang 6.5](../../refs-lang/006-meta-system/605-literal-magic.md) is authoritative). The compiler finds `Range` through the `range_type` lang slot.
+
+```nabi
+for i in 0..5 {
+    process(i);          //→ 0, 1, 2, 3, 4
+}
+
+let v: List<i32> = (0..10).collect();   //→ [0, 1, ..., 9]
+```
+
+### `RangeInclusive<T>` - `a..=b`
+
+```nabi
+struct RangeInclusive<T> {
+    pub start: T;
+    pub end: T;
+}
+
+impl<T: Step> Iterator for RangeInclusive<T> { ... }
+```
+
+Fields other than `start` and `end` (e.g. an internal flag marking that the end was reached) are implementation details and private. Even when `end` is the maximum of the type, `a..=b` yields exactly up to `b`.
+
+```nabi
+for i in 0..=5 {
+    process(i);          //→ 0, 1, 2, 3, 4, 5
+}
+```
+
+### `RangeFrom<T>` - `a..` (infinite)
+
+```nabi
+struct RangeFrom<T> { pub start: T; }
+
+impl<T: Step> Iterator for RangeFrom<T> {
+    type Item = T;
+    fn next(ref self) -> T | none {
+        let cur = self.start.clone();
+        self.start = self.start.forward_checked(1)?;  // overflow → none (e.g. reaching i32::MAX)
+        cur
+    }
+}
+```
+
+```nabi
+let it = (10..).take(3);     //→ [10, 11, 12] (take is a lazy adapter)
+```
+
+`RangeFrom` does not yield the maximum of the type. Since the maximum has no next value, iteration ends on reaching the maximum, before yielding it (`(254u8..)` yields only `254` and ends).
+
+### `RangeTo<T>` / `RangeToInclusive<T>` / `RangeFull`
+
+```nabi
+struct RangeTo<T> { pub end: T; }
+
+struct RangeToInclusive<T> { pub end: T; }               // ..=b
+
+struct RangeFull;
+```
+
+`..b` / `..=b` (no start) and `..` (neither) are meaningful only in slice or index contexts and do not create iterators.
+
+```nabi
+let xs = [1, 2, 3, 4, 5];
+let s = xs[..3];          //→ [1, 2, 3]  (Slice: the Slice trait of 2.3 ops)
+```
+
+## 2.7.5. `FromIterator<T>` - dispatch of `collect`
+
+The trait that handles dispatch of `collect` is `FromIterator<T>`.
+
+```nabi
+trait FromIterator<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self;
+}
+```
+
+When `Iterator::collect` is called, the target collection's `from_iter` is called.
+
+```nabi
+let v: List<i32> = (0..5).collect();
+// = List::from_iter((0..5).into_iter())
+```
+
+Every collection (`List`, `Dict`, `Set`, `str`, etc.) implements `FromIterator`.
+
+## 2.7.6. IntoIterator impls per collection
+
+How each collection implements `IntoIterator`:
+
+| Collection          | `Item` type | Behavior                                  |
+|---------------------|-------------|-------------------------------------------|
+| `List<T>`           | `T`         | In order from the first element to the last |
+| `Dict<K, V>`        | `(K, V)`    | Insertion order                           |
+| `Set<T>`            | `T`         | Insertion order                           |
+| `Tuple<A, B, C>`    | (special)   | **Creates no iterator**; use pattern matching  |
+| `Range<T>`          | `T`         | From start to end-1                       |
+| `Slice<T>`          | `T`         | From the start of the view to its end     |
+
+### Iteration order of Dict / Set
+
+`Dict<K, V>` and `Set<T>` iterate in insertion order, the same on every run: a key inserted again while present keeps its place, and one removed and inserted again goes last. The hash seed changes where a key sits in the table, not the order ([2.9](209-collections.md)).
+
+## 2.7.7. Infinite iterators and `take`
+
+An infinite iterator, such as `RangeFrom` or a user-defined one, combined directly with an eager method loops forever.
+
+```nabi norun
+(0..).count();         // infinite loop: count runs to the end
+(0..).sum();           // infinite loop
+```
+
+Make it finite with `take(n)`.
+
+```nabi
+(0..).take(100).count();     //→ 100
+(0..).take(10).sum();        //→ 0+1+...+9 = 45
+```
+
+`Iterator` does not detect infinity. The user must deliberately combine lazy adapters.
+
+## 2.7.8. Function broadcast - desugaring `f.(x)`
+
+Function broadcast in [refs-lang](../../refs-lang/003-expressions/303-broadcast-operators.md) (`sin.(xs)`, `f.(a, b)`) desugars to `Iterator::map` with no trait of its own.
+
+```nabi
+sin.(xs)   ≡   xs.into_iter().map(sin).collect()
+g.(a, b)   ≡   a.into_iter().zip(b.into_iter()).map(|(x, y)| g(x, y)).collect()
+```
+
+## 2.7.9. `DoubleEndedIterator` - bidirectional stepping
+
+Iterators that can step in both directions are modeled by the `DoubleEndedIterator` trait.
+
+```nabi
+trait DoubleEndedIterator: Iterator {
+    fn next_back(ref self) -> Item | none;
+
+    // provided
+    fn rfold<B>(self, init: B, f: fn(B, Item) -> B) -> B;     // fold from the back
+    fn rfind(self, pred: fn(Item) -> bool) -> Item | none;    // the last item pred accepts
+}
+```
+
+This trait represents iterators that can step from the back; the `rev()` adapter, `rfold` and `rfind` require it.
+
+The iterators of `List<T>` and `Slice<T>`, and the following types, must implement this trait.
+
+- `Range<T>`, `RangeInclusive<T>`
+- `Rev<I>` (when `I` is bidirectional), `Map<I, U>`, `Filter<I>`, `Chain<A, B>`, `InspectIter<I>` (when the component iterators are bidirectional)
+- `Enumerate<I>`, `Zip<A, B>`, `Take<I>`, `Skip<I>`, `StepBy<I>`: when the component iterators are `DoubleEndedIterator + ExactSizeIterator`, because counting from the back needs the length.
+
+`Dict<K, V>` and `Set<T>` do not implement it.
+
+```nabi
+let r: List<i32> = (0..5).rev().collect();    //→ [4, 3, 2, 1, 0]
+```
+
+## 2.7.10. `ExactSizeIterator` - iterators with known length
+
+An iterator whose element count is known before stepping is represented by `ExactSizeIterator`.
+
+```nabi
+trait ExactSizeIterator: Iterator {
+    fn len(self) -> usize;
+}
+```
+
+`len()` is the number of remaining elements. `Iterator::exact_len()` returns that number when it is known without stepping and `none` otherwise (the default); the standard-library `ExactSizeIterator` types return their `len()`, as do the adapters listed below when built on them. The default `count()` returns `exact_len()` when it is not `none`, so `count()` does not call `map`'s function: `xs.iter().map(f).take(3).count()` calls `f` zero times. The same holds for `scan`'s and `inspect`'s functions. An iterator of unknown length, such as `Filter`, `TakeWhile`, `SkipWhile` or `(0..).take(100)`, is stepped. The iterators of `List`, `Slice` and `Range`, the `windows` / `chunks` views of `List` and `Slice`, and `Enumerate`, `Zip`, `Take`, `Skip`, `StepBy`, `Rev`, `Map`, `Scan`, `InspectIter`, `Chunks` when their component iterators are all `ExactSizeIterator`, implement this trait. `Windows` has an `exact_len` over an exact-size iterator, and `Cycle` has one (0) only when its iterator is empty.
+
+## 2.7.10a. `GenIter<T>` / `TryGenIter<T, E>` - the value of a generator
+
+These are the values of a `yield fn` call and of a `yield { .. }` block ([refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#result-types-of-coroutine-functions)).
+
+```nabi
+struct GenIter<T> { /* private */ }
+impl<T> Iterator for GenIter<T> {
+    type Item = T;
+    fn next(ref self) -> T | none;          // runs the body to the next yield
+}
+
+struct TryGenIter<T, E> { /* private */ }    // yield fn .. throws (E)
+impl<T, E> TryIterator for TryGenIter<T, E> {
+    type Item = T;
+    type Error = E;
+    fn next(ref self) throws (E) -> T | none;   // throws what the body throws
+}
+```
+
+`TryGenIter` is a `TryIterator` ([2.7.13](#2713-tryiterator---fallible-iteration)), not an `Iterator`, because its `next` throws. It is stepped with `try for`, `try g.next()` or its adapters. After a throw the generator has ended: the next `next` gives `none`. The private fields are not specified. Copies share the same coroutine frame and therefore share the progress position.
+
+## 2.7.11. Module mapping
+
+The mapping of each trait to its lang slot and standard library location:
+
+| Item                  | lang slot             | Standard library location |
+|-----------------------|-----------------------|---------------------------|
+| `Iterator` trait      | `iterator_trait`      | `core::iter`         |
+| `IntoIterator` trait  | `into_iterator_trait` | `core::iter`         |
+| `Step` trait          | (none)                | `core::range`        |
+| `FromIterator` trait  | (none)                | `core::iter`         |
+| `DoubleEndedIterator` | (none)                | `core::iter`         |
+| `ExactSizeIterator`   | (none)                | `core::iter`         |
+| `TryIterator` trait   | `try_iterator_trait`  | `core::iter`         |
+| `Range<T>`            | `range_type`          | `core::range`        |
+| the other 5 range types | (none)              | `core::range`        |
+
+Primitives themselves have no `Iterator` impl (i32 is not a `for` target). Only collections and Ranges are.
+
+## 2.7.12. async - the `Stream` trait
+
+Asynchronous iterators are covered in [2.8 stream](208-stream.md). The `for await x in stream` syntax ([refs-lang 3.13](../../refs-lang/003-expressions/313-loop-expressions.md)) dispatches to `Stream::poll_next`.
+
+## 2.7.13. `TryIterator` - fallible iteration
+
+An iterator whose `next` can fail is a `TryIterator`. Its error is a typed channel of `next`, not part of the item: `next` gives an item, gives `none` at the end, or throws `Error`.
+
+```nabi
+#[lang("try_iterator_trait")]
+trait TryIterator {
+    type Item;
+    type Error;
+    fn next(ref self) throws (Error) -> Item | none;
+
+    // lazy adapters; each function may throw `Error`
+    fn map<U>(self, f: fn(Item) throws (Error) -> U) -> TryMap<Self, U>;
+    fn filter(self, pred: fn(Item) throws (Error) -> bool) -> TryFilter<Self>;
+    fn map_err<E2>(self, f: fn(Error) -> E2) -> MapErr<Self, E2>;
+    fn enumerate(self, start: usize = 0) -> TryEnumerate<Self>;
+    fn zip<J: IntoIterator>(self, other: J) -> TryZip<Self, J::IntoIter>;
+    fn chain<J: TryIterator<Item = Item, Error = Error>>(self, other: J) -> TryChain<Self, J>;
+    fn take(self, n: usize) -> TryTake<Self>;
+    fn skip(self, n: usize) -> TrySkip<Self>;
+    fn step_by(self, step: usize) -> TryStepBy<Self>;    // step 0 panics
+    fn take_while(self, pred: fn(Item) throws (Error) -> bool) -> TryTakeWhile<Self>;
+    fn skip_while(self, pred: fn(Item) throws (Error) -> bool) -> TrySkipWhile<Self>;
+    fn flat_map<U: IntoIterator>(self, f: fn(Item) throws (Error) -> U) -> TryFlatMap<Self, U>;
+    fn scan<S>(self, init: S, f: fn(S, Item) throws (Error) -> S) -> TryScan<Self, S>;
+    fn inspect(self, f: fn(Item) throws (Error)) -> TryInspect<Self>;
+    fn peekable(self) -> TryPeekable<Self>;      // peek(ref self) throws (Error) -> Item | none
+    fn chunks(self, size: usize) -> TryChunks<Self>;     // size 0 panics
+
+    // to a plain iterator of results
+    fn results(self) -> Results<Self>;           // Iterator<Item = Result<Item, Error>>
+
+    // eager: the first error stops the loop and is thrown
+    fn collect<C: FromIterator<Item>>(self) throws (Error) -> C;
+    fn count(self) throws (Error) -> usize;
+    fn last(self) throws (Error) -> Item | none;
+    fn nth(ref self, n: usize) throws (Error) -> Item | none;
+    fn fold<B>(self, init: B, f: fn(B, Item) throws (Error) -> B) throws (Error) -> B;
+    fn for_each(self, f: fn(Item) throws (Error)) throws (Error);
+    fn reduce(self, f: fn(Item, Item) throws (Error) -> Item) throws (Error) -> Item | none;
+    fn any(self, pred: fn(Item) throws (Error) -> bool) throws (Error) -> bool;
+    fn all(self, pred: fn(Item) throws (Error) -> bool) throws (Error) -> bool;
+    fn find(self, pred: fn(Item) throws (Error) -> bool) throws (Error) -> Item | none;
+    fn position(self, pred: fn(Item) throws (Error) -> bool) throws (Error) -> usize | none;
+    fn partition(self, pred: fn(Item) throws (Error) -> bool) throws (Error) -> (List<Item>, List<Item>);
+    fn sum(self) throws (Error) -> Item where Item: Add<Output = Item> + Zero;
+    fn product(self) throws (Error) -> Item where Item: Mul<Output = Item> + One;
+    fn min(self) throws (Error) -> Item | none where Item: Ord;     // the first of equal minima
+    fn max(self) throws (Error) -> Item | none where Item: Ord;     // the last of equal maxima
+    fn min_by_key<K: Ord>(self, key: fn(Item) throws (Error) -> K) throws (Error) -> Item | none;  // the first of equals
+    fn max_by_key<K: Ord>(self, key: fn(Item) throws (Error) -> K) throws (Error) -> Item | none;  // the last of equals
+}
+```
+
+`TryIterator` is in the prelude ([0.2](../000-meta/002-import.md)). It is a separate trait, not an error parameter on `Iterator`: a value is one or the other.
+
+- **After a throw.** What a `next` after a throw does is each type's documented choice. A type may go on with the next item (`io::Bytes`) or end, giving `none` from then on (`TryGenIter`).
+- **Adapter functions throw `Error`.** The function given to `map`, `filter`, `fold`, ... may throw the iterator's own `Error`; a non-throwing function fits too ([refs-lang 4.14.8](../../refs-lang/004-functions/414-throws.md#4148-throws-in-function-types)). A function that throws another type is a type error at the call: convert first with `.map_err(..)`, or handle the error inside the function with `catch`. `map_err` is the only way to change `Error`: `.map_err(|e| -> IoError | ParseError { e })` widens it, `.map_err(|e| -> any Error { e })` erases it.
+- **No `try_fold` / `try_for_each`.** `fold` and `for_each` already take a throwing function. `Iterator::try_fold` / `try_for_each` (2.7.1) remain: they add a throw to a non-throwing iterator.
+- **`collect`** builds any `FromIterator` collection (2.7.5); there is no separate trait. It stops at the first error and throws it.
+- **Names.** Adapter types take the `Try` prefix and live in `core::iter` beside `Map`, `Filter`, ...; `MapErr` and `Results` exist only here.
+- **`for`.** A `TryIterator` is stepped with `try for x in it { .. }` ([refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for-iterator-based-repetition)). The `try` covers the iterable and each `next`, not the body. A plain `for` over a `TryIterator` is a compile error that asks for `try for` or `.results()`.
+
+### Conversions
+
+| From | To | Form |
+|---|---|---|
+| `TryIterator` | `Iterator<Item = Result<T, E>>` | `it.results()` |
+| `IntoIterator<Item = Result<T, E>>` | `TryIterator<Item = T, Error = E>` | `iter::from_results(xs)` (`FromResults<I, T, E>`) |
+| plain `IntoIterator` | `TryIterator<Error = E>` that never throws | `iter::infallible::<E, J>(xs)` (`Infallible<J::IntoIter, E>`) |
+| a function | `TryIterator` | `iter::try_from_fn(f)`, `f: fn() throws (E) -> (T \| none)` (`TryFromFn<T, E>`) |
+| a generator | `TryIterator` | `yield fn .. throws (E) -> T` gives `TryGenIter<T, E>` (2.7.10a) |
+
+`results()` keeps calling `next` after an error, so every error of a source that goes on becomes an `Err` item, and a source that ends after an error gives that `Err` last. `iter::from_results` throws each `Err` item and goes on.
+
+### Forms
+
+| Layer | Form |
+|---|---|
+| manual step | `while let x: T = try it.next() { .. }` |
+| skip and go on | `for r in it.results() { match r { Result::Ok(x) => .., Result::Err(e) => .. } }` |
+| loop | `try for x in it { .. }` |
+| pipeline | `let ns: List<i64> = try lines.filter(\|l\| !l.is_empty()).map(\|l\| try i64::from_str(l) catch _ { 0 }).collect();` |
+| implementing one | `yield fn .. throws (E) -> T { .. }`, or `impl TryIterator for ..` |
+
+```nabi
+fn total(path: str) throws (IoError | ParseError) -> i64 {
+    let n: i64 = 0;
+    try for line in read_lines(path) {      // IoError from each next
+        n += try i64::from_str(line);       // the body marks its own call
+    }
+    n
+}
+```
+
+## 2.7.14. Collections answer iterator methods
+
+A method call `x.m(args)` whose receiver type has no method `m` but has a method `iter()` taking no arguments is `x.iter().m(args)` when the type `iter()` returns has `m`. A zero-argument `x.min()` / `x.max()` is forwarded too, since `Ord::min` / `max` take an argument. The receiver's own methods win otherwise (`List::contains`, `List::windows`, `Set::to_list`). The forwarded call is exactly the `iter()` form: lazy adapters stay lazy and nothing is copied.
+
+```nabi
+let xs = [3, 1, 2];
+let total = xs.sum();                          // xs.iter().sum()
+let evens = xs.filter(|x| x % 2 == 0).to_list();
+let big = xs.max();                            // xs.iter().max(), 3
+let d = counts.map(|p| p.1).sum();             // a Dict iterates (k, v) pairs
+```
+
+`collect()` with no expected type, and no later use that fixes `C`, collects into a `List<Item>` (the default of its type parameter).
+
+## 2.7.15. Materializing, sorting, counting
+
+- `to_list()`, `to_set()`, `to_dict()` gather the items into a new collection; `to_dict` takes `(K, V)` items and a later key's value replaces an earlier one's.
+- `sorted(reverse:)` returns a new sorted `List` (stable; `reverse: true` puts the largest first). `sorted_by_key(key, reverse:)` sorts by `key`, equal keys keeping their order in both directions; `sorted_by(cmp)` sorts by a comparison. Python's `sorted(xs, key=f, reverse=True)` is `xs.sorted_by_key(f, reverse: true)`; Nabi names the key form `_by_key` as `sort_by_key` and `min_by_key` do.
+- `counts()` maps each item to how often it occurs, keys in first-seen order (Python's `Counter`); `Dict<K, usize>::most_common(n)` ranks the result ([2.9.3](209-collections.md#293-dictk-v-s---hash-map)). `group_by(key)` maps each key to the list of its items, in order; unlike Python's `itertools.groupby` the equal keys need not be adjacent.
+- `enumerate(start: 1)` counts from `start`.
+- `pairwise()` yields each item with the next. `combinations(k)` yields each choice of `k` items as a list, and `permutations(k)` each ordering of `k` items at distinct positions (all items when `k` is `none`), both in lexicographic order of positions, after gathering the items (Python's `itertools`).
+- `min()` / `max()` need `PartialOrd`, so float iterators have them: an item unordered with itself (NaN) is the result, as IEEE 754 `minimum` / `maximum` and NumPy. `min_by_key` / `max_by_key` keep `K: Ord`.
+- `sum()` of `f32` / `f64` items is pairwise: blocks of 128 consecutive items are added left to right; the block sums are combined as a binary counter (each new sum merges with the previous one of the same number of blocks, `left + right`), and the remaining partial sums are added from the last to the first (`p0 + (p1 + (.. + pn))`). The order depends only on the number of items, so the result is the same on every target, thread count and optimization level. Other item types add left to right.
+
+```nabi
+let words = ["b", "a", "c", "a"];
+words.sorted()                         //→ ["a", "a", "b", "c"]
+words.sorted_by_key(|w| w.len(), reverse: true)
+words.counts().most_common(1)          //→ [("a", 2)]
+[1, 4, 9].pairwise().map(|p| p.1 - p.0).to_list()   //→ [3, 5]
+["a", "b", "c"].combinations(2).count()             //→ 3
+```

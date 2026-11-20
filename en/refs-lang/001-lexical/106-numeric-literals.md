@@ -1,0 +1,210 @@
+# 1.6. Numeric literals
+
+This section covers the tokenization rules for numeric character sequences written directly in source code, and the rules that determine the type of each literal.
+
+## 1.6.1. Basic form
+
+The grammar of numeric literals is defined as follows.
+
+```
+numeric_lit ::= int_lit | float_lit
+int_lit     ::= dec_lit | hex_lit | bin_lit | oct_lit
+dec_lit     ::= dec_digit ("_"? dec_digit)*
+hex_lit     ::= ("0x" | "0X") hex_digit ("_"? hex_digit)*
+bin_lit     ::= ("0b" | "0B") bin_digit ("_"? bin_digit)*
+oct_lit     ::= ("0o" | "0O") oct_digit ("_"? oct_digit)*
+float_lit   ::= dec_lit "." dec_digit_seq? exponent?
+              | dec_lit exponent
+exponent    ::= ("e" | "E") ("+" | "-")? dec_digit_seq
+dec_digit_seq ::= dec_digit ("_"? dec_digit)*
+dec_digit   ::= [0-9]
+hex_digit   ::= [0-9a-fA-F]
+bin_digit   ::= [01]
+oct_digit   ::= [0-7]
+```
+
+### Radix
+
+The supported radixes and their notation are as follows.
+
+| Radix       | Prefix         | Allowed digits            | Example        |
+|-------------|----------------|---------------------------|----------------|
+| Decimal     | none           | `0`-`9`                   | `42`, `1024`   |
+| Hexadecimal | `0x` or `0X`   | `0`-`9`, `a`-`f`, `A`-`F` | `0xFF`, `0X1a` |
+| Binary      | `0b` or `0B`   | `0`, `1`                  | `0b1010`       |
+| Octal       | `0o` or `0O`   | `0`-`7`                   | `0o755`        |
+
+Non-decimal radixes are used only for integer literals; floating-point literals allow decimal notation only.
+
+A decimal integer literal with a leading zero (e.g. `0123`) is a compile error. The "leading 0 = octal" rule common in C and Java is not adopted, and reading `0123` as decimal `123` would surprise anyone who knows it; octal is written with the `0o` prefix. The help offers `0o123` for octal and `123` for decimal. `0` itself and floating-point literals (`0.5`, `00.5`) are fine.
+
+### Digit separators
+
+Underscores (`_`) may be placed between digits for readability.
+
+```nabi
+1_000_000
+0xFFFF_FFFF
+0b1010_0101
+3.141_592_653
+```
+
+The rules for underscores are as follows.
+
+- `_` may appear only between digits; the first or last character must not be `_`.
+- `_` must not appear immediately after a radix prefix (`0x_FF`) or immediately before the decimal point (`1_.0`). `1._0` is not a float literal: it lexes as `1` followed by the field access `._0`, which `i32` does not have.
+- Consecutive underscores (`1__000`) are rejected.
+- `_` is ignored during evaluation, so `1_000` and `1000` denote the same value.
+
+### Floating-point forms
+
+A literal is a floating-point literal if it matches one of the following two forms; otherwise it is an integer literal or is handled as separate tokens.
+
+```
+digit+  '.'  digit*  exponent?         // 1.5, 1., 1.5e10, 0.5
+digit+              exponent           // 2e10  (an exponent without a point is still floating-point)
+```
+
+A floating-point literal must have digits before the decimal point. It is written `0.5`; `.5` is not a floating-point literal. A `.` followed by digits is always a tuple index (`t.0`, `t.5`).
+
+The exponent part (`exponent`) consists of `e` or `E`, an optional sign (`+` or `-`), and one or more decimal digits. Thus `1.`, `0.5`, `1.5e10`, `2e-3` and `6.022e23` are all valid floating-point literals. A point alone with both sides empty (`.`) is not a floating-point literal but a separate token.
+
+#### Distinguishing `1.` from `1.foo`
+
+The form `digit+ '.'` (`1.`) is tokenized as floating-point only when no identifier starts after the point. The cases are as follows.
+
+| Input                                       | Tokenization                                            |
+|---------------------------------------------|---------------------------------------------------------|
+| `1.5`                                       | One floating-point token `1.5`                          |
+| `1.` (followed by end/whitespace/punctuation) | One floating-point token `1.`                         |
+| `1.foo`                                     | Three tokens: integer `1`, `.`, identifier `foo`        |
+| `1 .foo`                                    | Same (whitespace does not affect the token split)       |
+| `1..2`                                      | Three tokens: integer `1`, `..`, integer `2` (`..` is the longer match) |
+| `1.+2`                                      | Three tokens: floating-point `1.`, `+`, integer `2`     |
+
+In one line: if, in the middle of a number, the first character after `.` is `XID_Start` or another `.`, that `.` is not part of a floating-point literal; otherwise (punctuation, operator character, end of input) it is absorbed into the floating-point literal.
+
+## 1.6.2. Type suffixes
+
+A suffix after a literal specifies which concrete type the literal evaluates to.
+
+```nabi
+42i32
+3.14f64
+2i              // a package's own suffix (6.5), e.g. an imaginary unit
+0xFFu8
+1_000_000i64
+```
+
+The suffix format follows these rules. A suffix is attached immediately after the last character of the literal without whitespace and consists only of identifier characters (`XID_Continue`). Lexically it is kept as part of one token: the lexer groups the numeric body and the suffix string into a single token.
+
+A suffix is therefore a name: it starts with a letter or `_` and, after the first character, may hold digits (`x2`). A symbol glued to a number is never a suffix. `95%` is `95` followed by the remainder operator, so `95%` with no operand after it is an error that says a percentage is a suffix name (`95pct`); `5°` and `5$`, where the symbol is no token, are errors that name a suffix to write (`5deg`, `5usd`). On a decimal literal `e` / `E` starts the exponent and `_` separates digits, so no suffix can start with either ([6.5.7](../006-meta-system/605-literal-magic.md#657-user-defined-literals)).
+
+Numeric type name suffixes (`i8` `i16` `i32` `i64` `isize` `u8` `u16` `u32` `u64` `usize` `c_char` `f32` `f64`) are defined by the language and set the literal's type to that type. The suffixes `f16` and `bf16` set it to the standard library's 16-bit floats ([stdlib 2.1.4](../../refs-standard-libraries/200-core/201-numbers.md#f16-and-bf16---16-bit-storage-floats)). `i128` / `u128` are reserved: Nabi has no 128-bit integers (`int` holds any size), and a literal with either suffix is an error that names the 64-bit suffix or `int` to write instead. The float suffixes may also be attached to decimal integer forms (`1f64`, `2bf16`). A float literal is rounded once from its decimal value to its type, to nearest, ties to even. In a hexadecimal literal `f` is a digit, so `0x1f32` is the hex value `0x1F32`, not `0x1` with the suffix `f32`. Other suffixes (`2i`, etc.) are interpreted by handlers a package registers through [`#[literal(...)]` magic](../006-meta-system/605-literal-magic.md).
+
+## 1.6.3. Unsuffixed literals
+
+The type of an unsuffixed literal (`42`, `3.14`) is determined by the expected type.
+
+- Integer literal: if the expected type is an integer or floating-point type, it is that type. With no expected type, it is its default type.
+- Floating-point literal: if the expected type is a floating-point type, it is that type. With no expected type, it is its default type. It cannot appear where an integer type is expected.
+- The arbitrary-precision std types `int` and `float` also count: an integer literal may take `int` or `float`, and a floating-point literal may take `float`. These types hold any value, so no range check applies.
+- **Default type.** An unsuffixed literal's default type is `i64` (integer) or `f64` (floating-point), unless it fills an omitted type parameter that declares a default ([2.10.5](../002-types/210-generics.md#2105-defaults)) the literal can take: then that default is its default type. A literal can take a default it could take as an expected type: a floating-point type for either literal, an integer type for an integer literal. `Vec3::new(1.0, 2.0, 3.0)` with `struct Vec3<T = f32>` is a `Vec3<f32>`, and so is `Vec3::new(1, 2, 3)`; `Vec3::new(x, 2.0, 3.0)` with `x: f64` is a `Vec3<f64>`, since `x` fixes `T`. The default type is still only a default: an expected type or a later use fixes the literal first (`let v: DVec3 = Vec3::new(1.0, 2.0, 3.0)` is a `Vec3<f64>`).
+- A literal that must take a declared default it does not fit is an error, as in a typed slot (`Buf::new(300)` with `Buf<T = u8>`: write `Buf::<u16>::new(300)` or `300i64`). A literal that fills two parameters with different defaults is an error naming both; write its type at the declaration.
+- An integer literal never fills a parameter whose bound no integer type has (`lerp(0, 10, 1)` with `T: FloatingPoint` is an error whose help writes `lerp(0.0, 10.0, 1.0)`).
+- In a binary operation, if the type of one operand is statically fixed, that type becomes the expected type for the literal side.
+- When an integer literal is placed where a floating-point type is expected and that floating-point type cannot represent the value exactly, it is a compile error (`let f: f32 = 16777217;`).
+- If the expected type is a sum type with an integer type member, an integer literal takes that integer type (the `1` in `let v: i64 | f64 = 1;` is `i64`).
+- If the sum has more than one integer member and a floating-point member, an unsuffixed integer literal is ambiguous and a compile error (`let v: u16 | u8 | f32 = 1;`): write a suffix, `1u16` or `1u8`, or `1.0` for the floating-point member. Without a floating-point member, such a literal is `i64` and is checked against the sum like any `i64` value.
+- Arithmetic among unsuffixed literals (`1 + 2`, `-1`, `2 * (3 + 4)`) remains untyped until it meets a typed operand or an expected type. When it does, the whole expression takes that type; if it never does, it takes its default type (above).
+- If one branch of `if` / `else`, or one arm of a `match` whose type no slot fixes, is an unsuffixed integer literal and another has an integer type, the literal follows that type.
+- A list literal with no expected type whose elements are all unsuffixed number literals (`-` allowed, nested list literals too), at least one of them a floating-point literal, is a list of floats: its integer literals are typed as floating-point literals (`[0, 1.5]` is `[0.0, 1.5]`, `[[0, 1], [0.5, 2]]` a `List<List<f64>>`). This is the typing of literals, not a conversion of values: an integer-typed value beside a float literal (`[n, 1.5]` with `n: i64`) is still a type mismatch.
+- In the `...` position of a C variadic function ([8.6](../008-abi/806-calling-convention.md)), an unsuffixed integer literal is `i32` (C `int`).
+
+The expected type comes from a `let` type annotation, the parameter type in argument position, the return type in return position, and the binary operation rule above.
+
+A literal bound by an unannotated `let` has no expected type at its declaration. Its type is an inference variable fixed by the uses that follow in the variable's scope (the rest of the block, closures included), as in [5.1.7](../005-modules/501-variable-declaration.md#517-type-annotations-and-type-inference); the defaults apply only when no use fixes it.
+
+- What counts: the initializer is the literal (`let c = 0`, `let c = -1`), literal arithmetic (`let n = 1 + 2`), an `if` / `match` whose branches are literals (`let f = if b { 1 } else { 0 }`), or a direct element or argument of the initializer (`let xs = [0, 0]`, `let (a, b) = (0, 1)`, `let n = Atomic::new(0)`).
+- What fixes it: everything that fixes an open `let` (arguments, assignments, annotated `let`s, `return`, the body's value) and also an operator whose other operand has a fixed type (`c += x`, `c < limit`).
+- `for i in 0..10` with literal bounds is the same: `i`'s type comes from the loop body.
+- A negative literal is not made unsigned by its use: `let i = -1; xs[i]` keeps `i64` (an index from the end).
+- In a function body every unsuffixed literal with no expected type is an integer or float type variable from the start (`{integer}` / `{float}`). Each use unifies it like any other type variable: arguments and generic bounds (also `where` clauses) with their associated types (`tasks.push(spawn(async { 0 }))` into a `List<Task<i32>>`), closure returns and annotated closure parameters, a typed `collect()` target through iterator adapters (`(0..4).chain(7..10).collect::<List<i32>>()`), operators, `if` / `match` branches and `break` values, a sum slot's one number member, a type pattern, a struct literal's type arguments under the struct's bounds (`B { v: 3 }` with `B<T: Num>`), an implicit generic's body (`fn add(a, b) { a + b }` called as `add(1, x_i32)`), and the one impl, trait or operator of the number types of its kind that fits (`9.once()` with `Twice` implemented for `i32` alone, `(1, 2).foo()` with `Foo` on `(i32, i32)`, `Wave::hi(3)`, `84 / nz` with `Div<NonZero<i32>>` on `i32`). The body is checked once; at its end every variable nothing fixed takes its default type.
+- A `const` item's value, a field default and a parameter default are each checked on their own, against their declared type, before they are evaluated.
+- A use that needs one type at once fixes the variable there: if exactly one number type of its kind works, the variable is that type; otherwise its default type (above). Such uses are a method call that the variable's type does not already have (a method of a generic or blanket impl leaves it open), a trait-qualified call (`Tr::f(x)`), an overloaded call (`int::from(i)`), storing into `any`, and a type test of the value (`v is i64`, a type pattern such as `match v { n: i64 => .. }`). A type test takes the default, so `let v = 3; v is i64` is `true` and `v is i32` is `false`. An f-string hole does not fix it.
+- A literal receiver of a number slot has the slot's type (`let n: i32 = 7.max(-2)`), and a tuple or list literal into a sum takes the member of its shape.
+- No conversion is added: a variable bound to an integer literal never becomes a floating-point type (`let x = 1; let f: f64 = x;` is an error; `let f: f64 = 1;` is not), and two uses that want different types are an error at the second use; for a literal-bound `let` it names the first (`` conflicting uses of `c`: `i64` here, but `i32` fixed at 16:16 ``). The help points at the declaration (`let c: i64 = 0`, or `let t = 0.0`), not a cast at the use.
+
+```nabi
+let a = 42;              // i64
+let b = 3.14;            // f64
+let x: f64 = 1;          // f64
+let y: u8 = 200;         // u8
+let r = a * 2;           // 2 is i64 (follows a)
+let s: f64 = 2.0;
+let t = s * 2;           // 2 is f64 (follows s)
+let e: i32 = 1.5;        // ERROR: floating-point literal cannot be an integer type
+let w: i64 = 7i64;
+let k = w + (1 + 2);     // 1 + 2 is i64 (meets w)
+let m: u8 = 2 * 100;     // 2 * 100 is u8 (expected type)
+let n = 1 + 2;           // i64 (never fixed → default)
+let v = if flag { 0 } else { w };   // 0 is i64 → v: i64
+
+fn count(xs: List<i32>) -> i32 {
+    let c = 0;                // i32: fixed by the body's value below
+    for x in xs { if x > 0 { c += 1; } }
+    c
+}
+let t = 0;
+let big: List<u64> = [1, 2];
+for x in big { t += x; }      // t: u64
+let z = 0;
+let f: f64 = z;               // ERROR: `z` holds an integer; write `let z = 0.0;`
+```
+
+## 1.6.4. Range checking
+
+A literal value outside the range of its type is a compile error. Hexadecimal, octal and binary literals follow the same range rules as decimal.
+
+```nabi
+let a: u8 = 256;         // ERROR: out of u8 range
+let b = 0xFFi8;          // ERROR: 255 is out of i8 range
+let c = 0xFFu8 as i8;    // OK: convert with as when a bit pattern is needed (-1)
+```
+
+Arithmetic consisting only of literals and constants is folded at compile time; if the result exceeds the type's range or divides by zero, it is a compile error ([5.2.4](../005-modules/502-const.md#524-constant-expressions-and-the-evaluator)).
+
+```nabi
+let m: u8 = 2 * 200;     // ERROR: 400 is out of u8 range
+```
+
+## 1.6.5. Rejected forms
+
+The following inputs are errors immediately at the lexical stage.
+
+| Input   | Reason for rejection             |
+|---------|----------------------------------|
+| `0x`    | No digits after hex prefix       |
+| `0b`    | No digits after binary prefix    |
+| `0o`    | No digits after octal prefix     |
+| `1__0`  | Consecutive `_`                  |
+| `1_`    | Ends with `_`                    |
+| `0x_FF` | `_` immediately after radix prefix |
+| `1e`    | No digits in exponent            |
+| `0b12`  | Digit `2` outside base 2         |
+| `0o8`   | Digit `8` outside base 8         |
+
+Each error points at the characters at fault (the stray digit, the extra `_`, the bare `e`) and says what to write.
+
+`_1` is tokenized as an identifier, not a numeric literal, so it is not a rejected input but a token of a different kind.
+
+## 1.6.6. Negative numbers
+
+There is no separate negative literal token. `-42` consists of two tokens, the unary operator `-` and the literal `42`; a literal itself is always tokenized in non-negative form.
+
+There is one exception to range checking. A literal immediately after unary `-` is allowed up to `MAX + 1` of its type, so `-128i8` is the minimum value of `i8`. Operands of binary operations have no such exception.
+
+```nabi
+let m = -128i8;          // OK: i8::MIN
+let n = a - 128i8;       // ERROR: 128 is out of i8 range
+```

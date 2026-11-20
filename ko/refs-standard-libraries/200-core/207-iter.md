@@ -1,0 +1,689 @@
+# 2.7. iter: 반복 트레잇
+
+`core::iter` 모듈은 `for x in xs`가 어떻게 풀리는지 정하는 **권위**입니다. 모든 `for` 루프는 이 장의 트레잇으로 디스패치됩니다.
+
+[refs-lang 3.13 루프 표현식](../../refs-lang/003-expressions/313-loop-expressions.md)의 `for` 문법은 `IntoIterator::into_iter`와 `Iterator::next` 호출을 조합한 형태로 풀립니다.
+
+## 2.7.1. `Iterator`: 단계 진행
+
+첫 트레잇은 `Iterator`이며, 시그니처는 다음과 같습니다.
+
+```nabi
+#[lang("iterator_trait")]
+trait Iterator {
+    type Item;
+
+    fn next(ref self) -> Item | none;
+}
+```
+
+동작은 단순합니다. `next`를 한 번 호출하면 다음 원소 하나를 반환합니다. 원소가 더 없으면 `none`을 돌려줍니다.
+
+시그니처는 `ref self`입니다. 반복자(iterator) 자체가 **상태**를 들고 있고, 호출할 때마다 그 상태를 제자리에서 갱신하기 때문입니다. 반복자는 값입니다. 복사한 `ListIter`는 따로 진행하고, `next(ref self)`는 그 사본만 진행합니다.
+
+### 사용 예(사용자 코드)
+
+직접 호출하는 모습은 다음과 같습니다.
+
+```nabi
+let xs: List<i32> = [10, 20, 30];
+let it = xs.into_iter();         // IntoIterator 가 만든 iterator
+let v1 = it.next();              //→ 10
+let v2 = it.next();              //→ 20
+let v3 = it.next();              //→ 30
+let v4 = it.next();              //→ none
+```
+
+실제 코드에서는 보통 직접 호출하지 않고 `for`를 씁니다.
+
+```nabi
+for x in xs {
+    process(x);
+}
+// → 컴파일러가 다음으로 desugar:
+//   let __it = xs.into_iter();
+//   loop {
+//       match __it.next() {
+//           v: i32 => process(v),
+//           none => break,
+//       }
+//   }
+```
+
+### 메서드: 풍부한 기본 impl
+
+`Iterator`에서 직접 구현해야 하는 메서드는 `next(ref self)` 하나뿐입니다. 나머지 메서드는 모두 `next` 위에 쌓은 기본 구현입니다.
+
+> [!NOTE]
+> 아래 시그니처의 `fn(Item) -> U`는 [refs-lang 4.4 함수 타입](../../refs-lang/004-functions/404-function-type.md)이 정의하는 통합 호출 가능 타입입니다. 이 타입은 **함수와 클로저를 모두** 받습니다. 따라서 `it.map(some_fn)`도, `it.map(|x| x * 2)`도 같은 자리에 들어갑니다. Rust의 `fn`/`Fn`/`FnMut`/`FnOnce`와 달리 형태가 하나뿐입니다.
+
+```nabi
+impl Iterator {
+    fn next(ref self) -> Item | none;       // 사용자 정의
+
+    // 변환 어댑터 (lazy)
+    fn map<U>(self, f: fn(Item) -> U) -> Map<Self, U>;
+    fn filter(self, pred: fn(Item) -> bool) -> Filter<Self>;
+    fn enumerate(self, start: usize = 0) -> Enumerate<Self>;   // (index, item) 쌍, `start`부터
+    fn zip<J: IntoIterator>(self, other: J) -> Zip<Self, J::IntoIter>;    // Item = (Item, J::Item)
+    fn chain<J: IntoIterator<Item = Item>>(self, other: J) -> Chain<Self, J::IntoIter>;
+    fn take(self, n: usize) -> Take<Self>;
+    fn skip(self, n: usize) -> Skip<Self>;
+    fn step_by(self, step: usize) -> StepBy<Self>;
+    fn rev(self) -> Rev<Self>;                    // DoubleEndedIterator 만
+    fn flatten(self) -> Flatten<Self> where Item: IntoIterator;
+    fn flat_map<U: IntoIterator>(self, f: fn(Item) -> U) -> FlatMap<Self, U>;
+    fn peekable(self) -> Peekable<Self>;          // peek(ref self) -> Item | none
+    fn take_while(self, pred: fn(Item) -> bool) -> TakeWhile<Self>;
+    fn skip_while(self, pred: fn(Item) -> bool) -> SkipWhile<Self>;
+    fn scan<S>(self, init: S, f: fn(S, Item) -> S) -> Scan<Self, S>;   // Item = S
+    fn inspect(self, f: fn(Item)) -> InspectIter<Self>;    // f 가 각 원소를 봄
+    fn cycle(self) -> Cycle<Self>;                // 끝없이 반복
+    fn chunks(self, size: usize) -> Chunks<Self>;     // Item = List<Item>
+    fn windows(self, size: usize) -> Windows<Self>;   // Item = List<Item>
+
+    fn exact_len(self) -> usize | none;           // 진행 없이 아는 길이, 모르면 none
+
+    // 종결 메서드 (eager)
+    fn count(self) -> usize;
+    fn sum(self) -> Item where Item: Add<Output = Item> + Zero;     // 비면 0, 부동소수는 쌍별 합(2.7.15)
+    fn product(self) -> Item where Item: Mul<Output = Item> + One;  // 비면 1
+    fn fold<B>(self, init: B, f: fn(B, Item) -> B) -> B;
+    fn try_fold<B, E>(self, init: B, f: fn(B, Item) throws (E) -> B) throws (E) -> B;
+    fn try_for_each<E>(self, f: fn(Item) throws (E)) throws (E);
+    fn partition(self, pred: fn(Item) -> bool) -> (List<Item>, List<Item>);
+    fn unzip<A, B>(self) -> (List<A>, List<B>) where Self: Iterator<Item = (A, B)>;
+    fn reduce(self, f: fn(Item, Item) -> Item) -> Item | none;
+    fn any(self, pred: fn(Item) -> bool) -> bool;
+    fn all(self, pred: fn(Item) -> bool) -> bool;
+    fn find(self, pred: fn(Item) -> bool) -> Item | none;
+    fn position(self, pred: fn(Item) -> bool) -> usize | none;
+    fn min(self) -> Item | none where Item: PartialOrd;      // 같은 최솟값 중 첫 번째, NaN 전파
+    fn max(self) -> Item | none where Item: PartialOrd;      // 같은 최댓값 중 마지막, NaN 전파
+    fn min_by_key<K: Ord>(self, key: fn(Item) -> K) -> Item | none;  // 같은 값 중 첫 번째
+    fn max_by_key<K: Ord>(self, key: fn(Item) -> K) -> Item | none;  // 같은 값 중 마지막
+    fn collect<C: FromIterator<Item> = List<Item>>(self) -> C;   // C를 정하는 것이 없으면 List
+
+    // 모으기, 정렬, 세기, 조합 (2.7.15)
+    fn to_list(self) -> List<Item>;
+    fn to_set(self) -> Set<Item> where Item: Hash;
+    fn to_dict<K: Hash, V>(self) -> Dict<K, V> where Self: Iterator<Item = (K, V)>;
+    fn sorted(self, reverse: bool = false) -> List<Item> where Item: Ord;
+    fn sorted_by_key<K: Ord>(self, key: fn(Item) -> K, reverse: bool = false) -> List<Item>;
+    fn sorted_by(self, cmp: fn(Item, Item) -> Ordering) -> List<Item>;
+    fn counts(self) -> Dict<Item, usize> where Item: Hash;
+    fn group_by<K: Hash>(self, key: fn(Item) -> K) -> Dict<K, List<Item>>;
+    fn pairwise(self) -> Pairwise<Self>;                    // Item = (Item, Item)
+    fn combinations(self, k: usize) -> Combinations<Item>;  // Item = List<Item>
+    fn permutations(self, k: usize | none = none) -> Permutations<Item>;
+    fn for_each(self, f: fn(Item));               // side effect 한정
+    fn last(self) -> Item | none;
+    fn nth(ref self, n: usize) -> Item | none;
+}
+```
+
+### `sum` / `product`와 `Zero` / `One`
+
+`sum`은 `Zero::zero()`에서 시작해 `+`로 누적하고, `product`는 `One::one()`에서 시작해 `*`로 누적합니다. 따라서 빈 반복자의 합은 0, 곱은 1입니다. `Zero` / `One`은 `core::num`의 트레잇입니다([2.1](201-numbers.md)).
+
+### `min` / `max`와 부동소수점
+
+`min`과 `max`는 `PartialOrd`만 요구하므로 부동소수점 이터레이터에도 있습니다. 자기 자신과 순서가 없는 항목(NaN)이 결과가 됩니다(2.7.15). `min_by_key`와 `max_by_key`는 전순서인 `K: Ord`가 필요합니다. NaN은 순서가 없으므로 `f32`와 `f64`는 `Ord`가 아니며, 부동소수점 키는 에러(E0069)이고 그 도움말이 `reduce` 형태를 알려 줍니다. 부동소수점 리스트는 전순서로 정렬합니다: `xs.sort_by(f64::total_cmp)`.
+
+### 멈춤, 누적 상태, 묶음
+
+- `take_while(pred)`는 `pred`가 처음 거부하는 원소 전까지 내놓습니다. 그 원소는 안쪽 반복자에서 꺼낸 뒤 버립니다. 그 뒤로는 아무것도 꺼내지 않으므로 멈춘 지점 뒤의 부수 효과는 실행되지 않습니다. `skip_while(pred)`는 `pred`가 처음 거부하는 원소 전까지 버리고, 그 원소부터 그 뒤 원소를 검사 없이 모두 내놓습니다.
+- `scan(init, f)`는 누적 상태를 내놓습니다. 먼저 `f(init, x0)`, 그다음 그 값과 `x1`로 계산한 `f`를 내놓는 식입니다. 단계마다 값을 내놓는 `fold`이므로 안쪽 반복자와 같은 개수를 내놓습니다.
+- `step_by(step)`은 첫 원소를 내놓고 그 뒤로 `step`번째 원소마다 내놓습니다. `step`이 0이면 패닉합니다.
+- `peekable()`은 `Peekable<Self>`를 돌려줍니다. 그 `peek(ref self) -> Item | none`은 다음 원소를 돌려주되, 다음 `next`가 그 원소를 내놓도록 남겨 둡니다.
+- `inspect(f)`는 각 원소를 `f`에 넘긴 뒤 그대로 내놓습니다.
+- `cycle()`은 다 돌 때마다 `cycle`이 받은 반복자의 복사본에서 다시 시작합니다. 그래서 반복자가 비어 있지 않으면 끝이 없고, 비어 있으면 아무것도 내놓지 않습니다. 제너레이터의 복사본은 한 위치를 공유하므로(2.7.10a) 제너레이터를 순환 반복자로 감싸도 원소가 반복되지 않습니다.
+- `chunks(size)`는 `size`개씩 순서대로 묶은 리스트를 내놓고, 원소가 모자라면 마지막 것이 더 짧습니다. `windows(size)`는 연속한 `size`개를 하나씩 밀면서 리스트로 내놓습니다. 원소가 `size`개보다 적으면 아무것도 내놓지 않습니다. 둘 다 `size`가 0이면 panic이 일어납니다. `List`와 `Slice`에는 뷰를 내놓는 자체 `chunks` / `windows`가 있습니다([2.9.7](209-collections.md#297-slicet-뷰)).
+- `try_fold`와 `try_for_each`는 에러를 던지는 `f`를 받습니다. 첫 에러에서 루프가 멈추고 그 뒤 원소는 방문하지 않습니다. 그 에러는 호출한 쪽으로 던집니다.
+- `partition(pred)`는 `pred`가 받아들인 원소와 나머지를 두 리스트로 돌려줍니다. 두 리스트 모두 원래 순서를 지킵니다. `unzip()`은 쌍 `(A, B)`의 반복자를 `List<A>`와 `List<B>`로 나눕니다. 원소는 쌍이어야 합니다. `A`와 `B`는 `Item = (A, B)`에서 추론하고, 다른 형태의 원소는 호출 지점에서 에러입니다.
+
+```nabi
+let xs = [1, 2, 3, 4];
+let small: List<i32> = xs.iter().take_while(|x| x < 3).collect();   //→ [1, 2]
+let sums: List<i32> = xs.iter().scan(0, |acc, x| acc + x).collect(); //→ [1, 3, 6, 10]
+let pairs: List<List<i32>> = xs.iter().windows(2).collect();        //→ [[1, 2], [2, 3], [3, 4]]
+let (even, odd) = xs.iter().partition(|x| x % 2 == 0);              //→ [2, 4], [1, 3]
+let (ns, ss) = [(1, "a"), (2, "b")].iter().unzip();                 //→ [1, 2], ["a", "b"]
+```
+
+### lazy와 eager
+
+이 메서드는 두 부류로 나뉩니다. `map`, `filter`, `take` 같은 변환 어댑터는 **지연(lazy)** 평가합니다. 새 반복자를 반환할 뿐 실제 계산은 하지 않습니다. `count`, `sum`, `collect`, `for_each` 같은 종결 메서드를 호출해야 비로소 진행이 시작됩니다.
+
+```nabi
+let xs = [1, 2, 3, 4, 5];
+let r = xs.into_iter()
+    .map(|x| x * 2)            // lazy: 아직 계산 안 함
+    .filter(|x| x > 4)         // lazy
+    .sum();                    // eager: 여기서 단계 진행
+//→ 6 + 8 + 10 = 24
+```
+
+### 사용자 정의 Iterator
+
+반복자를 직접 정의하는 예입니다.
+
+```nabi
+struct Counter { n: i32; }
+
+impl Iterator for Counter {
+    type Item = i32;
+
+    fn next(ref self) -> i32 | none {
+        if self.n < 5 {
+            let cur = self.n;
+            self.n = self.n + 1;
+            cur
+        } else {
+            none
+        }
+    }
+}
+
+let c = Counter { n: 0 };
+for x in c {
+    nabi_print_i32(x);          //→ 0, 1, 2, 3, 4
+}
+```
+
+## 2.7.2. `IntoIterator`: `for`의 시작
+
+다음은 `for` 루프의 출발점인 `IntoIterator` 트레잇입니다.
+
+```nabi
+#[lang("into_iterator_trait")]
+trait IntoIterator {
+    type Item;
+    type IntoIter: Iterator<Item = Item>;
+
+    fn into_iter(self) -> IntoIter;
+}
+```
+
+`IntoIterator`는 컬렉션에서 반복자를 만드는 어댑터입니다. `for x in xs`는 **xs 자체**를 반복자로 다루지 않습니다. `xs.into_iter()`로 반복자를 만든 뒤 그 반복자의 `next`를 호출합니다.
+
+### 분리되어 있는 이유
+
+두 트레잇을 나눈 이유는 두 관점이 근본적으로 다르기 때문입니다.
+
+- 컬렉션 자체(List, Dict 등)는 상태 없는 컨테이너이므로 어떤 위치를 가리키는지 알지 못합니다.
+- 반복자에는 진행 상태가 있어 어디까지 봤는지 추적합니다.
+
+따라서 같은 컬렉션을 두 번 순회하려면 매번 새 반복자가 필요합니다. 그 반복자를 `into_iter`가 만듭니다.
+
+### 자동 impl
+
+`Iterator` 자체도 `IntoIterator`를 자동으로 구현합니다. 이때 `into_iter`는 self를 그대로 반환합니다.
+
+```nabi
+// 모든 Iterator 는 자동으로 IntoIterator
+impl<I: Iterator> IntoIterator for I {
+    type Item = I::Item;
+    type IntoIter = I;
+    fn into_iter(self) -> I { self }
+}
+```
+
+덕분에 `for x in iter`도 그대로 동작합니다. iter가 이미 반복자라면 `into_iter`가 self를 돌려주기 때문입니다.
+
+### `for` 풀어 쓰기의 정확한 형태
+
+`for` 루프가 풀리는 형태를 좀 더 정확히 적으면 다음과 같습니다.
+
+```nabi
+for x in expr {
+    body
+}
+```
+
+위 코드는 다음과 같이 풀립니다.
+
+```nabi
+let __it = expr.into_iter();
+loop {
+    match __it.next() {
+        v: T => {
+            let x = v;
+            body;
+        }
+        none => break,
+    }
+}
+```
+
+자세한 규칙은 [refs-lang 3.13](../../refs-lang/003-expressions/313-loop-expressions.md)에 있습니다.
+
+## 2.7.3. `Step`: 한 칸 진행 추상화
+
+`Range<T>`의 순회는 "다음 값으로 한 칸 이동"이라는 단순한 동작에 기대고 있습니다. 이 동작은 일반 산술(`Add`)과 의미가 다릅니다. 예를 들어 `char`의 다음 값은 코드 포인트 + 1이지만 `char + char` 자체는 정의되지 않습니다. 그래서 Nabi는 한 칸 진행을 별도의 트레잇으로 나눕니다.
+
+```nabi
+// core::range::Step
+trait Step: PartialOrd + Clone {
+    fn forward_checked(self, count: usize) -> Self | none;
+    fn backward_checked(self, count: usize) -> Self | none;
+    fn steps_between(start: Self, end: Self) -> usize | none;
+}
+```
+
+`Step`은 `core::range`에 있고 prelude에는 없습니다. 사용자가 `impl Step for T`를 쓰려면 `use core::range::Step;`이 필요합니다.
+
+각 메서드의 의미는 다음과 같습니다.
+
+- `forward_checked(self, n)`: `self`에서 `n`만큼 앞으로 이동한 값을 반환합니다. 타입 범위를 넘으면 `none`을 돌려줍니다.
+- `backward_checked(self, n)`: 뒤로 이동한 값을 반환합니다. 마찬가지로 범위를 넘으면 `none`을 돌려줍니다.
+- `steps_between(start, end)`: `start`에서 `end`까지 몇 칸인지 계산합니다. 표현할 수 없으면(예: 음수, 오버플로) `none`을 돌려줍니다.
+
+### 산술 트레잇과 분리한 이유
+
+`Step`을 `Add`에서 분리한 이유는 세 가지입니다.
+
+- **의미 분리**: `+1`은 단순한 1 증가이지 임의 산술이 아닙니다. `MyVec3 + MyVec3`는 의미가 있지만 `Range<MyVec3>`는 의미가 없습니다. `Step`을 따로 구현하지 않으면 컴파일러가 거부합니다.
+- **부동소수 배제**: `f32` / `f64`에는 `Step` 구현이 없으므로 `Range<f64>`는 반복자가 아닙니다. `for x in 0.0..1.0`은 컴파일 에러(E0068)입니다. `0.0..1.0`으로 포함 여부를 검사하는 것(`x in 0.0..1.0`)은 됩니다.
+- **효율적인 건너뛰기**: `Range`, `RangeInclusive`, `RangeFrom`은 `Iterator::nth(n)`을 `forward_checked(_, n)` 한 번 호출로 재정의합니다. 그래서 범위에서 `nth(n)`과 (`nth`로 진행하는) `step_by(n)`은 O(1)로 동작합니다. `succ`만 있다면 같은 동작이 O(n)입니다.
+
+### Step impl 매트릭스
+
+표준 라이브러리는 정수 원시 타입과 `char`에만 `Step`을 구현합니다.
+
+| 타입                 | 구현     | 비고                                                 |
+|----------------------|----------|------------------------------------------------------|
+| `i8`..`i64`, `isize` | **있음** | 오버플로 시 `forward_checked`가 `none` 반환         |
+| `u8`..`u64`, `usize` | **있음** | 언더플로 시 `backward_checked`가 `none` 반환        |
+| `int`                | **없음** | 표준 라이브러리 구현 없음                            |
+| `char`               | **있음** | 코드 포인트 진행, 서로게이트(`0xD800..=0xDFFF`) 건너뜀 |
+| `bool`               | **없음** | 표준 라이브러리 구현 없음                            |
+| `f32`, `f64`         | **없음** | `Range<f64>`는 반복자가 아님: 단계가 모호            |
+| `float`              | **없음** | (위와 같음)                                          |
+
+사용자 정의 타입에는 `impl Step for MyType`을 자유롭게 추가해도 됩니다. 그러면 바로 `Range<MyType>`을 쓸 수 있습니다.
+
+```nabi
+use core::range::Step;
+
+enum Weekday { Mon, Tue, Wed, Thu, Fri, Sat, Sun }
+
+impl Step for Weekday {
+    fn forward_checked(self, n: usize) -> Weekday | none { ... }
+    fn backward_checked(self, n: usize) -> Weekday | none { ... }
+    fn steps_between(s: Weekday, e: Weekday) -> usize | none { ... }
+}
+
+for d in Weekday::Mon..=Weekday::Fri {
+    schedule(d);     // 평일 5 일
+}
+```
+
+## 2.7.4. `Range<T>` / `RangeInclusive<T>` / `RangeFrom<T>` / `RangeTo<T>` / `RangeToInclusive<T>` / `RangeFull`
+
+[refs-lang 3.7 범위 표현식](../../refs-lang/003-expressions/307-range-expressions.md)의 `a..b` 문법은 이 표준 라이브러리 타입으로 풀립니다.
+
+### `Range<T>`: `a..b`(끝 제외)
+
+```nabi
+#[lang("range_type")]
+struct Range<T> {
+    pub start: T;
+    pub end: T;
+}
+
+impl<T: Step> Iterator for Range<T> {
+    type Item = T;
+
+    fn next(ref self) -> T | none {
+        if self.start < self.end {
+            let cur = self.start.clone();
+            self.start = self.start.forward_checked(1)?;   // overflow → none
+            cur
+        } else {
+            none
+        }
+    }
+}
+```
+
+범위의 각 형태는 `core::range`의 `#[literal]` 핸들러가 등록합니다(`Range`를 만드는 함수에 붙은 `#[literal(expr ".." expr)]`, 형태마다 핸들러 하나). 그래서 `0..5` 같은 표기가 `Range` struct로 풀립니다(권위는 [refs-lang 6.5](../../refs-lang/006-meta-system/605-literal-magic.md)). 컴파일러는 `range_type` lang slot으로 `Range`를 찾습니다.
+
+```nabi
+for i in 0..5 {
+    process(i);          //→ 0, 1, 2, 3, 4
+}
+
+let v: List<i32> = (0..10).collect();   //→ [0, 1, ..., 9]
+```
+
+### `RangeInclusive<T>`: `a..=b`
+
+```nabi
+struct RangeInclusive<T> {
+    pub start: T;
+    pub end: T;
+}
+
+impl<T: Step> Iterator for RangeInclusive<T> { ... }
+```
+
+`start`와 `end` 외의 필드(예: 끝에 도달했는지 표시하는 내부 플래그)는 구현 세부이고 비공개입니다. `end`가 타입의 최댓값이어도 `a..=b`는 `b`까지 정확히 냅니다.
+
+```nabi
+for i in 0..=5 {
+    process(i);          //→ 0, 1, 2, 3, 4, 5
+}
+```
+
+### `RangeFrom<T>`: `a..`(무한)
+
+```nabi
+struct RangeFrom<T> { pub start: T; }
+
+impl<T: Step> Iterator for RangeFrom<T> {
+    type Item = T;
+    fn next(ref self) -> T | none {
+        let cur = self.start.clone();
+        self.start = self.start.forward_checked(1)?;  // overflow → none (예: i32::MAX 도달)
+        cur
+    }
+}
+```
+
+```nabi
+let it = (10..).take(3);     //→ [10, 11, 12] (take 가 lazy 어댑터)
+```
+
+`RangeFrom`은 타입의 최댓값을 내지 않습니다. 최댓값의 다음 값이 없으므로 최댓값에 도달하면 그 값을 내기 전에 끝납니다. `(254u8..)`은 `254`만 내고 끝납니다.
+
+### `RangeTo<T>` / `RangeToInclusive<T>` / `RangeFull`
+
+```nabi
+struct RangeTo<T> { pub end: T; }
+
+struct RangeToInclusive<T> { pub end: T; }               // ..=b
+
+struct RangeFull;
+```
+
+`..b` / `..=b`(시작이 없는 형태)와 `..`(둘 다 없는 형태)는 슬라이스나 인덱스 문맥에서만 의미가 있고 반복자를 만들지 않습니다.
+
+```nabi
+let xs = [1, 2, 3, 4, 5];
+let s = xs[..3];          //→ [1, 2, 3]  (Slice: 2.3 ops 의 Slice 트레잇)
+```
+
+## 2.7.5. `FromIterator<T>`: `collect`의 디스패치
+
+`collect`의 디스패치는 `FromIterator<T>` 트레잇이 맡습니다.
+
+```nabi
+trait FromIterator<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self;
+}
+```
+
+`Iterator::collect`를 호출하면 대상 컬렉션의 `from_iter`가 호출됩니다.
+
+```nabi
+let v: List<i32> = (0..5).collect();
+// = List::from_iter((0..5).into_iter())
+```
+
+`List`, `Dict`, `Set`, `str` 등 모든 컬렉션은 `FromIterator`를 구현합니다.
+
+## 2.7.6. 컬렉션별 IntoIterator impl
+
+컬렉션별 `IntoIterator` 구현은 다음과 같습니다.
+
+| 컬렉션              | `Item` 타입 | 동작                                      |
+|---------------------|-------------|-------------------------------------------|
+| `List<T>`           | `T`         | 첫 원소부터 마지막까지 순서대로           |
+| `Dict<K, V>`        | `(K, V)`    | 삽입 순서                                 |
+| `Set<T>`            | `T`         | 삽입 순서                                 |
+| `Tuple<A, B, C>`    | (특수)      | 반복자 **만들지 않음**, 패턴 매칭 사용    |
+| `Range<T>`          | `T`         | 시작부터 end-1까지                      |
+| `Slice<T>`          | `T`         | 뷰의 시작부터 끝까지                     |
+
+### Dict / Set의 순회 순서
+
+`Dict<K, V>`와 `Set<T>`는 삽입 순서로 순회하고, 실행할 때마다 순서가 같습니다. 이미 있는 키를 다시 넣으면 자리가 그대로이고, 지웠다가 다시 넣은 키는 맨 뒤로 갑니다. 해시 시드는 키가 표의 어디에 놓이는지만 바꾸고 순서는 바꾸지 않습니다([2.9](209-collections.md)).
+
+## 2.7.7. 무한 반복자와 `take`
+
+`RangeFrom`이나 사용자가 정의한 무한 반복자를 즉시 평가 메서드와 바로 결합하면 무한 루프에 빠집니다.
+
+```nabi norun
+(0..).count();         // 무한 루프: count 가 끝까지 진행
+(0..).sum();           // 무한 루프
+```
+
+`take(n)`으로 유한하게 만들면 해결됩니다.
+
+```nabi
+(0..).take(100).count();     //→ 100
+(0..).take(10).sum();        //→ 0+1+...+9 = 45
+```
+
+`Iterator`는 무한 여부를 검출하지 않습니다. 사용자가 지연 어댑터를 일부러 결합해서 처리해야 합니다.
+
+## 2.7.8. 함수 broadcast: `f.(x)` 풀어 쓰기
+
+[refs-lang](../../refs-lang/003-expressions/303-broadcast-operators.md)의 함수 브로드캐스트(`sin.(xs)`, `f.(a, b)`)는 별도의 트레잇 없이 `Iterator::map`으로 풀립니다.
+
+```nabi
+sin.(xs)   ≡   xs.into_iter().map(sin).collect()
+g.(a, b)   ≡   a.into_iter().zip(b.into_iter()).map(|(x, y)| g(x, y)).collect()
+```
+
+## 2.7.9. `DoubleEndedIterator`: 양방향 진행
+
+양방향으로 진행할 수 있는 반복자는 `DoubleEndedIterator` 트레잇으로 나타냅니다.
+
+```nabi
+trait DoubleEndedIterator: Iterator {
+    fn next_back(ref self) -> Item | none;
+
+    // 기본 구현 제공
+    fn rfold<B>(self, init: B, f: fn(B, Item) -> B) -> B;     // 뒤에서부터 fold
+    fn rfind(self, pred: fn(Item) -> bool) -> Item | none;    // pred가 받아들이는 마지막 원소
+}
+```
+
+이 트레잇은 뒤에서부터 진행할 수 있는 반복자를 나타냅니다. `rev()` 어댑터와 `rfold`, `rfind`가 이 트레잇을 요구합니다.
+
+`List<T>`, `Slice<T>`의 반복자와 다음 타입은 이 트레잇을 구현해야 합니다.
+
+- `Range<T>`, `RangeInclusive<T>`
+- `Rev<I>` (`I`가 양방향일 때), `Map<I, U>`, `Filter<I>`, `Chain<A, B>`, `InspectIter<I>` (구성 반복자가 양방향일 때)
+- `Enumerate<I>`, `Zip<A, B>`, `Take<I>`, `Skip<I>`, `StepBy<I>`: 구성 반복자가 `DoubleEndedIterator + ExactSizeIterator`일 때. 뒤에서 세려면 길이가 필요하기 때문입니다.
+
+`Dict<K, V>`와 `Set<T>`의 반복자는 이 트레잇을 구현하지 않습니다.
+
+```nabi
+let r: List<i32> = (0..5).rev().collect();    //→ [4, 3, 2, 1, 0]
+```
+
+## 2.7.10. `ExactSizeIterator`: 길이를 미리 아는 반복자
+
+진행하기 전에 원소 개수를 알 수 있는 반복자는 `ExactSizeIterator`로 나타냅니다.
+
+```nabi
+trait ExactSizeIterator: Iterator {
+    fn len(self) -> usize;
+}
+```
+
+`len()`은 남은 원소 수입니다. `Iterator::exact_len()`은 진행하지 않고 그 수를 알면 그 수를, 아니면 `none`(기본)을 돌려줍니다. 표준 라이브러리의 `ExactSizeIterator` 타입은 `len()`을 돌려줍니다. 그 위에 쌓은 아래 목록의 어댑터도 마찬가지입니다. 기본 `count()`는 `exact_len()`이 `none`이 아니면 그 값을 돌려줍니다. 그래서 `count()`는 `map`의 함수를 부르지 않습니다. `xs.iter().map(f).take(3).count()`는 `f`를 한 번도 부르지 않습니다. `scan`과 `inspect`의 함수도 마찬가지입니다. `Filter`, `TakeWhile`, `SkipWhile`, `(0..).take(100)`처럼 길이를 모르는 반복자는 실제로 진행합니다. 이 트레잇을 구현하는 타입은 다음과 같습니다. `List`, `Slice`, `Range`의 반복자, `List`와 `Slice`의 `windows` / `chunks` 뷰, 그리고 구성 반복자가 모두 `ExactSizeIterator`인 `Enumerate`, `Zip`, `Take`, `Skip`, `StepBy`, `Rev`, `Map`, `Scan`, `InspectIter`, `Chunks`입니다. `Windows`는 길이를 아는 반복자 위에서만 `exact_len`이 있습니다. `Cycle`은 반복자가 비어 있을 때만 그 값(0)이 있습니다.
+
+## 2.7.10a. `GenIter<T>` / `TryGenIter<T, E>`: 제너레이터의 값
+
+`yield fn` 호출과 `yield { .. }` 블록의 값입니다([refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#코루틴-함수의-결과-타입)).
+
+```nabi
+struct GenIter<T> { /* 비공개 */ }
+impl<T> Iterator for GenIter<T> {
+    type Item = T;
+    fn next(ref self) -> T | none;          // 본체를 다음 yield 까지 진행
+}
+
+struct TryGenIter<T, E> { /* 비공개 */ }    // yield fn .. throws (E)
+impl<T, E> TryIterator for TryGenIter<T, E> {
+    type Item = T;
+    type Error = E;
+    fn next(ref self) throws (E) -> T | none;   // 본체가 던지는 것을 던짐
+}
+```
+
+`TryGenIter`는 `next`가 던지므로 `Iterator`가 아니라 `TryIterator`([2.7.13](#2713-tryiterator-실패할-수-있는-반복))입니다. `try for`, `try g.next()`, 또는 그 어댑터로 진행합니다. 한 번 던진 뒤에는 제너레이터가 끝나서 다음 `next`는 `none`을 줍니다. 비공개 필드는 사양이 정하지 않습니다. 복사본은 같은 코루틴 프레임을 공유하므로 진행 위치도 공유합니다.
+
+## 2.7.11. 모듈 매핑
+
+트레잇별 lang slot과 표준 라이브러리 위치는 다음과 같습니다.
+
+| 항목                  | lang slot             | 표준 라이브러리 위치 |
+|-----------------------|-----------------------|----------------------|
+| `Iterator` 트레잇     | `iterator_trait`      | `core::iter`    |
+| `IntoIterator` 트레잇 | `into_iterator_trait` | `core::iter`    |
+| `Step` 트레잇         | (없음)                | `core::range`   |
+| `FromIterator` 트레잇 | (없음)                | `core::iter`    |
+| `DoubleEndedIterator` | (없음)                | `core::iter`    |
+| `ExactSizeIterator`   | (없음)                | `core::iter`    |
+| `TryIterator` 트레잇  | `try_iterator_trait`  | `core::iter`    |
+| `Range<T>`            | `range_type`          | `core::range`   |
+| 나머지 범위 타입 5종  | (없음)                | `core::range`   |
+
+원시 타입 자체에는 `Iterator` 구현이 없습니다. i32는 `for`의 대상이 아닙니다. 컬렉션과 Range만 대상입니다.
+
+## 2.7.12. async: `Stream` 트레잇
+
+비동기 반복자는 [2.8 stream](208-stream.md)에서 다룹니다. `for await x in stream` 문법([refs-lang 3.13](../../refs-lang/003-expressions/313-loop-expressions.md))은 `Stream::poll_next`로 디스패치됩니다.
+
+## 2.7.13. `TryIterator`: 실패할 수 있는 반복
+
+`next`가 실패할 수 있는 반복자는 `TryIterator`입니다. 에러는 항목의 일부가 아니라 `next`의 타입 있는 채널입니다. `next`는 항목을 주거나, 끝에서 `none`을 주거나, `Error`를 던집니다.
+
+```nabi
+#[lang("try_iterator_trait")]
+trait TryIterator {
+    type Item;
+    type Error;
+    fn next(ref self) throws (Error) -> Item | none;
+
+    // 지연 어댑터. 각 함수는 `Error`를 던져도 됨
+    fn map<U>(self, f: fn(Item) throws (Error) -> U) -> TryMap<Self, U>;
+    fn filter(self, pred: fn(Item) throws (Error) -> bool) -> TryFilter<Self>;
+    fn map_err<E2>(self, f: fn(Error) -> E2) -> MapErr<Self, E2>;
+    fn enumerate(self, start: usize = 0) -> TryEnumerate<Self>;
+    fn zip<J: IntoIterator>(self, other: J) -> TryZip<Self, J::IntoIter>;
+    fn chain<J: TryIterator<Item = Item, Error = Error>>(self, other: J) -> TryChain<Self, J>;
+    fn take(self, n: usize) -> TryTake<Self>;
+    fn skip(self, n: usize) -> TrySkip<Self>;
+    fn step_by(self, step: usize) -> TryStepBy<Self>;    // step 0이면 패닉
+    fn take_while(self, pred: fn(Item) throws (Error) -> bool) -> TryTakeWhile<Self>;
+    fn skip_while(self, pred: fn(Item) throws (Error) -> bool) -> TrySkipWhile<Self>;
+    fn flat_map<U: IntoIterator>(self, f: fn(Item) throws (Error) -> U) -> TryFlatMap<Self, U>;
+    fn scan<S>(self, init: S, f: fn(S, Item) throws (Error) -> S) -> TryScan<Self, S>;
+    fn inspect(self, f: fn(Item) throws (Error)) -> TryInspect<Self>;
+    fn peekable(self) -> TryPeekable<Self>;      // peek(ref self) throws (Error) -> Item | none
+    fn chunks(self, size: usize) -> TryChunks<Self>;     // size 0이면 패닉
+
+    // Result를 주는 일반 반복자로
+    fn results(self) -> Results<Self>;           // Iterator<Item = Result<Item, Error>>
+
+    // 즉시 실행. 첫 에러에서 멈추고 그 에러를 던짐
+    fn collect<C: FromIterator<Item>>(self) throws (Error) -> C;
+    fn count(self) throws (Error) -> usize;
+    fn last(self) throws (Error) -> Item | none;
+    fn nth(ref self, n: usize) throws (Error) -> Item | none;
+    fn fold<B>(self, init: B, f: fn(B, Item) throws (Error) -> B) throws (Error) -> B;
+    fn for_each(self, f: fn(Item) throws (Error)) throws (Error);
+    fn reduce(self, f: fn(Item, Item) throws (Error) -> Item) throws (Error) -> Item | none;
+    fn any(self, pred: fn(Item) throws (Error) -> bool) throws (Error) -> bool;
+    fn all(self, pred: fn(Item) throws (Error) -> bool) throws (Error) -> bool;
+    fn find(self, pred: fn(Item) throws (Error) -> bool) throws (Error) -> Item | none;
+    fn position(self, pred: fn(Item) throws (Error) -> bool) throws (Error) -> usize | none;
+    fn partition(self, pred: fn(Item) throws (Error) -> bool) throws (Error) -> (List<Item>, List<Item>);
+    fn sum(self) throws (Error) -> Item where Item: Add<Output = Item> + Zero;
+    fn product(self) throws (Error) -> Item where Item: Mul<Output = Item> + One;
+    fn min(self) throws (Error) -> Item | none where Item: Ord;     // 같은 최솟값 중 첫 번째
+    fn max(self) throws (Error) -> Item | none where Item: Ord;     // 같은 최댓값 중 마지막
+    fn min_by_key<K: Ord>(self, key: fn(Item) throws (Error) -> K) throws (Error) -> Item | none;  // 같은 값 중 첫 번째
+    fn max_by_key<K: Ord>(self, key: fn(Item) throws (Error) -> K) throws (Error) -> Item | none;  // 같은 값 중 마지막
+}
+```
+
+`TryIterator`는 prelude에 있습니다([0.2](../000-meta/002-import.md)). `Iterator`에 에러 매개변수를 붙인 것이 아니라 별도 트레잇이며, 한 값은 둘 중 하나입니다.
+
+- **던진 뒤.** 던진 뒤의 `next`가 무엇을 하는지는 타입마다 문서로 정합니다. 다음 항목으로 이어 가거나(`io::Bytes`) 끝나서 계속 `none`을 줍니다(`TryGenIter`).
+- **어댑터 함수는 `Error`를 던짐.** `map`, `filter`, `fold` 등에 넘기는 함수는 반복자 자신의 `Error`를 던질 수 있습니다. 던지지 않는 함수도 맞습니다([refs-lang 4.14.8](../../refs-lang/004-functions/414-throws.md#4148-함수-타입의-throws)). 다른 타입을 던지는 함수는 호출 자리에서 타입 에러입니다. 먼저 `.map_err(..)`로 바꾸거나 함수 안에서 `catch`로 처리하십시오. `Error`를 바꾸는 방법은 `map_err` 하나뿐입니다. `.map_err(|e| -> IoError | ParseError { e })`는 넓히고, `.map_err(|e| -> any Error { e })`는 지웁니다.
+- **`try_fold` / `try_for_each` 없음.** `fold`와 `for_each`가 이미 던지는 함수를 받습니다. `Iterator::try_fold` / `try_for_each`(2.7.1)는 그대로 있습니다. 던지지 않는 반복자에 throw를 더하는 다른 연산이기 때문입니다.
+- **`collect`**는 어떤 `FromIterator` 컬렉션(2.7.5)이든 만듭니다. 별도 트레잇은 없습니다. 첫 에러에서 멈추고 그 에러를 던집니다.
+- **이름.** 어댑터 타입은 `Try` 접두어를 붙이고 `Map`, `Filter` 등과 함께 `core::iter`에 있습니다. `MapErr`와 `Results`는 여기에만 있습니다.
+- **`for`.** `TryIterator`는 `try for x in it { .. }`로 진행합니다([refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for-반복자-기반-반복)). `try`는 반복 대상과 각 `next`를 덮고 본체는 덮지 않습니다. `TryIterator`를 일반 `for`로 돌면 컴파일 에러이며 `try for`나 `.results()`를 쓰라고 알려 줍니다.
+
+### 변환
+
+| 원래 | 결과 | 형태 |
+|---|---|---|
+| `TryIterator` | `Iterator<Item = Result<T, E>>` | `it.results()` |
+| `IntoIterator<Item = Result<T, E>>` | `TryIterator<Item = T, Error = E>` | `iter::from_results(xs)` (`FromResults<I, T, E>`) |
+| 일반 `IntoIterator` | 던지지 않는 `TryIterator<Error = E>` | `iter::infallible::<E, J>(xs)` (`Infallible<J::IntoIter, E>`) |
+| 함수 | `TryIterator` | `iter::try_from_fn(f)`, `f: fn() throws (E) -> (T \| none)` (`TryFromFn<T, E>`) |
+| 제너레이터 | `TryIterator` | `yield fn .. throws (E) -> T`는 `TryGenIter<T, E>`(2.7.10a) |
+
+`results()`는 에러 뒤에도 `next`를 계속 부릅니다. 그래서 이어 가는 원천의 에러는 모두 `Err` 항목이 되고, 에러 뒤에 끝나는 원천은 그 `Err`를 마지막으로 줍니다. `iter::from_results`는 `Err` 항목마다 던지고 계속 진행합니다.
+
+### 형태
+
+| 층 | 형태 |
+|---|---|
+| 직접 진행 | `while let x: T = try it.next() { .. }` |
+| 건너뛰고 계속 | `for r in it.results() { match r { Result::Ok(x) => .., Result::Err(e) => .. } }` |
+| 루프 | `try for x in it { .. }` |
+| 파이프라인 | `let ns: List<i64> = try lines.filter(\|l\| !l.is_empty()).map(\|l\| try i64::from_str(l) catch _ { 0 }).collect();` |
+| 직접 구현 | `yield fn .. throws (E) -> T { .. }` 또는 `impl TryIterator for ..` |
+
+```nabi
+fn total(path: str) throws (IoError | ParseError) -> i64 {
+    let n: i64 = 0;
+    try for line in read_lines(path) {      // 각 next 의 IoError
+        n += try i64::from_str(line);       // 본체는 자기 호출을 직접 표시
+    }
+    n
+}
+```
+
+## 2.7.14. 컬렉션이 이터레이터 메서드에 답함
+
+수신자 타입에 메서드 `m`이 없고 인자 없는 메서드 `iter()`가 있으면, `iter()`가 돌려주는 타입에 `m`이 있을 때 메서드 호출 `x.m(args)`는 `x.iter().m(args)`입니다. 인자 없는 `x.min()` / `x.max()`도 넘깁니다. `Ord::min` / `max`는 인자를 하나 받기 때문입니다. 그 밖에는 수신자 자신의 메서드가 이깁니다(`List::contains`, `List::windows`, `Set::to_list`). 넘긴 호출은 `iter()` 형태 그대로이므로 지연 어댑터는 지연인 채로 남고 아무것도 복사하지 않습니다.
+
+```nabi
+let xs = [3, 1, 2];
+let total = xs.sum();                          // xs.iter().sum()
+let evens = xs.filter(|x| x % 2 == 0).to_list();
+let big = xs.max();                            // xs.iter().max(), 3
+let d = counts.map(|p| p.1).sum();             // Dict는 (k, v) 쌍을 순회
+```
+
+기대 타입도 없고 뒤에서 `C`를 정하는 쓰임도 없는 `collect()`는 `List<Item>`으로 모읍니다(타입 매개변수의 기본값).
+
+## 2.7.15. 모으기, 정렬, 세기
+
+- `to_list()`, `to_set()`, `to_dict()`는 항목을 새 컬렉션에 모읍니다. `to_dict`는 `(K, V)` 항목을 받고, 나중 키의 값이 앞의 값을 대신합니다.
+- `sorted(reverse:)`는 정렬한 새 `List`를 돌려줍니다(안정 정렬, `reverse: true`면 큰 것부터). `sorted_by_key(key, reverse:)`는 `key`로 정렬하며 두 방향 모두 같은 키끼리는 순서를 지킵니다. `sorted_by(cmp)`는 비교 함수로 정렬합니다. Python의 `sorted(xs, key=f, reverse=True)`는 `xs.sorted_by_key(f, reverse: true)`입니다. `sort_by_key`, `min_by_key`처럼 키를 받는 형태는 `_by_key`라고 이름 짓습니다.
+- `counts()`는 항목마다 나온 횟수를 처음 본 순서대로 담습니다(Python의 `Counter`). 결과의 순위는 `Dict<K, usize>::most_common(n)`이 매깁니다([2.9.3](209-collections.md#293-dictk-v-s-해시-맵)). `group_by(key)`는 키마다 그 항목의 리스트를 순서대로 담습니다. Python의 `itertools.groupby`와 달리 같은 키가 붙어 있지 않아도 됩니다.
+- `enumerate(start: 1)`은 `start`부터 셉니다.
+- `pairwise()`는 각 항목을 다음 항목과 짝지어 냅니다. `combinations(k)`는 항목 `k`개를 고르는 각 경우를 리스트로, `permutations(k)`는 서로 다른 위치의 항목 `k`개를 늘어놓는 각 경우를 냅니다(`k`가 `none`이면 모든 항목). 둘 다 항목을 먼저 모은 뒤 위치의 사전순으로 냅니다(Python의 `itertools`).
+- `min()` / `max()`는 `PartialOrd`만 요구하므로 부동소수 이터레이터에도 있습니다. 자기 자신과 순서가 없는 항목(NaN)이 결과가 됩니다(IEEE 754 `minimum` / `maximum`, NumPy와 같음). `min_by_key` / `max_by_key`는 그대로 `K: Ord`입니다.
+- `f32` / `f64` 항목의 `sum()`은 쌍별 합입니다. 연속한 항목 128개씩을 왼쪽부터 더하고, 블록 합은 이진 카운터처럼 합칩니다(새 합은 블록 수가 같은 앞의 합과 `left + right`로 합침). 남은 부분합은 마지막부터 처음 쪽으로 더합니다(`p0 + (p1 + (.. + pn))`). 순서는 항목 수에만 달려 있으므로 결과는 타깃, 스레드 수, 최적화 수준과 상관없이 같습니다. 다른 항목 타입은 왼쪽부터 더합니다.
+
+```nabi
+let words = ["b", "a", "c", "a"];
+words.sorted()                         //→ ["a", "a", "b", "c"]
+words.sorted_by_key(|w| w.len(), reverse: true)
+words.counts().most_common(1)          //→ [("a", 2)]
+[1, 4, 9].pairwise().map(|p| p.1 - p.0).to_list()   //→ [3, 5]
+["a", "b", "c"].combinations(2).count()             //→ 3
+```

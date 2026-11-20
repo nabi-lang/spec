@@ -1,0 +1,226 @@
+# 3.4. Assignment and compound assignment
+
+Assignment (`=`) and compound assignment (`+=`, `-=`, etc.) update the value of a variable, a field, or an indexed place. Both are statements; a simple assignment may also stand in expression position in the forms of 3.4.5, while a compound assignment may not. The grammar is:
+
+```
+assign_stmt     ::= lvalue "=" expr ";"
+compound_stmt   ::= lvalue compound_op expr ";"
+assign_expr     ::= lvalue "=" expr                    // in parentheses or an arm body (3.4.5)
+compound_op     ::= "+=" | "-=" | "*=" | "**=" | "/=" | "%=" | "%%=" | "&=" | "|="
+                  | "^=" | "<<=" | ">>="
+assign_target   ::= lvalue | tuple_target
+tuple_target    ::= "(" target_item ("," target_item)+ ","? ")"
+target_item     ::= lvalue | tuple_target | "_"
+lvalue          ::= identifier
+                  | lvalue "." identifier
+                  | lvalue "." int_lit                 // tuple position
+                  | lvalue "[" expr "]"                // index
+```
+
+`assign_stmt` takes an `assign_target` on its left: a tuple of places assigns each of them (3.4.6). The other forms take an `lvalue`.
+
+## 3.4.1. Simple assignment
+
+Simple assignment has the following shape.
+
+```nabi
+x = expr;
+obj.field = expr;
+arr[i] = expr;
+```
+
+The left-hand side (lvalue) is a reassignable place, the right-hand side (rvalue) is any expression, and the result value has the unit type (`()`). Assignment is normally a statement; where it stands in expression position (3.4.5) its result is unit. As a result, patterns like C's `if (x = read())`, which are rarely needed, are blocked by the unit result.
+
+### Kinds of lvalue
+
+The forms allowed on the left-hand side and their meanings:
+
+| Form             | Example           | Meaning                                          |
+|------------------|-------------------|--------------------------------------------------|
+| simple variable  | `x = ...`         | writes the value to the variable's slot          |
+| field access     | `obj.field = ...` | writes the value to the object's field           |
+| tuple position   | `pair.0 = ...`    | writes the value to a position of a tuple `struct` / tuple |
+| indexing         | `arr[i] = ...`    | writes the value to the indexed place            |
+
+Indexing assignment desugars to the write traits of [indexing and slicing](306-indexing-and-slicing.md). A slice is not an lvalue: `arr[1:3] = other;` is rejected ([3.6](306-indexing-and-slicing.md)).
+
+### Places that cannot be lvalues
+
+The following cannot be lvalues.
+
+```
+1 = 2;                    // a literal is not an lvalue
+foo() = 2;                // a call result is not an lvalue
+foo().x = 2;              // nor is a field of one
+(x + 1) = 2;              // an arithmetic result is not an lvalue
+(a, 1) = (b, 2);          // each element of a tuple target is a place or `_` (3.4.6)
+```
+
+An element of a `List`, `Dict` or other shared collection is a place even when the collection comes from a call: `rows()[0] = 1;` writes into the list `rows()` returns. A field of a call result is not a place, nor is an element of a fixed array that is one.
+
+Whether something can be an lvalue is checked at compile time, from its form and the type of an indexed collection. No runtime check is performed. Assigning to something that is not a place is an error (E0140), with `=` or with a compound assignment (3.4.3): the write would go to a temporary and be lost.
+
+## 3.4.2. Declaring a new variable vs. reassignment
+
+Combined with the `let` [keyword](../001-lexical/105-keywords.md), two forms are distinguished.
+
+```nabi
+let x = 1;       // new declaration, 'let' required
+x = 2;           // reassignment, without 'let'
+```
+
+Creating a new variable requires `let`; writing again to an existing variable's slot is written without `let`. Assigning without `let` to an undeclared name is a compile error. A `let` of a name already declared in the same scope is a redeclaration: it makes a new binding, which may have another type, and leaves the old slot as it was ([5.1.4](../005-modules/501-variable-declaration.md#514-redeclaration-in-the-same-scope)). The exact rules are defined in [variable declaration](../005-modules/501-variable-declaration.md).
+
+```nabi
+let n = "42";
+let n: i32 = try! n.parse();   // redeclaration: a new binding of another type
+n = n + 1;                     // reassignment of the new binding
+```
+
+```
+counter = counter + 1;     // OK if counter is declared
+coutner = ...;             // ERROR: `coutner` is not declared; a variable is created only by `let`
+```
+
+This rule blocks the trap of a typo silently creating a new variable (a common bug in Julia and Python).
+
+## 3.4.3. Compound assignment
+
+Compound assignment combines an operation and an assignment in one form.
+
+```nabi
+x += 1;            // semantically the same as x = x + 1
+x -= 1;
+x *= 2;
+arr[i] += 1;
+```
+
+All compound assignment tokens of [punctuation and operator tokens](../001-lexical/110-punctuation-and-operator-tokens.md) (`+=`, `-=`, `*=`, `**=`, `/=`, `%=`, `%%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`) follow the same pattern. A compound assignment is a statement and ends with `;` (optional before `}`, [1.3.4](../001-lexical/103-statement-terminator.md#134-block-like-expression-statements)); it has no value and cannot appear in expression position (`let y = (x += 1);` does not parse). The in-place broadcast forms `.=` `.+=` `.-=` `.*=` `./=` `.%=` `.%%=` `.**=` `.&=` `.|=` `.^=` `.<<=` `.>>=` are statements of the same kind with their own meaning ([3.3.7](303-broadcast-operators.md#337-in-place-broadcast)).
+
+### Desugaring and lvalue evaluation
+
+Compound assignment desugars as follows. If the type implements the `OpAssign` trait, `a += b` calls it; otherwise it is `a = a + b` ([stdlib 2.4.1](../../refs-standard-libraries/200-core/204-ops-assign.md)). The same holds for every operator.
+
+```
+lvalue OP= rhs       →   OpAssign::op_assign(ref lvalue, rhs)   // if implemented
+                     →   lvalue = (lvalue OP rhs)               // otherwise
+```
+
+The compiler guarantees that the lvalue is not evaluated twice.
+
+```nabi
+arr[expensive_index()] += 1;
+// expensive_index() is called only once
+```
+
+If the lvalue is a plain variable or field, it is referenced twice as is; if it contains a call or computation, that part is bound to a temporary and evaluated once. This guarantee prevents an index or method with side effects from being called twice unintentionally. Whether the lvalue or `rhs` is evaluated first depends on the operand types (3.4.7).
+
+The lvalue must be a place (3.4.1). `f() += 1` and `d.entry(k).or_insert(0) += 1` are errors (E0140): each would update a temporary. So is a write through a lock guard's `get()` (`g.get().total += 1`), which returns a copy; the help names `g.update(|v| { v.total += 1; v })`, or `g.set(v)` for a whole value. To count in a dictionary, index with a default ([3.6.1](306-indexing-and-slicing.md#361-indexing-arri)):
+
+```nabi
+counts[w, default: 0] += 1;
+```
+
+### Trait mapping
+
+Each compound assignment maps to a separate **Assign** trait family.
+
+```
+x += y       →   <typeof(x) as AddAssign<typeof(y)>>::add_assign(ref x, y)
+x -= y       →   <typeof(x) as SubAssign<typeof(y)>>::sub_assign(ref x, y)
+```
+
+(There are `AddAssign`, `SubAssign`, `MulAssign`, `DivAssign`, ... and so on.)
+
+These traits may be implemented as in-place updates, allowing a more efficient implementation than `x = x + y`. For example, appending to a large collection can happen without creating a new collection.
+
+Implementing `AddAssign` is optional: without it, `x += y` falls back to `x = x + y`. `x + y` itself always needs `Add`.
+
+### Signature
+
+Signatures such as `AddAssign` have the following shape.
+
+```nabi
+trait AddAssign<Rhs = Self> {
+    #[infix("+=")]
+    fn add_assign(ref self, rhs: Rhs);
+}
+```
+
+Like other operators, the `*Assign` traits are registered through `#[infix("op=")]` ([3.1](301-operator-dispatch.md)). `ref self` refers to the lvalue's slot; there is no return type and the result is unit. The exact meaning of `ref self` and of updating the lvalue slot is defined in the function specification.
+
+## 3.4.4. Chained assignment
+
+C- and Python-style chained assignment (`a = b = c = 1`) is not allowed in nabi.
+
+```
+a = b = c = 1;             // ERROR
+```
+
+Because the result of an assignment is unit, `b = c = 1` evaluates to unit and the whole becomes `a = (unit)`, which is meaningless. Write the intended meaning as separate assignments:
+
+```nabi
+c = 1; b = 1; a = 1;
+```
+
+## 3.4.5. Assignment inside an expression
+
+A simple assignment can be placed in expression position, where its result is unit, but there is little value in doing so.
+
+```nabi
+let x = (y = 1);           // x = unit (nearly meaningless)
+```
+
+This pattern is discouraged, and tools or linters may warn about it.
+
+Outside statement position, an assignment is written in parentheses `(y = 1)` or as a match arm body. An unparenthesized `let x = y = 1;` is not supported. Compound assignment has no expression form.
+
+## 3.4.6. Destructuring assignment
+
+A tuple of places on the left of `=` assigns each place from the matching element of the right side:
+
+```nabi
+(a, b) = (b, a);                    // swap
+for _ in 0..n {
+    (x, y) = (y, x + y);            // Fibonacci step
+}
+(xs[i], xs[j]) = (xs[j], xs[i]);    // swap two elements
+(p.x, _, p.y) = (1, 2, 3);          // `_` discards
+(c, (d, e)) = t;                    // nested
+```
+
+The right side is evaluated in full first, then each place is assigned from left to right; a place's own receiver or index is evaluated when it is assigned (3.4.7). So `(a, b) = (b, a + b)` reads the old `a` and `b`. Every place must already exist: assigning does not declare (3.4.2), and a name not yet declared is E0057 with a help to declare it with `let` first. The two shapes must match (E0101). The meaning is that of
+
+```nabi
+{ let (t0, t1) = (b, a + b); a = t0; b = t1; }
+```
+
+with hidden temporaries. Destructuring with `let` declares new variables instead ([3.15](315-destructuring.md)); inside a loop, `let (a, b) = (b, a + b);` declares new `a` and `b` for that iteration and leaves the outer ones as they were.
+
+## 3.4.7. Evaluation order
+
+An assignment evaluates its value before its place, as Rust does. The place's parts (the receiver it is a field or element of, then its index) are evaluated after the value, left to right, each once, and the store comes last.
+
+| Form | Order |
+|------|-------|
+| `place = value` | `value`, then `place` |
+| `place op= value`, both operands primitive (integers, floats, `bool`, `char`, `str`) | `value`, then `place` |
+| `place op= value`, any other operands | `place`, then `value` |
+| `(p0, p1) = value` (3.4.6) | `value` in full, then `p0`, then `p1` |
+| `place .= value` ([3.3.7](303-broadcast-operators.md#337-in-place-broadcast)) | the operands of `value` in source order, then `place` |
+| `place .op= value` | `place`, then the operands of `value` |
+
+```nabi
+xs[f()] = g();          // g(), then f()
+xs[f()] += g();         // xs: List<i64>: g(), then f()
+ms[f()] += g();         // ms: List<Money> with AddAssign: f(), then g()
+(xs[f()], ys[h()]) = (g(), k());   // g(), k(), then f(), then h()
+```
+
+A compound assignment of other operands is a call of the `OpAssign` method on the place (3.4.3), so its place goes first, as a receiver does in any method call ([4.2.8](../004-functions/402-parameters.md#428-parameter-evaluation-order)); a `.op=` reads its target as the first operand of `target .op value`. With the value first, a value that panics or throws evaluates nothing of the place, and a value that changes a variable the place reads (an index through a `[ref]` capture, a field through a `ref self` method) is seen by the place:
+
+```nabi
+let i = 0;
+let bump = [ref i] || -> i64 { i += 1; return 1; };
+zs[i] = bump();         // stores at zs[1]
+```

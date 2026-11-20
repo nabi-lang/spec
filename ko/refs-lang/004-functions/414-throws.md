@@ -1,0 +1,266 @@
+# 4.14. `throws` 시그니처
+
+이 절은 함수 시그니처의 `throws` / `rethrows` 형태를 정의합니다. 이 형태는 [에러 제어 흐름](../003-expressions/314-error-control-flow.md)의 `throw`, `try`, `catch`, `finally`와 함께 씁니다.
+
+> [!IMPORTANT]
+> Nabi의 에러 모델은 `throws` 하나입니다. 에러를 던질 수 있는 함수는 시그니처에 `throws`를 적고, 호출하는 쪽은 그 호출을 `try`로 표시합니다. 에러를 값으로 담아 두어야 할 때에만 표준 라이브러리의 [`Result<T, E>`](../../refs-standard-libraries/200-core/214-error.md)를 씁니다. 규칙은 한 줄입니다. **던지면 `throws`, 담아 두면 `Result`.**
+
+## 4.14.1. 형태
+
+[함수 선언](401-function-declaration.md)의 `fn_decl`에서 `throws_clause?`는 매개변수 괄호 뒤, 반환 타입 화살표 앞에 옵니다.
+
+```
+throws_clause   ::= "throws" ("(" type_expr ")")?
+                  | "rethrows"
+```
+
+그래서 `fn_decl`의 전체 형태는 다음과 같습니다.
+
+```
+fn_decl ::= visibility? fn_modifiers "fn" identifier "(" param_list? ")" throws_clause? return_type? block
+```
+
+여기서 `fn_modifiers`는 [4.1 함수 선언](401-function-declaration.md)에서 정의한 `unsafe? async? yield?`입니다.
+
+```nabi
+fn name(args) -> R                              // non-throwing
+fn name(args) throws -> R                       // untyped: throws (any Error) 의 축약
+fn name(args) throws (E) -> R                   // typed: 단일 에러 타입
+fn name(args) throws (A | B | C) -> R           // typed: 합 타입 에러
+fn name(f: fn(T) throws -> U) rethrows -> R     // 인자로 받은 함수가 던질 때만 던짐
+```
+
+`throws`와 `rethrows`는 문맥 키워드입니다. 매개변수 괄호 `)` 뒤에서만 키워드로 읽힙니다([1.5.4](../001-lexical/105-keywords.md#154-문맥-키워드)). 두 키워드는 반환 타입 화살표 앞에 옵니다. `throws` 뒤의 선택적인 괄호 안에는 던질 수 있는 에러의 타입을 적습니다.
+
+## 4.14.2. 던지지 않는 함수
+
+```nabi
+fn add(x: i32, y: i32) -> i32 { x + y }
+```
+
+`throws`가 없는 함수에서는 에러가 함수 밖으로 나갈 수 없습니다. 에러는 본체의 `throw`나 `try`로 표시한 호출에서 나옵니다. 이 에러를 함수 안의 `catch`가 모두 처리하지 않으면 컴파일 에러입니다. 호출자는 이 함수를 `try` 없이 호출합니다.
+
+```nabi
+fn bad() -> i32 {
+    throw ValueError::new("nope"); // ERROR (E0062): non-throwing 함수 밖으로 에러가 나감
+}
+```
+
+이 규칙 덕분에 함수가 에러를 던질 수 있는지가 시그니처에 드러나고, 에러가 몰래 전파되지 않습니다. 진입점만 예외입니다. 반환 타입이 없는 명시 `fn main()`은 선언하지 않아도 던집니다([4.16.4](416-entry-point.md#4164-종료-코드와-미처리-예외)).
+
+## 4.14.3. 타입 없는 `throws`
+
+```nabi
+fn parse(s: str) throws -> i32 { ... }
+```
+
+untyped `throws`는 `throws (any Error)`의 축약입니다. 이 함수는 표준 라이브러리의 [`Error`](../../refs-standard-libraries/200-core/214-error.md) 트레잇을 구현하는 어떤 타입의 에러든 던질 수 있습니다. 던진 값은 [제약 붙은 `any`](../002-types/202-any-slot.md)인 `any Error` 값으로 전달됩니다. 호출자는 `catch`의 타입 패턴으로 구체 타입을 좁혀 매칭합니다. 또는 `catch e: any Error`나 catch-all로 모두 받습니다.
+
+공개 API처럼 호출자 입장에서 에러 종류가 닫혀 있지 않으면 untyped 형태를 권장합니다.
+
+## 4.14.4. 타입 있는 `throws`: 단일 타입과 합 타입
+
+```nabi
+fn fetch_user(id: i64) throws (NotFound) -> User { ... }
+fn parse_or_load(s: str) throws (ParseError | IoError | TimeoutError) -> Data { ... }
+```
+
+괄호 안에 던질 수 있는 정확한 타입을 적을 수 있습니다. 합 타입(`A | B | C`)도 그대로 쓸 수 있습니다.
+
+typed 형태는 내부 API나 라이브러리 API, 임베디드 환경처럼 에러 종류가 닫혀 있을 때 알맞습니다. 이때 컴파일러는 호출자의 `catch` 가지가 에러 타입을 모두 덮는지 검사할 수 있습니다. 모두 덮으면 컴파일러는 그 식이 더 이상 에러를 던지지 않는다고 봅니다.
+
+```nabi
+fn caller() -> Data {             // non-throwing: 세 타입을 모두 처리
+    try parse_or_load(input)
+    catch e: ParseError { ... }
+    catch e: IoError { ... }
+    catch e: TimeoutError { ... }
+}
+```
+
+## 4.14.5. `throws`와 본체의 일치
+
+함수 밖으로 나갈 수 있는 모든 에러는 시그니처의 `throws`와 호환되어야 합니다. 에러의 출처는 본체의 `throw` 문과 `try`로 표시한 throwing 호출입니다. 함수 안의 `catch`가 처리한 에러는 검사하지 않습니다.
+
+```nabi
+fn f() throws (A) -> i32 {
+    throw A_instance;             // OK
+    throw B_instance;             // ERROR (E0062): A 만 가능
+}
+```
+
+호환 규칙은 다음과 같습니다. typed `throws (E)`에서는 출처의 에러 타입이 모두 `E`의 항이어야 합니다. untyped `throws`에서는 출처의 에러 타입이 모두 `Error`를 구현해야 합니다. 그 값은 `any Error`로 전달됩니다.
+
+에러 타입 사이의 자동 변환은 없습니다. 하위 함수의 에러를 다른 타입으로 바꿔 전파하려면 `catch`에서 감싸서 다시 던집니다.
+
+```nabi
+fn load_config(path: str) throws (ConfigError) -> Config {
+    try parse_toml(read_text(path))
+    catch e: IoError { throw ConfigError::io(e); }
+    catch e: ParseError { throw ConfigError::syntax(e); }
+}
+```
+
+## 4.14.6. 호출자의 의무
+
+`throws` 함수를 호출하는 식은 `try`가 덮는 식 안에 있어야 합니다. `try` 없이 throwing 함수를 호출하면 컴파일 에러입니다. `try`는 그 오른쪽 식 전체를 덮습니다. 그래서 `try a(b())`는 `a`와 `b` 두 호출을 모두 덮고, `try { a(); b(); }`는 블록 안의 호출을 모두 덮습니다([3.14.2](../003-expressions/314-error-control-flow.md#3142-try-호출-지점-표시)).
+
+`try`로 표시한 호출에서 나온 에러는 가장 가까운 `catch`가 처리합니다. 처리하지 못한 에러는 둘러싼 함수로 전파됩니다. 이때 둘러싼 함수의 `throws`가 그 에러 타입을 받아야 합니다(4.14.5).
+
+```nabi
+fn caller() {                     // non-throwing
+    parse(s);                     // ERROR (E0062): throwing 호출에 try 표시 없음
+    try parse(s);                 // ERROR (E0062): 에러가 전파되는데 caller 는 throws 가 아님
+}
+
+fn caller2() throws {             // 전파
+    try parse(s);                 // OK
+}
+
+fn caller3() {                    // 잡음
+    try parse(s) catch _ {
+        ...
+    };
+}
+
+fn caller4() -> i32 {             // 에러를 버리거나 panic 으로 바꿈
+    let a = try? parse(s) ?? 0;   // try?: 에러면 none, 이어서 0
+    let b = try! parse(t);        // try!: 에러면 panic
+    a + b
+}
+```
+
+그래서 에러가 흐를 수 있는 지점은 모두 코드에 `try`로 드러나고, 에러가 어디까지 전파되는지는 함수 시그니처의 `throws`로 드러납니다.
+
+## 4.14.7. `rethrows`
+
+```nabi
+fn map<U>(self, f: fn(T) throws -> U) rethrows -> List<U> {
+    let out: List<U> = [];
+    for x in self {
+        out.push(try f(x));
+    }
+    out
+}
+```
+
+`rethrows`는 함수형 매개변수를 받는 고차 함수에 쓰는 형태입니다. `rethrows` 함수는 인자로 받은 함수나 클로저가 던질 때만 던집니다.
+
+- 호출 지점에서 throwing 함수형 매개변수에 넘긴 인자가 모두 non-throwing이면, 그 호출은 non-throwing이며 `try` 없이 부릅니다.
+- 인자 중 하나라도 throwing이면 그 호출은 throwing입니다. 던지는 에러 타입은 그 인자의 에러 타입입니다. 호출자는 `try`로 표시합니다.
+- `rethrows` 함수의 본체에서 함수 밖으로 나갈 수 있는 에러는 함수형 매개변수의 호출에서 나온 에러뿐입니다. 본체가 자기 에러를 직접 던지면 컴파일 에러입니다.
+
+```nabi
+let lens = names.map(|s| s.len());              // non-throwing 클로저: try 없음
+let nums = try names.map(|s| try parse(s));     // throwing 클로저: try 필요
+```
+
+`rethrows` 함수를 값으로 쓰면 기대 타입(함수 타입)이 어느 인스턴스를 쓸지 정합니다. 기대 타입이 없으면 에러 매개변수는 `any Error`가 됩니다.
+
+## 4.14.8. 함수 타입의 `throws`
+
+`throws`는 [함수 타입](404-function-type.md)에도 붙습니다.
+
+```nabi
+fn(T) -> U                    // non-throwing
+fn(T) throws -> U             // untyped: throws (any Error)
+fn(T) throws (E) -> U         // typed
+```
+
+non-throwing 함수 값은 매개변수와 반환 타입이 같은 throwing 함수 타입 자리에 넣을 수 있습니다. `throws (A)` 함수 값은 `throws (A | B)` 자리에 넣을 수 있습니다. `A`가 `Error`를 구현하면 untyped `throws` 자리에도 넣을 수 있습니다. 반대 방향으로는 넣을 수 없습니다. 자세한 내용은 [4.4](404-function-type.md)에 있습니다.
+
+## 4.14.9. `throws`와 `async`, `yield`의 결합
+
+세 수식어를 모두 한 함수에 함께 쓸 수 있습니다.
+
+```nabi
+async fn fetch(url: str) throws (NetworkError) -> Data { ... }
+
+yield fn lines(s: str) throws (ParseError) -> str { ... }
+
+async yield fn read_paginated(url: str) throws (NetworkError) -> Page { ... }
+```
+
+`throws`는 시그니처 위치의 키워드이며 `async`나 `yield`와 직교합니다.
+
+## 4.14.10. `throws`가 합 타입 시그니처에 미치는 영향
+
+```nabi
+async fn fetch_data() throws (NetworkError) -> Data { ... }
+```
+
+이 함수를 호출하면 `Data | NetworkError`를 담은 Future가 나온다고 생각할 수 있습니다.
+
+실제 결과는 **`TryAsyncFuture<Data, NetworkError>`**입니다([4.1.11](401-function-declaration.md#코루틴-함수의-결과-타입)). 에러는 결과 타입에 섞이지 않고 `await` 지점에서 에러 채널로 전달됩니다. 그래서 `await`로 기다리는 쪽이 `try`로 표시합니다. `TryAsyncFuture`는 일반 `Future` 트레잇을 구현하지 않습니다.
+
+```nabi
+let f = fetch_data();              // f: future::TryAsyncFuture<Data, NetworkError>
+let d = try await f catch e: NetworkError {
+    ...
+};
+```
+
+이렇게 정했으므로 결과 타입이 결과와 에러라는 두 변형이 있는 `enum`으로 바뀌지 않습니다.
+
+`yield`와 `async yield`도 같은 패턴을 따릅니다. `throws (E)`인 제너레이터는 `TryGenIter<T, E>`, 스트림은 `TryAsyncStream<T, E>`입니다. 에러는 `next` 지점에서 에러 채널로 전달됩니다.
+
+### `try for`
+
+`TryIterator`(throwing 제너레이터의 `TryGenIter`, `io::Bytes` 등)를 도는 `for`는 `next`마다 던질 수 있으므로 `try for`로 씁니다. 이 `try`는 반복만 덮습니다. 반복 대상 식과 각 `next`입니다. 본체는 덮지 않으므로 본체 안의 throwing 호출에는 자기 `try`를 붙입니다([3.13.3](../003-expressions/313-loop-expressions.md#3133-for-반복자-기반-반복)). `TryStream`을 도는 `for await`도 같습니다.
+
+```nabi
+fn total(path: str) throws (IoError | ParseError) -> i64 {
+    let n: i64 = 0;
+    try for line in lines(path) {           // 각 next 의 IoError 가 전파됨
+        n += try i64::from_str(line);       // 본체는 자기 호출을 직접 표시
+    }
+    n
+}
+try for await ev in events() { try handle(ev); }
+for line in lines("a.txt") { ... }          // ERROR (E0062): `next`가 던질 수 있음, `try for`로 쓸 것
+```
+
+| 형태 | 단계에서 에러가 나면 |
+|---|---|
+| `try for` | 가장 가까운 `catch`로, 없으면 함수 밖으로 전파 |
+| `try! for` | 패닉([3.14.3](../003-expressions/314-error-control-flow.md#3143-try와-try)) |
+| `try? for` | 루프를 끝냄. `for` 식의 값은 `none`(아니면 `()`) |
+| `try for .. catch e: E { .. }` | `catch`는 `try for` 식 전체에 붙음 |
+
+본체 안의 `try`는 다른 중첩 `try`처럼 에러를 보냅니다. 루프 뒤의 `catch`나 루프의 `try?` / `try!`로 가고, 없으면 함수 밖으로 나갑니다. 에러가 나도 계속 돌려면 `.results()`를 도십시오. 각 단계를 `Result`로 줍니다([stdlib 2.7.13](../../refs-standard-libraries/200-core/207-iter.md#2713-tryiterator-실패할-수-있는-반복)).
+
+## 4.14.11. 메서드의 `throws`
+
+[메서드](409-method.md)에도 일반 함수와 마찬가지로 `throws` 시그니처를 붙일 수 있습니다.
+
+```nabi
+impl Database {
+    fn query(self, sql: str) throws (SqlError) -> ResultSet { ... }
+}
+```
+
+호출자의 의무와 전파 규칙은 자유 함수와 똑같이 적용합니다.
+
+트레잇을 구현하는 impl 메서드의 `throws`는 트레잇 메서드의 `throws`와 같아야 합니다. impl이 `throws`를 새로 붙이거나 에러 타입을 넓히면 컴파일 에러(E0074)입니다. `throws` 없이 쓴 impl 메서드는 트레잇 메서드의 것을 받으며, 그 에러 타입은 트레잇에서 가리키는 것을 가리킵니다: `impl Display for P { fn fmt(self, ref f: Formatter) { try f.write_str(..); } }`는 `FmtError`를 던집니다.
+
+연산자 트레잇 메서드(`Add::add` 등)는 `throws` 없이 선언되므로 연산자는 에러를 던지지 않습니다. 실패할 수 있는 연산은 이름 있는 메서드로 두거나 `Result`를 반환합니다([stdlib 2.3](../../refs-standard-libraries/200-core/203-ops.md)). 사용자 연산자도 같습니다. `throws`로 선언한 메서드에 `#[infix]` / `#[prefix]` / `#[postfix]`를 붙이면 에러입니다([6.7.3](../006-meta-system/607-operator-magic.md#673-연결-메커니즘)).
+
+## 4.14.12. 값 기반 구현 모델
+
+throwing 함수는 결과를 값으로 돌려줍니다. 반환값은 성공 여부 플래그와 페이로드의 쌍입니다. 페이로드에는 성공 값이나 에러 값이 들어갑니다. 에러 채널은 시그니처로 구분되므로 성공 타입과 에러 타입이 같아도 됩니다. 호출 지점의 `try`는 플래그를 검사해 분기합니다. 에러면 가장 가까운 `catch`로 가거나, 둘러싼 함수의 에러 결과로 그대로 반환합니다.
+
+이 모델에서 에러가 나지 않는 경로의 비용은 분기 하나뿐입니다. `try`나 `catch`에 들어갈 때 드는 비용은 없습니다. 스택을 거슬러 올라가는 unwinding도, 런타임의 에러 전달 함수도 쓰지 않습니다. 정확한 반환값 레이아웃은 [8.6.5](../008-abi/806-calling-convention.md#865-던지는-함수의-반환-값-기반-에러-전달)에서, lowering은 [8.9.6](../008-abi/809-lowering-control.md#896-try--catch--finally-값-기반-분기)에서 정의합니다.
+
+## 4.14.13. panic과 fatal 에러
+
+panic은 `throws`의 에러가 아닙니다. panic에는 표준 라이브러리의 `panic`, `try!`의 실패, 0으로 나누기, 정수 오버플로, 경계 검사 실패가 있습니다. 이런 panic과 [에러 제어 흐름](../003-expressions/314-error-control-flow.md)의 fatal 에러는 어떤 `throws` 시그니처에도 들어가지 않습니다. `catch`로 잡을 수도 없습니다. 런타임은 다음을 표준 에러(stderr)에 출력하고 종료 코드 `101`로 프로세스를 끝냅니다.
+
+```
+thread '<name>' panicked at <path>:<line>:<col>:
+<message>
+```
+
+- `<name>`은 스레드 이름입니다. 주 스레드는 `main`, 이름 없는 스레드는 `<unnamed>`입니다.
+- C가 부른 함수 아래의 panic은 보고 뒤에 exit하지 않고 프로세스를 abort하거나, 그 함수의 `#[on_panic]` 값을 C에 돌려줍니다([5.9.12](../005-modules/509-extern-block.md#5912-ffi의-안전성-책임)). `std::panic::set_hook`으로 둔 hook은 어느 경우든 보고 뒤에 돕니다([stdlib 3.12](../../refs-standard-libraries/300-std/312-panic.md)).
+- 위치는 실패한 식입니다. [`#[track_caller]`](../006-meta-system/602-built-in-attributes.md#6212-track_caller-호출-위치-전달) 함수 사슬 안이면 그 사슬 밖의 첫 호출 위치입니다.
+- 환경 변수 `NABI_BACKTRACE=1`이 있으면 `stack backtrace:`가 이어집니다. panic한 스레드의 호출 스택에 있는 함수들을 가장 안쪽부터 한 줄에 하나씩 Nabi 경로로 씁니다(`   0: geom::distance`). 맨 위의 표준 라이브러리 panic 함수들은 빼고, 마지막 `note:` 줄이 그것까지 보는 방법을 알려 줍니다. `NABI_BACKTRACE=full`은 모든 프레임을 반환 주소와 함께 씁니다(`   0: 0x000000010000a4f0 - geom::distance`). Nabi 코드가 아닌 첫 프레임(`<unknown>`)에서 멈춥니다. 설정하지 않거나 비어 있거나 `0`이면 백트레이스를 쓰지 않습니다. 만드는 방법과 지원하는 타깃은 [9.9.6](../009-tools/909-debug-tools.md#panic-백트레이스)에 있습니다.

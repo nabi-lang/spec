@@ -1,0 +1,205 @@
+# 1.2. 캐스트 연산: 이름 있는 명시적 캐스트
+
+포인터와 타입 사이의 변환은 **이름 붙은 함수**로만 있습니다. `cast` 모듈은 없습니다. `ptr_cast`, `align_cast`, `align_cast_unchecked`, `const_cast`는 `bare::ptr`에 정의합니다. `reinterpret`와 `transmute_unchecked`는 `bare::mem`에 정의합니다. `bare` 루트가 여섯 개 모두와 `Pod`([1.2.5](#125-reinterpreta-pod-b-pod-비트-캐스트안전))를 다시 내보냅니다(`bare::ptr_cast`). C와 Rust의 `as` 캐스트가 위험한 까닭은 변환이 조용히 일어나기 때문입니다. Nabi는 이 함정을 피하려고 모든 캐스트에 **명시적인 이름**을 요구합니다.
+
+## 1.2.1. 캐스트 함수 4종
+
+기본 함수 4개는 다음과 같습니다.
+
+| 함수                                     | 의미                                   | 위험도                  |
+|------------------------------------------|----------------------------------------|-------------------------|
+| `ptr_cast<U>(p: Ptr<T>)`                 | 타입만 변경 (provenance/주소 보존)    | 정렬은 호출자 책임      |
+| `align_cast<T>(p: Ptr<u8>)`              | 정렬 상향 캐스트                       | 검증 (어긋나면 `none`)  |
+| `const_cast<T>(p: ConstPtr<T>)`          | const 제거                             | 매우 높음 (호출자 보장) |
+| `reinterpret<A: Pod, B: Pod>(a: A) -> B` | 비트 수준 캐스트 (`Pod`만)            | 낮음 (Pod marker 보장)  |
+
+더 깊이 우회해야 할 때 쓰는 탈출구(escape hatch)도 하나 있습니다.
+
+| 함수                                  | 의미                                     | 위험도 |
+|---------------------------------------|------------------------------------------|--------|
+| `transmute_unchecked<A,B>(a: A) -> B` | **Pod 검증 없이** 비트 캐스트 (호출자 책임) | 최고   |
+
+컴파일러는 포인터에 쓴 `as` 키워드를 거부합니다. 그래서 사용자는 이름 붙은 캐스트를 쓸 수밖에 없습니다.
+
+## 1.2.2. `ptr_cast<U>`: 포인터 타입 변환
+
+```nabi
+fn ptr_cast<U, T>(p: Ptr<T>) -> Ptr<U>;
+```
+
+이 함수는 주소와 provenance를 그대로 두고 타입 태그만 바꿉니다. 따라서 **정렬 책임은 호출자**에게 있습니다. 인자로는 `Ptr`만 받습니다. Nabi에는 오버로딩이 없기 때문입니다. `ConstPtr`와 `ManyPtr`는 각자의 `cast` 메서드로 같은 변환을 합니다([1.1](101-ptr.md)). 형태는 `p.cast::<U>()`입니다.
+
+```nabi
+let p: Ptr<u32> = ...;        // 4-byte aligned
+let q: Ptr<u8> = bare::ptr_cast::<u8>(p);    // 안전 (down-align)
+let r: Ptr<u64> = bare::ptr_cast::<u64>(p);  // 위험: u64 은 8-byte 필요
+                                                 // r.read() 시 SIGBUS 가능 (ARM)
+```
+
+어떤 빌드에서도 **정렬 검사**를 넣지 않습니다. 정렬이 어긋난 결과로 읽거나 쓰면 UB입니다. 먼저 `align_cast`(1.2.3)나 `is_aligned`(1.1.2)로 확인합니다.
+
+### 안전한 캐스트: 타입 동등
+
+레이아웃이 같은 두 struct 사이에서는 안전하게 변환할 수 있습니다.
+
+```nabi
+struct A { x: u32 }
+struct B { x: u32 }       // A 와 layout 동일
+
+let pa: Ptr<A> = ...;
+let pb: Ptr<B> = bare::ptr_cast::<B>(pa);    // layout OK 면 안전
+```
+
+다만 컴파일러는 레이아웃이 정말 같은지 검증하지 않습니다. 호출자가 보장해야 합니다.
+
+## 1.2.3. `align_cast<T>`: 정렬 검증
+
+```nabi
+fn align_cast<T>(p: Ptr<u8>) -> Ptr<T> | none;
+```
+
+`Ptr<u8>`(1바이트 정렬)을 정렬이 더 큰 `Ptr<T>`로 바꿀 때는 실제 정렬을 **검증한 뒤에만** 변환합니다.
+
+```nabi
+let bytes: ManyPtr<u8> = ...;
+let p: Ptr<u8> = bytes.add(offset).as_one();
+
+if let aligned: Ptr<u32> = bare::align_cast::<u32>(p) {
+    let v = unsafe { aligned.read() };       // 안전 (검증됨)
+} else {
+    panic("not 4-byte aligned");
+}
+```
+
+`align_cast`는 `Result`가 아니라 `T | none`을 반환합니다. 둘 가운데 뒤쪽이 더 가볍기 때문입니다.
+
+### unchecked 변형
+
+```nabi
+fn align_cast_unchecked<T>(p: Ptr<u8>) -> Ptr<T>;     // 검증 없이
+```
+
+호출 직전에 정렬을 이미 검증한 곳에서만 씁니다. 이 변종은 디버그 빌드에서도 검증하지 않습니다.
+
+## 1.2.4. `const_cast<T>`: const 제거
+
+```nabi
+fn const_cast<T>(p: ConstPtr<T>) -> Ptr<T>;
+```
+
+const를 벗겨 내는 함수입니다. 위험한 이유는 분명합니다. 원본이 읽기 전용 영역(immortal const)에 있으면 거기에 쓰는 순간 segfault가 납니다.
+
+```nabi
+use bare::ptr::{Ptr, ConstPtr, const_cast};
+
+let s: str = "hello";              // immortal const
+let p: ConstPtr<u8> = s.as_ptr();
+let m: Ptr<u8> = const_cast(p);
+unsafe { m.write(72u8) };          // 'H': SEGFAULT (immortal const 쓰기)
+```
+
+C의 `const_cast<T*>`와 정확히 같은 모델입니다. 읽기 전용 API를 가변성이 필요한 곳에 임시로 감싸는 용도로만 씁니다. 일반 코드에서는 **쓰면 안 됩니다**.
+
+## 1.2.5. `reinterpret<A: Pod, B: Pod>`: 비트 캐스트(안전)
+
+```nabi
+unsafe trait Pod { /* marker: Plain Old Data */ }
+
+fn reinterpret<A: Pod, B: Pod>(a: A) -> B;
+```
+
+`Pod`(Plain Old Data) marker가 있는 타입은 **안전한 transmute**가 보장됩니다. 근거는 다음과 같습니다.
+
+- `Pod` 타입은 모든 비트 패턴이 유효하므로 초기화되지 않은 메모리가 노출될 일이 없습니다.
+- 변환은 크기가 같을 때만 할 수 있습니다. `where size_of` 바운드는 컴파일 타임 형태가 없으므로 크기 조건은 `reinterpret`가 실행될 때 검사합니다. 크기가 다르면 panic이 일어납니다.
+- 값 변환이라 정렬이 자연히 보장됩니다.
+
+```nabi
+let f: f32 = 3.14;
+let bits: u32 = bare::reinterpret(f);     // OK: 둘 다 Pod, 4 byte
+let f2: f32 = bare::reinterpret(bits);    // round-trip OK
+```
+
+### `Pod` 자동 derive
+
+표준 라이브러리가 `Pod` marker를 자동으로 붙이는 타입은 다음과 같습니다.
+
+```nabi
+unsafe impl Pod for i8, i16, i32, i64, u8, u16, u32, u64, usize, isize { }
+unsafe impl Pod for f32, f64 { }
+unsafe impl Pod for c_char { }
+unsafe impl<T: Pod, const N: usize> Pod for [T; N] { }
+unsafe impl<A: Pod> Pod for (A,) { }
+unsafe impl<A: Pod, B: Pod> Pod for (A, B) { }
+unsafe impl<A: Pod, B: Pod, C: Pod> Pod for (A, B, C) { }
+unsafe impl<A: Pod, B: Pod, C: Pod, D: Pod> Pod for (A, B, C, D) { }
+```
+
+`bool`과 `char`는 `Pod`가 아닙니다. 대부분의 비트 패턴이 값이 아니기 때문입니다(`bool`은 0 또는 1, `char`는 Unicode 스칼라). `u8` / `u32`로 재해석한 뒤 검사하며 변환하세요(`b != 0u8`, `char::from_u32`).
+
+`Pod`는 `unsafe trait`입니다([4.15.4](../../refs-lang/004-functions/415-unsafe.md#4154-트레잇-안에서)). impl은 모든 비트 패턴이 값이라고 약속하는데, 컴파일러는 이를 확인할 수 없습니다. 그래서 직접 쓰는 impl은 `unsafe impl Pod for T {}`입니다. `#[derive(Pod)]`가 이 impl을 써 줍니다.
+
+반면 다음은 자동으로 붙지 않습니다.
+
+- `Ptr<T>`는 provenance 정보가 따로 있어 비트만으로는 표현할 수 없습니다.
+- 사용자 struct는 `#[derive(Pod)]`로 명시해야 합니다.
+
+```nabi
+#[derive(Pod)]
+#[repr(C)]
+struct Vec3 { x: f32; y: f32; z: f32; }
+
+let v: Vec3 = Vec3 { x: 1.0, y: 2.0, z: 3.0 };
+let bytes: [u8; 12] = bare::reinterpret(v);
+let v2: Vec3 = bare::reinterpret(bytes);
+```
+
+이 설계는 [Project Safe Transmute (Rust RFC 2835)](https://rust-lang.github.io/rfcs/2835-project-safe-transmute.html) 모델과 [bytemuck crate](https://docs.rs/bytemuck) 패턴을 따릅니다.
+
+## 1.2.6. `transmute_unchecked<A, B>`: escape hatch
+
+```nabi
+unsafe fn transmute_unchecked<A, B>(a: A) -> B;   // size check 도 안 함
+```
+
+이 함수는 `Pod` 검증조차 **없이** 비트를 그대로 옮깁니다. 이름대로 가장 위험한 캐스트이므로 `unsafe fn`입니다. 초기화되지 않은 메모리 노출, 크기 불일치, 정렬 문제, 안에 든 GC 참조는 모두 호출자 책임입니다. 임시 블록을 할당하지 못하면 `mem::transmute_unchecked: out of memory`로 panic합니다. 크기 불일치는 거부하지 않습니다. 값은 0으로 채운 임시 블록을 거칩니다. 이 블록의 크기는 두 타입 중 큰 쪽입니다. 그래서 원본 크기를 넘는 바이트는 0으로 읽힙니다.
+
+표준 라이브러리 내부의 가장 **낮은 층**에서만 씁니다. `Pod` impl 자체를 작성할 때처럼 다른 도구로는 표현할 수 없는 경우뿐입니다. 일반 사용자 코드에서는 어떤 경우에도 쓰면 안 됩니다.
+
+```nabi
+// 표준 라이브러리 내부 예
+unsafe impl Pod for SomeNewtype {
+    // empty marker
+}
+
+let s: SomeNewtype = ...;
+let bits: u64 = unsafe { bare::transmute_unchecked(s) };   // SomeNewtype 이 size 8 보장한 코드
+```
+
+## 1.2.7. `as` 캐스트의 적용 자리
+
+`as`는 수치 캐스트입니다([refs-lang 2.14.2](../../refs-lang/002-types/214-cast-and-conversion.md#2142-as-캐스트)). 정수 타입, 부동소수점 타입, `bool`, `char`, `c_char` 중 아무 둘 사이에 쓸 수 있고(대상 제약은 refs-lang을 따릅니다), 결과는 `.wrapping_into()`와 같습니다. 손실이 있는 쌍은 래핑(정수)하거나, 0 쪽으로 자르고 포화(부동소수점에서 정수로)합니다. 거부하는 것은 포인터뿐입니다.
+
+| 표현               | 결과                                                   |
+|--------------------|--------------------------------------------------------|
+| `i32 as i64`       | OK (손실 없는 확장)                                    |
+| `i64 as i32`       | OK, 래핑 (검사나 포화는 `try_into` / `saturating_into`) |
+| `f32 as f64`       | OK (손실 없음)                                         |
+| `i32 as f32`       | OK, 가장 가까운 `f32`로 반올림                         |
+| `u32 as i32`       | OK, 같은 비트 (`0xFFFF_FFFF`는 `-1`)                   |
+| `Ptr<T> as Ptr<U>` | **컴파일 에러**: `bare::ptr_cast::<U>`             |
+| `Ptr<T> as usize`  | **컴파일 에러**: `.addr()` 또는 `expose_provenance`    |
+| `usize as Ptr<T>`  | **컴파일 에러**: `from_exposed_provenance`             |
+
+전체 변환 매트릭스는 [2.11 conversion](../200-core/211-conversion.md)에 있습니다.
+
+## 1.2.8. 정책 요약
+
+이 장의 캐스트 정책은 네 가지로 정리됩니다.
+
+- `as` 캐스트는 수치 전용입니다. 포인터는 `as`를 거치지 않고, 수치가 아닌 비트 재해석은 `reinterpret`를 거칩니다.
+- `bare::ptr_cast` / `align_cast` / `const_cast` / `reinterpret` 네 함수가 명시 캐스트의 통로입니다.
+- `Pod` marker 트레잇이 비트 재해석의 안전 조건입니다.
+- `transmute_unchecked`는 탈출구로만 노출합니다.
+
+이 정책으로 Nabi는 C의 번거로운 형 변환과 포인터에 대한 Rust의 `as` 함정을 함께 피합니다.

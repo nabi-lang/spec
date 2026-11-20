@@ -1,0 +1,204 @@
+# 3.8. `nabion::`: NABION 데이터 형식
+
+NABION(Nabi Object Notation)은 Nabi의 리터럴 문법으로 값을 적는 데이터 형식입니다. 확장자는 `.nabion`입니다. Rust의 RON, Zig의 ZON과 같은 역할을 합니다. 패키지 매니페스트 `nabi.nabion`과 lockfile `nabi.lock`([refs-lang 9.10.3](../../refs-lang/009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock))이 이 형식을 씁니다.
+
+## 3.8.1. 형식
+
+NABION은 Nabi 식 문법의 부분집합입니다. 라이브러리는 이 부분집합을 자체 렉서와 재귀 하강 파서로 읽습니다. 실행 중에 컴파일러의 파서를 쓰지 않습니다. 파일 하나에 값이 하나 들어갑니다.
+
+| 형태        | 예                                                    | 비고                                                  |
+|-------------|-------------------------------------------------------|-------------------------------------------------------|
+| none        | `none`                                                |                                                       |
+| bool        | `true`, `false`                                       |                                                       |
+| 정수        | `42`, `-7`, `0xff`, `0b1010`, `0o17`, `1_000_000`      | 접미사 없음                                           |
+| 실수        | `3.14`, `-1.5e-3`, `2E10`                              | 접미사 없음                                           |
+| char        | `'a'`, `'\n'`                                         | `c'..'`는 안 됨                                      |
+| 문자열      | `"text"`, 원시 문자열, 여러 줄 문자열                 | f-string은 안 됨                                     |
+| 리스트      | `[a, b, c]`                                           |                                                       |
+| dict        | `{ "k": v, 1: w }`                                    | 키는 값 (문자열, 수 등)                               |
+| 튜플        | `(a, b)`, `(a,)`                                      | `(x)`는 묶음이지 튜플이 아님                         |
+| struct      | `Point { x: 1, y: 2 }`, `{ x: 1, y: 2 }`, `Pair(1, 2)`, `Unit {}` | 이름은 선택. 필드 이름은 식별자. 튜플 struct는 `Name(a, b)` |
+| enum 변형   | `Shape::Unit`, `Shape::Circle(1.0, at: p)`, `Shape::Rect { w: 2, h: 3 }` | 전체 경로로 적음                      |
+
+- 쉼표는 뒤에 하나 더 붙여도 됩니다. 주석은 `//`와 `/* */`입니다.
+- `{}`는 빈 struct이자 빈 dict입니다(대상 타입이 정함). `{ .. }` 하나에는 필드(식별자 키)나 키(값 키) 중 한쪽만 올 수 있습니다. 섞으면 에러입니다.
+- 다음은 쓸 수 없습니다. 맨 식별자, 연산자(수 앞의 단항 `-`만 허용), 메서드 호출, `..`, 블록, f-string, Set 리터럴(`{1, 2}`, Set은 리스트로 적음), `c'..'` 리터럴, 제네릭 경로(`List<i32>::..`), 값 뒤에 남은 토큰입니다. 모두 `line:col`을 보여 주는 에러입니다.
+- NaN과 무한대는 NABION 표기가 없습니다. 입력의 `nan` / `inf`는 맨 식별자로 거부됩니다.
+- NABION 실수는 `f64`입니다. `f64` 범위 밖의 실수 리터럴(`1e999`)은 범위를 알려 주는 에러입니다: ``float `1e999` is out of range (NABION floats are f64, up to about 1.8e308)``. `nabion::parse`와 toolchain의 읽기(`nabi.nabion`, `nabi.lock`, `.nabion` 파일에 대한 `nabi fmt`)가 같은 규칙을 따릅니다.
+
+> [!NOTE]
+> 알려진 한계: 첫 키가 `none`인 dict(`{ none: 1 }`)는 지원하지 않습니다. 읽는 쪽이 `none:`을 필드 이름으로 받아 중괄호를 struct로 읽기 때문입니다.
+
+```nabion
+// config.nabion
+Config {
+    name: "geom",
+    retries: 3,
+    ratio: 0.75,
+    tags: ["a", "b"],
+    limits: { "cpu": 2, "mem": 512 },
+    mode: Mode::Fast,
+    proxy: none,
+}
+```
+
+## 3.8.2. Nabi 타입과 대응
+
+| NABION          | Nabi 타입                                                                     |
+|----------------|------------------------------------------------------------------------------|
+| `none`         | `T \| none`의 `none`                                                        |
+| `true` / `false` | `bool`                                                                     |
+| 정수           | 모든 정수 타입, `int`. 실수를 기대하는 자리 (`f32` / `f64` / `float`)에도 됨 |
+| 실수           | `f32`, `f64`, `float`                                                         |
+| char           | `char`                                                                        |
+| 문자열         | `str`                                                                         |
+| 리스트         | `List<T>`, `[T; N]`, `Set<T>`                                                 |
+| dict           | `Dict<K, V>`                                                                  |
+| 튜플           | 원소 1~6개의 튜플                                                             |
+| struct         | `struct` (`#[derive(Nabion)]`)                                                 |
+| enum 변형      | `enum` (`#[derive(Nabion)]`)                                                   |
+| 아무 값        | `Value`                                                                       |
+
+## 3.8.3. 읽기
+
+`parse`는 텍스트를 `Value`로 읽습니다.
+
+| 입력                         | `Value`                                                        |
+|------------------------------|----------------------------------------------------------------|
+| `{ ident: v, .. }`           | 이름 없는 `Struct`                                             |
+| `{ "k": v, .. }`, `{}`       | `Dict`                                                         |
+| `Name { f: v }`              | 이름 있는 `Struct`                                             |
+| `A::B { f: v }`              | `Variant` (`named`에 값)                                      |
+| `A::B(a, k: b)`, `A::B`      | `Variant` (`args`, `named`)                                    |
+| `Name(a, b)`                 | 경로가 한 마디인 `Variant` (튜플 struct)                        |
+| 정수                         | `Int` (정확한 `int`)                                           |
+
+타입이 있는 읽기(`from_str`, `from_value`)에서는 대상 타입이 해석을 정합니다.
+
+- struct 대상은 `Struct`, `{}`, `A::B { .. }`를 받습니다. 그래서 모듈 경로를 붙인 struct 이름(`geom::Point { .. }`)도 받습니다.
+- 적은 이름은 대상과 같아야 합니다. struct는 경로의 마지막 마디, enum 변형은 마지막 두 마디를 비교합니다.
+- 타입에 없는 필드는 건너뜁니다. 그래서 형식에 필드를 더해도 예전 읽기가 깨지지 않습니다. 타입에 `#[nabion(deny_unknown_fields)]`를 붙이면 그 필드 이름 위치의 에러입니다. struct와 이름 있는 변형에 똑같이 적용됩니다.
+- 빠진 필드는 그 필드에 `= 기본값`이 있으면 기본값을 받습니다. 타입이 `T | none`이면 `none`을 받습니다. 그 밖에는 에러입니다(`FromNabion::from_missing`).
+- 정수 값이 대상 정수 타입의 범위를 넘으면 에러입니다.
+- 이름 있는 변형은 `E::V(a, k: b)`로도 읽습니다. 위치 인자가 필드를 순서대로 채우고, 이어서 이름 있는 인자가 채웁니다.
+
+## 3.8.4. 정규 형식
+
+`nabion::to_str`과 `nabi`(매니페스트를 고치거나 `nabi.lock`을 쓸 때)이 내는 정규 형식은 다음과 같습니다. 정규 형식이 곧 읽기 좋은 형식이므로 보기 좋게 출력하는 함수는 따로 없습니다.
+
+- 들여쓰기는 공백 4칸입니다.
+- 100칸 안에 들어가면 한 줄로, 아니면 여러 줄로 쓰고 각 원소 뒤에 쉼표를 붙입니다.
+- 실수는 다시 읽었을 때 같은 값이 되는 가장 짧은 표기로 씁니다(`1.0`, `1.0e300`). NABION 표기가 없는 실수는 경로와 함께 `NabionError`로 throw합니다. NaN / 무한대("NaN/infinity has no NABION form")와 `f64` 범위 밖의 `float`("float 1.2e600 is out of range (NABION floats are f64, up to about 1.8e308)")가 그렇습니다.
+- 이름 있는 값만 있는 변형의 정규 형식은 `E::V { .. }` 하나입니다(`Value::Variant`에는 형태 표시가 없음).
+- 문자열과 문자의 양방향(bidi) 제어 문자(U+202A-U+202E, U+2066-U+2069)는 이스케이프해서 씁니다(`\u{202e}`).
+- `nabion::to_str_flat`은 같은 텍스트를 폭과 상관없이 한 줄로 씁니다.
+- 정규 형식을 다시 읽으면 같은 값이 됩니다(왕복 변환).
+
+`nabi fmt`는 `.nabion` 파일이 NABION인지 검사하고 들여쓰기만 다시 맞춥니다. 정규 형식으로 다시 쓰지는 않으므로 주석과 배치가 그대로 남습니다.
+
+## 3.8.5. 라이브러리: `std::nabion`
+
+```nabi
+use std::nabion;
+
+#[non_exhaustive]
+pub enum Value {
+    None,
+    Bool(bool),
+    Int(int),
+    Float(float),
+    Char(char),
+    Str(str),
+    List(List<Value>),
+    Dict(Dict<Value, Value>),
+    Tuple(List<Value>),
+    Struct { name: str | none; fields: Dict<str, Value>; },
+    Variant { path: str; args: List<Value>; named: Dict<str, Value>; },
+}
+impl Value {
+    fn to_str(self) throws (NabionError) -> str;   // 정규 형식
+    fn kind_name(self) -> str;       // 에러 메시지용 종류 이름 (아래)
+}                                    // + Display, Debug, PartialEq, Eq, Hash
+
+/// 타입의 설명(`core::reflect`)을 거쳐 `v`를 `Value`로 만듭니다:
+/// `Inspect` struct와 enum, 리스트, 딕셔너리, 합 타입, 원시 타입.
+pub fn to_value_any(v: any) throws (NabionError) -> Value;
+/// `info`가 설명하는 타입의 값을 `v`로 만듭니다. `v`에 없는 struct
+/// 필드는 기본값을 씁니다.
+pub fn from_value_any(info: core::reflect::TypeInfo, v: Value) throws (NabionError) -> any;
+
+pub struct NabionError { .. }         // 비공개 필드 (0.5.10); + Display, Debug, Error, PartialEq, Eq, Clone
+impl NabionError {
+    pub fn new(message: str) -> NabionError;      // 위치가 없는 디코드 에러
+    pub fn within(self, seg: str) -> NabionError; // self 를 한 단계 아래로: seg (".name", "[3]") 가 경로 앞에 붙음
+    pub fn message(self) -> str;     // Display 가 붙이는 위치 없이
+    pub fn line(self) -> u32;        // 1 부터; 텍스트에서 온 값이 아니면 0
+    pub fn column(self) -> u32;      // 1 부터, code point 단위; line 처럼 0
+    pub fn path(self) -> str;        // ".servers[2].port"; 루트면 빈 문자열
+}
+
+pub trait ToNabion { fn to_nabion(self) -> Value; }
+pub trait FromNabion {
+    fn from_nabion(v: Value) throws (NabionError) -> Self;
+    fn from_missing() throws (NabionError) -> Self;   // 기본: 에러. T | none 은 none
+}
+
+pub fn parse(s: str) throws (NabionError) -> Value;
+pub fn to_str<T: ToNabion>(v: T) throws (NabionError) -> str;       // 정규 형식
+pub fn to_str_flat<T: ToNabion>(v: T) throws (NabionError) -> str;  // 한 줄 정규 형식
+pub fn from_str<T: FromNabion>(s: str) throws (NabionError) -> T;
+pub fn to_value<T: ToNabion>(x: T) -> Value;
+pub fn from_value<T: FromNabion>(v: Value) throws (NabionError) -> T;
+```
+
+- `NabionError`의 `Display`는 위치가 있으면 `line:col: msg`, 없으면 `at <path>: msg`입니다. 타입이 있는 읽기의 에러는 `.servers[1].port`, `.limits["cpu"]` 같은 경로를 담습니다. `from_str`은 그 경로를 입력의 `line:col`로 바꿔 줍니다.
+- `Value`는 `#[non_exhaustive]`입니다. 표준 라이브러리 밖의 `match`에는 `_` 갈래가 필요합니다.
+- `Value::kind_name`은 에러 메시지에 쓰는 종류 이름입니다. 차례로 `"none"`, `"bool"`, `"integer"`, `"float"`, `"char"`, `"string"`, `"list"`, `"dict"`, `"tuple"`, `"struct"`이고 `Variant`는 ``"variant `<path>`"``입니다.
+- `Value`의 `==`와 `hash`는 구조적입니다. dict의 항목과 struct의 필드는 순서와 무관하게 비교합니다. 부동소수는 비트 정체성으로 비교합니다(NaN == NaN, -0.0 != 0.0). 이름 없는 빈 struct와 빈 dict는 같습니다.
+- `Value`의 `Display`, `Debug`, `==`, `hash`에서는 panic이 일어나지 않습니다. `Display`는 정규 형식을 검사 없이 쓰고(NaN은 `nan`), `Debug`는 한 줄로 씁니다.
+- 표준 구현은 다음과 같습니다. 모든 정수 타입, `f32` / `f64`, `int` / `float`, `bool` / `char` / `str`, `Value`, `T | none`, `List`, `Set`, `Dict`, 원소 1~6개의 튜플, `[T; N]`.
+
+`#[derive(Nabion)]`에 대해 `@derive`가 생성하는 코드는 `Fields`, `struct_args`, `variant_of`, `variant_args`, `unknown_variant`, `from_value_at`을 부릅니다. 이들은 `pub(pkg)`입니다. 템플릿이 쓴 이름은 템플릿의 모듈에서 검사하므로([refs-lang 6.9.9](../../refs-lang/006-meta-system/609-template-tokens.md#확장-안의-이름)) derive는 어느 패키지에서나 동작하고, `std` 밖에서 직접 쓰면 에러입니다. 읽기와 쓰기 구현은 표준 라이브러리 밖에서 보이지 않습니다.
+
+### `#[derive(Nabion)]`
+
+struct와 enum(제네릭 포함)에 `ToNabion`과 `FromNabion`을 함께 구현합니다.
+
+| 정의                 | 쓰는 모양              |
+|----------------------|------------------------|
+| 이름 있는 필드 struct | `Name { f: v }`       |
+| 튜플 struct          | `Name(a, b)`           |
+| unit struct          | `Name {}`              |
+| unit 변형            | `E::V`                 |
+| 튜플 변형            | `E::V(a)`              |
+| 이름 있는 변형       | `E::V { f: v }`        |
+
+필드의 `= 기본값`은 빠진 필드에 쓰입니다(3.8.3). 타입에 `#[nabion(deny_unknown_fields)]`를 붙이면 타입에 없는 필드가 에러입니다(3.8.3). `#[nabion(..)]`은 다른 키를 받지 않으며, 철자가 틀린 키는 유효한 키를 알려 주는 에러입니다. derive는 메타 토큰 `@Self.name`, `@Self.is_unit` / `is_tuple` / `is_named`, `@field.has_default` / `@field.default`, `@Self.has_derive_key`로 구현합니다([refs-lang 6.9](../../refs-lang/006-meta-system/609-template-tokens.md)).
+
+```nabi
+#[derive(Nabion)]
+struct Server { host: str; port: u16 = 80; tls: bool | none; }
+
+#[derive(Nabion)]
+struct Config { name: str; servers: List<Server>; limits: Dict<str, i32>; }
+
+let cfg: Config = try nabion::from_str(text);   // 에러는 "line:col: msg"
+print(try nabion::to_str(cfg));
+```
+
+### 한계
+
+- `Dict` / `Set`은 순회하는 순서대로, 곧 삽입 순서로 씁니다(2.9).
+- `[T; 0]`은 읽을 수 없습니다.
+- 튜플은 원소 6개까지입니다.
+- 첫 키가 `none`인 dict는 읽을 수 없습니다(3.8.1).
+
+## 3.8.6. 다른 형식과 비교
+
+| 형식   | struct 표기                 | 비고                              |
+|--------|-----------------------------|-----------------------------------|
+| RON    | `Name(field: v)`            | Rust와 다른 전용 문법            |
+| ZON    | `.{ .name = "x" }`          | Zig의 익명 struct 리터럴         |
+| NABION  | `Name { field: v }`         | Nabi 자체의 리터럴 문법 그대로     |
+
+NABION은 별도 문법 없이 Nabi 리터럴을 그대로 씁니다. 그래서 소스에 적은 값과 파일에 적은 값의 모양이 같습니다.

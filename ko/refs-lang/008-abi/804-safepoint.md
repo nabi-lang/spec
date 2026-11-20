@@ -1,0 +1,190 @@
+# 8.4. safepoint 프로토콜
+
+[GC](../000-meta/007-glossary.md#gc-garbage-collector)가 잠시 STW(Stop-The-World) 작업을 하려면 모든 mutator 스레드가 안전한 지점에 와 있어야 합니다. 이 문서는 이 동기화에 쓰는 [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) 프로토콜을 정의합니다.
+
+## 8.4.1. `yield` 플래그 검사: fast path
+
+mutator는 [TLS 슬롯](803-tls-slots.md) `nabi_tls_yield_flag`(u8)를 주기적으로 검사합니다. 검사 흐름은 다음과 같습니다.
+
+```
+poll:
+    flag = TLS[yield_flag]
+    if flag != 0:
+        call nabi_runtime_yield()    // slow path
+    // 정상 진행
+```
+
+내보내는 코드로는 다음과 같습니다.
+
+```
+t = <nabi_tls address>            ; the hidden last argument (8.3.8)
+flag = load.u8 [t + 88]           ; yield_flag at 10p+8, p = 8
+if flag != 0 then bb_slow else bb_cont
+
+bb_slow:                          ; placed out of line
+    call nabi_runtime_yield()
+    goto bb_cont
+
+bb_cont:
+  ; ... continue
+```
+
+fast path는 명령어 2개와 분기 1개입니다. 분기 조건은 거의 항상 `false`입니다.
+
+## 8.4.2. 삽입 위치
+
+컴파일러는 다음 위치에 safepoint 폴링 코드를 내보냅니다.
+
+| 위치                  | 이유                      |
+|-----------------------|---------------------------|
+| 함수 진입 (또는 각 경로의 첫 safepoint 앞) | 호출 직후 GC와 바로 협력할 수 있음 |
+| 루프 back-edge        | 무한 루프가 GC를 막지 못하게 함  |
+| 함수 호출 직후 (선택) | 호출이 길었으면 바로 협력 |
+
+어디에 얼마나 내보낼지는 컴파일러가 정합니다. 이 사양은 다음 최소 빈도만 보장합니다.
+
+- 모든 루프 back-edge에 폴링을 둡니다. 다만 반복 횟수가 64 이하인 컴파일 타임 상수이고 본체가 safepoint에 닿지 않는 루프는 예외입니다. 모든 호출 순환에는 폴링이 들어갑니다.
+- safepoint에 닿을 수 없는 함수에는 폴링이 필요 없습니다. 이런 함수에는 위와 같은 유한 루프 말고는 루프가 없고, 할당, 간접 호출, lazy `static`, safepoint에 닿을 수 있는 함수의 호출도 없습니다.
+
+두 규칙이 함께 yield 요청에서 다음 safepoint까지 걸리는 시간에 상한을 둡니다.
+
+## 8.4.3. `nabi_runtime_yield`: slow path
+
+slow path의 시그니처는 다음과 같습니다.
+
+```
+extern "C" {
+    fn nabi_runtime_yield();
+}
+```
+
+mutator는 GC와 협력하려고 이 함수를 호출합니다. 효과는 다음과 같습니다.
+
+1. mutator의 [mutator TLS 슬롯 레이아웃](803-tls-slots.md)에 있는 `mutator_state`를 `GC_COOPERATING`으로 설정합니다.
+2. [shadow stack](../000-meta/007-glossary.md#shadow-stack) walk 등 GC에 필요한 루트 정보를 노출합니다.
+3. GC가 끝날 때까지 기다립니다.
+4. GC가 끝나면 `mutator_state`를 다시 `RUNNING`으로 되돌립니다.
+
+`yield_flag`는 `nabi_runtime_yield` 안에 있는 동안 자동으로 지워집니다. GC가 지울 수도 있습니다.
+
+## 8.4.4. `yield` 플래그 설정 / 해제
+
+GC에 STW pause가 필요하면 다음과 같이 동작합니다.
+
+```
+gc_initiate_stw():
+  for each mutator thread:
+    atomic store TLS[yield_flag] = 1
+
+  // 모든 mutator 가 yield 할 때까지 wait
+  for each mutator thread:
+    wait until mutator_state == GC_COOPERATING
+```
+
+GC가 STW를 끝낼 때는 다음과 같이 동작합니다.
+
+```
+gc_finish_stw():
+  for each mutator thread:
+    atomic store TLS[yield_flag] = 0
+  notify all (resume)
+```
+
+## 8.4.5. fast path 비용
+
+mutator가 치르는 비용은 `yield` 플래그를 한 번 읽는 것과 분기 1개입니다.
+
+거의 모든 경우 플래그가 0이므로 분기는 일어나지 않습니다. 현대 CPU의 분기 예측기는 이런 분기를 거의 비용 없이 처리합니다.
+
+이 비용으로 모든 스레드가 결정론적으로 협력하는 동기화 메커니즘을 얻습니다.
+
+## 8.4.6. STW 단계
+
+STW 수집(minor, evacuation이 있는 full, `nabi_gc_collect`)은 pause 한 번입니다. 수집을 시작한 스레드가 다른 모든 mutator를 멈춥니다(`GC_COOPERATING`, 또는 blocking 런타임 호출 중이면 `PARKED`). 그리고 수집을 마친 뒤 다시 실행합니다.
+
+동시 mark를 하는 full 수집에는 pause가 두 번 있습니다. 시작 pause와 마지막 pause입니다([7.5.2](../007-runtime/705-concurrent-collection.md#752-단계)). 그 사이에는 marker 스레드 하나가 mutator와 함께 돕니다.
+
+## 8.4.7. safepoint 불변식
+
+mutator가 safepoint에 닿았을 때 살아 있는 모든 GC 객체 변수는 shadow stack에 등록되어 있어야 합니다.
+
+컴파일러는 [배리어와 루트 추적](../007-runtime/704-barriers-and-roots.md)의 shadow stack 프레임을 체인에 이어서 이를 보장합니다. 프레임을 잇는 곳은 함수를 지나는 각 경로의 첫 safepoint 앞입니다. 진입할 때 이어도 되고, safepoint에 닿는 경로에서는 그보다 나중에 이어도 됩니다. safepoint에 닿지 않는 경로는 프레임을 잇지 않아도 됩니다. 반환할 때는 프레임을 이은 곳에서만 프레임을 뗍니다. 마찬가지로 직접 Nabi 호출로만 들어오는 함수는 진입 폴링을 프레임을 잇는 곳 바로 뒤로 옮길 수 있습니다. 호출 순환을 닫는 호출이 safepoint이므로 모든 호출 순환에는 여전히 폴링이 있습니다. C나 함수 값으로 호출되는 함수는 진입할 때 폴링합니다. safepoint에서 GC 참조를 담은 지역 변수는 프레임에 등록하고, 등록한 word는 쓸 때마다 최신으로 유지합니다. back-edge 폴링에서만 보이는 지역 변수는 폴링의 slow path가 런타임 호출 동안만 등록해도 됩니다([7.4.1](../007-runtime/704-barriers-and-roots.md#741-루트-추적-컴파일러가-직접-내보내는-shadow-stack) 규칙 4). 그래서 폴링 말고는 safepoint가 없는 루프는 도는 동안 프레임을 잇지 않고 루트 word도 쓰지 않습니다. 컴파일러는 사본을 레지스터에 따로 두어도 됩니다. 수집은 루트 word를 다시 쓰지 않기 때문입니다. 루트에서 바로 닿는 객체는 옮기지 않습니다([7.4.1](../007-runtime/704-barriers-and-roots.md#741-루트-추적-컴파일러가-직접-내보내는-shadow-stack)). 핫 리로드 코드는 예외입니다(8.4.13).
+
+## 8.4.8. 루프 back-edge poll
+
+긴 루프가 GC와 협력하지 않으면 STW가 끝없이 기다립니다. 그래서 컴파일러는 모든 루프의 back-edge에 폴링 코드를 내보냅니다(8.4.2의 유한 루프는 예외).
+
+```
+loop:
+    body
+    poll                              // back-edge poll
+    branch loop
+```
+
+이 폴링의 비용도 앞에서 본 것처럼 명령어 2개와 분기 1개입니다. 루프 본체에 비하면 무시할 만합니다.
+
+폴링은 back edge에 남습니다. 폴링의 slow path(`nabi_runtime_yield` 호출)는 edge로 돌아오는 대신 루프 header 앞의 재진입 블록으로 분기해도 됩니다.
+
+컴파일러는 모든 자연 루프를 찾습니다. 그리고 8.4.2의 유한 루프를 뺀 각 루프에 폴링 코드를 내보냅니다.
+
+## 8.4.9. 인라인 함수와 poll
+
+작은 함수가 인라인되면 그 함수의 진입 폴링도 함께 사라질 수 있습니다. 하지만 인라인된 코드는 호출한 함수의 본체에 흡수되므로 호출한 함수의 진입 폴링으로 충분합니다.
+
+폴링은 최적화가 끝난 뒤, 실제로 컴파일하는 코드 위에 놓습니다. 인라인된 본문의 루프도 호출자 안에서 다른 루프처럼 back edge에서 폴링합니다.
+
+## 8.4.10. 네이티브 호출
+
+C 호출이나 blocking 런타임 호출 안에 있는 스레드는 safepoint에 닿을 수 없으므로 `PARKED`로 셉니다. GC는 이 스레드를 이미 협력 중인 것으로 봅니다.
+
+- 컴파일러는 모든 `extern "C"` 호출을 감쌉니다. 호출 동안은 `PARKED`, 호출 뒤에는 `RUNNING`이며, 두 저장 뒤에 각각 yield 플래그를 확인합니다. 호출자의 인자 루트는 호출자의 shadow stack 프레임에 남습니다. fast path는 인라인이고, `nabi_enter_native` / `nabi_leave_native`가 slow path입니다([8.5.2](805-extern-symbols.md#852-런타임-영역)). `#[leaf]` 선언을 부르는 호출에는 감싸기가 없습니다. 스레드는 `RUNNING`으로 남고, 호출이 돌아올 때까지 모든 수집을 붙잡습니다([stdlib 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf-짧은-호출)).
+- 모든 `extern "C" fn` 정의는 `nabi_native_reenter`로 시작해 `nabi_native_resume`로 끝납니다. 그래서 C 콜백은 mutator로 실행됩니다.
+- 런타임은 자신의 blocking 호출(I/O 대기, `nabi_sync_wait`, join, sleep)을 같은 방식으로 감쌉니다. GC 객체에는 닿지 않고 호출자의 프레임이 살려 두는 버퍼에만 닿으며 참조를 저장하지 않는 긴 계산도 같은 방식으로 감쌉니다. `int` 커널(곱셈, 나눗셈, gcd, 그리고 64 Ki limb부터는 덧셈, 뺄셈, 시프트, 한 limb 나눗셈)과, 64 KiB부터의 `str` 검색과 세기, UTF-8 검사, 바이트 복사가 그렇습니다([8.5.2](805-extern-symbols.md#safepoint가-아닌-함수)). 이 함수의 `extern "nabi"` 선언에는 `#[no_safepoint]`([5.9.2](../005-modules/509-extern-block.md#592-abi-명시))가 없습니다. 그래서 이 함수를 호출하는 곳은 safepoint이고 버퍼는 루트로 등록됩니다.
+- `#[no_safepoint]` 런타임 함수 호출은 감싸지 않습니다. 이 호출이 돌아올 때까지 다른 모든 스레드의 수집이 기다리므로, 이런 함수가 하는 일의 양은 정해져 있고 긴 입력은 parked 변형으로 갑니다. debug 빌드의 nabic는 그 호출을 `nabi_nosp_enter()` / `nabi_nosp_leave()`([8.5.2](805-extern-symbols.md#852-런타임-영역))로 감쌉니다. 두 호출은 스레드의 `no_safepoint` 깊이([8.3.1](803-tls-slots.md#831-tls-슬롯-구조))를 올리고 내립니다. 깊이가 0이 아닌 동안 스레드가 수집 때문에 멈추려 하면 debug 런타임은 fatal 에러로 실패합니다. release nabic는 두 호출 모두 내보내지 않습니다.
+- `nabi_*` 심볼([8.5](805-extern-symbols.md), 런타임의 예약 접두사)의 `extern "C"` 선언을 거치는 호출은 감싸지 않습니다. 런타임 함수는 mutator로 실행됩니다.
+
+```
+call_extern_c:
+    mutator_state = PARKED      // seq_cst
+    if yield_flag:
+        nabi_enter_native()      // 이 스레드를 기다리는 수집을 깨움
+    c_function()
+    mutator_state = RUNNING     // seq_cst
+    if yield_flag:
+        nabi_leave_native()      // 진행 중인 수집을 기다림
+```
+
+## 8.4.11. 사용자 코드의 직접 호출
+
+드물지만 사용자 코드가 `nabi_runtime_yield()`를 직접 호출해도 됩니다.
+
+```nabi
+extern "C" {
+    fn nabi_runtime_yield();
+}
+
+fn long_loop() {
+    for i in 0..1_000_000 {
+        ...
+        if i % 1000 == 0 { unsafe { nabi_runtime_yield(); } }
+    }
+}
+```
+
+`nabi_runtime_yield`는 `nabi_*` 심볼이므로 호출을 감싸지 않습니다(8.4.10). 스레드는 실행 중인 mutator로서 양보합니다. 컴파일러가 이미 루프 back-edge에 폴링 코드를 내보내므로 직접 호출할 일은 거의 없습니다. 이 패턴은 인라인 어셈블리 안 같은 특수한 상황에서만 씁니다.
+
+## 8.4.12. 안정성
+
+ABI에 속하는 것은 `nabi_tls`의 오프셋 10p+8 슬롯(`nabi_tls_yield_flag`)과 그 타입(u8)입니다([8.3.1](803-tls-slots.md#831-tls-슬롯-구조)).
+
+`nabi_runtime_yield`는 인자도 반환값도 없는 단순한 호출 규약을 따릅니다.
+
+## 8.4.13. 핫 리로드 코드
+
+`--hot`([9.1](../009-tools/901-nabic-cli.md))으로 빌드한 코드는 루트 word를 다시 쓸 수 있는 핫 런타임 아래에서 돕니다. 상태 마이그레이션은 바뀐 타입의 객체를 새 객체로 옮기고, 루트를 포함해 그 객체를 가리키는 모든 참조를 고칩니다. 그래서 이런 코드는 GC 참조의 사본을 safepoint 너머로 따로 들고 있지 않습니다. safepoint 너머로 살아 있는 참조는 그 뒤에 루트 word에서 다시 읽습니다.
+
+- 핫 빌드는 `-O0` 빌드입니다. 여기서는 모든 지역 변수가 프레임 슬롯에 살고, 그 슬롯이 shadow stack 프레임이 등록한 word이므로 쓸 때마다 루트 word를 읽습니다.
+- 핫 패키지 함수의 호출은 지금 본문이 무엇을 하든 safepoint로 칩니다. 호출이 지나는 슬롯이 멈출 수 있는 나중 버전에 닿을 수 있기 때문입니다. 호출하는 쪽은 그 너머로 살아 있는 값을 루트로 등록합니다.
+- 핫 패키지 타입의 값을 들고 있는 함수는 루트가 없어도 shadow stack 프레임을 descriptor 형식([7.4.1](../007-runtime/704-barriers-and-roots.md#741-루트-추적-컴파일러가-직접-내보내는-shadow-stack))으로 잇고, descriptor 바로 앞 word에 그 함수의 프레임 기록(들고 있는 타입) 주소를 둡니다. 루트 word 하나도 같은 주소를 담습니다. 핫 런타임은 여기서 옛 코드의 멈춘 프레임을 찾습니다.
+
+`--hot` 없이 빌드한 코드(호스트 프로그램, C)의 프레임은 8.4.7의 규칙을 그대로 따릅니다. 마이그레이션은 그런 프레임의 루트를 다시 쓰지 않습니다.

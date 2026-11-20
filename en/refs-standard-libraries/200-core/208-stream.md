@@ -1,0 +1,256 @@
+# 2.8. stream - async iterator
+
+The `core::stream` module defines `Stream`, the async stepping trait (its element type is the associated type `Item`). Whereas `Iterator` of [2.7 iter](207-iter.md) is **sync**, `Stream` is **async**: each `next()` call is **awaitable**.
+
+This module is also the desugaring authority for `for await x in stream`, which dispatches to the traits defined in this chapter.
+
+## 2.8.1. `Stream` - async stepping
+
+The trait is defined as follows.
+
+```nabi
+trait Stream {
+    type Item;
+
+    fn poll_next(ref self, ref ctx: Context) -> Poll<Item | none>;
+}
+```
+
+This is the async version of `Iterator::next`. For the return value, `Poll::Ready(v)` (`v: Item`) means the next element `v` is ready; `Poll::Ready(none)` means the end of the stream; `Poll::Pending` means no value is ready yet, and the stream is polled again when the Waker wakes it.
+
+In short, it has the same meaning as `Iterator`'s `next() -> T | none`, the decisive difference being that it is **awaitable**.
+
+## 2.8.2. `for await` desugaring
+
+Consider the following.
+
+```nabi
+for await x in stream { body }
+```
+
+Conceptually it desugars to:
+
+```nabi
+loop {
+    match await stream.poll_next(ref CURRENT_CONTEXT) {
+        v: Item => { let x = v; body; }
+        none    => break,
+    }
+}
+```
+
+This has the same shape as the sync version in [2.7.2 for desugar](207-iter.md), with only `await` added.
+
+## 2.8.3. `IntoStream` - async iterable
+
+Next is the trait representing an async iterable.
+
+```nabi
+trait IntoStream {
+    type Item;
+    type IntoStream: Stream<Item = Item>;
+
+    fn into_stream(self) -> IntoStream;
+}
+
+// every stream is its own IntoStream (as IntoIterator, 2.7)
+impl<S: Stream> IntoStream for S {
+    type Item = S::Item;
+    type IntoStream = S;
+    fn into_stream(self) -> S { self }
+}
+```
+
+At the start of a `for await`, `IntoStream::into_stream` is called, then `Stream::poll_next` is repeated. The concrete transformation is:
+
+```nabi
+for await event in event_source { ... }
+// = let __s = event_source.into_stream();
+//   loop {
+//       match await __s.poll_next(ref CTX) {
+//           e: Item => { let event = e; body; }
+//           none    => break,
+//       }
+//   }
+```
+
+## 2.8.4. `async yield` - creating a Stream
+
+The most direct way to create a Stream is to write an `async yield` function.
+
+```nabi
+async yield fn ticks(interval: Duration) -> Instant {
+    loop {
+        await task::sleep(interval);
+        yield Instant::now();
+    }
+}
+```
+
+`-> Instant` is the element type, and the result of a call is `AsyncStream<Instant>` (implementing `Stream<Item = Instant>`) ([refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#result-types-of-coroutine-functions)). The compiler turns this function into a state machine ([refs-lang 7.8](../../refs-lang/007-runtime/708-coroutine.md)). Each `yield` is a **suspend point**, and so is each `await`.
+
+The syntax authority is [refs-lang 4.13 stream (`async yield`)](../../refs-lang/004-functions/413-stream.md).
+
+## 2.8.5. Stream adapters
+
+As with `Iterator`, a range of adapters are provided as default methods of the `Stream` trait, so every type implementing `Stream` (`AsyncStream<T>`, `Receiver<T>`, user types) has the same adapters.
+
+```nabi
+trait Stream {
+    type Item;
+    fn poll_next(ref self, ref ctx: Context) -> Poll<Item | none>;
+
+    // default methods
+    fn map<U>(self, f: fn(Item) -> U) -> Map<Self, U>;
+    fn filter(self, pred: fn(Item) -> bool) -> Filter<Self>;
+    fn take(self, n: usize) -> Take<Self>;
+    fn skip(self, n: usize) -> Skip<Self>;
+
+    async fn collect<C: FromStream<Item> = List<Item>>(self) -> C;   // List<Item> unless the slot decides
+    async fn for_each(self, f: fn(Item));
+
+    // async-specific
+    fn buffer_unordered(self, n: usize) -> BufferUnordered<Self> where Item: Future;
+    fn buffered(self, n: usize) -> Buffered<Self> where Item: Future;
+    fn throttle(self, dur: Duration) -> Throttle<Self>;
+}
+```
+
+As with the adapters of [2.7 iter](207-iter.md), the return types are named concrete structs, located in the `core::stream` module (`stream::Map<S, U>`, `stream::Filter<S>`, ...). `Map<Self, U>` implements `Stream<Item = U>`, and `Buffered<Self>` / `BufferUnordered<Self>` implement `Stream<Item = Item::Output>` (they yield the futures' outputs, not the futures); the rest implement `Stream<Item = Item>`.
+
+> [!NOTE]
+> `stream::Map` / `Filter` / `Take` / `Skip` / `Zip` share their names with `iter::Map` and the like. Neither is in the [prelude](../000-meta/002-import.md), so when the type must be written, use a path such as `stream::Map` or import it with an explicit `use`.
+
+Of these, `buffer_unordered(n)` and `buffered(n)` serve as concurrency control, processing N futures concurrently.
+
+## 2.8.6. `FromStream<T>` - dispatch of `collect`
+
+The trait that handles dispatch of `collect` is `FromStream<T>`. It is the async counterpart of `FromIterator<T>` in [2.7 iter](207-iter.md); its signature has the same form, except that `from_stream` is awaitable.
+
+```nabi
+trait FromStream<T> {
+    async fn from_stream<S: IntoStream<Item = T>>(stream: S) -> Self;
+}
+
+impl<T> FromStream<T> for List<T> { ... }
+impl<T: Hash> FromStream<T> for Set<T> { ... }
+impl<K: Hash, V> FromStream<(K, V)> for Dict<K, V> { ... }
+```
+
+The target of `collect` is determined by the receiving slot; if the slot does not determine it, it is `List<Item>`.
+
+When `Stream::collect` is called, the target collection's `from_stream` is called, and every element of the stream is awaited and accumulated into the collection.
+
+```nabi
+async yield fn nums() -> i32 { for x in 0..5 { yield x; } }
+
+let v: List<i32> = await nums().map(|x| async { x * 2 }).buffered(3).collect();
+//   = await List::from_stream(...), [0, 2, 4, 6, 8]
+```
+
+`List`, `Dict` and `Set` implement both `FromIterator` and `FromStream`, following the same pattern in sync and async code.
+
+## 2.8.7. `Channel` ↔ `Stream`
+
+`Receiver<T>` (channel) implements `Stream<Item = T>`, so channel reception can be treated directly as a stream.
+
+```nabi
+let (tx, rx) = channel::<Event>();
+task::spawn(async { try! tx.send(event1); try! tx.send(event2); });
+
+for await event in rx {
+    handle(event);
+}
+```
+
+That is, the receiver of [2.17 channel](217-channel.md) is treated as an **automatic stream** and is compatible with `for await`.
+
+## 2.8.8. `merge` / `zip`, etc.
+
+Combinators that combine several streams are also provided.
+
+```nabi
+fn merge<S1: Stream, S2: Stream>(a: S1, b: S2) -> Merge<S1, S2>;    // Stream<Item = S1::Item | S2::Item>
+fn zip<S1: Stream, S2: Stream>(a: S1, b: S2) -> Zip<S1, S2>;        // Stream<Item = (S1::Item, S2::Item)>
+fn select<S1: Stream, S2: Stream>(a: S1, b: S2) -> Select<S1, S2>;  // Stream<Item = S1::Item | S2::Item>, ends when either ends
+```
+
+`merge` yields the items of both streams as they become ready and ends when both have ended. `select` is `merge` that ends as soon as either stream ends. `zip` pairs two streams. Each poll of `merge` and `select` tries the first stream before the second, so a first stream that is always ready starves the second.
+
+> [!NOTE]
+> `select` shares its name with `task::select`; neither is in the [prelude](../000-meta/002-import.md): write `stream::select` or import it.
+
+## 2.8.8a. `AsyncStream<T>` / `TryAsyncStream<T, E>` - the value of an async stream
+
+These are the values of an `async yield fn` call and of an `async yield { .. }` block ([refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#result-types-of-coroutine-functions)).
+
+```nabi
+struct AsyncStream<T> { /* private */ }
+impl<T> Stream for AsyncStream<T> {
+    type Item = T;
+    fn poll_next(ref self, ref ctx: Context) -> Poll<T | none>;
+}
+
+struct TryAsyncStream<T, E> { /* private */ }    // async yield fn .. throws (E)
+impl<T, E> TryStream for TryAsyncStream<T, E> {
+    type Item = T;
+    type Error = E;
+    fn poll_next(ref self, ref ctx: Context) throws (E) -> Poll<T | none>;
+}
+```
+
+The adapters of `AsyncStream<T>` (`map`, `filter`, `collect`, etc.) are the default methods of `Stream` (2.8.5). `TryAsyncStream` is a `TryStream` ([2.8.11](#2811-trystream---fallible-streams)), not a `Stream`, because its `poll_next` throws; it is consumed with `try for await` or the `TryStream` adapters. The private fields are not specified. Copies share the same coroutine frame and therefore share the progress position.
+
+## 2.8.9. Module mapping
+
+Every item is defined in `core::stream` (or `core::channel` for `Receiver<T>`), its one path ([0.1.6](../000-meta/001-tier-model.md#016-one-path-per-item)); there are no submodules.
+
+| Item                          | Module               | Form                         |
+|-------------------------------|----------------------|------------------------------|
+| `Stream`                      | `core::stream`  | poll-based                   |
+| `IntoStream`                  | `core::stream`  |                              |
+| `Receiver<T>`                 | `core::channel` | implements `Stream<Item = T>` |
+| `Map`/`Filter`/`Take`/`Skip`/`Throttle`/`Buffered`/`BufferUnordered` | `core::stream` | adapter structs (implementing `Stream`) |
+| `merge`/`zip`/`select`        | `core::stream`  | `Merge`/`Zip`/`Select` structs |
+| `TryStream`, `from_results`, `TryMap`/`TryFilter`/`MapErr`/`TryTake`/`TrySkip`/`Results`/`FromResults` | `core::stream` | fallible streams (2.8.11) |
+
+## 2.8.10. Whether `Stream` has a lang slot
+
+This chapter attaches no `#[lang(...)]` to `Stream::poll_next`; `Stream` is an ordinary trait.
+
+The reasons: the `for await` desugaring is hard-coded in the compiler to call `Stream::poll_next` **directly**, so it is recognized without a lang slot. Moreover, lang slots are a mechanism for multiple dispatch entry points, and Stream has a single entry point, so none is needed.
+
+## 2.8.11. `TryStream` - fallible streams
+
+The async counterpart of `TryIterator` ([2.7.13](207-iter.md#2713-tryiterator---fallible-iteration)): `poll_next` gives an item, gives `none` at the end, or throws `Error`.
+
+```nabi
+trait TryStream {
+    type Item;
+    type Error;
+    fn poll_next(ref self, ref ctx: Context) throws (Error) -> Poll<Item | none>;
+
+    fn map<U>(self, f: fn(Item) throws (Error) -> U) -> TryMap<Self, U>;
+    fn filter(self, pred: fn(Item) throws (Error) -> bool) -> TryFilter<Self>;
+    fn map_err<E2>(self, f: fn(Error) -> E2) -> MapErr<Self, E2>;
+    fn take(self, n: usize) -> TryTake<Self>;
+    fn skip(self, n: usize) -> TrySkip<Self>;
+    fn results(self) -> Results<Self>;              // Stream<Item = Result<Item, Error>>
+
+    async fn collect<C: FromStream<Item> = List<Item>>(self) throws (Error) -> C;
+    async fn for_each(self, f: fn(Item) throws (Error)) throws (Error);
+    async fn fold<B>(self, init: B, f: fn(B, Item) throws (Error) -> B) throws (Error) -> B;
+}
+
+fn from_results<S: Stream<Item = Result<T, E>>, T, E>(s: S) -> FromResults<S, T, E>;   // TryStream
+```
+
+The rules of 2.7.13 apply: the adapters' functions may throw `Error`, `map_err` alone changes it, `collect` stops at the first error and throws it, and `results()` keeps polling after an error. The async methods take `self`, like `Stream::collect`. `TryStream` is not in the prelude (neither is `Stream`); write `stream::TryStream`.
+
+`try for await x in s { .. }` steps a `TryStream`; the `try` covers the stream expression and each `poll_next`, not the body ([refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for-iterator-based-repetition)).
+
+```nabi
+async fn sizes(urls: List<str>) throws (HttpError) -> List<usize> {
+    try await fetch_all(urls).map(|body| body.len()).collect()
+}
+```

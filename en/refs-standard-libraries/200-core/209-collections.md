@@ -1,0 +1,1104 @@
+# 2.9. Collections - `List` / `Dict` / `Set` / `Tuple` / `Slice`
+
+The `core::collections` module provides general-purpose containers. Every collection is allocated on the GC heap, and `List`, `Dict` and `Set` can be created directly through literal syntax bound with `#[literal(...)]`.
+
+This chapter defines the authoritative signatures of the following collections, with `Deque<T>` and `BinaryHeap<T>`.
+
+| Collection          | Literal syntax             | Meaning                         |
+|---------------------|----------------------------|---------------------------------|
+| `List<T>`           | `[1, 2, 3]`                | Dynamic array (insertion order) |
+| `Dict<K, V, S>`     | `{"a": 1, "b": 2}`         | Hash map (insertion order) |
+| `Set<T, S>`         | `{1, 2, 3}`                | Hash set (insertion order)      |
+| `Tuple<...>`        | `(1, "a", true)`           | Fixed-size heterogeneous        |
+| `Slice<T>`          | `xs[1:3]`                  | Zero-copy view of a container   |
+| `SliceMut<T>`       | `xs[1:3]` where a `SliceMut` is expected | Writable view of a list |
+| `FrozenList<T>`, `FrozenDict<K, V, S>`, `FrozenSet<T, S>` | `xs.freeze()` | Read-only, shared between threads |
+
+## 2.9.1. Literal syntax - `#[literal(query)]` binding
+
+Literal syntax is defined with the **query DSL** of [refs-lang 6.5 `#[literal]`](../../refs-lang/006-meta-system/605-literal-magic.md) as follows.
+
+```nabi
+#[literal("[" {expr} % "," * "]")]
+fn list_literal<T>(items: ...T) -> List<T> { ... }
+
+#[literal("{" {expr ":" expr} % "," * "}")]
+fn dict_literal<K: Hash, V>(pairs: ...(K, V)) -> Dict<K, V> { ... }
+
+#[literal("{" {expr} % "," + "}")]
+fn set_literal<T: Hash>(items: ...T) -> Set<T> { ... }
+```
+
+Each handler is a package-private function of `core::collections`. Tuples `(1, "a", true)` and fixed arrays are built by the compiler without a handler ([refs-lang 6.5](../../refs-lang/006-meta-system/605-literal-magic.md)).
+
+The literal query syntax means: `{...} % sep *` is zero or more repetitions separated by sep, and `{...} % sep +` is one or more. A single-element Set is written `{1,}` with a trailing comma to distinguish it from the block `{1}`. For token-sequence matching, the lexer distinguishes tokens directly and the parser then performs query matching.
+
+### Resolving the Dict / Set ambiguity
+
+```nabi
+{"a": 1}      // Dict: `:` pattern
+{1, 2}        // Set: values only
+{1,}          // Set (single element, trailing comma)
+{1}           // always a block, even when the slot is a Set
+{ x = 1 }     // block expression: the token after `{` is statement-like
+```
+
+The parser decides from the contents alone: the `expr ":"` form is a Dict, a comma makes it a Set, and anything else is a block. The type of the receiving slot is not used in the decision.
+
+### The type of `[...]`
+
+`[1, 2, 3]` is `List<T>` when there is no expected type. A fixed-size array `[T; N]` is created only when the expected type is written as `[T; N]`, as in `let a: [i32; 3] = [1, 2, 3];`. Fixed arrays are built directly by the compiler without going through a handler.
+
+Without an expected element type, the elements agree as branches do ([refs-lang 3](../../refs-lang/003-expressions/README.md)): they have one type, or one element's sum holds every other element's type, whichever comes first (`[none, x]` and `[x, none]` with `x: f64 | none` are `List<f64 | none>`). No sum is invented for elements of different types: `[0.5, none]` is an error (E0040) whose help asks for the list's type, `let xs: List<f64 | none> = [0.5, none];`.
+
+The repeat literal `[v; N]` is always a fixed array. It evaluates `v` once and gives each element its own copy: a bitwise copy for a `Copy` or plain value element, `v.clone()` for one that holds a collection, so `[List::<i32>::new(); 3]` is three separate lists ([refs-lang 2.11.6](../../refs-lang/002-types/211-const-generics.md#2116-parameter-inference)). `Default` for `[T; N]` likewise calls `T::default()` once per element.
+
+A fixed array implements `Clone` / `Copy` / `Default` / `Debug` / `PartialEq` / `Eq` / `PartialOrd` / `Ord` / `Hash` when its element does. Ordering is lexicographic, so comparison operators (`==`, `<`, etc.) can be used directly. Its methods:
+
+```nabi
+impl<T, const N: usize> [T; N] {
+    fn len(self) -> usize;                       // N
+    fn is_empty(self) -> bool;
+    fn iter(self) -> SliceIter<T>;               // over a copy (arrays are values)
+    fn first(self) -> T | none;
+    fn last(self) -> T | none;
+    fn map<U>(self, f: fn(T) -> U) -> [U; N];    // a new array
+    fn fill(ref self, x: T);                     // in place
+}
+
+impl<T: PartialEq, const N: usize> [T; N] {
+    fn contains(self, x: T) -> bool;
+}
+```
+
+`array::from_fn::<T, N>(f: fn(usize) -> T) -> [T; N]` makes a fixed array whose element `i` is `f(i)`, called in order; `N` comes from the expected type or the type arguments. Each element is its own value, so it builds an array of elements `[v; N]` cannot copy: a type that is not `Clone`, or a resource with one owner.
+
+```nabi
+let bags = array::from_fn::<Bag, 3>(|i| Bag { xs: [i] });
+let files: [File; 2] = array::from_fn(|i| try! File::open(paths[i]));
+```
+
+```nabi
+let a: [i32; 3] = [1, 2, 3];
+a.len();                 //→ 3
+a == [1, 2, 3];          //→ true
+a < [1, 2, 4];           //→ true (lexicographic)
+```
+
+### Reference handles
+
+`List`, `Dict` and `Set` values are reference handles to GC heap objects. `let ys = xs;` and argument passing copy the handle, so the same collection is shared. Methods that modify a collection therefore take `self`, not `ref self`. Call `clone()` for an independent copy. A struct element is a value: `xs[i]` and `d[k]` return a copy, and a change is stored with `xs[i] = v` ([refs-lang 2.3.8](../../refs-lang/002-types/203-struct.md#238-value-semantics)). `iter` / `keys` / `values` return lazy iterators that do not copy the collection.
+
+## 2.9.2. `List<T>` - dynamic array
+
+```nabi
+struct List<T> {
+    // internal: ptr + len + capacity
+}
+```
+
+Internally it consists of a contiguous memory buffer plus `len` / `capacity`, and provides amortized O(1) push/pop and O(1) random access.
+
+### Core methods
+
+```nabi
+impl<T> List<T> {
+    fn new() -> List<T>;
+    fn with_capacity(cap: usize) -> List<T>;
+    fn filled(n: usize, x: T) -> List<T>;        // n copies of x
+
+    fn len(self) -> usize;
+    fn is_empty(self) -> bool;
+    fn capacity(self) -> usize;
+
+    fn push(self, x: T);
+    fn pop(self) -> T | none;
+    fn insert(self, idx: usize, x: T);
+    fn remove(self, idx: usize) -> T;
+    fn clear(self);
+    fn truncate(self, len: usize);              // keeps the first len elements; no change if fewer
+    fn drain(self, r: Range<usize>) -> List<T>; // removes and returns r's elements in order; panics if r is reversed or ends past len()
+
+    fn get(self, idx: usize) -> T | none;       // safe: out-of-bounds → none
+    fn first(self) -> T | none;
+    fn last(self) -> T | none;
+    fn swap(self, i: usize, j: usize);          // panics when either is out of bounds
+    fn fill(self, x: T);                         // every element becomes x
+
+    fn extend<I: IntoIterator<Item = T>>(self, iter: I);
+    fn retain(self, keep: fn(T) -> bool);        // in place, order kept
+    fn sort(self) where T: Ord;                  // ascending, stable
+    fn sort_by(self, cmp: fn(T, T) -> Ordering); // stable
+    fn sort_by_key<K: Ord>(self, key: fn(T) -> K); // ascending by key, stable
+    fn reserve(self, additional: usize);
+    fn shrink_to_fit(self);
+    unsafe fn set_len(self, n: usize);           // n > capacity() panics
+    fn reverse(self);                            // in place
+
+    fn sort_unstable_by(self, cmp: fn(T, T) -> Ordering);   // not stable, in place, no extra memory; O(n log n)
+    fn sort_unstable_by_key<K: Ord>(self, key: fn(T) -> K);
+    fn binary_search_by(self, f: fn(T) -> Ordering) -> usize | none;          // f(x) says where x is from the target
+    fn binary_search_by_key<K: Ord>(self, k: K, key: fn(T) -> K) -> usize | none;
+    fn rposition(self, pred: fn(T) -> bool) -> usize | none;  // the last index pred accepts
+    fn rotate_left(self, k: usize);              // the first k move to the back; k > len panics
+    fn rotate_right(self, k: usize);             // the last k move to the front
+    fn split_off(self, at: usize) -> List<T>;    // removes and returns [at, len); at > len panics
+    fn dedup_by(self, same: fn(T, T) -> bool);   // drops x when same(kept, x)
+    fn dedup_by_key<K: PartialEq>(self, key: fn(T) -> K);
+
+    fn split_at(self, mid: usize) -> (Slice<T>, Slice<T>);   // views of [0, mid) and [mid, len); mid > len panics
+    fn windows(self, size: usize) -> slice::Windows<T>;   // self[:].windows(size)
+    fn chunks(self, size: usize) -> slice::Chunks<T>;     // self[:].chunks(size)
+    fn split_at_mut(self, mid: usize) -> (SliceMut<T>, SliceMut<T>);   // writable views of [0, mid) and [mid, len)
+    fn chunks_mut(self, size: usize) -> slice::ChunksMut<T>;   // writable views of size elements, the last shorter
+    fn partition_point(self, pred: fn(T) -> bool) -> usize;   // self[:].partition_point(pred)
+
+    fn iter(self) -> ListIter<T>;
+    fn into_iter(self) -> ListIntoIter<T>;
+}
+
+impl<T: PartialEq> List<T> {
+    fn contains(self, x: T) -> bool;
+    fn dedup(self);                              // drops each element equal to the one before it
+}
+
+impl<T: Ord> List<T> {
+    fn binary_search(self, x: T) -> usize | none;   // ascending list: the first index of x, O(log n)
+    fn sort_unstable(self);                          // ascending, not stable
+}
+
+impl<T> List<List<T>> {
+    fn concat(self) -> List<T>;                      // every list's elements in order, one new list
+}
+
+impl<T: Send + Sync> List<T> {
+    fn freeze(self) -> FrozenList<T>;                // read-only and Sync, O(1); the list is handed over (2.9.7b)
+}
+```
+
+`sort_unstable` is introsort: quicksort with a median-of-three pivot, insertion sort below 20 elements and heapsort past a depth of 2 log2(n), so it is O(n log n) in every case and allocates nothing; equal elements may change order. `sort` (a merge sort) is stable and uses n extra slots. The `_by` searches take the same `Ordering` convention as `sort_by`: `binary_search_by(|x| x.cmp(target))` finds the first element `f` calls `Equal` in a list `f` sees as ascending.
+
+A positional read has a `T | none` form (`get`, `first`, `last`, `pop`); every other positional operation panics out of range (`xs[i]`, `xs[i] = v`, `insert`, `remove`, `swap`, `drain`, `split_at`). There is no `set`: the write is `xs[i] = v`, and a write that skips an out-of-range index checks first (`if i < xs.len() { xs[i] = v }`).
+
+`set_len(n)` sets the length without writing elements, for a buffer filled in place (`raw_parts` of a view, a runtime call). It is `unsafe`: elements past the old length hold whatever the storage holds (zero for slots never written or vacated), which need not be a valid `T`; the caller writes them before they are read. Shrinking this way leaves the cut elements in the buffer. `n` past the capacity panics; `reserve` first.
+
+`partition_point(pred)` is the first index whose element fails `pred`, which must hold for a prefix of the list and fail for the rest; O(log n). The insertion point of `x` in an ascending list is `xs.partition_point(|e| e < x)`, and by a key `xs.partition_point(|e| key(e) < k)`. `binary_search(x)` returns the first index of an element equal to `x` (the lower bound), or `none`.
+
+```nabi
+impl List<str> {
+    fn join(self, sep: str) -> str;              // joins the elements with sep
+}
+
+impl List<u8> {
+    fn find<B: AsBytes>(self, needle: B) -> usize | none;   // self[:].find(needle)
+}
+```
+
+### Examples
+
+```nabi
+let xs: List<i32> = [];
+xs.push(1);
+xs.push(2);
+xs.push(3);
+
+let ys: List<i32> = [10, 20, 30];
+ys[0];                    //→ 10  (Index trait)
+ys[100];                  //→ panic: index 100 out of bounds for length 3
+ys.get(100);              //→ none
+
+for x in ys {
+    process(x);               //→ 10, 20, 30
+}
+
+let total: i32 = ys.into_iter().sum();   //→ 60
+
+let zs: List<i32> = [3, 1, 1, 2, 2, 4];
+zs.dedup();                                  //→ [3, 1, 2, 4]
+zs.retain(|x| x != 3);                       //→ [1, 2, 4]
+zs.binary_search(4);                         //→ 2
+zs.partition_point(|x| x < 3);               //→ 2 (where 3 would go)
+let (a, b) = zs.split_at(1);                 //→ views of [1] and [2, 4]
+```
+
+### Trait implementations
+
+| Trait                 | Condition           | Meaning                         |
+|-----------------------|---------------------|---------------------------------|
+| `IntoIterator`        | Always              | `for x in xs`                   |
+| `FromIterator<T>`     | Always              | `(0..5).collect::<List<i32>>()` |
+| `Index<usize>`        | Always              | `xs[i]`                         |
+| `IndexSet<usize, T>`  | Always              | `xs[i] = v`                    |
+| `AddAssign<T>`        | Always              | `xs += x` pushes `x`            |
+| `AddAssign<List<T>>`  | Always              | `xs += ys` appends every element of `ys` |
+| `Sliceable<Range<usize>>` | Always          | `xs[1:3]`                       |
+| `Display`             | **No**              | **Manual output recommended**   |
+| `Debug`               | `T: Debug`          | `f"{xs:?}"` → `[1, 2, 3]`       |
+| `Default`             | Always              | `List::new()`                   |
+| `Clone`               | `T: Clone`          | Deep copy                       |
+| `PartialEq`           | `T: PartialEq`      | element-wise                    |
+| `PartialOrd`          | `T: PartialOrd`     | lexicographic; a prefix sorts first |
+| `Eq`/`Ord`/`Hash`     | When T has the same trait | lexicographic             |
+
+### Comparison / hashing / Debug - common rules
+
+- `List<T>` implements `PartialEq` / `Eq` / `Hash` element by element, in order.
+- `Dict<K, V, S>` and `Set<T, S>` compare and hash independently of order. They are equal if they hold the same elements (keys and values). Each entry is hashed alone with the process key and the results are summed ([2.5.6](205-cmp.md#256-hash---hashing-eq-consistency-promise)), so the hash does not depend on `S` either.
+- All three collections implement `Debug` when their elements implement it, printing in iteration order.
+- A collection whose elements are `Eq + Hash` can therefore be a `Set` element or a `Dict` key (`Set<List<i32>>`).
+
+### Capacity and removal - common rules
+
+- An index out of range panics naming the index and the length: `index 100 out of bounds for length 3`. A method names itself first (`List::remove: index 5 out of bounds for length 3`, `List::drain: range 2..4 out of bounds for length 3`), and the panic points at the caller.
+- A size that overflows in `reserve`, `with_capacity`, `repeat` or growth panics with "capacity overflow", at every optimization level.
+- Removing an element (`pop`, `remove`, `clear`, `truncate`, `drain`, ..) releases the reference: the GC no longer sees it through the collection.
+
+## 2.9.3. `Dict<K, V, S>` - hash map
+
+```nabi
+struct Dict<K: Hash + Eq, V, S = RandomState> {
+    // internal: compact entries in insertion order, plus an index of
+    // linear-probed slots (none for a small table)
+}
+```
+
+It provides average O(1) lookup / insert / remove. Iteration follows insertion order: a key inserted again while present keeps its place, and one removed and inserted again goes last.
+
+`S` builds the hashers ([2.5.11](205-cmp.md#2511-corehash---hashers)). The default, `RandomState`, uses a key drawn once per process, so where a key sits in the table changes between runs; the iteration order does not. A dict built during constant evaluation is rehashed with the process key on its first use at run time. `Dict<K, V>` is `Dict<K, V, RandomState>`, and so is every `{k: v}` literal.
+
+### Core methods
+
+```nabi
+impl<K: Hash + Eq, V> Dict<K, V> {
+    fn new() -> Dict<K, V>;
+    fn with_capacity(cap: usize) -> Dict<K, V>;
+}
+
+impl<K: Hash + Eq, V, S: BuildHasher> Dict<K, V, S> {
+    fn with_hasher(s: S) -> Dict<K, V, S>;
+    fn with_capacity_and_hasher(cap: usize, s: S) -> Dict<K, V, S>;
+    fn hasher(self) -> S;
+
+    fn len(self) -> usize;
+    fn is_empty(self) -> bool;
+
+    fn insert(self, k: K, v: V) -> V | none;       // returns the previous V / none if absent
+    fn remove(self, k: K) -> V | none;
+    fn remove_entry(self, k: K) -> (K, V) | none;  // the stored key too
+    fn pop_last(self) -> (K, V) | none;            // removes the entry inserted last; Python d.popitem()
+    fn pop_first(self) -> (K, V) | none;           // removes the entry inserted first
+    fn drain(self) -> List<(K, V)>;                // removes every entry, returned in insertion order
+    fn get(self, k: K) -> V | none;
+    fn get_or(self, k: K, default: V) -> V;        // `default` when absent; no insert
+    fn get_or_insert(self, k: K, default: V) -> V; // inserts `default` when absent
+    fn contains_key(self, k: K) -> bool;
+    fn clear(self);
+    fn retain(self, keep: fn(K, V) -> bool);      // in place
+    fn extend<I: IntoIterator<Item = (K, V)>>(self, pairs: I);   // a later pair's value wins
+
+    fn iter(self) -> DictIter<K, V, S>;              // (K, V) pairs
+    fn keys(self) -> Keys<K, V, S>;
+    fn values(self) -> Values<K, V, S>;
+
+    fn entry(self, k: K) -> Entry<K, V, S>;       // the slot for that key (present or not)
+}
+
+struct Entry<K, V, S = RandomState> { /* dict + key */ }
+
+impl<K: Hash + Eq, V, S: BuildHasher> Entry<K, V, S> {
+    fn key(self) -> K;
+    fn or_insert(self, v: V) -> V;                   // inserts v if absent; returns the value
+    fn or_insert_with(self, f: fn() -> V) -> V;      // inserts f() if absent; returns the value
+    fn and_modify(self, f: fn(V) -> V) -> Entry<K, V, S>;   // if present, replaces it with f(value)
+}
+
+impl<K: Hash + Eq, V: Default, S: BuildHasher> Entry<K, V, S> {
+    fn or_default(self) -> V;                         // inserts V::default() if absent; returns the value
+}
+```
+
+`d.freeze()` (`K`, `V` and `S` `Send + Sync`) hands the dict over to a `FrozenDict<K, V, S>` that threads share without a lock ([2.9.7b](#297b-frozenlistt--frozendictk-v-s--frozensett-s---read-only-collections)).
+
+`Dict` implements `IntoIterator`, `Index<K>`, `IndexSet<K, V>`, `AddAssign<Dict<K, V, S>>`, `PartialEq` / `Eq` / `Hash` (on `V`), `Debug` (`K: Debug, V: Debug`), `Clone` (`K: Clone, V: Clone`; keys and values cloned, same hasher), `Default`, `FromIterator<(K, V)>` and `From<List<(K, V)>>`. `Default`, `FromIterator` and `From<List<(K, V)>>` need `S: BuildHasher + Default`; the other impls take any `S: BuildHasher`.
+
+```nabi
+use core::hash::BuildHasherDefault;
+
+let fixed: Dict<str, i32, BuildHasherDefault<Fnv>> = Dict::with_hasher(BuildHasherDefault::new());
+```
+
+```nabi
+let counts: Dict<str, i32> = Dict::new();   // `{}` is an empty block, not an empty Dict
+for w in words {
+    counts.entry(w).and_modify(|n| n + 1).or_insert(1);
+}
+```
+
+### Examples
+
+```nabi
+let d: Dict<str, i32> = {"a": 1, "b": 2};
+d["a"];                   //→ 1
+d["c"];                   //→ panic: key "c" not found; use `d.get(k)` to get `i32 | none`
+d.get("c");               //→ none
+
+d.insert("c", 3);
+d.contains_key("c");      //→ true
+
+for (k, v) in d.iter() {
+    log("{k} = {v}");
+}
+```
+
+### `Index<K>`
+
+```nabi
+impl<K: Hash + Eq, V> Index<K> for Dict<K, V> {
+    type Output = V;
+    fn index(self, k: K) -> V {
+        self.get(k) ?? panic(f"key {k:?} not found; use `d.get(k)` to get `V | none`")
+    }
+}
+```
+
+The `d[k]` notation assumes the key is present; use `.get(k)` when safe access is needed. The panic shows the key as `{k:?}` does, or as `<K>` (the type name) when `K` has no `Debug`, and `V` as the value type's name.
+
+`d += e` (`AddAssign<Dict<K, V>>`) inserts every entry of `e` into `d` in place; on a shared key the value from `e` wins.
+
+`Dict::from(pairs)` (`From<List<(K, V)>>`) builds a dict from a list of pairs; on a repeated key the later value wins. `K` and `V` come from the argument, so `let d = Dict::from([("a", 1)]);` needs no annotation.
+
+### Lazy views
+
+`iter` / `keys` / `values` are lazy views onto the current table, not copies. Modifying the dict during iteration gives unspecified results (elements may be missed or seen twice), but memory safety is preserved.
+
+## 2.9.4. `Set<T, S>` - hash set
+
+```nabi
+struct Set<T: Hash + Eq, S = RandomState> {
+    // internal: Dict<T, bool, S>
+}
+```
+
+It iterates in insertion order, as `Dict` does; average performance is O(1). `S` builds the hashers, as for `Dict`. `s.freeze()` (`T` and `S` `Send + Sync`) hands the set over to a `FrozenSet<T, S>` ([2.9.7b](#297b-frozenlistt--frozendictk-v-s--frozensett-s---read-only-collections)).
+
+```nabi
+impl<T: Hash + Eq> Set<T> {
+    fn new() -> Set<T>;
+}
+
+impl<T: Hash + Eq, S: BuildHasher> Set<T, S> {
+    fn with_hasher(s: S) -> Set<T, S>;
+    fn with_capacity_and_hasher(cap: usize, s: S) -> Set<T, S>;
+    fn hasher(self) -> S;
+    fn len(self) -> usize;
+    fn is_empty(self) -> bool;
+
+    fn insert(self, x: T) -> bool;        // true if newly inserted
+    fn remove(self, x: T) -> bool;
+    fn pop(self) -> T | none;             // removes the member inserted last
+    fn drain(self) -> List<T>;            // removes every member, returned in insertion order
+    fn contains(self, x: T) -> bool;
+    fn clear(self);
+    fn retain(self, keep: fn(T) -> bool);         // in place
+    fn extend<I: IntoIterator<Item = T>>(self, items: I);
+
+    fn union(self, other: Set<T, S>) -> Set<T, S>;
+    fn intersection(self, other: Set<T, S>) -> Set<T, S>;
+    fn difference(self, other: Set<T, S>) -> Set<T, S>;
+    fn symmetric_difference(self, other: Set<T, S>) -> Set<T, S>;
+
+    fn is_subset(self, other: Set<T, S>) -> bool;
+    fn is_superset(self, other: Set<T, S>) -> bool;
+    fn is_disjoint(self, other: Set<T, S>) -> bool;
+
+    fn iter(self) -> SetIter<T, S>;
+    fn to_list(self) -> List<T>;
+}
+```
+
+`Set` implements `IntoIterator`, `AddAssign<T>` (inserts), `PartialEq` / `Eq` / `Hash`, `Debug` (`T: Debug`), `Clone` (`T: Clone`; elements cloned, same hasher), `Default`, `FromIterator<T>` and `From<List<T>>`; the last three need `S: BuildHasher + Default`.
+
+```nabi
+let s: Set<i32> = {1, 2, 3};
+s.contains(2);            //→ true
+s.insert(4);
+
+let a: Set<i32> = {1, 2, 3};
+let b: Set<i32> = {2, 3, 4};
+let u = a.union(b);       //→ {1, 2, 3, 4}
+let i = a.intersection(b);//→ {2, 3}
+```
+
+`Set::from(xs)` (`From<List<T>>`) builds a set from a list, dropping duplicates; `T` comes from the argument (`let s = Set::from([1, 2, 2]);`). `s += x` (`AddAssign<T>`) inserts `x`.
+
+## 2.9.5. Insertion order
+
+`Dict` and `Set` iterate in insertion order, like Python 3.7+ `dict` or Java's `LinkedHashMap`, so there is no separate ordered type. `iter`, `keys`, `values`, `to_list`, `Debug` and `for` all follow it:
+
+- a key inserted again while present keeps its place (only the value changes);
+- a key removed and inserted again goes last;
+- `retain` keeps the survivors' order, and `extend` and `d += e` insert in order (new keys go last);
+- `pop_last` / `Set::pop` take the newest entry and `pop_first` the oldest, each O(1) on average (the holes they leave are squeezed out once they outnumber the entries);
+- the result of a set operation follows the order of the left operand first.
+
+Equality and hashing ignore the order ([2.9.2](#292-listt---dynamic-array)), so `{"a": 1, "b": 2} == {"b": 2, "a": 1}`.
+
+## 2.9.5a. `Deque<T>` - double-ended queue
+
+A double-ended queue over a ring buffer.
+
+```nabi
+impl<T> Deque<T> {
+    fn new() -> Deque<T>;
+    fn with_capacity(cap: usize) -> Deque<T>;
+    fn len(self) -> usize;
+    fn is_empty(self) -> bool;
+    fn capacity(self) -> usize;
+    fn push_back(self, x: T);
+    fn push_front(self, x: T);
+    fn pop_front(self) -> T | none;
+    fn pop_back(self) -> T | none;
+    fn get(self, i: usize) -> T | none;
+    fn front(self) -> T | none;
+    fn back(self) -> T | none;
+    fn clear(self);
+    fn iter(self) -> DequeIter<T>;             // front to back
+}
+```
+
+There is no `set`: the write is `d[i] = v`. `capacity` is the number of elements the ring buffer holds before it grows. It implements `d[i]` / `d[i] = v` (panics when out of range, as `List` does: `index 5 out of bounds for length 3`), `IntoIterator`, `FromIterator` (front to back), `Default`, `Clone` (`T: Clone`), `PartialEq` / `Eq` (element-wise, front to back) and `Debug`. `d += x` (`AddAssign<T>`) pushes `x` at the back.
+
+## 2.9.5b. `BinaryHeap<T>` - priority queue
+
+```nabi
+impl<T: Ord> BinaryHeap<T> {
+    fn new() -> BinaryHeap<T>;                 // max-heap: largest first
+}
+impl<T> BinaryHeap<T> {
+    fn by_ordering(cmp: fn(T, T) -> Ordering + Send) -> BinaryHeap<T>; // the greatest by cmp first, as new() by Ord::cmp
+    fn len(self) -> usize;
+    fn is_empty(self) -> bool;
+    fn peek(self) -> T | none;
+    fn push(self, x: T);
+    fn pop(self) -> T | none;
+    fn clear(self);
+    fn retain(self, keep: fn(T) -> bool);
+    fn iter(self) -> HeapIter<T>;              // unordered
+}
+```
+
+`retain` filters in place and restores the heap order, O(n). `HeapIter<T>` is an `ExactSizeIterator`. The heap implements `IntoIterator` (unordered, as `iter`), `Debug` (storage order, the top first) and `Clone` (`T: Clone`; the copy keeps the heap's order); with `T: Ord`, `Default` and `FromIterator` build a max-heap, as `new`.
+
+A comparator returns `Ordering`, as `List::sort_by`'s does: `by_ordering(|a, b| b.cmp(a))` pops the least first.
+
+The comparator is a `fn .. + Send`, so a heap is `Send` when `T` is and can be sent through a channel or put in a `Mutex`. A comparator that captures a value that is not `Send + Sync` (a collection, for one) is a compile error whose help says to drop the capture: compute the value inside the closure, or capture an array.
+
+## 2.9.5c. `SortedDict<K, V>` / `SortedSet<T>` - sorted map and set
+
+`core::collections::{SortedDict, SortedSet}` keep their entries in key order (`K: Ord`), in a B-tree: lookup, insert and remove are O(log n), and iteration, `range`, `first` / `last` and `floor` / `ceil` follow the order. They are not in the prelude: `use core::collections::SortedDict;`.
+
+```nabi
+impl<K: Ord, V> SortedDict<K, V> {
+    fn new() -> SortedDict<K, V>;
+    fn len(self) -> usize;
+    fn is_empty(self) -> bool;
+    fn insert(self, k: K, v: V) -> V | none;       // the previous value / none if new
+    fn remove(self, k: K) -> V | none;
+    fn get(self, k: K) -> V | none;
+    fn get_or(self, k: K, default: V) -> V;
+    fn contains_key(self, k: K) -> bool;
+    fn clear(self);
+
+    fn first(self) -> (K, V) | none;               // the smallest key's entry
+    fn last(self) -> (K, V) | none;                // the largest key's entry
+    fn pop_first(self) -> (K, V) | none;
+    fn pop_last(self) -> (K, V) | none;
+    fn floor(self, k: K) -> (K, V) | none;         // the largest key <= k
+    fn ceil(self, k: K) -> (K, V) | none;          // the smallest key >= k
+    fn lower(self, k: K) -> (K, V) | none;         // the largest key < k
+    fn higher(self, k: K) -> (K, V) | none;        // the smallest key > k
+
+    fn iter(self) -> SortedIter<K, V>;             // (K, V) in key order
+    fn iter_rev(self) -> SortedIter<K, V>;         // descending
+    fn keys(self) -> SortedKeys<K, V>;
+    fn values(self) -> SortedValues<K, V>;
+    fn range<R: KeyRange<K>>(self, r: R) -> SortedIter<K, V>;      // keys in r, ascending
+    fn range_rev<R: KeyRange<K>>(self, r: R) -> SortedIter<K, V>;  // keys in r, descending
+}
+
+pub trait KeyRange<K> {                            // a..b, a..=b, a.., ..b, ..=b, ..
+    fn lower(self) -> (K, bool) | none;            // the bound and whether it is included; none when open
+    fn upper(self) -> (K, bool) | none;
+}
+```
+
+`SortedSet<T>` (a `SortedDict<T, bool>` inside) has `new`, `len`, `is_empty`, `insert(x) -> bool` (true if new), `remove(x) -> bool`, `contains`, `clear`, `first`, `last`, `pop_first`, `pop_last`, `floor`, `ceil`, `lower`, `higher` (each `T | none`), `iter`, `iter_rev`, `range`, `range_rev`, `to_list`, and the set operations of `Set` (`union`, `intersection`, `difference`, `symmetric_difference`, `is_subset`, `is_superset`, `is_disjoint`), whose results are sorted sets.
+
+`range` takes every range form ([refs-lang 3.7](../../refs-lang/003-expressions/307-range-expressions.md)); a form that starts with `..` is written in parentheses as an argument (`d.range((..10))`). Finding the first entry is O(log n), each next one O(1) on average. An empty or reversed range gives nothing.
+
+Both implement `IntoIterator` (key order), `FromIterator`, `From<List<..>>` (a later pair's value wins), `Default`, `Clone` (`K: Clone, V: Clone`; entries cloned), `PartialEq` / `Eq` (the same entries; order is the key order), `Hash` (the length, then each entry in order) and `Debug` (`{k: v, ..}` / `{a, b, ..}` in order). `SortedDict` implements `d[k]` (absent panics: `key 7 not found; use `d.get(k)` to get `V | none``) and `d[k] = v`; `SortedSet` implements `s += x`. Copies share the collection, and both are `!Sync`, as `Dict` is.
+
+Changing a sorted dict or set while an iterator walks it panics at the iterator's next step, saying to collect the keys first (`SortedDict changed while it was walked; ..`); replacing the value of a present key is not a change (`for (k, v) in d { d[k] = v + 1; }` is fine).
+
+```nabi
+use core::collections::SortedDict;
+
+let events: SortedDict<i64, str> = SortedDict::new();
+events[1700] = "boot";
+events[1650] = "power";
+events[1720] = "login";
+for (t, what) in events.range(1600..1710) {   // 1650, 1700 in time order
+    println(f"{t} {what}");
+}
+let before = events.floor(1710);              //→ (1700, "boot")
+let latest = events.last();                   //→ (1720, "login")
+```
+
+**Implementation.** Minimum degree 16: a node holds 15 to 31 keys (the root fewer), and the nodes live in flat lists by node number (keys, values and child numbers each in one list), so a lookup touches one list slot per level. Insertion splits a full node on the way down; removal (CLRS) refills a child with fewer than 16 keys from a sibling or merges two before descending. A vacated slot is zeroed, so a removed entry keeps nothing alive.
+
+## 2.9.6. `Tuple<...>` - fixed heterogeneous
+
+```nabi
+struct Tuple { /* heterogeneous, determined at compile time */ }
+```
+
+Tuples are intrinsic to the language and cannot be registered as a literal handler ([refs-lang 6.5.7](../../refs-lang/006-meta-system/605-literal-magic.md#657-user-defined-literals)). A tuple expression must contain at least one comma. `(e)` is a grouping expression; a one-element tuple is `(e,)`.
+
+Each position may have a different type, and the length is fixed at compile time.
+
+```nabi
+let t: Tuple<i32, str, bool> = (42, "hello", true);
+let n = t.0;              //→ 42
+let s = t.1;              //→ "hello"
+let b = t.2;              //→ true
+
+// pattern destructuring
+let (n, s, b) = t;
+```
+
+### Trait implementations
+
+| Trait        | Condition                     |
+|--------------|-------------------------------|
+| `Clone`      | Every component `Clone`       |
+| `Copy`       | Every component `Copy`        |
+| `Debug`      | Every component `Debug`       |
+| `PartialEq`  | Every component `PartialEq`   |
+| `Eq`         | Every component `Eq`          |
+| `PartialOrd` | Every component `PartialOrd`  |
+| `Ord`        | Every component `Ord`         |
+| `Hash`       | Every component `Hash`        |
+
+The traits in the table are provided by `core::tuple` for tuples of 1 to 12 elements. `PartialOrd` / `Ord` are lexicographic (from the first element; the first differing element decides), so `<` / `<=` / `>` / `>=` can be used on tuples directly (`(1, "b") < (1, "c")`).
+
+`Display` is not derived automatically; implementing it directly where needed is recommended.
+
+### Multiple return values
+
+The multi-return of [refs-lang 4.3.5 Multiple return](../../refs-lang/004-functions/403-return.md#435-multiple-returns-tuples) is handled as a Tuple return.
+
+```nabi
+fn divmod(a: i32, b: i32) -> (i32, i32) {
+    (a / b, a % b)
+}
+
+let (q, r) = divmod(17, 5);     //→ q = 3, r = 2
+```
+
+## 2.9.7. `Slice<T>` - view
+
+```nabi
+struct Slice<T> {
+    // GC buffer + start position + length + stride (1 = contiguous, k = step, negative = reversed)
+}
+```
+
+It is the result of expressions such as `xs[1:3]` / `xs[::2]` / `xs[1:]` ([2.3.4 `Sliceable`](203-ops.md#234-indexing-traits)). A view does not copy elements; it points into the original's GC buffer, and that buffer stays alive while the view is alive.
+
+| Source     | What the view sees                                                              |
+|------------|---------------------------------------------------------------------------------|
+| `List<T>`  | The list's current buffer. Element writes are visible; changes after the list grows and moves its buffer are not |
+| `Slice<T>` | The same buffer (a view of a view)                                              |
+| `[T; N]`   | A copy of the array (arrays are values)                                         |
+
+### Core methods
+
+```nabi
+impl<T> Slice<T> {
+    fn len(self) -> usize;
+    fn is_empty(self) -> bool;
+    fn get(self, i: usize) -> T | none;
+    fn first(self) -> T | none;
+    fn last(self) -> T | none;
+    fn step(self, k: isize) -> Slice<T>;     // every k-th; from the end if k < 0. k == 0 panics
+    fn split_at(self, mid: usize) -> (Slice<T>, Slice<T>);   // [0, mid) and [mid, len); mid > len panics
+    fn windows(self, size: usize) -> slice::Windows<T>;   // overlapping views of size elements; size == 0 panics
+    fn chunks(self, size: usize) -> slice::Chunks<T>;     // views of size elements, the last shorter; size == 0 panics
+    fn iter(self) -> SliceIter<T>;
+    fn to_list(self) -> List<T>;             // allocates a new List
+    unsafe fn raw_parts(self) -> (GcBuf<T>, usize, usize);   // (buffer, start, len); a strided view is copied first
+    unsafe fn from_raw_parts(buf: GcBuf<T>, start: usize, len: usize) -> Slice<T>;   // len elements of buf from start
+}
+
+impl<T> Slice<T> {
+    fn partition_point(self, pred: fn(T) -> bool) -> usize;   // the first index whose element fails pred, O(log n)
+}
+
+impl<T: PartialEq> Slice<T> {
+    fn contains(self, x: T) -> bool;
+}
+
+impl<T: Ord> Slice<T> {
+    fn binary_search(self, x: T) -> usize | none;   // ascending view: the first index of x, O(log n)
+}
+
+impl Slice<u8> {
+    fn find<B: AsBytes>(self, needle: B) -> usize | none;   // offset of the first occurrence; an empty needle is at 0
+}
+
+impl<T> Index<usize> for Slice<T> { ... }               // s[i]: panics when out of range (`slice index 5 out of bounds for length 3`)
+impl<T> Sliceable<Range<usize>> for Slice<T> { ... }    // s[a:b]: a view of a view; the range is clamped to the length
+impl<T> IntoIterator for Slice<T> { ... }
+impl<T: PartialEq> PartialEq for Slice<T> { ... }
+impl<T: Debug> Debug for Slice<T> { ... }
+```
+
+`raw_parts` gives the viewed elements as one contiguous run of a buffer, for runtime calls on a region. A strided view (`xs[::2]`) is copied to a new buffer first, so writes through that run do not reach the view or its list. `from_raw_parts(buf, start, len)` is the inverse. Both are `unsafe`: nothing checks that `start + len` lies within `buf` or that its elements are initialized.
+
+`slice::Windows<T>` and `slice::Chunks<T>` are `ExactSizeIterator`s with `Item = Slice<T>`: each window or chunk is a view of the same buffer, not a copy. `Iterator::windows` / `chunks` ([2.7.1](207-iter.md#271-iterator---stepping)) collect lists instead, for iterators that have no buffer.
+
+The needle of `find` is any `AsBytes` type ([2.11.13](211-conversion.md#21113-asbytes-trait---bytes-as-a-view)):
+
+```nabi
+trait AsBytes {
+    fn byte_slice(self) -> Slice<u8>;      // the bytes as a view, no copy
+}
+```
+
+It is implemented for `str` (its UTF-8 bytes), `List<u8>`, `Slice<u8>` and `[u8; N]`, so a byte string passes as the needle (its `Slice<u8>` rule, [refs-lang 1.7.5](../../refs-lang/001-lexical/107-string-literals.md#175-byte-strings)).
+
+`Slice` is read-only (no `IndexSet`); the view that writes a list is `SliceMut<T>` ([2.9.7a](#297a-slicemutt---writable-view)). Negative indices count from the end ([refs-lang 3.6.1](../../refs-lang/003-expressions/306-indexing-and-slicing.md#361-indexing-arri)).
+
+### Examples
+
+```nabi
+let xs: List<i32> = [1, 2, 3, 4, 5];
+let s1: Slice<i32> = xs[1:4];           //→ view of [2, 3, 4]
+let s2: Slice<i32> = xs[::2];           //→ view of [1, 3, 5]
+let s3: Slice<i32> = xs[..];            //→ view of all
+
+s1.len();                               //→ 3
+let t: i32 = s1.iter().sum();           //→ 9
+xs[2] = 30;
+s1[1];                                  //→ 30 (the list's element write is visible)
+
+let owned: List<i32> = s1.to_list();    //→ [2, 30, 4] (new List)
+```
+
+### Integration with variadic args
+
+The `xs` of `fn f(xs: ...T)` is a `Slice<T>` view ([refs-lang 4.2.5](../../refs-lang/004-functions/402-parameters.md#425-variadic-t)). Individual arguments and a list spread (`f(..ys)`) are received in the same shape.
+
+```nabi
+fn sum(xs: ...i32) -> i32 {
+    let total = 0;
+    for x in xs {            // xs: Slice<i32>
+        total = total + x;   // reassignment without `let`
+    }
+    total
+}
+
+sum(1, 2, 3);                //→ 6
+sum(..[4, 5]);               //→ 9 (list spread)
+```
+
+## 2.9.7a. `SliceMut<T>` - writable view
+
+```nabi
+struct SliceMut<T> {
+    // the list's buffer + start + length, and the list with its version when the view was made
+}
+```
+
+`SliceMut<T>` is a contiguous view that writes the list it views, like Rust's `&mut [T]`. A function that fills or reorders part of a list takes one (`fn zero(buf: SliceMut<u8>)`). It is made where a `SliceMut<T>` is expected (an argument, an annotated `let`, a return value) and by `split_at_mut` and `chunks_mut`. It is in the prelude.
+
+| Written there                   | The view                                                                 |
+|---------------------------------|--------------------------------------------------------------------------|
+| `xs` (a `List<T>`)              | The whole list ([refs-lang 2.14.6](../../refs-lang/002-types/214-cast-and-conversion.md#2146-context-based-automatic-conversion)) |
+| `xs[a:b]`, `xs[a..b]`, `xs[..]` | That range of the list, the bounds clamped as for `Slice` ([refs-lang 3.6.2](../../refs-lang/003-expressions/306-indexing-and-slicing.md#362-slicing-arrstartend)) |
+| `s[a:b]` (a `SliceMut<T>`)      | A writable view of the view                                              |
+
+Anywhere else `xs[a:b]` is still a read-only `Slice<T>`. A stepped range (`xs[a:b:k]`) is never a `SliceMut`: it is not contiguous.
+
+### Core methods
+
+```nabi
+impl<T> SliceMut<T> {
+    fn len(self) -> usize;
+    fn is_empty(self) -> bool;
+    fn get(self, i: usize) -> T | none;
+    fn first(self) -> T | none;
+    fn last(self) -> T | none;
+    fn fill(self, x: T);
+    fn swap(self, i: usize, j: usize);                 // out of range panics
+    fn reverse(self);
+    fn copy_from_slice(self, src: Slice<T>);           // src.len() != len panics; src may overlap the view
+    fn split_at(self, mid: usize) -> (SliceMut<T>, SliceMut<T>);   // [0, mid) and [mid, len), both writable; mid > len panics
+    fn chunks_mut(self, size: usize) -> ChunksMut<T>;  // writable views of size elements in order, the last shorter; size 0 panics
+    fn sort_by(self, cmp: fn(T, T) -> Ordering);       // stable
+    fn sort_by_key<K: Ord>(self, key: fn(T) -> K);     // stable
+    fn as_slice(self) -> Slice<T>;                     // the same elements, read-only
+    fn iter(self) -> SliceMutIter<T>;
+    fn to_list(self) -> List<T>;                       // allocates a new List
+    unsafe fn raw_parts(self) -> (GcBuf<T>, usize, usize);   // (buffer, start, len), for runtime calls that fill a region
+}
+
+impl<T: Ord> SliceMut<T> {
+    fn sort(self);                                     // ascending, stable
+}
+
+impl<T: PartialEq> SliceMut<T> {
+    fn contains(self, x: T) -> bool;
+}
+
+impl<T> Index<usize> for SliceMut<T> { ... }              // s[i]: panics when out of range
+impl<T> IndexSet<usize, T> for SliceMut<T> { ... }           // s[i] = x writes element i of the list
+impl<T> Sliceable<Range<usize>> for SliceMut<T> { ... }   // s[a:b]: a writable view of the view; the range is clamped
+impl<T> IntoIterator for SliceMut<T> { ... }
+impl<T: PartialEq> PartialEq for SliceMut<T> { ... }
+impl<T: Debug> Debug for SliceMut<T> { ... }
+```
+
+`SliceMutIter<T>` is a `DoubleEndedIterator` and `ExactSizeIterator` with `Item = T`; `ChunksMut<T>` an `ExactSizeIterator` with `Item = SliceMut<T>`. Like `List`, a `SliceMut` is not `Sync` ([2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)); a hand-off copies its list and keeps the view on the copy. The views of `chunks_mut` and `split_at_mut` do not overlap, so `par::for_each` may give each to a worker of its own, which writes its part of the list in place ([2.19.1](219-par.md#2191-core-api)). Negative indices count from the end, as on a list.
+
+### Resizing the list while a view lives
+
+A resize may move the list's elements to a new buffer, so a view is not used after its list is resized. A resize is any `List` method that changes the length or the buffer: `push`, `pop`, `insert`, `remove`, `clear`, `truncate`, `drain`, `set_len`, `reserve`, `shrink_to_fit`, `extend`, `retain`, `dedup`, `freeze` and `+=`. Element writes (`xs[i] = x`, `fill`, `swap`, `sort`, `reverse`) are not resizes.
+
+- Where one function shows both, using a view after a resize of its list is a compile error, `E0137` ([refs-lang 9.9.4](../../refs-lang/009-tools/909-debug-tools.md#994-diagnostics--error-messages)). The view is followed through copies of the list (`let ys = xs`), views of the view (`s[1:]`, `split_at`), a `for` loop over it, branches and the next pass of a loop. Assigning the view again (`s = xs[..]`) makes it usable again, and a resize on a path that leaves (`return`, `break`) does not reach the code after it.
+- Every other case is checked at run time: a resize inside a called function, a view kept in a struct, an `async fn` that waits while its caller resizes. A list carries a version that each resize bumps, and the methods of a view made before the bump panic (`SliceMut used after its list was resized (push, insert, clear, ...): make the view again after the resize`), as does each step of a `for` or `for ref` loop over it, its hand-off and a `par` call with it among the items. Element reads and writes (`s[i]`, `s[i] = x`, `get`, `first`, `last`) check nothing, so a loop over a view costs what one over a list does: on a stale view they reach the storage the view was made of. That storage is the list's after a resize that kept it, and else no longer the list's; no other thread reaches it (`freeze` copies a list that had views).
+
+```nabi
+let xs: List<i32> = [1, 2, 3];
+let s: SliceMut<i32> = xs[1:];
+xs.push(4);
+s[0] = 9;          // error[E0137]: `s` views `xs`, which `xs.push(..)` resized at line 3
+```
+
+The run-time check is what lets a `SliceMut` be an `async fn`'s argument and live across an `await`.
+
+### Examples
+
+```nabi
+fn zero(buf: SliceMut<u8>) {
+    buf.fill(0);
+}
+
+let xs: List<i32> = [5, 4, 3, 2, 1];
+let mid: SliceMut<i32> = xs[1:4];
+mid.sort();                             // xs is [5, 2, 3, 4, 1]
+mid[0] = 20;                            // xs is [5, 20, 3, 4, 1]
+let (a, b) = mid.split_at(1);
+b.fill(0);                              // xs is [5, 20, 0, 0, 1]
+
+let bytes: List<u8> = [1, 2, 3];
+zero(bytes[1:]);                        // [1, 0, 0]
+zero(bytes);                            // the whole list: [0, 0, 0]
+```
+
+## 2.9.7b. `FrozenList<T>` / `FrozenDict<K, V, S>` / `FrozenSet<T, S>` - read-only collections
+
+A collection that is made once and then only read (a lookup table, a component array a system reads, a map a server answers from) is frozen: `xs.freeze()` turns a `List`, `Dict` or `Set` into a collection nothing can change, which every thread reads with no lock and no copy.
+
+```nabi
+struct FrozenList<T> { /* the list's storage, never changed */ }
+struct FrozenDict<K, V, S = RandomState> { /* ... */ }
+struct FrozenSet<T, S = RandomState> { /* ... */ }
+
+impl<T> FrozenList<T> {
+    fn len(self) -> usize;
+    fn is_empty(self) -> bool;
+    fn get(self, i: usize) -> T | none;
+    fn first(self) -> T | none;
+    fn last(self) -> T | none;
+    fn iter(self) -> ListIter<T>;
+    fn split_at(self, mid: usize) -> (Slice<T>, Slice<T>);
+    fn windows(self, size: usize) -> slice::Windows<T>;
+    fn chunks(self, size: usize) -> slice::Chunks<T>;
+    fn to_list(self) -> List<T>;                       // a new list holding the elements, free to change
+}
+impl<T: PartialEq> FrozenList<T> { fn contains(self, x: T) -> bool; }
+impl<T: Ord> FrozenList<T> { fn binary_search(self, x: T) -> usize | none; }
+impl<T: Send + Sync> FrozenList<T> { fn new() -> FrozenList<T>; }   // empty
+
+impl<K: Hash + Eq, V, S: BuildHasher> FrozenDict<K, V, S> {
+    fn len(self) -> usize;
+    fn is_empty(self) -> bool;
+    fn get(self, k: K) -> V | none;
+    fn get_or(self, k: K, default: V) -> V;
+    fn contains_key(self, k: K) -> bool;
+    fn keys(self) -> Keys<K, V, S>;
+    fn values(self) -> Values<K, V, S>;
+    fn iter(self) -> DictIter<K, V, S>;
+    fn hasher(self) -> S;
+    fn to_dict(self) -> Dict<K, V, S>;                 // a new dict, free to change
+}
+
+impl<T: Hash + Eq, S: BuildHasher> FrozenSet<T, S> {
+    fn len(self) -> usize;
+    fn is_empty(self) -> bool;
+    fn contains(self, x: T) -> bool;
+    fn iter(self) -> Keys<T, bool, S>;
+    fn hasher(self) -> S;
+    fn to_set(self) -> Set<T, S>;                      // a new set, free to change
+}
+```
+
+`fr[i]` (panics out of range) and `fr[a:b]` (a read-only `Slice<T>`, no copy) work as on a list, and `fd[k]` as on a dict; there is no `IndexSet` and no method that changes anything. All three implement `IntoIterator` (in the order of the collection they were frozen from), `Clone` (the same collection: it cannot change, so sharing it is as good as a copy), `PartialEq`, `Debug` (as the unfrozen collection) and `Default` (empty); `FrozenList` also `Eq` and `Hash`.
+
+**Freezing.** `freeze` exists only when the elements (for a dict, the keys, values and hasher) are `Send + Sync`: what threads read must not change either, and a frozen list of lists would give every thread the same changeable inner lists (`List<List<i32>>::freeze` is error `E0069`, whose help says to freeze each element first or to share the collection through a `Mutex`). `freeze` hands the collection over ([2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)): using `xs` afterwards is compile error `E0105`, followed through copies, fields and calls as for any hand-off; read the frozen value instead, or freeze a `clone()` to keep `xs`. At run time the frozen collection takes the storage over in O(1) and leaves `xs` empty, so a handle the checker cannot see (code in `unsafe`) changes a new, empty collection, never what the readers read. A list that had a `SliceMut` gives a copy of its elements instead (O(n)): a stale view may still write the old storage. A dict built during constant evaluation is rehashed as it freezes, so a lookup never writes. To change a frozen collection, make a changeable copy (`to_list()`, `to_dict()`, `to_set()`), change it and freeze it again.
+
+**Sharing.** The frozen types are `Sync`, so they go where a collection cannot: a closure several workers run (`par::map(0..n, |i| table[i])`), a thread's closure, a `static` (`static PRIMES: FrozenList<i64> = [2, 3, 5, 7].freeze();`), a `RwLock` read by many, a field of a struct that is then `Sync`. A hand-off (`send`, `Mutex::new`, `[move x]`, a task's result) does not copy a frozen collection. Their elements are `Sync` themselves, so a `FrozenList<Atomic<i64>>` is an array of counters many threads add to.
+
+```nabi
+let table = load_table().freeze();                  // FrozenList<Entry>
+let hits = par::map(queries, |q| table[q.slot]);    // every worker reads the one table
+
+static NAMES: FrozenDict<str, i32> = {"two": 2, "seven": 7}.freeze();
+
+let hist = List::from_fn(16, |_| Atomic::new(0i64)).freeze();
+par::for_each(samples, |x| { hist[bucket(x)].fetch_add(1, Relaxed); });
+```
+
+## 2.9.8. `Index` / `IndexSet` / `Sliceable` trait mapping
+
+The traits of [2.3 ops](203-ops.md) define the meaning of `[]`, `[i] = v` and `[a:b]` on containers.
+
+| Container    | `Index<I>`                     | `IndexSet<I, V>`          | `Sliceable<R>`                          |
+|--------------|--------------------------------|---------------------------|-----------------------------------------|
+| `List<T>`    | `Index<usize>` → T             | `IndexSet<usize, T>` | `Sliceable<Range<usize>>` → `Slice<T>`  |
+| `Dict<K, V>` | `Index<K>` → V                 | `IndexSet<K, V>` | **none**                                |
+| `Set<T>`     | **none**                       | **none**                  | **none**                                |
+| `Tuple<...>` | **compiler-direct** (`.0`/.1)  | **compiler-direct**       | **none**                                |
+| `[T; N]`     | `Index<usize>` → T             | `IndexSet<usize, T>` | `Sliceable<Range<usize>>` → `Slice<T>` (copy) |
+| `Slice<T>`   | `Index<usize>` → T             | **none** (read-only view) | `Sliceable<Range<usize>>` → `Slice<T>`  |
+| `SliceMut<T>` | `Index<usize>` → T            | `IndexSet<usize, T>` | `Sliceable<Range<usize>>` → `SliceMut<T>` |
+| `FrozenList<T>` | `Index<usize>` → T          | **none** (read-only)      | `Sliceable<Range<usize>>` → `Slice<T>`  |
+| `FrozenDict<K, V>` | `Index<K>` → V           | **none** (read-only)      | **none**                                |
+| `str`        | **none** (direct byte access rejected) | **none**          | `Sliceable<Range<usize>>` → `str` (copy, UTF-8 boundary check) |
+| `Array<T, N>` | axis tuples (2.9.14) → `T` or a view | axis tuples, `V` = `T` or a view-shaped `Array` | through `Index<SliceArg>` (refs-lang 3.6.3) |
+
+`s[10]` on a `str` is deliberately not provided, for the safety of UTF-8 multibyte characters. Use `s.chars()` for character-wise access and `s[10..15]` for extraction (as a slice, multibyte boundaries are validated).
+
+## 2.9.9. `IntoIterator` / `FromIterator`
+
+Every container implements `IntoIterator`.
+
+| Container           | `Item`              | Order                             |
+|---------------------|---------------------|-----------------------------------|
+| `List<T>`           | `T`                 | first → last                      |
+| `Dict<K, V>`        | `(K, V)`            | insertion order                   |
+| `Set<T>`            | `T`                 | insertion order                   |
+| `Deque<T>`          | `T`                 | front → back                      |
+| `BinaryHeap<T>`     | `T`                 | **unordered** (not pop order)     |
+| `Tuple<T...>`       | **not implemented** | (heterogeneous, no Iterator meaning)  |
+| `Slice<T>`          | `T`                 | view order (stride applied)       |
+| `SliceMut<T>`       | `T`                 | view order                        |
+| `FrozenList<T>`     | `T`                 | first → last                      |
+| `FrozenDict<K, V>`  | `(K, V)`            | insertion order                   |
+| `FrozenSet<T>`      | `T`                 | insertion order                   |
+
+`FromIterator<T>` determines which container `collect::<C>()` builds.
+
+```nabi
+let v: List<i32> = (0..5).collect();
+let s: Set<i32> = (0..5).collect();
+let d: Dict<str, i32> = [("a", 1), ("b", 2)].into_iter().collect();
+```
+
+## 2.9.10. Module mapping
+
+| Container     | Module                                   | Internal structure                  |
+|---------------|------------------------------------------|-------------------------------------|
+| `List<T>`     | `core::collections::list`            | inspired by Rust `Vec`              |
+| `Dict<K, V, S>` | `core::collections::dict`          | compact entries + linear probing    |
+| `Set<T, S>`   | `core::collections::set`             | on top of `Dict<T, bool, S>`        |
+| `Deque<T>`    | `core::collections::deque`           | ring buffer                         |
+| `BinaryHeap<T>` | `core::collections::heap`          | implicit binary tree on a `List`    |
+| `SortedDict<K, V>` / `SortedSet<T>` | `core::collections::sorted` | B-tree, nodes in flat lists |
+| `Tuple`       | **compiler built-in** + `core::tuple` impls | compiler-built, no literal handler |
+| `Slice<T>`    | `core::collections::slice`           | struct ptr + len + stride           |
+| `SliceMut<T>` | `core::collections::slice`           | buffer + start + len, list + version |
+| `FrozenList<T>` / `FrozenDict<K, V, S>` / `FrozenSet<T, S>` | `core::collections::frozen` | the storage of the collection frozen |
+
+## 2.9.11. Comparison with other languages
+
+| Aspect          | Rust                 | Python                     | Nabi                                    |
+|-----------------|----------------------|----------------------------|----------------------------------------|
+| Dynamic array   | `Vec<T>`             | `list`                     | `List<T>`                              |
+| Hash map        | `HashMap<K, V>`      | `dict` (insertion-ordered) | `Dict<K, V>` (insertion-ordered)       |
+| Hash set        | `HashSet<T>`         | `set`                      | `Set<T>` (insertion-ordered)           |
+| Fixed hetero    | `(T1, T2)` tuple     | `tuple`                    | `Tuple<T1, T2>`                        |
+| View            | `&[T]` / `&str`      | **slice object**           | `Slice<T>`                             |
+| Writable view   | `&mut [T]`           | **none** (slice assignment) | `SliceMut<T>`                         |
+| Read-only, shared between threads | `Arc<[T]>`, `&'static` | `tuple`, `frozenset` | `FrozenList<T>`, `FrozenDict<K, V>`, `FrozenSet<T>` (`freeze`) |
+| Literals        | `vec![...]` (macro)  | `[...]` `{...}` `(...)`    | `[...]` `{...}` `(...)` (`#[literal]`) |
+| Insertion-ordered map | `IndexMap` (crate) | **default dict**       | **default `Dict`**                     |
+| Sorted map / set | `BTreeMap` / `BTreeSet` | none (`sortedcontainers` package) | `SortedDict` / `SortedSet`, separate types; `Dict` is not one |
+
+Nabi differs most in these ways. First, `List`, `Dict`, `Set`, `Tuple` and `Slice` have first-class literal syntax, so no macro such as `vec![]` is used. Second, `Dict` / `Set` iterate in insertion order, as Python 3.7+ `dict` does, so no separate insertion-ordered type is needed. Insertion order is not key order, though: range queries, floor / ceiling lookups and iteration in key order need a sorted map, which `Dict` is not; that is the separate `SortedDict` / `SortedSet` ([2.9.5c](#295c-sorteddictk-v--sortedsett---sorted-map-and-set)). Third, `Slice<T>` is a view with a stride, so even an expression like `xs[::2]` is zero-copy.
+
+## 2.9.12. `GcBuf<T>` - raw GC buffer
+
+`GcBuf<T>` (`bare::mem::GcBuf`) is the fixed-length GC buffer used by collection implementations such as `List` / `Dict`, and is a type known to the compiler. Its one public path is `bare::mem` ([0.1.6](../000-meta/001-tier-model.md#016-one-path-per-item)); the collections reach it through a module internal to core. A buffer of a `T` with no GC reference (numbers, `bool`, `char`, `Pod` structs) is raw data the collector never scans (type id `1`, [refs-lang 8.2.12](../../refs-lang/008-abi/802-scan-table.md#8212-runtime-reserved-type-ids)); a buffer of a `T` with references is scanned through `T`'s array `ScanTable`, at its reference slots only.
+
+```nabi
+struct GcBuf<T> { /* representation known to the compiler */ }
+
+impl<T> GcBuf<T> {
+    unsafe fn new(len: usize) -> GcBuf<T>;           // every byte set to 0 (references null)
+    unsafe fn get(self, i: usize) -> T;        // no bounds check (the owner tracks the length)
+    unsafe fn set(self, i: usize, v: T);       // includes the write barrier
+}
+
+#[intrinsic("nabi.buf_new")] unsafe fn buf_new<T>(len: usize) -> GcBuf<T>;   // GcBuf::new
+#[intrinsic("nabi.buf_get")] unsafe fn buf_get<T>(buf: GcBuf<T>, i: usize) -> T;
+#[intrinsic("nabi.buf_set")] unsafe fn buf_set<T>(buf: GcBuf<T>, i: usize, v: T);
+```
+
+Elements are packed: element `i` is at byte `i * size_of::<T>()` of the payload, with `T`'s own alignment. A buffer of 8 KiB or more is a large object: its payload is 64-byte aligned and never moves while reachable ([refs-lang 7.2.9](../../refs-lang/007-runtime/702-allocation.md#729-los-allocation-of-large-objects)). Ordinary user code uses `List<T>` or `Array<T, N>` (2.9.14); `GcBuf<T>` is for implementing collections.
+
+`GcBuf<T>` and its primitives (`bare::mem::{buf_new, buf_get, buf_set}`, `new` / `get` / `set`, indexing a `GcBuf`) are `unsafe`: they skip the element-type and initialization checks the collections keep.
+
+```nabi
+#[intrinsic("nabi.buf_same")]
+fn buf_same<T>(a: GcBuf<T>, b: GcBuf<T>) -> bool;   // whether they are the same buffer (identity, not contents). Pins nothing
+```
+
+## 2.9.13. Defaults, operators and constructors
+
+**`d[k, default: v]`.** A two-part index with the named part `default:` reads `d.get_or(k, v)`: `v` when `k` is absent, and the dict is unchanged. As the target of `=` or a compound assignment, or as the base of a field / index target (`d[k, default: v].f += 1`), and as the receiver of a method call (`d[k, default: []].push(x)`), it first runs `d.get_or_insert(k, v)`, so `v` is stored when `k` is absent, and then works on `d[k]`. `d` and `k` are evaluated once; `v` is evaluated each time the expression runs (Swift's `subscript(_:default:)`; Python's `defaultdict` inserts on every read, Nabi's read does not).
+
+```nabi
+counts[w, default: 0] += 1;
+groups[sale.region, default: Group {}].orders += 1;
+by_len[w.len(), default: []].push(w);
+let n = counts["zz", default: 0];        // no entry made
+```
+
+**`Dict<K, usize>::most_common(n: usize | none = none) -> List<(K, usize)>`.** The `n` largest counts (all when `none`), largest first, equal counts in first-seen order (Python's `Counter.most_common`).
+
+**Set operators.** `a | b` is `a.union(b)`, `a & b` `a.intersection(b)`, `a - b` `a.difference(b)`, `a ^ b` `a.symmetric_difference(b)`; each makes a new set and leaves both operands unchanged ([2.3](203-ops.md)).
+
+**`List + List`.** `xs + ys` is a new list of `xs`'s items then `ys`'s; neither changes (`xs += ys` appends in place). Element-wise addition is the broadcast `.+` ([2.6](206-broadcast.md)).
+
+**`List::from_fn(n: usize, f: fn(usize) -> T) -> List<T>`** makes `n` items, item `i` being `f(i)`; `List::filled(n, x)` makes `n` copies of `x`.
+
+## 2.9.14. `Array<T, const N: usize>` - n-dimensional array
+
+`core::array::Array<T, N>` is the canonical n-dimensional array: `N` is the rank, the element buffer is shared by copies (like `List`), and a shape and per-axis strides say where each element is. Core holds the container and its protocol; numerical algorithms (linear algebra, statistics, FFT) come from packages built on it.
+
+```nabi
+pub struct Array<T, const N: usize> { /* buffer, offset, shape: [usize; N], strides: [isize; N] */ }
+pub type Vector<T> = Array<T, 1>;
+pub type Matrix<T> = Array<T, 2>;
+```
+
+**Storage.** The buffer is a `GcBuf<T>` (2.9.12): packed, never scanned by the collector when `T` holds no reference, 64-byte aligned and never moved from 8 KiB on ([refs-lang 7.2.9](../../refs-lang/007-runtime/702-allocation.md#729-los-allocation-of-large-objects)). A fresh array is row-major (the last axis contiguous). No axis is longer than `isize::MAX`: a shape with a longer one panics (`capacity overflow`), even when another axis has length 0. `Array` is `!Sync` (its copies share an unlocked buffer).
+
+**Literal.** In an `Array<T, N>` slot a nested list literal builds the array: the nesting depth is the rank, the shape comes from the nesting, the leaves are the elements in row-major order, each typed as `T`. Rows that differ in length are a compile error (E0142) whose help says to make them equal or keep a `List<List<T>>`; an element that should be a row but is not a `[..]` literal is the same error. In a sum slot without a `List` member, a literal builds the one `Array` member: `[1.0, 2.0]` passed to `x: Vector<f64> | none` is a `Vector<f64>` (a `List` member, when there is one, is taken first). A parameter `x: Array<f64, N>` of a generic function with `N` open takes its rank from the literal: `sum([[1.0, 2.0]])` of `fn sum<const N: usize>(x: Array<f64, N>)` has `N = 2`.
+
+```nabi
+let m: Matrix<f64> = [[1, 2, 3],
+                      [4, 5, 6]];          // shape [2, 3]
+let e: Array<f64, 2> = [[]];               // shape [1, 0]
+```
+
+**Construction.**
+
+| Item | Meaning |
+|------|---------|
+| `Array::full(shape, v)` | every element `v` |
+| `Array::zeros(shape)` / `Array::ones(shape)` | `T: Zero` / `T: One` |
+| `Array::from_fn(shape, f)` | element at index `idx` is `f(idx)`, `idx: [usize; N]` |
+| `Array::from_list(xs, shape)` | the list's elements in row-major order (a copy); panics unless the counts agree |
+| `Array::view_list(xs, shape)` | the same, sharing the list's buffer with no copy: a write through either shows in the other while the list keeps that buffer (a push past its capacity moves the list to a new one, as with `xs[a:b]`) |
+| `From<List<T>> for Array<T, 1>` | `Array::from(xs)` |
+
+**Shape and views.** `shape() -> [usize; N]`, `strides() -> [isize; N]` (in elements), `ndim()`, `len()` (the element count), `is_empty()`, `is_contiguous()`. The following return views of the same elements, with no copy: `t()` (axes reversed), `permute(axes)`, `broadcast_to(shape)` (a length-1 axis repeats with stride 0), `reshape(shape)` (a view when contiguous, else of a contiguous copy; panics unless the counts agree), and every basic index (below). `copy()` makes a contiguous array with its own buffer; `clone()` also clones the elements.
+
+**Indexing.** `Array` is `AxisIndexed` ([refs-lang 3.6.3](../../refs-lang/003-expressions/306-indexing-and-slicing.md#363-multi-axis-indexing)): each part of a bracket is an axis argument. A position (an integer of any type, taken as `isize` ([refs-lang 3.6.3](../../refs-lang/003-expressions/306-indexing-and-slicing.md#363-multi-axis-indexing)); negative from the end, out of range panics naming the axis) drops its axis, a slice (`SliceArg`, Python's rules per axis) keeps it with a stride, `..` (`Rest`) stands for the axes the others leave, `none` (`NewAxis`) adds an axis of length 1, and axes no part names are taken whole. As many positions as the rank give the element `T` (ranks 1 to 4); anything else gives a view `Array<T, M>`, `M = N - positions + new axes`. A mask `Array<bool, N>` of the same shape selects the elements where it is `true`, as a rank-1 copy. The impls cover up to two parts with any kinds and three parts of positions, slices and one `..`; more parts on one array is a missing `Index` impl.
+
+```nabi
+m[1, 2]          // 6.0
+m[1]             // [4.0, 5.0, 6.0] (a view)
+m[:, ::-1]       // columns reversed
+m[m .> 2.0]      // [3.0, 4.0, 5.0, 6.0] (a copy)
+m[:, 0] = 0.0;   // IndexSet: a scalar fills the view
+m[0, :] = row;   // an array stretches to the view's shape
+m[m .< 0.0] = 0.0;
+```
+
+| Method | Meaning |
+|--------|---------|
+| `get(idx: [usize; N]) -> T \| none` | the element, `none` past an axis |
+| `at(idx)` / `set(idx, v)` | the element; past an axis panics |
+| `fill(v)` | every element (of a view too) |
+| `assign(src)` | copy `src` in, stretched to this shape |
+| `masked(mask)`, `fill_masked(mask, v)`, `assign_masked(mask, vals)` | what `a[mask]` and `a[mask] = v` call |
+| `iter()`, `IntoIterator` | the elements in row-major order |
+| `to_list()`, `map(f)`, `cast::<U>()` | a list in row-major order; a new array of `f(x)`; each element converted without loss (`U: From<T>`, NumPy's `astype`; a lossy one is a `map` with `as`) |
+| `as_list() -> List<T> \| none` | the elements as a list sharing this array's buffer, no copy, when they are contiguous from its start (a fresh array, a `view_list` one); `none` otherwise (`to_list()` copies). The list's first push moves it to a buffer of its own |
+| `unsafe fn as_ptr() -> ConstPtr<T>` | the first element; stable while reachable from 8 KiB on (pin a smaller one: `Array` is `Pinnable`, [stdlib 1.6](../100-bare/106-gc-pin.md)) |
+
+**Reductions.** Each reduction has a whole-array form, over the elements in row-major order, and an `_along(axis)` form that reduces each lane along `axis` and drops that axis: `m.sum_along(0)` of a `[2, 3]` matrix is the `[3]` vector of column sums (NumPy's `m.sum(axis=0)`). An axis past the rank panics (`sum_along: axis 2 is past the last axis of a rank-2 array; pass an axis in 0..2`). Views (transposed, stepped, reversed) reduce as their elements read.
+
+| Method | Bound | Whole array | Meaning |
+|--------|-------|-------------|---------|
+| `sum()`, `sum_along(k)` | `T: Add + Zero` | `T` (`0` when empty) | pairwise: runs of 128 summed with eight accumulators, halves added, so a float sum's error grows with `log2 n` |
+| `prod()`, `prod_along(k)` | `T: Mul + One` | `T` (`1` when empty) | in order |
+| `cumsum()`, `cumprod()` | as `sum` / `prod` | `Array<T, 1>` | the running sums / products in row-major order |
+| `cumsum_along(k)`, `cumprod_along(k)` | | `Array<T, N>` | running along each lane, same shape |
+| `min()`, `max()` | `T: PartialEq + PartialOrd` | `T \| none` (`none` when empty) | a NaN anywhere gives NaN |
+| `argmin()`, `argmax()` | | `usize \| none` | the row-major position of the first smallest / largest, or of the first NaN; `unravel(i)` gives the index per axis |
+| `nanmin()`, `nanmax()`, `nanargmin()`, `nanargmax()` | | `T \| none` / `usize \| none` | the same over the elements that are not NaN |
+| `min_along(k)`, `max_along(k)`, `nanmin_along(k)`, `nanmax_along(k)` | | `Array<T, N - 1>` | per lane; an axis of length 0 panics |
+| `argmin_along(k)`, `argmax_along(k)` | | `Array<usize, N - 1>` | the position along the axis |
+| `mean()`, `mean_along(k)` | `T: FloatingPoint` | `T` (NaN when empty) | the pairwise sum over the count, plus one pass adding the mean residual |
+| `var(ddof = 0)`, `std(ddof = 0)`, `var_along(k, ddof)`, `std_along(k, ddof)` | | `T` | corrected two-pass (Chan, Golub and LeVeque), divided by `n - ddof`; NaN when `n <= ddof` |
+| `nansum()`, `nanmean()`, `nansum_along(k)`, `nanmean_along(k)` | | `T` | over the elements that are not NaN (`nansum` 0, `nanmean` NaN when there are none) |
+| `any()`, `all()`, `count()` and `_along(k)` | `Array<bool, N>` | `bool` / `usize` | `any` of an empty array is `false`, `all` `true`; `count` is the number of `true` |
+
+NaN is any element unequal to itself, so the NaN rule applies to every `PartialEq` element type and costs nothing for integers. With a dot comparison the boolean reductions test a condition: `(a .> 0.0).any()`, `(a .< lo).count_along(1)`.
+
+**Joining, selecting and sorting.**
+
+```nabi
+fn concat<T, const N: usize>(parts: List<Array<T, N>>, axis: usize = 0) -> Array<T, N>;
+fn stack<T, const N: usize>(parts: List<Array<T, N>>, axis: usize = 0) -> Array<T, N + 1>;
+fn where<T, const N: usize>(mask: Array<bool, N>, a: Array<T, N>, b: Array<T, N>) -> Array<T, N>;
+fn linspace<T: FloatingPoint>(start: T, stop: T, n: usize) -> Array<T, 1>;
+fn arange<T: FloatingPoint>(start: T, stop: T, step: T) -> Array<T, 1>;
+```
+
+`concat` joins arrays along an existing axis (every other axis must agree, else it panics naming both shapes); `stack` joins arrays of one shape on a new axis at `axis`; both panic for an empty list. `where(mask, a, b)` takes `a`'s element where `mask` is `true` and `b`'s elsewhere, the three broadcast to one shape (NumPy's `np.where`); for a scalar on one side, `fill_masked` a copy. `linspace` and `arange` are `num::linspace` / `num::arange` (2.1.11) as vectors. All are in `core::array`.
+
+For `T: PartialEq + PartialOrd`, `sorted_along(k)` returns a copy with each lane along `k` sorted ascending, stable, NaN last; `sort_along(k)` sorts in place (through a view too); `sorted()` and `sort()` do the last axis (a vector's elements); `argsort_along(k) -> Array<usize, N>` gives the positions that sort each lane.
+
+**Tolerant comparison.** For `T: FloatingPoint`, `a.is_close(b, rel = none, abs = 0.0, equal_nan = false) -> Array<bool, N>` applies `f64::is_close` (2.1.11) element by element, the two broadcast to one shape; `all_close(b, ..) -> bool` is `is_close(..).all()`. `rel` defaults to the element type's (`f64`: 1e-9, `f32`: 2^-20). The rule is symmetric and relative by default, unlike NumPy's `allclose` (absolute 1e-8 plus relative 1e-5 of the second operand); pass `abs` when values near zero must match.
+
+```nabi
+use core::array::{Matrix, concat, where};
+
+let m: Matrix<f64> = [[1, 2, 3], [4, 5, 6]];
+m.sum_along(0);              //→ [5.0, 7.0, 9.0]
+m.mean_along(1);             //→ [2.0, 5.0]
+m.max();                     //→ 6.0
+m.argmax_along(1);           //→ [2, 2]
+(m .> 2.5).count();          //→ 4
+concat([m, m]).shape();      //→ [4, 3]
+where(m .> 2.0, m, m .* 0.0); //→ [[0.0, 0.0, 3.0], [4.0, 5.0, 6.0]]
+(m .* 0.1 .* 10.0).all_close(m);   //→ true
+```
+
+**Element-wise operators.** Every dot operator (2.6) takes array with array of the same rank, array with scalar and scalar with array; arithmetic gives `Array<T, N>`, comparisons `Array<bool, N>`, `.&&` / `.||` combine `Array<bool, N>`s. Two arrays stretch to one shape by `broadcast_shape(a, b)`: per axis, equal lengths stay and a length 1 stretches to the other; any other pair panics with both shapes (`broadcast: shapes [2, 3] and [2, 2] differ on axis 1; ...`). In a dot expression an array of lower rank lines up at the last axes (2.6.8), and the expression runs as one loop with no intermediate array: `Array` is `Broadcastable` and `Materialize` (2.6.6). `.=` and `.+=` .. write into an array or a view of one in place (`a[:, 0] .= 0.0`, [refs-lang 3.3.7](../../refs-lang/003-expressions/303-broadcast-operators.md#337-in-place-broadcast)). `PartialEq` compares shape and elements; `Debug` / `Display` print nested brackets.

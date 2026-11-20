@@ -1,0 +1,105 @@
+# 2.12. Trait-as-type ban
+
+> [!IMPORTANT]
+> Writing a trait name directly in type expression position is forbidden. When a value whose implementing type is decided at runtime is needed, write `any Trait`, whose cost is visible in the syntax (2.12.3).
+
+## 2.12.1. What is forbidden
+
+```nabi
+let a: Number = 32i32;                          // ERROR: Number is a trait
+fn process(x: Display) -> str { ... }            // ERROR
+struct Holder { item: Iterator; }                // ERROR
+```
+
+As in these examples, a trait name appearing directly as a variable type, parameter type, return type or struct field type is a compile error.
+
+## 2.12.2. Rationale
+
+The target of the ban is **hidden** dynamic dispatch. Writing a trait name directly in type position is indistinguishable at a glance from an ordinary static type, but actually creates runtime dispatch. That dispatch has real cost. The implementation is chosen and called at runtime, so on a branch misprediction it can be more than twice as slow as a direct call. It needs extra memory accesses to the dispatch data, hurting cache friendliness. Above all, it blocks the compiler's inlining and optimization.
+
+So that core numeric loops in scientific and data code do not take on this cost unknowingly, Nabi does not allow a bare trait name as a type. Runtime polymorphism exists only where `any` is written. `any Trait` is allowed because its dynamic dispatch cost is visible in the syntax through the `any` keyword.
+
+## 2.12.3. When polymorphism is needed: three alternatives
+
+Nabi provides three alternatives when polymorphism is needed.
+
+### 1. Sum types for a closed set of candidates
+
+If the set of candidates is fixed in advance, use a sum type.
+
+```nabi
+let a: i32 | f32 | f64 = 32i32;
+fn process(x: i32 | f32) -> str { ... }
+```
+
+This fits when the candidates are fixed at compile time. Memory and dispatch costs are explicit (see [Sum types](206-sum-types.md)), and pattern matches can be checked for exhaustiveness.
+
+### 2. Generics for open polymorphism
+
+If the candidates are open, use generics.
+
+```nabi
+fn process<T: Display>(x: T) -> str { ... }
+struct Holder<T: Iterator> { item: T; }
+```
+
+This fits when candidates are not fixed at compile time or differ per caller. Monomorphization produces direct calls, so the cost is near zero (see [Generics](210-generics.md)), and methods can be called through trait bounds.
+
+### 3. `any Trait` when the implementing type is decided at runtime
+
+If values of different implementing types must be mixed in one slot or collection, use a constrained `any`.
+
+```nabi
+let shapes: List<any Shape> = [Circle { r: 1.0 }, Square { side: 2.0 }];
+fn report(e: any Error) -> str { f"{e}" }
+struct ConfigError { msg: str; cause: any Error | none; }
+```
+
+An `any Trait` slot accepts only values of types implementing `Trait` (checked at compile time), and methods of `Trait` and its supertraits can be called on its value. Calls are dispatched by runtime tag, with the same cost model as [The `any` slot](202-any-slot.md). The exact rules are defined in [2.2.10](202-any-slot.md#2210-constrained-any-any-trait).
+
+### 4. `some Trait` for a function's hidden return type
+
+A function may return one concrete type that its callers see only through traits: `-> some Iterator<Item = i32>` ([4.1.13](../004-functions/401-function-declaration.md#4113-opaque-return-types-some-trait)), and a parameter may take one: `x: some Display` ([4.1.14](../004-functions/401-function-declaration.md#4114-some-parameters)). To store that type in a field or name it in a signature, give it a name: `type Evens = some Iterator<Item = i32>;` ([4.1.15](../004-functions/401-function-declaration.md#4115-named-opaque-types-type-x--some-trait)). Dispatch is static, as with generics: `some Tr` is one static type, hidden, and `any Tr` holds a value of any type with `Tr` and dispatches at run time.
+
+```nabi
+pub fn evens(n: i32) -> some Iterator<Item = i32> { (0..n).filter(|x| x % 2 == 0) }
+```
+
+## 2.12.4. Decision criteria
+
+Use the following criteria to choose among the alternatives.
+
+| Situation                                                     | Choice      |
+|---------------------------------------------------------------|-------------|
+| Candidates are a small fixed set (3-5)                        | Sum type    |
+| Candidates are extensible by users / libraries                | Generics    |
+| A function returns one type its callers need not name         | `-> some Trait` |
+| That hidden type is stored in fields or named in signatures   | `type X = some Trait;` |
+| Candidates are decided only at runtime (e.g. plugins, heterogeneous collections) | `any Trait` |
+| Anything must be held, with no constraint                     | `any`       |
+
+In the third case, where polymorphism with types decided at runtime is needed, use `any Trait`. It incurs dynamic dispatch cost, but that cost is explicitly concentrated where `any` is written.
+
+## 2.12.5. Supertraits and bound expressions are allowed
+
+To be clear: what is forbidden is only a trait name appearing in type position. The following are all allowed.
+
+```nabi
+trait Ord: Eq { ... }                            // supertrait declaration
+fn f<T: ops::Add + Display>(x: T) { ... }              // trait bound
+fn g<T>(x: T) where T: Ord, T: Clone { ... }      // where clause
+impl Display for Point { ... }                    // trait position of an impl
+```
+
+In these positions a trait name expresses a constraint, not a type.
+
+## 2.12.6. Form of the compile error
+
+When a trait name appears in type position, the compiler reports E0071 at the type:
+
+```text
+error[E0071]: trait `core::fmt::Display` cannot be used as a type directly
+  = help: use `any Display` for a value of any type implementing it, or a generic parameter `<T: Display>`
+```
+
+The help names two of the alternatives above; a sum type of the concrete types (`SomeType | OtherType`) is the third.

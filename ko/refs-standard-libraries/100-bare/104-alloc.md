@@ -1,0 +1,98 @@
+# 1.4. 원시 할당: `alloc` / `dealloc` / `realloc`
+
+`bare::alloc` 모듈은 GC 바깥 영역에서 메모리를 직접 할당하고 해제하는 API입니다. Nabi의 일반 코드는 GC가 관리합니다. 하지만 GC에 맞지 않는 곳에서는 이 모듈을 씁니다. FFI 경계에서 C 쪽에 메모리를 넘길 때, 큰 버퍼, mmap 같은 곳입니다.
+
+## 1.4.1. API
+
+```nabi
+struct LayoutError { .. }                      // 비공개 필드. 라이브러리만 만듦 (0.5.10)
+impl LayoutError {
+    fn message(self) -> str;
+}
+// + Display, Debug, Error, PartialEq, Eq, Clone
+
+struct Layout { /* private: size, align */ }
+
+impl Layout {
+    fn new<T>() -> Layout;                     // size_of<T>(), align_of<T>()
+    fn array<T>(n: usize) throws (LayoutError) -> Layout;
+    fn from_size_align(size: usize, align: usize) throws (LayoutError) -> Layout;
+                                               // align 은 2 의 거듭제곱
+    fn size(self) -> usize;
+    fn align(self) -> usize;
+}
+
+unsafe fn alloc(layout: Layout) -> CPtr<u8>;
+unsafe fn alloc_zeroed(layout: Layout) -> CPtr<u8>;
+unsafe fn dealloc(ptr: Ptr<u8>, layout: Layout);
+unsafe fn realloc(ptr: Ptr<u8>, old_layout: Layout, new_size: usize) -> CPtr<u8>;
+
+// 편의 함수 (typed)
+unsafe fn alloc_one<T>() -> CPtr<T>;
+unsafe fn alloc_array<T>(n: usize) -> CPtr<T>;
+unsafe fn dealloc_one<T>(ptr: Ptr<T>);
+unsafe fn dealloc_array<T>(ptr: Ptr<T>, n: usize);
+```
+
+`alloc`이 실패하거나 크기가 0이면 `CPtr::null()`을 반환합니다. 프로세스를 중단(abort)하지 않으므로 호출자가 결과를 확인하고 처리해야 합니다. `alloc_array`는 원소 `n`개가 `usize`를 넘칠 때도 `CPtr::null()`을 반환합니다. `Layout`의 필드는 비공개이므로 `size()` / `align()`으로 읽습니다. `array`는 원소 `n`개가 `usize`를 넘칠 때 `LayoutError`를 던집니다. `from_size_align`은 `align`이 2의 거듭제곱이 아닐 때 던집니다. 둘 중 어느 경우인지는 `message()`가 알려 줍니다.
+
+## 1.4.2. 예
+
+```nabi
+let layout = try Layout::array::<u32>(1000);
+let p: CPtr<u8> = unsafe { bare::alloc::alloc(layout) };
+
+match p.as_ptr() {
+    raw: Ptr<u8> => {
+        let typed: Ptr<u32> = bare::ptr_cast::<u32>(raw);
+        // 사용
+        unsafe {
+            for i in 0u32..1000u32 { typed.add(i as usize).write(i); }
+        }
+        unsafe { bare::alloc::dealloc(raw, layout) };
+    }
+    none => panic("alloc failed"),
+}
+```
+
+`using` 블록을 쓰면 RAII 형태로 정리할 수 있습니다.
+
+```nabi
+using buf = try bare::alloc::Allocation::<u32>::new(1000) {
+    // buf.as_ptr() 사용 가능
+}     // ← 자동 dealloc
+```
+
+여기서 `Allocation<T>`는 이 모듈에 든 RAII 래퍼입니다.
+
+```nabi
+struct Allocation<T> { /* private: pointer + 길이 */ }
+
+impl<T> Allocation<T> {
+    fn new(n: usize) throws (LayoutError) -> Allocation<T>;   // 0 으로 채운 T n 개
+    fn as_ptr(self) -> Ptr<T>;
+    fn as_many(self) -> ManyPtr<T>;
+    fn len(self) -> usize;
+}
+
+impl<T> Drop for Allocation<T> { /* block 을 해제 */ }
+```
+
+`new`는 크기가 `usize`를 넘치거나 시스템에 메모리가 없을 때 `LayoutError`를 던집니다(`message()`는 `"out of memory"`). `Allocation`은 `Drop`을 구현하므로 affine 값입니다([2.13.4](../200-core/213-marker.md#2134-drop-해제-시-정리)). `let b = a`는 값을 옮기고, 블록은 마지막 소유자가 놓는 곳(`using` 블록 끝이나 소유자가 스코프를 벗어나는 곳)에서 해제됩니다.
+
+## 1.4.3. GC와 관계
+
+| 영역                     | 할당 / 해제                 | GC 관리            |
+|--------------------------|-----------------------------|--------------------|
+| 일반 객체 (`List<i32>`)  | GC TLAB bump                | ✓                  |
+| `bare::alloc::alloc` | 시스템 malloc               | ✗ (수동)           |
+| FFI `malloc`             | C `malloc`                  | ✗                  |
+| 큰 객체 (8 KB 이상)      | LOS (이동 없는 mark-sweep)  | ✓ (단, 이동 없음)  |
+
+GC가 관리하는 원시 버퍼가 필요하면 이 모듈 대신 `bare::mem::GcBuf<T>`([2.9.12](../200-core/209-collections.md#2912-gcbuft-원시-gc-버퍼))를 씁니다.
+
+GC는 바깥 영역을 추적하지 않으므로 정리는 사용자 책임입니다. 대신 이 영역의 객체는 이동하지 않습니다. 그래서 `Ptr<T>`는 별도의 pin guard 없이도 유효합니다.
+
+## 1.4.4. 런타임 연계
+
+컴파일러는 `bare::alloc::alloc`의 본문을 런타임 래퍼로 낮춥니다. 이 래퍼는 Nabi 런타임이 시스템 malloc 위에 둔 것입니다. 최종적으로 `libc::malloc` / `libc::free` / `libc::realloc`을 호출합니다.

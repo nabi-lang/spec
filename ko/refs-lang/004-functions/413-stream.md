@@ -1,0 +1,186 @@
+# 4.13. 스트림(`async yield`)
+
+`async`와 `yield` 두 수식어를 함께 쓰면 비동기 제너레이터를 정의합니다. 비동기 제너레이터는 여러 값을 시간 차를 두고 내보내는 함수입니다. 결과는 라이브러리 타입 `AsyncStream<T>`(`Stream<Item = T>` 구현)의 값입니다. `throws (E)`이면 `TryAsyncStream<T, E>`입니다([4.1.11](401-function-declaration.md#코루틴-함수의-결과-타입)).
+
+## 4.13.1. 세 가지 정의 형태
+
+스트림을 정의하는 문법은 다음 세 가지입니다.
+
+```
+stream_fn       ::= "async" "yield" fn_decl
+stream_block    ::= "async" "yield" block
+stream_closure  ::= "async" "yield" closure_expr
+```
+
+```nabi
+async yield fn name(args) -> R { ... await ...; ... yield ...; }   // 명명된
+async yield { ... await ...; yield ...; }                           // 인라인 블록
+async yield || { ... await ...; yield ...; }                        // 클로저 수식어
+```
+
+[제너레이터](411-generators.md)와 [비동기](412-async.md)의 세 형태를 합친 모습입니다.
+
+## 4.13.2. 동기, 비동기, 제너레이터, 스트림의 관계
+
+네 형태의 관계는 다음과 같습니다.
+
+| 형태             | 호출 결과                           | 의미               |
+|------------------|-------------------------------------|--------------------|
+| `fn`             | `R`                                 | 즉시 한 값         |
+| `async fn`       | `AsyncFuture<R>` | 미래의 한 값       |
+| `yield fn`       | `GenIter<R>` | 동기적으로 여러 값 |
+| `async yield fn` | `AsyncStream<R>`   | 시간 차로 여러 값  |
+
+네 형태는 직교하는 두 차원을 모두 조합한 것입니다. 두 차원은 지연 여부(sync/async)와 값의 수(단일/복수)입니다.
+
+## 4.13.3. 본체에서 사용하는 두 키워드
+
+`async yield` 함수의 본체에서는 `await`와 `yield`를 둘 다 쓸 수 있습니다.
+
+```nabi
+async yield fn read_lines(file: str) -> str {
+    let f = await open(file);
+    loop {
+        let line = await f.read_line();
+        match line {
+            l: str => yield l,
+            none   => break,
+        }
+    }
+}
+```
+
+`await expr;`는 Future가 완료될 때까지 함수를 멈춥니다. `yield expr;`는 값을 내보낸 뒤 Stream이 다음 단계로 나아갈 때까지 멈춥니다. 한 함수 안에 멈추는 방식 두 가지가 함께 있습니다. 어느 시점에 어떤 방식으로 멈췄는지는 코루틴 프레임이 추적합니다.
+
+## 4.13.4. 호출과 소비
+
+스트림을 호출하고 소비하는 코드는 다음과 같습니다.
+
+```nabi
+async fn run() {
+    let s = read_lines("data.txt");   // s: `stream::AsyncStream<str>`
+
+    for await line in s {              // 비동기 for
+        process(line);
+    }
+}
+```
+
+호출은 바로 **Stream** 객체를 반환합니다. 실제 소비는 비동기 `for` 루프인 `for await` 형태로 합니다.
+
+`for await`는 [루프](../003-expressions/313-loop-expressions.md)의 `for`의 비동기 변형입니다. 반복마다 `await`가 들어 있어 스트림의 다음 값을 비동기로 기다립니다.
+
+## 4.13.5. `for await` 형태
+
+`for await`의 기본 형태는 다음과 같습니다.
+
+```nabi
+for await pat in stream { body }
+```
+
+`for await`는 비동기 반복에 쓰는 키워드 조합입니다. 반복마다 `await stream.next()`와 같은 효과가 있습니다. 본체는 일반 `for` 본체와 똑같이 씁니다.
+
+변수나 변수의 필드에 든 스트림은 복사본이 아니라 그 자리에서 폴링합니다. 반복을 일찍 끝내면 변수는 반복이 멈춘 곳에 머물고, 남은 것은 변수의 주인이 닫습니다. 자원을 가진 스트림은 주인이 하나뿐이라 `let t = s`는 스트림을 옮기고, 옛 이름으로는 더 반복할 수 없습니다. 그런 변수를 `match` 갈래(또는 `if let`)로 묶은 스트림은 그 변수를 가리킵니다. `match s { x: S => for await k in x { .. } }`는 `s` 자체를 돕니다.
+
+함수에 값으로 넘긴 스트림은 그 함수의 복사본입니다. 호출된 쪽이 돈 만큼 호출한 쪽의 변수가 진행하지는 않습니다. 도우미 함수에서 스트림을 일부 돌고 이어 가려면 스트림을 돌려받으세요(`async fn first(s: S, k: usize) -> (S, usize)`). 도는 동안 핸들을 다른 스레드에 넘기는 표준 스트림(`ReadDirStream`)은 그런 호출 뒤에 다시 돌 수 없습니다(E0105).
+
+이 형태는 `async fn`, `async {}`, `async ||` 본체 안에서만 쓸 수 있습니다.
+
+## 4.13.6. `yield`와 `await`의 평가 흐름
+
+두 키워드가 함께 동작하는 흐름은 다음 예와 같습니다.
+
+```nabi
+async yield fn paginate() -> Page {
+    let next = "/start";
+    loop {
+        let page = await fetch(next);
+        yield page;
+        match page.next_url {
+            url: str => next = url,
+            none     => break,
+        }
+    }
+}
+```
+
+먼저 `await fetch(...)`가 페이지를 받을 때까지 기다립니다. 이어서 `yield page`가 그 페이지를 내보내고, 소비자가 다음 값을 요청할 때까지 함수가 멈춥니다. 소비자가 다음 값을 요청하면 함수가 다시 이어서 다음 페이지를 가져옵니다.
+
+## 4.13.7. Stream 트레잇
+
+결과 객체는 표준 라이브러리의 `AsyncStream<T>`(`Stream<Item = T>` 구현)입니다. 의미로 보면 Iterator와 Future를 합친 것으로, 다음 값을 기다리는 메커니즘입니다.
+
+자세한 시그니처와 메서드(`map`, `filter`, `take`, `merge`, `zip` 등)는 표준 라이브러리에서 정의합니다.
+
+## 4.13.8. 라이브러리 함수와 결합
+
+스트림을 변환하고 결합하는 일은 표준 라이브러리 함수가 맡습니다.
+
+```nabi
+stream::merge(s1, s2)             // 두 스트림 합침
+stream::zip(s1, s2)               // 짝지어 동시 진행
+s.throttle(delay)                 // 속도 제한
+```
+
+자세한 함수와 메서드는 표준 라이브러리 사양에서 정의합니다.
+
+## 4.13.9. 무한 스트림
+
+스트림은 다음처럼 끝없이 이어질 수도 있습니다.
+
+```nabi
+async yield fn ticks() -> Instant {
+    loop {
+        yield Instant::now();
+        await task::sleep(Duration::secs(1));
+    }
+}
+
+async fn run() {
+    for await t in ticks() {
+        if should_stop() { break; }
+        print(t);
+    }
+}
+```
+
+이런 무한 스트림은 소비자가 `break`로 빠져나오거나 라이브러리의 `take(n)` 같은 변환을 거치면 끝납니다.
+
+## 4.13.10. 채널, 파이프와 비교
+
+표준 라이브러리의 채널(`channel::channel()`은 `Sender<T>`와 `Receiver<T>`를 돌려줍니다)도 시간 차를 두고 여러 값을 옮기는 메커니즘입니다. 다만 스트림과는 다음이 다릅니다.
+
+| 측면            | `Stream<Item = T>`        | 채널(`Sender<T>` / `Receiver<T>`) |
+|-----------------|---------------------------|-----------------------------|
+| 정의            | `async yield` 함수의 결과 | 라이브러리 타입             |
+| 생산자와 소비자 | 한 함수 안에 통합         | 분리된 두 끝점              |
+| 다대다          | 별도 결합 (merge 등)      | 자연스러움 (송신자 여러 개) |
+
+`Stream`은 비동기 계산 하나가 시간 차를 두고 값을 만들어 내는 모델입니다. 채널은 여러 동시 task가 값을 주고받는 모델입니다. 두 추상화는 서로를 보완합니다.
+
+## 4.13.11. `async` `yield` 메서드
+
+`async yield`는 메서드로도 자유롭게 정의할 수 있습니다.
+
+```nabi
+impl Database {
+    async yield fn iter_rows(self, sql: str) -> Row {
+        let cursor = await self.query(sql);
+        loop {
+            let row = await cursor.next();
+            match row {
+                r: Row => yield r,
+                none   => break,
+            }
+        }
+    }
+}
+
+async fn run(db: Db) {
+    for await row in db.iter_rows("SELECT ...") {
+        process(row);
+    }
+}
+```
+
+일반 메서드와 마찬가지로 `async yield` 메서드도 자유롭게 정의해서 쓸 수 있습니다.
