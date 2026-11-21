@@ -656,7 +656,7 @@ nabi uninstall [--native] <name>..
 - 9.10.4a와 같은 버전 요구(`^0.3.1`, `~0.3.1`, `=0.3.1`, `>=0.3, <0.5`). 받아들이는 설치 버전 가운데 가장 높은 것과 맞습니다.
 - toolchain 디렉터리 이름(`0.3.1-<triple>`). 그 디렉터리와 맞습니다.
 
-설치된 것 가운데 가장 높은 것이 이깁니다. 매니페스트의 고정이 이 중 어느 것도 아니면 무엇을 쓸지 알려 주는 경고입니다(`` `toolchain: "banana"`: write a version (`0.1`), a requirement (`^0.1.0`) or a toolchain directory name ``). 맞는 toolchain이 없으면 에러입니다. 에러는 고정과 그 출처를 밝히고, 그것을 설치하는 명령을 안내합니다. 전체 버전이면 `nabi toolchain install <pin>`, 아니면 고정이 받아들이는 전체 버전으로 `nabi toolchain install <version>`, 또는 `--from`입니다.
+맞는 설치 릴리스 가운데 가장 높은 것이 이깁니다. prerelease(`0.3.1-rc.1`)는 맞는 릴리스가 없을 때만 이깁니다. 그래서 `0.3`은 `0.3.1-rc.1`보다 `0.3.0`을 고르고, 후보만 설치된 시리즈는 그 가운데 가장 새 것을 고릅니다. prerelease를 정확히 적은 고정(`0.3.1-rc.1`)은 그것만 맞습니다. 매니페스트의 고정이 이 중 어느 것도 아니면 무엇을 쓸지 알려 주는 경고입니다(`` `toolchain: "banana"`: write a version (`0.1`), a requirement (`^0.1.0`) or a toolchain directory name ``). 맞는 toolchain이 없으면 에러입니다. 에러는 고정과 그 출처를 밝히고, 그것을 설치하는 명령을 안내합니다. 전체 버전이면 `nabi toolchain install <pin>`, 아니면 고정이 받아들이는 전체 버전으로 `nabi toolchain install <version>`, 또는 `--from`입니다.
 
 시리즈는 깨지는 변경 한 단계가 묶는 릴리스입니다. 메이저 버전이 0인 동안은 `0.MINOR`(`0.1`), 그 뒤로는 `MAJOR`(`1`)입니다. 수정과 보안 릴리스는 가장 새 시리즈에만 나옵니다. 이전 시리즈는 계속 내려받아 설치할 수 있지만 지원하지 않습니다.
 

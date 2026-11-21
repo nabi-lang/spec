@@ -633,7 +633,7 @@ A pin is one of:
 - a requirement as in 9.10.4a (`^0.3.1`, `~0.3.1`, `=0.3.1`, `>=0.3, <0.5`), matching the highest installed version it accepts;
 - a toolchain directory name (`0.3.1-<triple>`), matching that directory.
 
-The highest installed match wins. A manifest pin that is none of these is a warning saying what to write (`` `toolchain: "banana"`: write a version (`0.1`), a requirement (`^0.1.0`) or a toolchain directory name ``). If no toolchain matches, it is an error naming the pin and where it came from, with the command that installs it: `nabi toolchain install <pin>` for a full version, else `nabi toolchain install <version>` with a full version the pin accepts, or `--from`.
+The highest installed release that matches wins; a prerelease (`0.3.1-rc.1`) wins only when no release matches, so `0.3` takes `0.3.0` over `0.3.1-rc.1`, and a series with only candidates installed takes the newest of them. A pin naming a prerelease exactly (`0.3.1-rc.1`) matches only it. A manifest pin that is none of these is a warning saying what to write (`` `toolchain: "banana"`: write a version (`0.1`), a requirement (`^0.1.0`) or a toolchain directory name ``). If no toolchain matches, it is an error naming the pin and where it came from, with the command that installs it: `nabi toolchain install <pin>` for a full version, else `nabi toolchain install <version>` with a full version the pin accepts, or `--from`.
 
 A series is the releases one breaking slot covers: `0.MINOR` while the major version is 0 (`0.1`), then `MAJOR` (`1`). Only the newest series gets fixes and security releases; an older one stays downloadable and installable but is not supported.
 
