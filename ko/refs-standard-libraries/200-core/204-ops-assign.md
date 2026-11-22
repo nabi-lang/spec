@@ -178,7 +178,7 @@ fn add_assign(ref self, rhs: Rhs);
 
 ## 2.4.5. 우선순위 / 결합성: prec=-2, right
 
-모든 `*Assign` 토큰은 [refs-lang 3.2](../../refs-lang/003-expressions/302-precedence-and-associativity.md) 표에서 같은 등급으로 고정됩니다. 우선순위는 `prec = -1`이므로 일반 산술(`+`는 9, `*`는 10)보다 낮고 `..`(=0)보다도 낮습니다. 가장 낮은 등급입니다. 연쇄 대입은 쓸 수 없습니다([refs-lang 3.4.4](../../refs-lang/003-expressions/304-assignment.md)).
+모든 `*Assign` 토큰은 [refs-lang 3.2](../../refs-lang/003-expressions/302-precedence-and-associativity.md) 표에서 같은 등급으로 고정됩니다. 우선순위는 `prec = -2`이므로 일반 산술(`+`는 9, `*`는 10), `..`(=0), `|>`(=-1)보다 낮습니다. 가장 낮은 등급입니다. 연쇄 대입은 쓸 수 없습니다([refs-lang 3.4.4](../../refs-lang/003-expressions/304-assignment.md)).
 
 ## 2.4.6. 트레잇 구현 매트릭스
 

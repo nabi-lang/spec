@@ -178,7 +178,7 @@ This signature is the core of in-place behavior. If it took only `self` (by valu
 
 ## 2.4.5. Precedence / associativity - prec=-2, right
 
-Every `*Assign` token is fixed at the same level in the [refs-lang 3.2](../../refs-lang/003-expressions/302-precedence-and-associativity.md) table. Its precedence is `prec = -1`, lower than ordinary arithmetic (`+` is 9, `*` is 10) and lower than `..` (=0). It is the lowest level. Chained assignment is not allowed ([refs-lang 3.4.4](../../refs-lang/003-expressions/304-assignment.md)).
+Every `*Assign` token is fixed at the same level in the [refs-lang 3.2](../../refs-lang/003-expressions/302-precedence-and-associativity.md) table. Its precedence is `prec = -2`, lower than ordinary arithmetic (`+` is 9, `*` is 10), `..` (=0) and `|>` (=-1). It is the lowest level. Chained assignment is not allowed ([refs-lang 3.4.4](../../refs-lang/003-expressions/304-assignment.md)).
 
 ## 2.4.6. Trait implementation matrix
 
