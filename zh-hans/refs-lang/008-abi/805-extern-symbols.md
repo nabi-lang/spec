@@ -144,7 +144,7 @@ extern "nabi" {
 }
 ```
 
-在进程启动后、`main()` 之前立即调用。效果：把调用线程设置为主修改器（其 TLS 块、栈保护区和 GC 状态）。执行器的工作线程池是由 `core::task` 在首次使用时启动的 Nabi 代码，I/O 轮询器在首次注册时惰性创建。编译器生成的 C ABI `main` 在此调用之后立即调用 `nabi.register_types`（[8.2.13](802-scan-table.md#8213-registration-time)）。
+在进程启动后、`main()` 之前立即调用。效果：把调用线程设置为主 mutator（其 TLS 块、栈保护区和 GC 状态）。执行器的工作线程池是由 `core::task` 在首次使用时启动的 Nabi 代码，I/O 轮询器在首次注册时惰性创建。编译器生成的 C ABI `main` 在此调用之后立即调用 `nabi.register_types`（[8.2.13](802-scan-table.md#8213-registration-time)）。
 
 运行时还导出线程局部块 `nabi_tls`（[8.3.8](803-tls-slots.md#838-form-of-compiler-emission)）。
 
@@ -191,7 +191,7 @@ extern "nabi" {
 
 ### `nabi_runtime_yield`
 
-[安全点协议](804-safepoint.md)中的 `yield` 函数，即安全点轮询的慢速路径。**线程安全性：`caller-thread-only`**（由调用方修改器在轮询自己的 yield_flag 后调用）。
+[安全点协议](804-safepoint.md)中的 `yield` 函数，即安全点轮询的慢速路径。**线程安全性：`caller-thread-only`**（由调用方 mutator 在轮询自己的 yield_flag 后调用）。
 
 ```
 extern "nabi" {
@@ -210,11 +210,11 @@ extern "nabi" {
 }
 ```
 
-编译器在每个 `extern "C"` 调用（`#[leaf]` 调用除外，[标准库 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf---short-calls)）周围内联快速路径：以 seq_cst 方式向修改器状态存入 `PARKED` / `RUNNING`，然后检查 yield 标志。只有在标志被设置时才调用这两个函数。
+编译器在每个 `extern "C"` 调用（`#[leaf]` 调用除外，[标准库 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf---short-calls)）周围内联快速路径：以 seq_cst 方式向 mutator 状态存入 `PARKED` / `RUNNING`，然后检查 yield 标志。只有在标志被设置时才调用这两个函数。
 
 ### `nabi_native_reenter` / `nabi_native_resume`
 
-每个 `extern "C" fn` 定义的入口和出口，使 C 回调作为修改器运行。**线程安全性：`caller-thread-only`**。
+每个 `extern "C" fn` 定义的入口和出口，使 C 回调作为 mutator 运行。**线程安全性：`caller-thread-only`**。
 
 ```
 extern "nabi" {
@@ -304,9 +304,9 @@ extern "nabi" {
 
 ### `nabi_coro_park` / `nabi_coro_unpark`
 
-编译器不生成这两个符号（`await` 使用 `core::task` 的停靠注册表）。运行时为 C 和底层代码提供它们。`frame`（任意 GC 对象）的地址是停靠键，`nabi_coro_unpark(frame)` 唤醒停靠在该键上的所有 waker。在任务执行器之外调用它们会中止。
+编译器不生成这两个符号（`await` 使用 `core::task` 的驻留注册表）。运行时为 C 和底层代码提供它们。`frame`（任意 GC 对象）的地址是驻留键，`nabi_coro_unpark(frame)` 唤醒驻留在该键上的所有 waker。在任务执行器之外调用它们会中止。
 
-**线程安全性：`nabi_coro_park` 为 `caller-thread-only`**（停靠调用它的协程自身），**`nabi_coro_unpark` 为 `thread-safe`**（可以从其他线程调用）。
+**线程安全性：`nabi_coro_park` 为 `caller-thread-only`**（驻留调用它的协程自身），**`nabi_coro_unpark` 为 `thread-safe`**（可以从其他线程调用）。
 
 ```
 extern "nabi" {
@@ -321,7 +321,7 @@ extern "nabi" {
 
 ## 8.5.4. 调度器区域
 
-任务运行时（spawn、join、取消、执行器）是 `core::task` 中的 Nabi 代码（[标准库 2.18](../../refs-standard-libraries/200-core/218-task.md)）。运行时为其提供下面的执行器槽、线程和停靠符号；其他调度器辅助函数（`nabi_sched_*`、`nabi_lane_*`、`nabi_sync_*`、`nabi_deque_*`）由实现定义（8.5.12）。
+任务运行时（spawn、join、取消、执行器）是 `core::task` 中的 Nabi 代码（[标准库 2.18](../../refs-standard-libraries/200-core/218-task.md)）。运行时为其提供下面的执行器槽、线程和驻留符号；其他调度器辅助函数（`nabi_sched_*`、`nabi_lane_*`、`nabi_sync_*`、`nabi_deque_*`）由实现定义（8.5.12）。
 
 ### `nabi_task_worker_*` / `nabi_time_now_ns`
 
@@ -486,7 +486,7 @@ extern "nabi" {
 
 ### `nabi_io_register` / `nabi_timer_register`
 
-让 C 或底层代码注册一个在 fd 就绪时或在某个时间点被唤醒的任务。它们在内部使用反应器（[7.7](../007-runtime/707-io-and-timer.md)）和执行器的定时器。在任务执行器之外调用它们会中止。
+让 C 或底层代码注册一个在 fd 就绪时或在某个时间点被唤醒的任务。它们在内部使用 reactor（[7.7](../007-runtime/707-io-and-timer.md)）和执行器的定时器。在任务执行器之外调用它们会中止。
 
 **线程安全性：`thread-safe`**。
 
@@ -502,9 +502,9 @@ extern "nabi" {
 - `waker`：单元素的 `GcBuf<Waker>`。注册是边沿触发的，**只唤醒一次**（可能出现虚假唤醒）。如果 fd 已经就绪或无法监视，则立即唤醒。
 - `deadline`：`nabi_time_now_ns` 时钟上的绝对时间（ns）。到达该时间时，waker 被唤醒一次。
 
-### `nabi_io_*` - 反应器（内部，可能变更）
+### `nabi_io_*` - reactor（内部，可能变更）
 
-构成 [I/O 驱动](../007-runtime/707-io-and-timer.md)中反应器的内部符号。它们不受 ABI 稳定性保证，可能变更。**线程安全性：`thread-safe`**。
+构成 [I/O 驱动](../007-runtime/707-io-and-timer.md)中 reactor 的内部符号。它们不受 ABI 稳定性保证，可能变更。**线程安全性：`thread-safe`**。
 
 ```
 extern "nabi" {

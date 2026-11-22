@@ -1,6 +1,6 @@
-# 8.3. 修改器 TLS 槽布局
+# 8.3. mutator TLS 槽布局
 
-每个 OS 线程（= 调度器工作线程 = 修改器（mutator））都在线程局部存储（TLS）中的固定位置保存运行时信息。编译器生成的代码与运行时读写同一组 TLS 槽，因此本文档定义每个槽的偏移和类型。
+每个 OS 线程（= 调度器工作线程 = mutator）都在线程局部存储（TLS）中的固定位置保存运行时信息。编译器生成的代码与运行时读写同一组 TLS 槽，因此本文档定义每个槽的偏移和类型。
 
 ## 8.3.1. TLS 槽结构
 
@@ -21,7 +21,7 @@ TLS 槽是由运行时定义并导出的一个 `thread_local` 块 `nabi_tls`；�
 | 8p       | `nabi_tls_stack_guard`       | [usize; 2] | `[lo, hi)`：在此范围内的故障是本线程的栈溢出（`[0, 0)` 表示未知，[8.5.7](805-extern-symbols.md#stack-overflow)） |
 | 10p      | `nabi_tls_worker_id`         | u64  | 工作线程 id                             |
 | 10p+8    | `nabi_tls_yield_flag`        | u8   | 是否在安全点 `yield`                    |
-| 10p+9    | `nabi_tls_mutator_state`     | u8   | 修改器状态                              |
+| 10p+9    | `nabi_tls_mutator_state`     | u8   | mutator 状态                              |
 
 **ABI 契约**是块符号 `nabi_tls` 以及每个槽的偏移、类型和含义。槽名仅供参考，它们不是符号。块按 8 对齐，至少 10p+10 字节；最后一个 ABI 槽之后可以跟随由实现定义的槽。
 
@@ -57,7 +57,7 @@ TLS 槽是由运行时定义并导出的一个 `thread_local` 块 `nabi_tls`；�
 
 ### `nabi_tls_yield_flag`（u8）
 
-[GC](../000-meta/007-glossary.md#gc-garbage-collector) 为安全点设置的标志；修改器在轮询时检查它。位 0 是运行时的停止请求，由运行时置位和清除；其他位属于嵌入宿主（例如 REPL 的中断），运行时不会改动。只要标志非零，轮询就调用 `nabi_runtime_yield`。
+[GC](../000-meta/007-glossary.md#gc-garbage-collector) 为安全点设置的标志；mutator 在轮询时检查它。位 0 是运行时的停止请求，由运行时置位和清除；其他位属于嵌入宿主（例如 REPL 的中断），运行时不会改动。只要标志非零，轮询就调用 `nabi_runtime_yield`。
 
 详细机制定义在[屏障与根](../007-runtime/704-barriers-and-roots.md)的安全点轮询部分。
 
@@ -106,7 +106,7 @@ write_barrier(p, q):
 
 ### `nabi_tls_mutator_state`（u8）
 
-修改器的当前状态。
+mutator 的当前状态。
 
 | 值    | 含义                          |
 |-------|-------------------------------|
@@ -164,7 +164,7 @@ nabi_thread_shutdown():
 
 该块是由运行时定义并导出的 `thread_local` 全局变量。编译器以外部声明引用它，并按相对于块地址的偏移读取各槽。Nabi 函数从调用者处以隐藏的最后一个实参接收该地址（8.6.6），因此 Nabi 函数之间的调用不读取 TLS。从 Nabi 之外进入的代码自己获取一次该地址并继续传递：C 的 `main`、`extern "C"` 定义的 C 入口、`#[export_name]` Nabi 函数、`any` 分派器、惰性 `static` 的初始化器，以及函数值所经过的 thunk（8.6.11）。
 
-`extern "C"` 定义的 C 入口可能运行在由 C 代码启动、运行时并不知道的线程上。在这样的线程上，它先接入该线程：按 `nabi_thread_init` 的方式初始化各槽（8.3.6），并把该线程注册为修改器，然后再运行函数体。在两次这样的调用之间回到 C 时，该线程算作 `PARKED`（[8.4.10](804-safepoint.md#8410-native-calls)），因此回收不会等待它；线程结束时，它像 `nabi_thread_shutdown` 那样离开注册表（8.3.7）。无法以这种方式接入线程的目标（WebAssembly）则改为中止，并输出 `nabi: callback on a thread nabi does not know; call nabi_thread_init() first`。
+`extern "C"` 定义的 C 入口可能运行在由 C 代码启动、运行时并不知道的线程上。在这样的线程上，它先接入该线程：按 `nabi_thread_init` 的方式初始化各槽（8.3.6），并把该线程注册为 mutator，然后再运行函数体。在两次这样的调用之间回到 C 时，该线程算作 `PARKED`（[8.4.10](804-safepoint.md#8410-native-calls)），因此回收不会等待它；线程结束时，它像 `nabi_thread_shutdown` 那样离开注册表（8.3.7）。无法以这种方式接入线程的目标（WebAssembly）则改为中止，并输出 `nabi: callback on a thread nabi does not know; call nabi_thread_init() first`。
 
 ```
 ; nabi_tls: defined by the runtime; compiler output refers to it as an undefined symbol

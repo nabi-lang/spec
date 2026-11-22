@@ -66,10 +66,10 @@ bit  6 ~ 31 : reserved / GC implementation-defined
 | 6    | `UNLOGGED` | 在一次回收中存活下来的对象上与 `STICKY` 一同置位。写屏障第一次把该对象记入记忆集时清除 |
 | 7    | `CARDED`   | 在 8 KiB 及以上的老对象上代替 `UNLOGGED` 置位。屏障把一张 512 B 的卡标记为脏。卡表指针位于对象头之前紧邻的字 |
 | 8    | `NOMOVE`   | 地址被当作数值使用的对象。无论生命周期如何都不会被移动。由 `nabi_task_key`（[8.5](805-extern-symbols.md)）置位 |
-| 9    | `NOEVAC`   | 回收器内部使用，作用于一次完整回收：某个含糊的字（一个根，或运行时字缓冲区（类型 id `2`）中的一个字）指向该对象，因此该次回收的疏散会把它留在原处（[7.3.1](../007-runtime/703-gc-algorithm.md#opportunistic-evacuation)）。在疏散前对候选块中的此类对象置位，疏散访问到它们时清除 |
+| 9    | `NOEVAC`   | 回收器内部使用，作用于一次完整回收：某个不确定字（一个根，或运行时字缓冲区（类型 id `2`）中的一个字）指向该对象，因此该次回收的疏散会把它留在原处（[7.3.1](../007-runtime/703-gc-algorithm.md#opportunistic-evacuation)）。在疏散前对候选块中的此类对象置位，疏散访问到它们时清除 |
 | 10   | `SATB`     | 在并发标记期间，屏障记录该对象的引用时置位。相互竞争的存储会等待它被清除（[7.5.3](../007-runtime/705-concurrent-collection.md#753-satb-barrier)） |
 | 11   | `SCANNED`  | 该对象已在并发标记中被扫描 |
-| 12   | `WIPE`     | 机密缓冲区（`nabi_gc_secret_new`，[8.5.1](805-extern-symbols.md#nabi_gc_secret_new--nabi_gc_secret_wipe)）。释放它的清扫先把其载荷清零。永不清除 |
+| 12   | `WIPE`     | 机密缓冲区（`nabi_gc_secret_new`，[8.5.1](805-extern-symbols.md#nabi_gc_secret_new--nabi_gc_secret_wipe)）。释放它的清除先把其载荷清零。永不清除 |
 | 13 ~ 28 | `VISIT_STAMP` | 供 `par` 访问使用（[标准库 2.19.1](../../refs-standard-libraries/200-core/219-par.md#2191-core-api)）：最近一次到达该对象的访问的 16 位纪元。回收器保留这些位 |
 | 29   | `VISIT_OTHERS` | `par` 访问：被不止一个项到达，且每个都经由切片 |
 | 30   | `VISIT_SLICED` | `par` 访问：到目前为止只经由切片到达 |
@@ -77,13 +77,13 @@ bit  6 ~ 31 : reserved / GC implementation-defined
 
 ### 原子性要求
 
-在 STW 回收中，`MARK` / `STICKY` / `FORWARDED` 是非原子的。并发标记期间标记器与修改器（mutator）会同时触及的 `MARK` / `SATB` / `SCANNED`，以及修改器之间会竞争的 `UNLOGGED` 清除操作，都是原子的（[7.4.2](../007-runtime/704-barriers-and-roots.md#742-write-barrier-object-remembering)）。
+在 STW 回收中，`MARK` / `STICKY` / `FORWARDED` 是非原子的。并发标记期间标记器与 mutator 会同时触及的 `MARK` / `SATB` / `SCANNED`，以及 mutator 之间会竞争的 `UNLOGGED` 清除操作，都是原子的（[7.4.2](../007-runtime/704-barriers-and-roots.md#742-write-barrier-object-remembering)）。
 
 ## 8.1.4. `gc_word`（偏移 8，u64 或 ptr）
 
 `gc_word` 是对象的总大小（包括 16 字节的对象头，是 8 的倍数）。它同时适用于 Immix 对象和 LOS 对象，由分配快速路径以内联方式写入（[8.9.9](809-lowering-control.md#899-gc-alloc-fast--slow-path)）。
 
-只有在完整回收的疏散期间，被移动对象的 `FORWARDED` 位才会置位，此时 `gc_word` 指向新地址。所有引用都在同一次回收内修正（[7.3.1](../007-runtime/703-gc-algorithm.md#731-immix-mark-region)），旧位置随后被丢弃，因此修改器永远观察不到转发。
+只有在完整回收的疏散期间，被移动对象的 `FORWARDED` 位才会置位，此时 `gc_word` 指向新地址。所有引用都在同一次回收内修正（[7.3.1](../007-runtime/703-gc-algorithm.md#731-immix-mark-region)），旧位置随后被丢弃，因此 mutator 永远观察不到转发。
 
 块内的对象的 `type_id` 永远不为 0。回收器用 0 标记空闲空间。
 
@@ -123,7 +123,7 @@ total_size = 16 + align_up(payload_size, max(8, payload_align))
 
 其中 `align_up(x, a) = (x + a - 1) & ~(a - 1)`。
 
-这个大小就是 [TLAB](../000-meta/007-glossary.md#tlab-thread-local-allocation-buffer) 碰撞指针（bump pointer）的增量（见[分配](../007-runtime/702-allocation.md)）。
+这个大小就是 [TLAB](../000-meta/007-glossary.md#tlab-thread-local-allocation-buffer) bump 指针的增量（见[分配](../007-runtime/702-allocation.md)）。
 
 ## 8.1.8. 示例：i32 对象
 

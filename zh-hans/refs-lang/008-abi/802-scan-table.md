@@ -181,7 +181,7 @@ field_kind = ANY_SLOT (3)
 弱引用不会让对象保持存活。
 
 - 标记阶段不跟随弱 `ref`。
-- 清扫之后，如果弱 `ref` 所指的对象已被回收，该弱 `ref` 槽被清为 0。
+- 清除之后，如果弱 `ref` 所指的对象已被回收，该弱 `ref` 槽被清为 0。
 
 这一机制适用于缓存、观察者模式等场景；其库接口是 `Weak<T>`（[标准库 1.6.9](../../refs-standard-libraries/100-bare/106-gc-pin.md#169-weakt---weak-references)）。
 
