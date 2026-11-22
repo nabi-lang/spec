@@ -178,7 +178,7 @@ fn add_assign(ref self, rhs: Rhs);
 
 ## 2.4.5. 优先级 / 结合性：prec=-2，右结合
 
-每个 `*Assign` 词法单元在 [refs-lang 3.2](../../refs-lang/003-expressions/302-precedence-and-associativity.md) 的表中都固定在同一级别。其优先级为 `prec = -1`，低于普通算术（`+` 为 9，`*` 为 10），也低于 `..`（=0），是最低的一级。不允许链式赋值（[refs-lang 3.4.4](../../refs-lang/003-expressions/304-assignment.md)）。
+每个 `*Assign` 词法单元在 [refs-lang 3.2](../../refs-lang/003-expressions/302-precedence-and-associativity.md) 的表中都固定在同一级别。其优先级为 `prec = -2`，低于普通算术（`+` 为 9，`*` 为 10）、`..`（=0）和 `|>`（=-1），是最低的一级。不允许链式赋值（[refs-lang 3.4.4](../../refs-lang/003-expressions/304-assignment.md)）。
 
 ## 2.4.6. trait 实现矩阵
 
