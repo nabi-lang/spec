@@ -32,7 +32,7 @@ pub struct Mask<T, const N: usize> { /* private: [T; N] */ }
 - `SimdElement` 由 `i8`、`i16`、`i32`、`i64`、`u8`、`u16`、`u32`、`u64`、`f32` 與 `f64` 實作。它的方法（`lane_add`、`lane_mask`、...）是撰寫向量型別所用的線道操作。
 - `Simd<T, N>` 是值型別，與 `[T; N]` 一樣在指派時複製，線道依序排列：線道 0 在前。任何 `N` 都可以，包括 `0`；當 `N * size_of::<T>()` 是 16 位元組的倍數（使用 AVX2 時為 32 位元組）時才會使用向量指令。
 - `Mask<T, N>` 是 `Simd<T, N>` 的遮罩：每個線道為設定（所有位元為一）或清除。它具有向量的線道型別，因此 `Mask<f32, 4>` 與 `f32x4` 搭配。
-- 在 `extern "C"` 簽章中，8 或 16 位元組的 `Simd<T, N>` 在 AAPCS64 與 x86-64 上是目標中該大小的 C 向量（`float32x4_t`、`__m128`、`__attribute__((vector_size(16)))`），並如 C 一樣以向量暫存器傳遞（[refs-lang 8.6.3](../../refs-lang/008-abi/806-calling-convention.md#863-struct-arguments--return-small-struct-rule)）。其他大小、其他目標、以傳值方式傳遞之結構內的 `Simd`，以及 `Mask`，都是編譯錯誤，錯誤訊息會指示改為傳遞指向各線道的指標。在記憶體中，`Simd` 依其線道對齊，而不像 C 的向量那樣對齊到 16 位元組。
+- 在 `extern "C"` 簽章中，8 或 16 位元組的 `Simd<T, N>` 在 AAPCS64 與 x86-64 上是目標中該大小的 C 向量（`float32x4_t`、`__m128`、`__attribute__((vector_size(16)))`），並如 C 一樣以向量暫存器傳遞（[refs-lang 8.6.3](../../refs-lang/008-abi/806-calling-convention.md#863-struct-引數--回傳小-struct-規則)）。其他大小、其他目標、以傳值方式傳遞之結構內的 `Simd`，以及 `Mask`，都是編譯錯誤，錯誤訊息會指示改為傳遞指向各線道的指標。在記憶體中，`Simd` 依其線道對齊，而不像 C 的向量那樣對齊到 16 位元組。
 - 別名為常見的形狀命名：`f32x2`、`f32x4`、`f32x8`、`f32x16`、`f64x2`、`f64x4`、`f64x8`、`i8x16`、`i8x32`、`i16x8`、`i16x16`、`i32x4`、`i32x8`、`i64x2`、`i64x4`、`u8x16`、`u8x32`、`u16x8`、`u16x16`、`u32x4`、`u32x8`、`u64x2`、`u64x4`（`f32x4` 即 `Simd<f32, 4>`）。
 
 `Simd` 與 `Mask` 實作 `PartialEq`（每個線道都相等；NaN 線道與任何值都不相等）與 `Debug`（線道以陣列表示：`[1.0, 2.0, 3.0, 4.0]`，遮罩則為 `[true, false, ..]`），`Simd` 另外實作 `Default`（每個線道為零）與 `Index<usize>`（`v[i]`，超過最後一個線道時觸發 panic）。

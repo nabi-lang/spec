@@ -15,7 +15,7 @@
 
 ## 7.9.2. 原子順序
 
-`Atomic<T>`（[stdlib 2.16.2](../../refs-standard-libraries/200-core/216-sync.md#2162-atomict---lock-free-atomics)）接受 C++20 的五種順序，意義與 C++20 相同：
+`Atomic<T>`（[stdlib 2.16.2](../../refs-standard-libraries/200-core/216-sync.md#2162-atomict無鎖原子)）接受 C++20 的五種順序，意義與 C++20 相同：
 
 | 順序      | C++20                        | 意義 |
 |-----------|------------------------------|---------|
@@ -60,15 +60,15 @@ Nabi 沒有獨立的記憶體柵欄：每個順序都附加在某個原子操作
 資料競爭只能透過 `unsafe` 所放行的程式碼發生。安全的 Nabi 沒有資料競爭，理由如下：
 
 - `static` 可以從每個執行緒存取，因此其型別必須是 `Sync`（[5.3.1](../005-modules/503-static.md#531-基本形式)）；`static mut` 只存在於 `extern "C"` 區塊中，存取它需要 `unsafe`。
-- 集合型別（`List`、`Dict`、`StrBuf`……）是 `!Sync`，`Cell<T>`、原始指標與守衛也是（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）。共享的可變狀態只能放在 `Mutex`、`RwLock`、`Atomic` 或通道內跨越執行緒。凍結的集合（`xs.freeze()`，[stdlib 2.9.7b](../../refs-standard-libraries/200-core/209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s---read-only-collections)）是 `Sync`，因為沒有任何東西寫入它：沒有任何可變更的控制代碼能到達其儲存空間。
+- 集合型別（`List`、`Dict`、`StrBuf`……）是 `!Sync`，`Cell<T>`、原始指標與守衛也是（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)）。共享的可變狀態只能放在 `Mutex`、`RwLock`、`Atomic` 或通道內跨越執行緒。凍結的集合（`xs.freeze()`，[stdlib 2.9.7b](../../refs-standard-libraries/200-core/209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s唯讀集合型別)）是 `Sync`，因為沒有任何東西寫入它：沒有任何可變更的控制代碼能到達其儲存空間。
 - 把值交給另一個擁有者（`Mutex::new`、`send`、`task::spawn`、`[move x]`、執行緒的結果……）會讓新的擁有者得到該值所能到達之每個集合的自己的複本，而之後使用傳送者的值是編譯錯誤（2.13.9）。被產生之閉包的一般擷取必須是 `Send + Sync`。
-- `par` 在執行時檢查兩個項目不會到達同一個不是 `Sync` 的集合，並一次執行一個這樣的項目（[stdlib 2.19.1](../../refs-standard-libraries/200-core/219-par.md#2191-core-api)）。項目只有在其他項目的視圖或切片都不與自己寫入的部分重疊之處，才能透過視圖（`chunks_mut`）寫入同一個串列。
+- `par` 在執行時檢查兩個項目不會到達同一個不是 `Sync` 的集合，並一次執行一個這樣的項目（[stdlib 2.19.1](../../refs-standard-libraries/200-core/219-par.md#2191-核心-api)）。項目只有在其他項目的視圖或切片都不與自己寫入的部分重疊之處，才能透過視圖（`chunks_mut`）寫入同一個串列。
 
 使資料競爭成為可能、因而需要作者小心的東西：
 
 - 透過 `Ptr<T>`、`ManyPtr<T>`、`CPtr<T>` 與 `GcBuf<T>` 的讀取與寫入（[stdlib 1.1](../../refs-standard-libraries/100-bare/101-ptr.md)、[stdlib 1.3](../../refs-standard-libraries/100-bare/103-mem.md)）；
 - 在其共享實際上並未受保護的型別上的 `unsafe impl Send` 或 `unsafe impl Sync`（[4.15.4](../004-functions/415-unsafe.md#4154-在-trait-中)）；
-- 對其他東西仍然能到達的值使用 `Mutex::new_unshared`（[stdlib 2.16.3](../../refs-standard-libraries/200-core/216-sync.md#2163-mutext---exclusive-lock)）；
+- 對其他東西仍然能到達的值使用 `Mutex::new_unshared`（[stdlib 2.16.3](../../refs-standard-libraries/200-core/216-sync.md#2163-mutext互斥鎖)）；
 - 在 `unsafe` 內略過的交接檢查（2.13.9）；
 - `extern static mut` 以及透過 FFI 存取的外部程式碼（[5.9](../005-modules/509-extern-block.md)），包括在 `env::set_var` 執行期間呼叫 `getenv` / `setenv` 的 C 程式碼（[stdlib 3.5](../../refs-standard-libraries/300-std/305-env.md)）。
 

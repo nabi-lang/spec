@@ -2,7 +2,7 @@
 
 `using` 關鍵字（[關鍵字](../001-lexical/105-keywords.md)）是把資源綁定到區塊生命週期的運算式形式。無論區塊以何種方式結束（正常完成、提前 `return`、經由 `?` 回傳 `none`、錯誤傳播），所繫結資源的 `Drop::drop` 一律會被呼叫。
 
-GC 會自動回收記憶體，但外部資源（檔案、通訊端、互斥鎖、FFI 控制代碼、GC 釘選等）必須確定性地釋放。`Drop` 值是仿射的：編譯器在其擁有者離開作用域之處釋放它（[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)）。`using` 讓那個點變得明確：它把值綁定到其區塊，並在區塊結束時釋放它；對於關閉可能失敗的值，它也是不必寫 `try x.close()` 就能關閉它的方式。
+GC 會自動回收記憶體，但外部資源（檔案、通訊端、互斥鎖、FFI 控制代碼、GC 釘選等）必須確定性地釋放。`Drop` 值是仿射的：編譯器在其擁有者離開作用域之處釋放它（[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop釋放時的清理)）。`using` 讓那個點變得明確：它把值綁定到其區塊，並在區塊結束時釋放它；對於關閉可能失敗的值，它也是不必寫 `try x.close()` 就能關閉它的方式。
 
 ## 3.17.1. 形式
 
@@ -100,11 +100,11 @@ let content = using f = try fs::open(path) {
 
 panic 與致命錯誤會立即終止行程，因此不會呼叫 `drop`（[3.14.8](314-error-control-flow.md#3148-panic-與致命錯誤)）。這是 panic 的一般結果，而非 `using` 特有的行為。
 
-一個值只會被釋放一次（[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)）。`using x = a { .. }` 把 `a` 移入 `x`，因此第二個 `using y = a { .. }`，或在第一個區塊之後使用 `a`，是編譯錯誤（E0133）：請給每個 `using` 它自己建立的值（`using g = m.lock() { .. }`），或在一個 `using` 區塊內完成所有工作。在區塊內關閉的值（`try x.close()`）不會再被釋放。
+一個值只會被釋放一次（[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop釋放時的清理)）。`using x = a { .. }` 把 `a` 移入 `x`，因此第二個 `using y = a { .. }`，或在第一個區塊之後使用 `a`，是編譯錯誤（E0133）：請給每個 `using` 它自己建立的值（`using g = m.lock() { .. }`），或在一個 `using` 區塊內完成所有工作。在區塊內關閉的值（`try x.close()`）不會再被釋放。
 
 ## 3.17.7. 可以繫結的型別
 
-`using` 右側運算式的型別必須實作 [`Drop`](../../refs-standard-libraries/200-core/213-marker.md)，或包含具有 `Drop` 的欄位（drop glue，[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)）。否則就是編譯錯誤（E0066）。
+`using` 右側運算式的型別必須實作 [`Drop`](../../refs-standard-libraries/200-core/213-marker.md)，或包含具有 `Drop` 的欄位（drop glue，[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop釋放時的清理)）。否則就是編譯錯誤（E0066）。
 
 ```nabi
 using x = 42 { ... }   // ERROR (E0066): using requires a type implementing Drop; i64 does not implement Drop

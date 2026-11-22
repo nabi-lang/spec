@@ -172,7 +172,7 @@ let m = 2 .* a;          //→ [2, 4, 6]
 let t = a ./ 2;          //→ [0, 1, 1]    (i32 truncate)
 ```
 
-這裡由各自獨立的 impl（`DotAdd<T> for List<T>`，以及純量在左側時的 `DotAdd<List<T>> for T`）處理純量這一側。`Slice<T>` 也有同樣的一對；固定長度陣列 `[T; N]` 沒有純量在左的 impl。函式庫的容器也可以用同樣方式為自己的型別取得純量在左的形式：孤兒規則允許在定義 `Matrix` 的套件中寫 `impl DotMul<Matrix> for f64`，因為區域的 `Matrix` 出現在任何型別參數之前（[2.9.5](../../refs-lang/002-types/209-impl.md#295-orphan-rule)），所以 `2.0 .* m` 與 `m .* 2.0` 都可以使用。
+這裡由各自獨立的 impl（`DotAdd<T> for List<T>`，以及純量在左側時的 `DotAdd<List<T>> for T`）處理純量這一側。`Slice<T>` 也有同樣的一對；固定長度陣列 `[T; N]` 沒有純量在左的 impl。函式庫的容器也可以用同樣方式為自己的型別取得純量在左的形式：孤兒規則允許在定義 `Matrix` 的套件中寫 `impl DotMul<Matrix> for f64`，因為區域的 `Matrix` 出現在任何型別參數之前（[2.9.5](../../refs-lang/002-types/209-impl.md#295-孤兒規則)），所以 `2.0 .* m` 與 `m .* 2.0` 都可以使用。
 
 ### 比較點運算：回傳 `Container<bool>`
 
@@ -265,7 +265,7 @@ let m = f64::max.(a, b);             //→ [10.0, 20.0, 30.0]
 let result = f64::sin.(a) .+ f64::cos.(b) .* 2.0;
 ```
 
-單純的降階需要 3 次暫存 List 配置與 3 個迴圈。Nabi 保證在 `List`、`Slice` 與陣列上，以及任何 `Broadcastable` 型別上，只用一個迴圈且不產生中間集合（確切條件見 [3.3.4](../../refs-lang/003-expressions/303-broadcast-operators.md#334-automatic-loop-fusion)）。原地形式（`y .= ..`、`y .+= ..`，[3.3.7](../../refs-lang/003-expressions/303-broadcast-operators.md#337-in-place-broadcast)）直接寫入目標，完全不做配置。
+單純的降階需要 3 次暫存 List 配置與 3 個迴圈。Nabi 保證在 `List`、`Slice` 與陣列上，以及任何 `Broadcastable` 型別上，只用一個迴圈且不產生中間集合（確切條件見 [3.3.4](../../refs-lang/003-expressions/303-broadcast-operators.md#334-自動迴圈融合)）。原地形式（`y .= ..`、`y .+= ..`，[3.3.7](../../refs-lang/003-expressions/303-broadcast-operators.md#337-原地廣播)）直接寫入目標，完全不做配置。
 
 ```nabi
 // conceptually equivalent to this single elementwise call
@@ -338,7 +338,7 @@ let t = s .* 2.0 .+ k;      // one loop; a Signal
 
 `T | none` 的點運算意義是可選值傳播：任一側為 `none` 時，結果就是 `none`。這在運算子層級處理，沒有函式庫 impl：整棵點運算式樹的運算元依原始碼順序各求值一次；接著檢查每個 `T | none` 運算元，遇到第一個 `none` 時，整棵樹的值就是 `none`，不再執行。否則就以 `T` 值執行此樹，依 2.6.6 所述以融合方式或透過點 trait 執行，因此不會以 `none` 呼叫任何點 trait。值的型別是此樹的型別 `| none`。
 
-core 的 n 維 `Array<T, N>`（[2.9.14](209-collections.md#2914-arrayt-const-n-usizen-維陣列)）實作所有點 trait：同秩的陣列與陣列、陣列與純量、純量與陣列，依 2.6.8 的規則。函式庫的數值容器（`Tensor<T>`、資料框的欄）直接實作相同的 trait，包含純量在左的形式：孤兒規則允許在定義 `Tensor` 的套件中寫 `impl DotMul<Tensor> for f64`（[refs-lang 2.9.5](../../refs-lang/002-types/209-impl.md#295-orphan-rule)）。對這類型別的點運算式會逐個運算子呼叫 trait，除非該型別是 `Broadcastable`（2.6.6）；`Array` 是，所以它的點運算式會融合，而它的 trait impl 則用於約束與以名稱呼叫的情況。
+core 的 n 維 `Array<T, N>`（[2.9.14](209-collections.md#2914-arrayt-const-n-usizen-維陣列)）實作所有點 trait：同秩的陣列與陣列、陣列與純量、純量與陣列，依 2.6.8 的規則。函式庫的數值容器（`Tensor<T>`、資料框的欄）直接實作相同的 trait，包含純量在左的形式：孤兒規則允許在定義 `Tensor` 的套件中寫 `impl DotMul<Tensor> for f64`（[refs-lang 2.9.5](../../refs-lang/002-types/209-impl.md#295-孤兒規則)）。對這類型別的點運算式會逐個運算子呼叫 trait，除非該型別是 `Broadcastable`（2.6.6）；`Array` 是，所以它的點運算式會融合，而它的 trait impl 則用於約束與以名稱呼叫的情況。
 
 ## 2.6.8. NumPy 風格的廣播規則
 

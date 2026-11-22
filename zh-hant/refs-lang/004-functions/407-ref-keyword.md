@@ -183,7 +183,7 @@ by_ref(ref a);                    // a = 10
 
 ## 4.7.9. 結構與參照控制代碼
 
-`struct` 是值型別：依值傳遞會複製它，因此被呼叫者中的欄位寫入只影響區域。要改變呼叫者的結構，請以 `ref`（或 `ref self`）接收它，或回傳新的值。參照控制代碼（`List`、`Dict`……，[stdlib 2.9](../../refs-standard-libraries/200-core/209-collections.md#reference-handles)）以控制代碼的身分被複製，因此對其元素的變更呼叫者看得到。
+`struct` 是值型別：依值傳遞會複製它，因此被呼叫者中的欄位寫入只影響區域。要改變呼叫者的結構，請以 `ref`（或 `ref self`）接收它，或回傳新的值。參照控制代碼（`List`、`Dict`……，[stdlib 2.9](../../refs-standard-libraries/200-core/209-collections.md#參考控制代碼)）以控制代碼的身分被複製，因此對其元素的變更呼叫者看得到。
 
 ```nabi
 fn set_x(p: Point) { p.x = 10.0; }          // local copy: the caller's p is unchanged

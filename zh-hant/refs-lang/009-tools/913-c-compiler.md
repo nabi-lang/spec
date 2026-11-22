@@ -2,7 +2,7 @@
 
 工具鏈以它自己的 C 編譯器編譯 C。它以與 `nabi bindgen`（[9.10.8](910-nabi-frontend.md#nabi-bindgenc-標頭檔繫結)）相同的前端讀取 C，把它降階為 nabi-mir，並以 `nabic` 所使用的程式碼產生器與連結器編譯並連結它（[0.2.4](../000-meta/002-pipeline.md#024-程式碼產生)）。沒有其他 C 編譯器、組譯器或連結器參與，也不需要安裝任何一個。
 
-前端也讀取 Objective-C 標頭檔，供 `ffi::objc::import` 與 `nabi bindgen -x objective-c` 使用（[stdlib 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-headers-ffiobjcimport)）：只有宣告（`@interface`、`@protocol`、方法、屬性），預先定義 `__OBJC__`、`__OBJC2__` 與 ARC 的功能，`#import` 每個檔案只讀取一次。`nabicc` 本身只編譯 C；`.m` 檔案不是 C 原始碼。
+前端也讀取 Objective-C 標頭檔，供 `ffi::objc::import` 與 `nabi bindgen -x objective-c` 使用（[stdlib 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-標頭檔ffiobjcimport)）：只有宣告（`@interface`、`@protocol`、方法、屬性），預先定義 `__OBJC__`、`__OBJC2__` 與 ARC 的功能，`#import` 每個檔案只讀取一次。`nabicc` 本身只編譯 C；`.m` 檔案不是 C 原始碼。
 
 ## 9.13.1. `nabicc` 與 `nabi cc`
 
@@ -166,7 +166,7 @@ C89、C99、C11、C17 與 C23 被當作一種方言讀取：為其中任何一�
 
 當目標就是主機，而工具鏈沒有為它隨附 sysroot 時，使用主機的 `/usr/include`。不屬於這些任何一種的目標是錯誤，錯誤訊息會指出缺少的目錄以及 `--sysroot <dir>`。`--sysroot <dir>`（或 `-isysroot <dir>`）會覆寫此表：改為搜尋其下的標頭檔（`usr/include`，在 Linux 上搭配目標的 multiarch 目錄；在 wasm32 上為 `include`）。
 
-在 C 函式庫的標頭檔之前是內建標頭檔，即代替 clang 自己之標頭檔的獨立式標頭檔：`stddef.h`、`stdint.h`、`stdarg.h`、`stdbool.h`、`stdalign.h`、`stdnoreturn.h`、`stdatomic.h`、`limits.h`、`float.h`、`inttypes.h`、`iso646.h`，以及 [std 1.7.6](../../refs-standard-libraries/100-bare/107-ffi.md#the-c-bindgen-reads) 的內建函式標頭檔，其函式在這裡沒有定義。`-nobuiltininc` 會排除它們；`-nostdinc` 會排除每個系統目錄。
+在 C 函式庫的標頭檔之前是內建標頭檔，即代替 clang 自己之標頭檔的獨立式標頭檔：`stddef.h`、`stdint.h`、`stdarg.h`、`stdbool.h`、`stdalign.h`、`stdnoreturn.h`、`stdatomic.h`、`limits.h`、`float.h`、`inttypes.h`、`iso646.h`，以及 [std 1.7.6](../../refs-standard-libraries/100-bare/107-ffi.md#bindgen-讀取的-c) 的內建函式標頭檔，其函式在這裡沒有定義。`-nobuiltininc` 會排除它們；`-nostdinc` 會排除每個系統目錄。
 
 ## 9.13.8. 套件的 C 原始碼
 

@@ -87,7 +87,7 @@ unsafe {
 - 解參照原始指標（`Ptr<T>`、`ConstPtr<T>`、`ManyPtr<T>`）（`p.read()`、`p.write(v)`）
 - 直接呼叫 [`bare::*`](../../refs-standard-libraries/100-bare/README.md) 模組的危險函式
 - 讀取 `union` 欄位（位元重新解讀，[union](../002-types/205-union.md)）。寫入欄位不需要 `unsafe` 就是允許的。
-- 在值被交給另一個擁有者之後使用它（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）：區塊的作者保證沒有其他執行緒同時使用它。
+- 在值被交給另一個擁有者之後使用它（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)）：區塊的作者保證沒有其他執行緒同時使用它。
 
 其他所有一般的安全操作在不安全區塊內的運作方式都相同：`unsafe` *增加能力*；它不*改變既有的意義*。
 
@@ -163,7 +163,7 @@ let b = unsafe { buf.raw_get(0) };
 
 ### `unsafe trait`
 
-其 impl 承諾了編譯器無法檢查之事的 trait，宣告為 `unsafe trait`。它的每個 impl 都是 `unsafe impl`；一般的 `impl` 是編譯錯誤（E0078），錯誤訊息會給出 `unsafe impl` 形式。使用該 trait（約束、呼叫）不需要 `unsafe`。`bare::mem::Pod`（每一種位元模式都是一個值）就是一例（[stdlib 1.3.3](../../refs-standard-libraries/100-bare/103-mem.md#133-the-pod-trait)）。
+其 impl 承諾了編譯器無法檢查之事的 trait，宣告為 `unsafe trait`。它的每個 impl 都是 `unsafe impl`；一般的 `impl` 是編譯錯誤（E0078），錯誤訊息會給出 `unsafe impl` 形式。使用該 trait（約束、呼叫）不需要 `unsafe`。`bare::mem::Pod`（每一種位元模式都是一個值）就是一例（[stdlib 1.3.3](../../refs-standard-libraries/100-bare/103-mem.md#133-pod-trait)）。
 
 ```nabi
 /// Every all-zero bit pattern is a value.
@@ -246,4 +246,4 @@ Nabi 原樣沿用 Rust 的模型。危險區域的視覺區隔一致地以單一
 15. 在宣告為 `str` 之處回傳 null 的 `char*`；C 在呼叫回傳之後仍保留 `str` 引數的指標（[5.9.4](../005-modules/509-extern-block.md)）。
 16. 對懸置的指標，或指向沒有 NUL 之位元組的指標使用 `CStr::from_ptr`（[stdlib 1.7.2](../../refs-standard-libraries/100-bare/107-ffi.md)）。
 
-其他一切都是有定義的，無論在安全或不安全的程式碼中皆然。特別是下列都不是未定義行為：整數溢位（啟用檢查時 panic，停用時回繞，[stdlib 2.3](../../refs-standard-libraries/200-core/203-ops.md#overflow-behavior)）、集合的越界索引或切片（panic）、除以零（panic）、堆疊溢位（行程中止，[7](../007-runtime/README.md)）、每一種浮點運算，包括 NaN 與無限（[stdlib 2.1.4](../../refs-standard-libraries/200-core/201-numbers.md#floating-point-semantics)）、讀取 `union` 欄位（位元重新解讀；只有它所產生的值可能無效，見第 9 項）、大小不同之型別間的 `transmute_unchecked`（缺少的位元組讀作零）、死結，以及洩漏。
+其他一切都是有定義的，無論在安全或不安全的程式碼中皆然。特別是下列都不是未定義行為：整數溢位（啟用檢查時 panic，停用時回繞，[stdlib 2.3](../../refs-standard-libraries/200-core/203-ops.md#溢位行為)）、集合的越界索引或切片（panic）、除以零（panic）、堆疊溢位（行程中止，[7](../007-runtime/README.md)）、每一種浮點運算，包括 NaN 與無限（[stdlib 2.1.4](../../refs-standard-libraries/200-core/201-numbers.md#浮點數語意)）、讀取 `union` 欄位（位元重新解讀；只有它所產生的值可能無效，見第 9 項）、大小不同之型別間的 `transmute_unchecked`（缺少的位元組讀作零）、死結，以及洩漏。

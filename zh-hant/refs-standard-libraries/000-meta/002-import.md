@@ -10,7 +10,7 @@ use core::prelude::*;
 
 `core::prelude` 是由 `pub use` 重新匯出組成的普通模組（[refs-lang 5.8](../../refs-lang/005-modules/508-re-export.md)）。它的清單固定如下（0.2.3），且具有規範性：只有本文件列出的名稱才屬於 prelude。
 
-prelude 不包含任何列舉變體。單獨的變體名稱會依據該位置預期的型別解析（[refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-bare-variants-from-the-expected-type)）：`let o: Ordering = Less;`、`x.load(SeqCst)`、`return Ok(v);`。
+prelude 不包含任何列舉變體。單獨的變體名稱會依據該位置預期的型別解析（[refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-依預期型別使用不帶路徑的變體)）：`let o: Ordering = Less;`、`x.load(SeqCst)`、`return Ok(v);`。
 
 ## 0.2.1. 核心設計決策
 
@@ -68,7 +68,7 @@ use foo::**;             // recursive glob (foo + all submodules)
 | 轉換 | `From` `Into` `TryFrom` `TryInto` `FromStr` |
 | 反射 | `Inspect`（也包括其 derive，[refs-lang 6.8.11](../../refs-lang/006-meta-system/608-meta-blocks.md)） |
 
-運算子 trait 不在 prelude 中：要寫 `ops::Add`，或 `use core::ops::Add;`。運算子本身不需要名稱，在任何地方都能運作（[refs-lang 6.7.8](../../refs-lang/006-meta-system/607-operator-magic.md#678-visibility-of-mappings)），每個 `core` trait 的方法也一樣（[refs-lang 3.5](../../refs-lang/003-expressions/305-member-access-and-method-call.md)）。
+運算子 trait 不在 prelude 中：要寫 `ops::Add`，或 `use core::ops::Add;`。運算子本身不需要名稱，在任何地方都能運作（[refs-lang 6.7.8](../../refs-lang/006-meta-system/607-operator-magic.md#678-對應的可見性)），每個 `core` trait 的方法也一樣（[refs-lang 3.5](../../refs-lang/003-expressions/305-member-access-and-method-call.md)）。
 
 **作業系統擴充 trait。** 在具備這些 trait 的目標上，prelude 也會指名 `PermissionsExt`、`CommandExt` 與 `ExitStatusExt`（unix），以及 `ChildExt` 與 `TcpStreamExt`（linux），因此在這些目標上使用其方法不需要 `use`（[3.10.1](../300-std/310-os.md#3101-prelude-中的-ext-trait)）。它們不計入上面的數量。
 
@@ -76,7 +76,7 @@ use foo::**;             // recursive glob (foo + all submodules)
 
 `print` `println` `eprint` `eprintln` `dbg` `display` `panic` `assert` `assert_eq` `assert_ne` `unreachable` `channel` `channel_bounded`
 
-**變體。** 無。請見 [refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-bare-variants-from-the-expected-type)。
+**變體。** 無。請見 [refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-依預期型別使用不帶路徑的變體)。
 
 ```nabi
 // user code
@@ -107,7 +107,7 @@ let h = encoding::hex::encode("nabi");
 
 ## 0.2.4. 名稱衝突政策
 
-隱含匯入的優先順序最低：查找時會先取模組自身的項目及其 `use`（[refs-lang 5.7.1](../../refs-lang/005-modules/507-paths.md#571-starting-identifier-of-a-path)）。與 prelude 名稱同名的使用者項目會在該模組中遮蔽它，而 core 的項目仍可透過路徑取得。
+隱含匯入的優先順序最低：查找時會先取模組自身的項目及其 `use`（[refs-lang 5.7.1](../../refs-lang/005-modules/507-paths.md#571-路徑的起始識別字)）。與 prelude 名稱同名的使用者項目會在該模組中遮蔽它，而 core 的項目仍可透過路徑取得。
 
 ```nabi
 struct List<T> { ... }                  // OK: shadows the prelude's List here
@@ -148,7 +148,7 @@ use std::time::SystemTime;
 use core::prelude::*;   // the same import, written out
 ```
 
-字面值由編譯器定義，仍然可以使用；運算子與 core trait 的方法也一樣（[refs-lang 6.7.8](../../refs-lang/006-meta-system/607-operator-magic.md#678-visibility-of-mappings)）；失去的只有單獨的名稱。
+字面值由編譯器定義，仍然可以使用；運算子與 core trait 的方法也一樣（[refs-lang 6.7.8](../../refs-lang/006-meta-system/607-operator-magic.md#678-對應的可見性)）；失去的只有單獨的名稱。
 
 這在教學或示範程式碼中很有用，可以一眼看出每個項目的來源。
 

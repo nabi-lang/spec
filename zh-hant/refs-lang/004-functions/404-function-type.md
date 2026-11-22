@@ -105,7 +105,7 @@ nabi 沒有 Rust 中 `Fn`、`FnMut` 與 `FnOnce` trait 的區分。擷取預設�
 
 ### `Send` / `Sync` 約束
 
-在函式型別後附加 `+ Send` / `+ Sync`，會在型別中記錄該值可以跨越執行緒邊界（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）。
+在函式型別後附加 `+ Send` / `+ Sync`，會在型別中記錄該值可以跨越執行緒邊界（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)）。
 
 ```nabi
 fn(i32) -> i32 + Send

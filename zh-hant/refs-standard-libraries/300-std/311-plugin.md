@@ -74,8 +74,8 @@ enum PluginError {
 fn message(self) -> str;   // also its Display
 ```
 
-每則訊息都會說明該怎麼做（[9.12.6](../../refs-lang/009-tools/912-plugins.md#9126-stability-and-errors) 的表格）。
+每則訊息都會說明該怎麼做（[9.12.6](../../refs-lang/009-tools/912-plugins.md#9126-穩定性與錯誤) 的表格）。
 
 ## 3.11.4. 目標
 
-外掛可以在 [9.12.7](../../refs-lang/009-tools/912-plugins.md#9127-targets) 列出的目標上載入。在 wasm 以及靜態連結的 musl 目標上，用到 `std::plugin` 的程式無法連結，錯誤會說明應建置成單一程式。
+外掛可以在 [9.12.7](../../refs-lang/009-tools/912-plugins.md#9127-目標) 列出的目標上載入。在 wasm 以及靜態連結的 musl 目標上，用到 `std::plugin` 的程式無法連結，錯誤會說明應建置成單一程式。

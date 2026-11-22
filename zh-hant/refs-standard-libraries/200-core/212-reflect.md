@@ -32,7 +32,7 @@ trait Reflect {
 
 - 手寫 `impl Reflect for T` 是錯誤。約束 `T: Reflect` 永遠成立。
 - 如果型別有同名的自有方法，例如 `size()` / `type_name()`，該方法會遮蔽反射方法。
-- 名稱（`type_name`）不帶模組路徑（`List<i64>`、`Config`），也不帶等於其預設值的尾端型別引數（`Dict<str, i32>`，[refs-lang 2.10.5](../../refs-lang/002-types/210-generics.md#2105-defaults)）。和型別的靜態名稱依正規順序（[2.6.4](../../refs-lang/002-types/206-sum-types.md#264-set-semantics)）寫出（`f64 | i32`，`none` 放在最後）。`type_name_of_val(self)` 等實例形式回報執行時實際存在的成員（對和型別而言），或 `any` 的內容。
+- 名稱（`type_name`）不帶模組路徑（`List<i64>`、`Config`），也不帶等於其預設值的尾端型別引數（`Dict<str, i32>`，[refs-lang 2.10.5](../../refs-lang/002-types/210-generics.md#2105-預設值)）。和型別的靜態名稱依正規順序（[2.6.4](../../refs-lang/002-types/206-sum-types.md#264-集合語意)）寫出（`f64 | i32`，`none` 放在最後）。`type_name_of_val(self)` 等實例形式回報執行時實際存在的成員（對和型別而言），或 `any` 的內容。
 - `core::reflect::cast<T>(value: any) -> T | none` 依照與 `set_field` 相同的規則，從 `any` 取出 `T`。型別的方法或欄位沒有對應的自由函式：它們是 `T::methods()` / `T::fields()`，並且需要 `#[derive(Inspect)]`，也就是型別的同意。
 
 ### 靜態與實例
@@ -204,7 +204,7 @@ fn dump_struct<T: Inspect>(x: T) {
 
 ## 2.12.4. REPL 輸出
 
-REPL 以 `Display` 印出單獨的最後一個運算式，沒有 `Display` 時用 `Debug`；結尾帶 `?` 時用 `Debug`；兩者都沒有的值則用本章的 `Reflect::type_name_of_val` 印出（[2.10 fmt](210-fmt.md)、[refs-lang 6.10.3](../../refs-lang/006-meta-system/610-reflection.md#6103-repl--jupyter-auto-printing)）。
+REPL 以 `Display` 印出單獨的最後一個運算式，沒有 `Display` 時用 `Debug`；結尾帶 `?` 時用 `Debug`；兩者都沒有的值則用本章的 `Reflect::type_name_of_val` 印出（[2.10 fmt](210-fmt.md)、[refs-lang 6.10.3](../../refs-lang/006-meta-system/610-reflection.md#6103-repl--jupyter-的自動印出)）。
 
 ```
 >>> let x = 42i32;
@@ -249,7 +249,7 @@ Nabi 主要有兩點不同。第一，兩層分割讓輕量的 `Reflect` 自動�
 
 ## 2.12.7. `TypeInfo`
 
-`T::type_info()` / `info::<T>()` 回傳的描述（[refs-lang 6.10.7](../../refs-lang/006-meta-system/610-reflection.md#6107-typeinfo---the-types-description)，佈局見 [8.13](../../refs-lang/008-abi/813-type-descriptor.md)）。回傳值的存取器就地讀取，不做任何配置；回傳 `List` 的存取器會配置該串列。
+`T::type_info()` / `info::<T>()` 回傳的描述（[refs-lang 6.10.7](../../refs-lang/006-meta-system/610-reflection.md#6107-typeinfo型別的描述)，佈局見 [8.13](../../refs-lang/008-abi/813-type-descriptor.md)）。回傳值的存取器就地讀取，不做任何配置；回傳 `List` 的存取器會配置該串列。
 
 ```nabi
 pub fn info<T>() -> TypeInfo;                 // any T; fields and accessors when T: Inspect

@@ -61,7 +61,7 @@ impl ops::Add for Point {
 
 impl 方法必須：與 trait 宣告有相同的參數數量；除接收者以外的每個參數有相同的 `ref`；有相同的 `unsafe`（[4.15.4](../004-functions/415-unsafe.md#4154-在-trait-中)）；在它寫出型別的每個參數上使用宣告的型別（經過下述替換；未寫型別的參數取該型別，[4.1](../004-functions/401-function-declaration.md)）；並且恰好在宣告有回傳值時回傳一個值，其型別是把 `Self`、trait 的參數及其關聯型別替換為 impl 的對應項後的宣告型別（沒有更窄或共變的回傳）；否則就是 impl 處的錯誤，錯誤訊息會顯示該宣告。impl 方法的 `throws` 必須與 trait 方法的 `throws` 相同；沒有 `throws` 的 impl 方法取用 trait 方法的 `throws`。impl 不能加入 `throws`，也不能放寬錯誤型別（[4.14.11](../004-functions/414-throws.md#41411-方法上的-throws)）。
 
-`Send` / `Sync` 是自動的標記 trait，有兩種手動宣告方式（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）。
+`Send` / `Sync` 是自動的標記 trait，有兩種手動宣告方式（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)）。
 
 - 選入：`unsafe impl Send for X {}`。`unsafe impl` 只能用於 `Send` / `Sync` 以及 `unsafe trait`（[4.15.4](../004-functions/415-unsafe.md#4154-在-trait-中)），而手動實作這些 trait 時必須使用它。
 - 選出：`impl !Send for X {}`、`impl<T> !Send for Cell<T> {}`。它阻止自動實作，主體必須為空。`!` 只能與 `Send` / `Sync` 一起使用。

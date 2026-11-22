@@ -202,7 +202,7 @@ fn parse_1kb(b: bench::Bench) {
 }
 ```
 
-`b.iter(f)` 執行整個量測（校準、暖身、取樣）；其結果會被黑箱化。`hint::black_box`（[`core::hint`](../../refs-standard-libraries/200-core/README.md#benchmarks--optimizer-hints)）是最佳化器無法看穿的恆等函式。把它套用到計時區域的輸入與結果，好讓工作既不會被提升到外面，也不會被摺疊掉。`b.set_bytes(n)` / `b.set_items(n)` 會加上一個吞吐量欄位。`Bench`、`black_box` 與統計是函式庫 API；其方法定義於 [9.9.11](909-debug-tools.md#9911-效能測試)。
+`b.iter(f)` 執行整個量測（校準、暖身、取樣）；其結果會被黑箱化。`hint::black_box`（[`core::hint`](../../refs-standard-libraries/200-core/README.md#基準測試最佳化器提示)）是最佳化器無法看穿的恆等函式。把它套用到計時區域的輸入與結果，好讓工作既不會被提升到外面，也不會被摺疊掉。`b.set_bytes(n)` / `b.set_items(n)` 會加上一個吞吐量欄位。`Bench`、`black_box` 與統計是函式庫 API；其方法定義於 [9.9.11](909-debug-tools.md#9911-效能測試)。
 
 每個樣本的呼叫次數、樣本數量與輸出形式是執行器 `nabi bench` 的選項（[9.10.1](910-nabi-frontend.md#9101-子指令與全域選項)）。
 

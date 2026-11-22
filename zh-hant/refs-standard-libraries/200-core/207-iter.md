@@ -519,7 +519,7 @@ trait ExactSizeIterator: Iterator {
 
 ## 2.7.10a. `GenIter<T>` / `TryGenIter<T, E>`：產生器的值
 
-這些是 `yield fn` 呼叫與 `yield { .. }` 區塊的值（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#result-types-of-coroutine-functions)）。
+這些是 `yield fn` 呼叫與 `yield { .. }` 區塊的值（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#協程函式的結果型別)）。
 
 ```nabi
 struct GenIter<T> { /* private */ }
@@ -617,11 +617,11 @@ trait TryIterator {
 `TryIterator` 在 prelude 中（[0.2](../000-meta/002-import.md)）。它是獨立的 trait，而不是 `Iterator` 上的錯誤參數：一個值只會是其中之一。
 
 - **擲回之後。** 擲回錯誤之後再呼叫 `next` 會怎樣，由各型別在文件中自行選擇。型別可以繼續給出下一個項目（`io::Bytes`），也可以結束，從此給出 `none`（`TryGenIter`）。
-- **配接器的函式擲回 `Error`。** 傳給 `map`、`filter`、`fold` 等的函式可以擲回迭代器自身的 `Error`；不會擲回錯誤的函式也適用（[refs-lang 4.14.8](../../refs-lang/004-functions/414-throws.md#4148-throws-in-function-types)）。擲回其他型別的函式在呼叫處是型別錯誤：先用 `.map_err(..)` 轉換，或在函式內以 `catch` 處理錯誤。`map_err` 是改變 `Error` 的唯一方式：`.map_err(|e| -> IoError | ParseError { e })` 加寬它，`.map_err(|e| -> any Error { e })` 抹除它。
+- **配接器的函式擲回 `Error`。** 傳給 `map`、`filter`、`fold` 等的函式可以擲回迭代器自身的 `Error`；不會擲回錯誤的函式也適用（[refs-lang 4.14.8](../../refs-lang/004-functions/414-throws.md#4148-函式型別中的-throws)）。擲回其他型別的函式在呼叫處是型別錯誤：先用 `.map_err(..)` 轉換，或在函式內以 `catch` 處理錯誤。`map_err` 是改變 `Error` 的唯一方式：`.map_err(|e| -> IoError | ParseError { e })` 加寬它，`.map_err(|e| -> any Error { e })` 抹除它。
 - **沒有 `try_fold` / `try_for_each`。** `fold` 與 `for_each` 本來就接受會擲回錯誤的函式。`Iterator::try_fold` / `try_for_each`（2.7.1）仍然保留：它們為不會擲回錯誤的迭代器加上擲回。
 - **`collect`** 建構任何 `FromIterator` 集合型別（2.7.5）；沒有另外的 trait。它在第一個錯誤處停止並擲回該錯誤。
 - **命名。** 配接器型別加上 `Try` 前綴，與 `Map`、`Filter` 等一起位於 `core::iter`；`MapErr` 與 `Results` 只存在於這裡。
-- **`for`。** `TryIterator` 以 `try for x in it { .. }` 步進（[refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for-iterator-based-repetition)）。`try` 涵蓋可迭代物與每次 `next`，不涵蓋主體。對 `TryIterator` 使用一般的 `for` 是編譯錯誤，錯誤會要求改用 `try for` 或 `.results()`。
+- **`for`。** `TryIterator` 以 `try for x in it { .. }` 步進（[refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for以迭代器為基礎的重複)）。`try` 涵蓋可迭代物與每次 `next`，不涵蓋主體。對 `TryIterator` 使用一般的 `for` 是編譯錯誤，錯誤會要求改用 `try for` 或 `.results()`。
 
 ### 轉換
 

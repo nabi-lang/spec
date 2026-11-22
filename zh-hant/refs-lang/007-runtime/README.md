@@ -30,7 +30,7 @@ Coroutine   compiler-generated state machine (stackless)
 
 ## 規範性地位
 
-GC 各節，即 7.1 到 7.5，僅供參考：它們描述參考執行環境目前如何配置與回收，之後的執行環境可以使用其他演算法、空間或屏障。具規範性的是在 [8.1](../008-abi/801-object-header-abi.md) 中固定為 ABI 的物件配置：每個 GC 物件的酬載之前有一個 16 位元組的標頭。函式庫程式碼依賴它：`Pinned::as_data_ptr` 與 `as_value_ptr`（[stdlib 1.6.6](../../refs-standard-libraries/100-bare/106-gc-pin.md#166-extraction-methods)）以物件位址加 16 計算酬載位址。[7.9](709-memory-model.md) 的記憶體模型也具規範性：它是程式與每個後端所依賴的東西。
+GC 各節，即 7.1 到 7.5，僅供參考：它們描述參考執行環境目前如何配置與回收，之後的執行環境可以使用其他演算法、空間或屏障。具規範性的是在 [8.1](../008-abi/801-object-header-abi.md) 中固定為 ABI 的物件配置：每個 GC 物件的酬載之前有一個 16 位元組的標頭。函式庫程式碼依賴它：`Pinned::as_data_ptr` 與 `as_value_ptr`（[stdlib 1.6.6](../../refs-standard-libraries/100-bare/106-gc-pin.md#166-取出方法)）以物件位址加 16 計算酬載位址。[7.9](709-memory-model.md) 的記憶體模型也具規範性：它是程式與每個後端所依賴的東西。
 
 ## 零相依原則
 

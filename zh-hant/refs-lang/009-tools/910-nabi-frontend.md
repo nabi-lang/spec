@@ -107,7 +107,7 @@ nabi init --script <file.nabi>
 
 `nabi init --script <file.nabi>` 把一個腳本（[9.10.7](#9107-單一檔案腳本的行內資訊清單)）變成位於該腳本目錄中、以檔案名稱（去掉 `.nabi`）命名的套件。`nabi.nabion` 取得腳本各區塊合併後的 `deps`（以及 `native`），路徑改寫為相對於它；腳本變成 `src/main.nabi`，其 `mod` 所載入的每個檔案都以相同的相對路徑移到 `src/` 之下，各自去掉其區塊。若腳本位於套件內、被移動的檔案或 `nabi.nabion` 已存在，或某個子模組檔案位於腳本目錄之外，則是錯誤。
 
-兩個指令也都會以標準形式（[NABION 3.8.4](../../refs-standard-libraries/300-std/308-nabion.md#384-canonical-form)）寫出 `nabi.nabion`，其 `nabi_version` 是寫出它的 `nabi` 的版本（`nabi_version: "0.1.3"`，省略其預發行標記），並釘選在該 `nabi` 的系列上（任何 0.1.x 都寫 `toolchain: "0.1"`，9.10.6），讓套件在更新的系列成為預設時仍停留在該系列；還會寫出內容為 `target/` 的 `.gitignore`，並在不位於 git 儲存庫內時執行 `git init`。`init` 使用依命名規則（9.10.3）調整過的目錄名稱作為套件名稱：Windows 裝置名稱會加上前綴 `pkg-`（`nul` → `pkg-nul`），名稱會截短為 64 個字元。
+兩個指令也都會以標準形式（[NABION 3.8.4](../../refs-standard-libraries/300-std/308-nabion.md#384-正規形式)）寫出 `nabi.nabion`，其 `nabi_version` 是寫出它的 `nabi` 的版本（`nabi_version: "0.1.3"`，省略其預發行標記），並釘選在該 `nabi` 的系列上（任何 0.1.x 都寫 `toolchain: "0.1"`，9.10.6），讓套件在更新的系列成為預設時仍停留在該系列；還會寫出內容為 `target/` 的 `.gitignore`，並在不位於 git 儲存庫內時執行 `git init`。`init` 使用依命名規則（9.10.3）調整過的目錄名稱作為套件名稱：Windows 裝置名稱會加上前綴 `pkg-`（`nul` → `pkg-nul`），名稱會截短為 64 個字元。
 
 在 `Created` 行之後，兩者都會在訊息下方印出接下來要執行的指令：`cd <dir> && nabi run`，或對只有函式庫的套件印出 `nabi test`；當套件就是目前目錄時，不帶 `cd`。在 Windows 上，由於 Windows PowerShell 沒有 `&&`，`cd <dir>` 與該指令分成兩行。`-q` 兩者都不印出。
 
@@ -213,7 +213,7 @@ Package {
 - `include` / `exclude` 是針對所發布之提交中檔案路徑的 glob（`*` 與 `?` 在一個名稱內，`**` 跨越名稱；不含 `/` 的模式比對任何深度的名稱，比對到目錄的模式也比對其中的內容）。當 `include` 為空或比對到某個檔案，且 `exclude` 沒有比對到它時，套件就容納該檔案；`nabi.nabion` 一律包含在內。它們決定 `nabi publish` 送出的打包大小（9.10.4a）；原始碼仍是整個提交。
 - `links` 指名套件所連結的原生函式庫。同一個建置中兩個套件有相同的 `links` 是錯誤，錯誤訊息會指出兩者。
 - `default_run` 指名 `nabi run` 所執行的執行檔；一個套件最多有一個執行檔（`src/main.nabi`，以套件命名），因此它就是那個名稱。
-- `deployment_target` 是套件的程式能執行的最舊 macOS，以數字表示（`"13.0"`；其他形式是會顯示它的錯誤）；省略時為 `11.0`。紀錄形式 `{ macos: "13.0", ios: "16.0" }` 也給出最舊的 iOS（省略時為 `13.4`；更舊的是錯誤），每個欄位都是選用的。`nabi` 把它們以 `MACOSX_DEPLOYMENT_TARGET` 與 `IPHONEOS_DEPLOYMENT_TARGET` 傳給 `nabic`，除非其中之一已經設定，此時以已設定的為準。比它更新的 Objective-C API 只在 `objc::available` 之下呼叫（[std 1.10.13](../../refs-standard-libraries/100-bare/110-objc.md#11013-availability-and-the-deployment-target)）。
+- `deployment_target` 是套件的程式能執行的最舊 macOS，以數字表示（`"13.0"`；其他形式是會顯示它的錯誤）；省略時為 `11.0`。紀錄形式 `{ macos: "13.0", ios: "16.0" }` 也給出最舊的 iOS（省略時為 `13.4`；更舊的是錯誤），每個欄位都是選用的。`nabi` 把它們以 `MACOSX_DEPLOYMENT_TARGET` 與 `IPHONEOS_DEPLOYMENT_TARGET` 傳給 `nabic`，除非其中之一已經設定，此時以已設定的為準。比它更新的 Objective-C API 只在 `objc::available` 之下呼叫（[std 1.10.13](../../refs-standard-libraries/100-bare/110-objc.md#11013-可用性與部署目標)）。
 - `nabi` 不認識的欄位是帶有 `file:line:col` 的警告（`` unknown field `licence` is ignored; did you mean `license`? ``，有接近的欄位時附上建議），資訊清單在沒有它的情況下被讀取；`nabi publish` 會把它依寫出的樣子放在 `meta` 中送出（9.10.4a），讓較新的登錄庫可以使用它。
 - 錯誤：未知的 `Dep` 種類 / 具名引數、重複、違反 9.10.4c 規則的 `features`、違反規則的套件名稱、不是 NABION 的語法、單一 `Package { .. }` 以外的任何東西、結尾多餘的語彙單元。診斷以 `file:line:col` 與插入符號顯示位置。
 
@@ -864,7 +864,7 @@ nabi lsp
 nabi fmt [path..] [--check] [--diff]
 ```
 
-`[path]` 接受檔案或目錄（可以有多個），並就地把它們改寫為[標準格式](#標準格式)。屬於套件的目錄（[9.2.2](902-aot-pipeline.md#922-套件探索)）會以其 `src/`、`tests/`、`benches/` 與 `examples/` 目錄以及其 `nabi.nabion` 進行格式化；其中的其他檔案不會被動到。沒有路徑時，`fmt` 格式化目前目錄所在的套件：它所在或其上方最近一個含有 `src/main.nabi`、`src/lib.nabi` 或 `nabi.nabion` 的目錄。在套件之外，沒有路徑是錯誤（結束碼 `1`）：`` not inside a package; pass a file or directory: `nabi fmt <path>` ``。目錄會被遞迴搜尋 `.nabi` 與 `.nabion` 檔案，略過 `target/`、`node_modules/`、以 `.` 開頭的目錄，以及被搜尋目錄或其套件根部之 `.gitignore` 所忽略的東西。只讀取下列 `.gitignore` 行：`name`（其下任何位置的該名稱）、`name/`（僅限目錄）、`/name`（直接位於 `.gitignore` 所在目錄中）以及 `*suffix`；註解、`!` 行、其他萬用字元以及內部帶有 `/` 的路徑會被略過。在終端機上，耗時超過一秒的搜尋會在標準錯誤顯示 `Scanning <n> files…`。`.nabion` 檔案（[NABION](../../refs-standard-libraries/300-std/308-nabion.md#384-canonical-form)）會被檢查是否為 NABION，並且只重新縮排（它們不會被改寫為標準形式，因此註解會被保留）。
+`[path]` 接受檔案或目錄（可以有多個），並就地把它們改寫為[標準格式](#標準格式)。屬於套件的目錄（[9.2.2](902-aot-pipeline.md#922-套件探索)）會以其 `src/`、`tests/`、`benches/` 與 `examples/` 目錄以及其 `nabi.nabion` 進行格式化；其中的其他檔案不會被動到。沒有路徑時，`fmt` 格式化目前目錄所在的套件：它所在或其上方最近一個含有 `src/main.nabi`、`src/lib.nabi` 或 `nabi.nabion` 的目錄。在套件之外，沒有路徑是錯誤（結束碼 `1`）：`` not inside a package; pass a file or directory: `nabi fmt <path>` ``。目錄會被遞迴搜尋 `.nabi` 與 `.nabion` 檔案，略過 `target/`、`node_modules/`、以 `.` 開頭的目錄，以及被搜尋目錄或其套件根部之 `.gitignore` 所忽略的東西。只讀取下列 `.gitignore` 行：`name`（其下任何位置的該名稱）、`name/`（僅限目錄）、`/name`（直接位於 `.gitignore` 所在目錄中）以及 `*suffix`；註解、`!` 行、其他萬用字元以及內部帶有 `/` 的路徑會被略過。在終端機上，耗時超過一秒的搜尋會在標準錯誤顯示 `Scanning <n> files…`。`.nabion` 檔案（[NABION](../../refs-standard-libraries/300-std/308-nabion.md#384-正規形式)）會被檢查是否為 NABION，並且只重新縮排（它們不會被改寫為標準形式，因此註解會被保留）。
 
 在結尾，除非有 `-q`，標準錯誤會說明發生了什麼：`Formatted <n> files`（若有些已經格式化，加上 `, <m> already formatted`）、`note: <n> files already formatted`，或在 `--check` / `--diff` 時為 `` note: <n> files need formatting; `nabi fmt` without `--check` rewrites them ``。沒有東西可以格式化的目錄會給出 `note: no .nabi or .nabion files under <dir>`（結束碼 `0`）。
 
@@ -941,9 +941,9 @@ nabi clean [path]
 nabi bindgen <header> [-x objective-c] [-o <file>] [--target <t>] [--c-shim <file.c>] [-- <C compiler args>]
 ```
 
-把 `<header>` 的 [std 1.7.6](../../refs-standard-libraries/100-bare/107-ffi.md#176-automatic-binding-generation) 宣告寫到標準輸出（或 `-o <file>`）；其第一行以 ``// Generated by `nabi bindgen` `` 開頭。`nabi` 以工具鏈之 C 編譯器（[9.13](913-c-compiler.md)）的前端讀取標頭檔；它不需要其他 C 編譯器，也不需要 libclang。`--` 之後的引數是會改變標頭檔所宣告內容的 C 編譯器選項：`-I <dir>`、`-isystem <dir>`、`-iquote <dir>`、`-idirafter <dir>`、`-D <name>[=<value>]`、`-U <name>`、`-include <file>`、`--sysroot <dir>`、`-isysroot <dir>`、`-nostdinc`、`-nostdlibinc` 與 `-nobuiltininc`。`-std=` 與警告選項會被接受並忽略；其他任何選項都是錯誤，錯誤訊息會列出這些選項。前端拒絕的標頭檔是位於其 `file:line:col` 的錯誤（結束碼 1），錯誤訊息會說明應改寫成什麼（[std 1.7.6](../../refs-standard-libraries/100-bare/107-ffi.md#the-c-bindgen-reads) 列出它所讀取的內容）。
+把 `<header>` 的 [std 1.7.6](../../refs-standard-libraries/100-bare/107-ffi.md#176-自動產生繫結) 宣告寫到標準輸出（或 `-o <file>`）；其第一行以 ``// Generated by `nabi bindgen` `` 開頭。`nabi` 以工具鏈之 C 編譯器（[9.13](913-c-compiler.md)）的前端讀取標頭檔；它不需要其他 C 編譯器，也不需要 libclang。`--` 之後的引數是會改變標頭檔所宣告內容的 C 編譯器選項：`-I <dir>`、`-isystem <dir>`、`-iquote <dir>`、`-idirafter <dir>`、`-D <name>[=<value>]`、`-U <name>`、`-include <file>`、`--sysroot <dir>`、`-isysroot <dir>`、`-nostdinc`、`-nostdlibinc` 與 `-nobuiltininc`。`-std=` 與警告選項會被接受並忽略；其他任何選項都是錯誤，錯誤訊息會列出這些選項。前端拒絕的標頭檔是位於其 `file:line:col` 的錯誤（結束碼 1），錯誤訊息會說明應改寫成什麼（[std 1.7.6](../../refs-standard-libraries/100-bare/107-ffi.md#bindgen-讀取的-c) 列出它所讀取的內容）。
 
-使用 `-x objective-c` 時（Apple 目標），標頭檔以 Objective-C 讀取，其類別、協定與 category 會與 `ffi::objc::import` 的做法一樣變成 `extern "objc"` 區塊（[std 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-headers-ffiobjcimport)）；`-x c` 是預設值。
+使用 `-x objective-c` 時（Apple 目標），標頭檔以 Objective-C 讀取，其類別、協定與 category 會與 `ffi::objc::import` 的做法一樣變成 `extern "objc"` 區塊（[std 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-標頭檔ffiobjcimport)）；`-x c` 是預設值。
 
 `static inline` 函式沒有可以連結的符號，因此會被略過並附上註解。使用 `--c-shim <file.c>` 時，它則會被繫結：`<file.c>` 為每個這類函式取得一個 C 包裝函式，即位於 `#include "<header file name>"` 之後的 `R nabi_shim_<f>(A a0, ..) { return <f>(a0, ..); }`，而繫結連結到該包裝函式（`#[link_name = "nabi_shim_<f>"]`）。套件從其資訊清單的 `c.sources` 編譯 `<file.c>`，並把標頭檔的目錄放在 `c.include` 中（9.10.3）。可變參數的 inline 函式仍會被略過。
 

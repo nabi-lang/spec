@@ -105,7 +105,7 @@ extern "nabi" {
 }
 ```
 
-傳給 `extern "C"` 函式（`str` 引數）或阻塞之執行環境呼叫的 GC 指標，即使不釘選也不會被移動，因為該引數在呼叫結束之前都留在根中（[7.4.1](../007-runtime/704-barriers-and-roots.md#被根指向的物件不會被移動)）。指向沒有任何引數為其建立根之物件內部的指標（串列的緩衝區）在整個呼叫期間都需要釘選，因為在任何 C 呼叫期間都可能進行回收；C 在呼叫之後保留的任何指標也是如此（[stdlib 1.6.5](../../refs-standard-libraries/100-bare/106-gc-pin.md#165-when-a-pin-is-needed)）。釘選會在物件上設定 `PINNED`，使它不被疏散並保持存活；解除釘選則釋放它。
+傳給 `extern "C"` 函式（`str` 引數）或阻塞之執行環境呼叫的 GC 指標，即使不釘選也不會被移動，因為該引數在呼叫結束之前都留在根中（[7.4.1](../007-runtime/704-barriers-and-roots.md#被根指向的物件不會被移動)）。指向沒有任何引數為其建立根之物件內部的指標（串列的緩衝區）在整個呼叫期間都需要釘選，因為在任何 C 呼叫期間都可能進行回收；C 在呼叫之後保留的任何指標也是如此（[stdlib 1.6.5](../../refs-standard-libraries/100-bare/106-gc-pin.md#165-何時需要固定)）。釘選會在物件上設定 `PINNED`，使它不被疏散並保持存活；解除釘選則釋放它。
 
 ### `nabi_gc_collect`
 
@@ -121,7 +121,7 @@ extern "nabi" {
 
 ### `nabi_gc_secret_new` / `nabi_gc_secret_wipe`
 
-`core::crypto::Secret` 的機密儲存空間（[stdlib 2.21.5](../../refs-standard-libraries/200-core/221-crypto.md#2215-security-considerations)）。**Thread-safety：`thread-safe`**。
+`core::crypto::Secret` 的機密儲存空間（[stdlib 2.21.5](../../refs-standard-libraries/200-core/221-crypto.md#2215-安全性考量)）。**Thread-safety：`thread-safe`**。
 
 ```
 extern "nabi" {
@@ -210,7 +210,7 @@ extern "nabi" {
 }
 ```
 
-編譯器在每個 `extern "C"` 呼叫（`#[leaf]` 呼叫除外，[stdlib 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf---short-calls)）周圍以行內方式產生快速路徑：對 mutator 狀態進行 `PARKED` / `RUNNING` 的 seq_cst 存入，然後檢查 yield 旗標。只有在旗標已設定時才會呼叫這些函式。
+編譯器在每個 `extern "C"` 呼叫（`#[leaf]` 呼叫除外，[stdlib 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf短呼叫)）周圍以行內方式產生快速路徑：對 mutator 狀態進行 `PARKED` / `RUNNING` 的 seq_cst 存入，然後檢查 yield 旗標。只有在旗標已設定時才會呼叫這些函式。
 
 ### `nabi_native_reenter` / `nabi_native_resume`
 
@@ -240,7 +240,7 @@ extern "nabi" {
 
 ### `nabi_errno_save`
 
-`#[errno]` 呼叫的 errno（[stdlib 1.7.11](../../refs-standard-libraries/100-bare/107-ffi.md#1711-errno---errno-and-getlasterror)）。**Thread-safety：`caller-thread-only`**。
+`#[errno]` 呼叫的 errno（[stdlib 1.7.11](../../refs-standard-libraries/100-bare/107-ffi.md#1711-errnoerrno-與-getlasterror)）。**Thread-safety：`caller-thread-only`**。
 
 ```
 extern "nabi" {

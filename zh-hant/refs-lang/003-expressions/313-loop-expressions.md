@@ -114,7 +114,7 @@ loop {
 
 （確切的 trait 與方法名稱由標準函式庫定義。）
 
-當值實作了 `IntoIterator` 時，迴圈步進其 `Iterator`。否則，當它實作了 `TryIterator`（[stdlib 2.7.13](../../refs-standard-libraries/200-core/207-iter.md#2713-tryiterator---fallible-iteration)）時，迴圈直接步進它；它的 `next` 會擲回錯誤，因此迴圈必須寫成 `try for`（或 `try! for` / `try? for`）。其他任何值都是編譯錯誤（E0068）。
+當值實作了 `IntoIterator` 時，迴圈步進其 `Iterator`。否則，當它實作了 `TryIterator`（[stdlib 2.7.13](../../refs-standard-libraries/200-core/207-iter.md#2713-tryiterator可能失敗的迭代)）時，迴圈直接步進它；它的 `next` 會擲回錯誤，因此迴圈必須寫成 `try for`（或 `try! for` / `try? for`）。其他任何值都是編譯錯誤（E0068）。
 
 ```
 try for pat in xs { body }
@@ -132,7 +132,7 @@ loop {
 }
 ```
 
-`try for` 的 `try` 只涵蓋迭代：可迭代運算式以及每一次 `next`。它不涵蓋主體；主體中會擲回錯誤的呼叫要以它自己的 `try` 標示，與其他任何地方相同（[3.14.2](314-error-control-flow.md#涵蓋範圍)）。某一步的錯誤會送往迴圈的 `try` 所指之處：`try for` 送出函式，`try! for` 成為 panic，`try? for` 送到迴圈末端，此時迴圈的值是 `none`。迴圈之後的 `catch` 附加在整個 `try for` 運算式上（[4.14.10](../004-functions/414-throws.md#try-for)）。同樣的規則適用於走訪 `TryStream` 的 `try for await`（[stdlib 2.8.11](../../refs-standard-libraries/200-core/208-stream.md#2811-trystream---fallible-streams)）。
+`try for` 的 `try` 只涵蓋迭代：可迭代運算式以及每一次 `next`。它不涵蓋主體；主體中會擲回錯誤的呼叫要以它自己的 `try` 標示，與其他任何地方相同（[3.14.2](314-error-control-flow.md#涵蓋範圍)）。某一步的錯誤會送往迴圈的 `try` 所指之處：`try for` 送出函式，`try! for` 成為 panic，`try? for` 送到迴圈末端，此時迴圈的值是 `none`。迴圈之後的 `catch` 附加在整個 `try for` 運算式上（[4.14.10](../004-functions/414-throws.md#try-for)）。同樣的規則適用於走訪 `TryStream` 的 `try for await`（[stdlib 2.8.11](../../refs-standard-libraries/200-core/208-stream.md#2811-trystream可能失敗的串流)）。
 
 存放在變數或變數欄位中的 `TryIterator` 會原地步進：上面的 `it` 就是那個位置，而不是複本，就像 `for await` 中的串流是原地輪詢的一樣（[4.13.5](../004-functions/413-stream.md#4135-for-await-形式)）。由 `match` 分支（或 `if let`）在這樣的位置上繫結的也是如此：繫結指稱該位置，而迴圈讓該位置停在它停下之處。
 
@@ -179,7 +179,7 @@ for i in 0..v.len() {          // the length is read once
 }
 ```
 
-串列透過 `SliceMut` 視圖走訪，因此適用該視圖的規則（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt---writable-view)）：在主體中改變 `xs` 的大小（`push`、`remove`、`clear`……），若主體中看得到該改變以及之後對 `x` 的使用，就是編譯錯誤 `E0137`；否則（在被呼叫的函式內改變大小）會在下一次使用 `x` 時 panic。請收集要加入或移除的元素，在迴圈之後再改變 `xs`。
+串列透過 `SliceMut` 視圖走訪，因此適用該視圖的規則（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可寫入檢視)）：在主體中改變 `xs` 的大小（`push`、`remove`、`clear`……），若主體中看得到該改變以及之後對 `x` 的使用，就是編譯錯誤 `E0137`；否則（在被呼叫的函式內改變大小）會在下一次使用 `x` 時 panic。請收集要加入或移除的元素，在迴圈之後再改變 `xs`。
 
 閉包或 `async` 區塊不能擷取 `x`；請先複製元素（`let v = x;`）。`if x is T` 不會收窄 `x`，而 `for await` 不能是 `for ref`。
 

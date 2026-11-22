@@ -177,7 +177,7 @@ error: the cell panicked; the session is unchanged
 hi
 ```
 
-最後一個運算式的值以 `Display` 印出，否則以 `Debug`。結尾的 `?`（如 `xs?`）則印出 `Debug` 形式，而 `:type xs` 只印出型別。沒有 `Display` 與 `Debug`（對 `?` 而言是 `Debug`）的值只印出其型別名稱（`type_name_of_val`，[stdlib 2.12.4](../../refs-standard-libraries/200-core/212-reflect.md#2124-repl-output)：`any` 值會指出它所容納的型別）。`let` 儲存格不印出任何東西。在 Jupyter 筆記本中，帶有 `RichDisplay` 的值改為顯示其 MIME bundle（[9.8.2](908-jupyter-integration.md#982-本機原生核心運作)）。
+最後一個運算式的值以 `Display` 印出，否則以 `Debug`。結尾的 `?`（如 `xs?`）則印出 `Debug` 形式，而 `:type xs` 只印出型別。沒有 `Display` 與 `Debug`（對 `?` 而言是 `Debug`）的值只印出其型別名稱（`type_name_of_val`，[stdlib 2.12.4](../../refs-standard-libraries/200-core/212-reflect.md#2124-repl-輸出)：`any` 值會指出它所容納的型別）。`let` 儲存格不印出任何東西。在 Jupyter 筆記本中，帶有 `RichDisplay` 的值改為顯示其 MIME bundle（[9.8.2](908-jupyter-integration.md#982-本機原生核心運作)）。
 
 ```
 >>> let xs = [1, 2, 3];

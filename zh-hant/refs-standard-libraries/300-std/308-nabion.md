@@ -158,7 +158,7 @@ pub fn from_value<T: FromNabion>(v: Value) throws (NabionError) -> T;
 - `Value` 上的 `Display`、`Debug`、`==` 與 `hash` 絕不觸發 panic。`Display` 不加檢查地寫出正規形式（NaN 顯示為 `nan`）；`Debug` 把它寫成一行。
 - 標準實作：所有整數型別、`f32` / `f64`、`int` / `float`、`bool` / `char` / `str`、`Value`、`T | none`、`List`、`Set`、`Dict`、1 ~ 6 個元素的元組、`[T; N]`。
 
-`@derive` 為 `#[derive(Nabion)]` 產生的程式碼會呼叫 `Fields`、`struct_args`、`variant_of`、`variant_args`、`unknown_variant` 與 `from_value_at`。它們是 `pub(pkg)`：樣板寫出的名稱在樣板所在的模組中檢查（[refs-lang 6.9.9](../../refs-lang/006-meta-system/609-template-tokens.md#names-in-an-expansion)），所以衍生在任何套件中都能運作，而在 `std` 之外直接使用則是錯誤。讀取器與寫入器是標準函式庫私有的。
+`@derive` 為 `#[derive(Nabion)]` 產生的程式碼會呼叫 `Fields`、`struct_args`、`variant_of`、`variant_args`、`unknown_variant` 與 `from_value_at`。它們是 `pub(pkg)`：樣板寫出的名稱在樣板所在的模組中檢查（[refs-lang 6.9.9](../../refs-lang/006-meta-system/609-template-tokens.md#展開中的名稱)），所以衍生在任何套件中都能運作，而在 `std` 之外直接使用則是錯誤。讀取器與寫入器是標準函式庫私有的。
 
 ### `#[derive(Nabion)]`
 

@@ -183,7 +183,7 @@ field_kind = ANY_SLOT (3)
 - 標記階段不追蹤弱 `ref`。
 - 清除之後，若弱 `ref` 所指向的物件已被回收，弱 `ref` 槽位會被清為 0。
 
-這個機制對快取、觀察者模式等很有用；其函式庫介面是 `Weak<T>`（[stdlib 1.6.9](../../refs-standard-libraries/100-bare/106-gc-pin.md#169-weakt---weak-references)）。
+這個機制對快取、觀察者模式等很有用；其函式庫介面是 `Weak<T>`（[stdlib 1.6.9](../../refs-standard-libraries/100-bare/106-gc-pin.md#169-weakt弱參考)）。
 
 ## 8.2.9. INTERIOR_REF
 
@@ -212,7 +212,7 @@ INTERIOR_REF 指向物件內部的某個位置（而不是其開頭）。
 | `2`     | 以字組追蹤的緩衝區 | 酬載的每個字組都被當作模糊字組（`AMBIGUOUS`）掃描       |
 | `3`     | weak 儲存格（`Weak<T>`） | 一個 `WEAK_REF` 字組（8.2.8）；由 `nabi_gc_weak_new` 建立 |
 
-id `1` 與 `2` 以 `nabi_gc_alloc_slow` 配置，型別 id 為 `1` 或 `2`（[8.5.1](805-extern-symbols.md#851-gc-區域)）。標準函式庫的 [`GcBuf<T>`](../../refs-standard-libraries/200-core/209-collections.md#2912-gcbuft---raw-gc-buffer) 建立在這之上：編譯器以 id `1` 配置不含參照之 `T` 的緩衝區，因此無論數值資料多大，回收器都不必花時間在其上（存活的 256 MiB `List<f64>` 不會讓完整回收增加任何可量測的時間；同樣的位元組若是型別 `2` 的緩衝區，每次回收約需 140 ms），而且其中的任何數字都不會讓垃圾保持存活。`T` 容納參照的緩衝區會得到 `T` 的陣列 `ScanTable`（`version` 的位元 15，8.2.3），它只掃描參照槽位。型別 id `2` 只用於執行環境的字組緩衝區。
+id `1` 與 `2` 以 `nabi_gc_alloc_slow` 配置，型別 id 為 `1` 或 `2`（[8.5.1](805-extern-symbols.md#851-gc-區域)）。標準函式庫的 [`GcBuf<T>`](../../refs-standard-libraries/200-core/209-collections.md#2912-gcbuft原始-gc-緩衝區) 建立在這之上：編譯器以 id `1` 配置不含參照之 `T` 的緩衝區，因此無論數值資料多大，回收器都不必花時間在其上（存活的 256 MiB `List<f64>` 不會讓完整回收增加任何可量測的時間；同樣的位元組若是型別 `2` 的緩衝區，每次回收約需 140 ms），而且其中的任何數字都不會讓垃圾保持存活。`T` 容納參照的緩衝區會得到 `T` 的陣列 `ScanTable`（`version` 的位元 15，8.2.3），它只掃描參照槽位。型別 id `2` 只用於執行環境的字組緩衝區。
 
 ## 8.2.13. 註冊時機
 

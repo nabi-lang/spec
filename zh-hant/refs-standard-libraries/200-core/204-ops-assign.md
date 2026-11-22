@@ -266,7 +266,7 @@ Nabi **不**把 `Add` 設為 `AddAssign` 的父 trait。這兩個 trait 彼此�
 
 ## 2.4.10. 相關：廣播的 `*Assign`？
 
-廣播語彙單元沒有 `*Assign` trait。就地廣播改為語言語法：`y .= v` 以及 `y .+= v` `.-=` `.*=` `./=` `.%=` `.%%=` `.**=` `.&=` `.|=` `.^=` `.<<=` `.>>=` 逐元素寫入 `List`、固定長度陣列或 `Broadcastable` 目標，與右側的運算式融合，且不做任何配置（[refs-lang 3.3.7](../../refs-lang/003-expressions/303-broadcast-operators.md#337-in-place-broadcast)）。比較運算以及 `.&&` `.||` `.??` 則透過 `.=`（`ok .= ok .&& xs .> 0`）。
+廣播語彙單元沒有 `*Assign` trait。就地廣播改為語言語法：`y .= v` 以及 `y .+= v` `.-=` `.*=` `./=` `.%=` `.%%=` `.**=` `.&=` `.|=` `.^=` `.<<=` `.>>=` 逐元素寫入 `List`、固定長度陣列或 `Broadcastable` 目標，與右側的運算式融合，且不做任何配置（[refs-lang 3.3.7](../../refs-lang/003-expressions/303-broadcast-operators.md#337-原地廣播)）。比較運算以及 `.&&` `.||` `.??` 則透過 `.=`（`ok .= ok .&& xs .> 0`）。
 
 ```nabi
 xs .+= ys;                // xs[i] = xs[i] + ys[i]; lengths must match

@@ -204,7 +204,7 @@ use ns::*;
 
 ### 快取
 
-繫結保存在工具鏈的快取 `objc/<SDK version>/<key>.nabi` 中，以 SDK、其版本、目標、部署目標、指定的標頭檔和編譯器為鍵：之後的建置會讀取該檔案，而不是標頭檔。該檔案就是繫結的原始碼，因此繫結中的診斷會指向它。`nabi bindgen -x objective-c <header>` 會把單一標頭檔的相同繫結寫入檔案（[9.10.8](../../refs-lang/009-tools/910-nabi-frontend.md#nabi-bindgen-c-header-bindings)）。
+繫結保存在工具鏈的快取 `objc/<SDK version>/<key>.nabi` 中，以 SDK、其版本、目標、部署目標、指定的標頭檔和編譯器為鍵：之後的建置會讀取該檔案，而不是標頭檔。該檔案就是繫結的原始碼，因此繫結中的診斷會指向它。`nabi bindgen -x objective-c <header>` 會把單一標頭檔的相同繫結寫入檔案（[9.10.8](../../refs-lang/009-tools/910-nabi-frontend.md#nabi-bindgenc-標頭檔繫結)）。
 
 ## 1.10.13. 可用性與部署目標
 
@@ -216,7 +216,7 @@ error[E0084]: `maximumConcurrentCompilationTaskCount` needs macOS 13.3, the depl
   (`deployment_target: "13.3"` in nabi.nabion, or `MACOSX_DEPLOYMENT_TARGET=13.3`)
 ```
 
-在 iOS 上（`aarch64-apple-ios-sim`，[0.6.1](../../refs-lang/000-meta/006-platform-targets.md#061-supported)，以及進行中的 `aarch64-apple-ios`），版本是 iOS 的版本：部署目標預設為 `13.4`，可在 `nabi.nabion` 中寫 `deployment_target: { ios: "16.0" }`，或使用 `IPHONEOS_DEPLOYMENT_TARGET`；繫結讀取 SDK 標頭檔中的 iOS 可用性，把比 13.4 新的 API 標示為 `#[available(ios = "16.4")]`，而在 `if objc::available(ios: "16.4") { .. }` 之外的呼叫，就是上述錯誤，只是換成 iOS 的版本、守衛和變數。每個平台的檢查只讀取自己的標示和引數：`#[available(macos = ..)]` 標示和 `macos:` 引數只在 macOS 上算數，`ios` 的只在 iOS 上算數，所以一個守衛可以同時用於兩者：`if objc::available(macos: "13.3", ios: "16.4") { .. }`。
+在 iOS 上（`aarch64-apple-ios-sim`，[0.6.1](../../refs-lang/000-meta/006-platform-targets.md#061-已支援)，以及進行中的 `aarch64-apple-ios`），版本是 iOS 的版本：部署目標預設為 `13.4`，可在 `nabi.nabion` 中寫 `deployment_target: { ios: "16.0" }`，或使用 `IPHONEOS_DEPLOYMENT_TARGET`；繫結讀取 SDK 標頭檔中的 iOS 可用性，把比 13.4 新的 API 標示為 `#[available(ios = "16.4")]`，而在 `if objc::available(ios: "16.4") { .. }` 之外的呼叫，就是上述錯誤，只是換成 iOS 的版本、守衛和變數。每個平台的檢查只讀取自己的標示和引數：`#[available(macos = ..)]` 標示和 `macos:` 引數只在 macOS 上算數，`ios` 的只在 iOS 上算數，所以一個守衛可以同時用於兩者：`if objc::available(macos: "13.3", ios: "16.4") { .. }`。
 
 `objc::available(macos: str = "", ios: str = "") -> bool` 是執行時的檢查：正在執行的 macOS（`kern.osproductversion`）或 iOS（dyld 的 `_availability_version_check`，模擬器的執行環境也由它回答）是否為該版本或更新版本。留空的版本（預設值）表示該作業系統的任何版本，只給一個版本時則是 macOS 的版本。編譯器會讀取寫成該呼叫且引數為字串字面值的 `if` 條件；其他任何形式只在執行時檢查。
 

@@ -23,7 +23,7 @@
 
 `#[literal]` 魔法把這個決定附加到 trait 或函式上。
 
-數值字面值的型別由語言而不是這個魔法決定（[1.6.2](../001-lexical/106-numeric-literals.md#162-型別後綴)、[1.6.3](../001-lexical/106-numeric-literals.md#163-無後綴的字面值)）。對數字而言，`#[literal]` 只處理語言沒有定義的後綴。標準函式庫註冊了其中一個，`i`（`2i` 是虛數 `Complex<f64>`，[stdlib 2.1.11](../../refs-standard-libraries/200-core/201-numbers.md#2111-numeric-traits-float-ordering-ranges-complex-numbers)），其優先度為 -1，好讓套件自己的 `i` 處理器勝出（6.5.5）。
+數值字面值的型別由語言而不是這個魔法決定（[1.6.2](../001-lexical/106-numeric-literals.md#162-型別後綴)、[1.6.3](../001-lexical/106-numeric-literals.md#163-無後綴的字面值)）。對數字而言，`#[literal]` 只處理語言沒有定義的後綴。標準函式庫註冊了其中一個，`i`（`2i` 是虛數 `Complex<f64>`，[stdlib 2.1.11](../../refs-standard-libraries/200-core/201-numbers.md#2111-數值-trait浮點數排序範圍複數)），其優先度為 -1，好讓套件自己的 `i` 處理器勝出（6.5.5）。
 
 ## 6.5.2. 形式
 

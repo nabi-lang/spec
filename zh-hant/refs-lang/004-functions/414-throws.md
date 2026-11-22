@@ -227,7 +227,7 @@ for line in lines("a.txt") { ... }          // ERROR (E0062): `next` can throw; 
 | `try? for` | 結束迴圈；`for` 運算式為 `none`（否則為 `()`） |
 | `try for .. catch e: E { .. }` | `catch` 附加在整個 `try for` 運算式上 |
 
-主體中的 `try` 和任何巢狀的 `try` 一樣導引其錯誤：送往迴圈之後的 `catch`，或迴圈的 `try?` / `try!`，否則離開函式。要在錯誤之後繼續，請走訪 `.results()`，它以 `Result` 給出每一步（[stdlib 2.7.13](../../refs-standard-libraries/200-core/207-iter.md#2713-tryiterator---fallible-iteration)）。
+主體中的 `try` 和任何巢狀的 `try` 一樣導引其錯誤：送往迴圈之後的 `catch`，或迴圈的 `try?` / `try!`，否則離開函式。要在錯誤之後繼續，請走訪 `.results()`，它以 `Result` 給出每一步（[stdlib 2.7.13](../../refs-standard-libraries/200-core/207-iter.md#2713-tryiterator可能失敗的迭代)）。
 
 ## 4.14.11. 方法上的 `throws`
 

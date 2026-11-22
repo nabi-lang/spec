@@ -105,7 +105,7 @@ fns[4]();                          // 4
 
 值擷取把值複製進閉包。[`struct`](../002-types/203-struct.md) 是值型別，因此閉包持有它自己的複本；閉包內的欄位寫入不會到達外部變數。要那樣做請使用 `[ref p]`。對值擷取進行欄位寫入是編譯錯誤（E0057），與重新繫結擷取相同，其說明為 ``add `[ref p]` to the closure's capture list``。對單純資料（數字、`bool`、`str`，以及由它們組成、沒有 `Drop` 的結構、元組、陣列與列舉）的值擷取或其欄位呼叫 `ref self` 方法也是如此：閉包的每次呼叫都從它自己的複本開始，因此變更會遺失（以帶種子的產生器 `g` 執行 `List::from_fn(4, |_| g.uniform(0.0, 1.0))` 會得到同一個值四次）。共享其狀態的控制代碼與資源（`Cell`、`File`、通訊端）不受影響。請寫 `[ref g] |_| g.uniform(0.0, 1.0)`；若只要在閉包內改變一份複本，請先把它複製到區域變數中。
 
-集合型別（`List`、`Dict`、`Set`、`StrBuf`……）是參照控制代碼（[stdlib 2.9](../../refs-standard-libraries/200-core/209-collections.md#reference-handles)）。值擷取複製的是控制代碼，因此物件是共享的。
+集合型別（`List`、`Dict`、`Set`、`StrBuf`……）是參照控制代碼（[stdlib 2.9](../../refs-standard-libraries/200-core/209-collections.md#參考控制代碼)）。值擷取複製的是控制代碼，因此物件是共享的。
 
 ```nabi
 let xs = [1, 2, 3];
@@ -144,7 +144,7 @@ let g = [ref xs] || {
 
 ## 4.6.9. 平行與並行上下文中的額外限制
 
-`fn() + Send` 閉包（傳給 `task::spawn_blocking`、`par::for_each`、`thread::spawn` 等的閉包）的每個一般擷取都必須是 `Send + Sync`（[4.4](404-function-type.md#send--sync-約束)）：閉包與建立它的程式碼共享它。`[move x]` 擷取只屬於閉包，只需要 `Send`（[4.6.11](#4611-移動擷取move-x-擷取清單)）；`+ Sync` 閉包（`par::for_each`，由每個工作者呼叫）需要每個擷取都是 `Sync`。`[ref x]` 儲存格會被閉包與建立它的程式碼同時寫入，因此無論 `x` 的型別為何，它都絕不是 `Send` 或 `Sync`：帶有 `[ref]` 擷取的閉包（或擷取了這種閉包的閉包，或由 `async [ref x] ||` 閉包產生的 future）不適合任何 `+ Send` / `+ Sync` 槽位。同一執行緒內的使用（`spawn_local`、一般呼叫）不受影響。集合型別是 `!Sync`（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)），也不能以這種方式依值擷取。
+`fn() + Send` 閉包（傳給 `task::spawn_blocking`、`par::for_each`、`thread::spawn` 等的閉包）的每個一般擷取都必須是 `Send + Sync`（[4.4](404-function-type.md#send--sync-約束)）：閉包與建立它的程式碼共享它。`[move x]` 擷取只屬於閉包，只需要 `Send`（[4.6.11](#4611-移動擷取move-x-擷取清單)）；`+ Sync` 閉包（`par::for_each`，由每個工作者呼叫）需要每個擷取都是 `Sync`。`[ref x]` 儲存格會被閉包與建立它的程式碼同時寫入，因此無論 `x` 的型別為何，它都絕不是 `Send` 或 `Sync`：帶有 `[ref]` 擷取的閉包（或擷取了這種閉包的閉包，或由 `async [ref x] ||` 閉包產生的 future）不適合任何 `+ Send` / `+ Sync` 槽位。同一執行緒內的使用（`spawn_local`、一般呼叫）不受影響。集合型別是 `!Sync`（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)），也不能以這種方式依值擷取。
 
 ```nabi
 let buf: List<i32> = [];
@@ -154,7 +154,7 @@ par::for_each(xs, [ref buf] |x| { buf.push(x) });
 
 請改用摺疊（`par::fold(xs, 0, |a, b| a + b)`），透過 `Mutex` / `RwLock` / `Atomic` / 通道共享，或從執行緒回傳值（`join()`）。只有被產生的程式碼需要的值，要移入：`thread::spawn([move buf] || buf.len())`。
 
-以這種方式共享的值屬於其新的擁有者：在 `Mutex::new(buf)` 或 `tx.send(buf)` 之後使用 `buf` 是編譯錯誤（E0105，[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）。請透過鎖使用它，或交出 `buf.clone()`。
+以這種方式共享的值屬於其新的擁有者：在 `Mutex::new(buf)` 或 `tx.send(buf)` 之後使用 `buf` 是編譯錯誤（E0105，[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)）。請透過鎖使用它，或交出 `buf.clone()`。
 
 ```nabi
 let m = Mutex::new(buf);
@@ -165,7 +165,7 @@ buf.push(1);
 
 詳細的平行與並行規則由標準函式庫規格定義；本章只涵蓋語言層級的擷取機制。
 
-被擷取的 `Drop` 資源（`File`、通訊端、通道的 `Sender`）不會被複製：擷取把它移入閉包或 `async` 區塊，之後在外部使用它是錯誤（[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)）。`async` 區塊的任務在結束時釋放它所擷取的、釋放不會失敗的值（`Sender`）；關閉可能失敗的被擷取值（`File`）必須在區塊內關閉（`try f.close()` 或 `using`），否則該區塊是錯誤（E0134）。若外部也要保留該值，請擷取一份複本：`x.clone()`，對 `File` 則是 `try x.try_clone()`。
+被擷取的 `Drop` 資源（`File`、通訊端、通道的 `Sender`）不會被複製：擷取把它移入閉包或 `async` 區塊，之後在外部使用它是錯誤（[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop釋放時的清理)）。`async` 區塊的任務在結束時釋放它所擷取的、釋放不會失敗的值（`Sender`）；關閉可能失敗的被擷取值（`File`）必須在區塊內關閉（`try f.close()` 或 `using`），否則該區塊是錯誤（E0134）。若外部也要保留該值，請擷取一份複本：`x.clone()`，對 `File` 則是 `try x.try_clone()`。
 
 ## 4.6.10. 被擷取變數的生命週期
 
@@ -198,7 +198,7 @@ rows.push("x");
 //   help: the closure owns it now; use it inside the closure, ...
 ```
 
-- 建立閉包時交出 `x` 的方式與通道傳送相同（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）：閉包得到 `x` 所能到達的每個集合的複本，之後使用 `x`（或指向其所容納之物的其他控制代碼）是編譯錯誤（`E0105`）。`Sync` 值（數字、`str`、由它們組成的陣列）豁免：閉包的複本與 `x` 相等，兩者都可以使用。
+- 建立閉包時交出 `x` 的方式與通道傳送相同（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)）：閉包得到 `x` 所能到達的每個集合的複本，之後使用 `x`（或指向其所容納之物的其他控制代碼）是編譯錯誤（`E0105`）。`Sync` 值（數字、`str`、由它們組成的陣列）豁免：閉包的複本與 `x` 相等，兩者都可以使用。
 - 移動擷取只需要 `Send` 就能讓閉包跨越執行緒：沒有其他程式碼能存取它。因此集合、`Command` 或 `Child` 可以交給 `thread::spawn`、`task::spawn_blocking` 或 `par::Scope::spawn`。一般擷取保持 [4.6.9](#469-平行與並行上下文中的額外限制) 的 `Send + Sync` 規則，而 `+ Sync` 槽位（`par::for_each`，由每個工作者呼叫）需要每個擷取都是 `Sync`。
 - 擁有非 `Sync` 移動擷取的閉包只能被交出一次。把它傳給型別為 `fn(..) + Send` 但沒有 `Sync` 的參數就會交出它，無論是哪個函式：這樣的參數是被呼叫者可能在另一個執行緒上執行的參數（`thread::spawn`、`thread::Builder::spawn`、`task::spawn_blocking`、`task::spawn_blocking_with_arg` 的 `f`、`par::join`、`par::Scope::spawn`、`par::TryScope::spawn`，以及程式自己帶有這種參數的任何函式）。之後再次使用它，無論它經由什麼途徑傳遞（變數、結構或元組欄位、串列元素、參數、`if` / `match` 分支、回傳其引數之函式的結果），都是編譯錯誤（`E0133`）；在一次呼叫中傳遞它兩次也是（`par::join(f, f)`）。型別沒有寫出 `Sync` 的 `fn(..) + Send` 值可能擁有這樣的擷取，因此也只能交出一次；`+ Send + Sync` 值以及擷取全都是 `Send + Sync` 的閉包可以再次傳遞。呼叫閉包不會交出它：它可以被呼叫任意多次。要在其他執行緒上執行同樣的工作兩次，請建立兩個閉包，各自移入自己的 `.clone()`。
 - 呼叫 `async [move ..]` 閉包也不會交出它，但呼叫所產生的 future 是在閉包移入的東西上執行的：閉包及其每個 future 是同一個擁有者。它的 future 可以在這裡一個接一個地 await（`await f(); await f();`）；把閉包或其中一個 future 交出去（交給 `task::spawn`、放進另一個閉包的 `[move f]`）會把其他的一起帶走，之後使用它們是編譯錯誤（`E0105` / `E0133`）。
@@ -222,4 +222,4 @@ let f = [move xs, ref n] || { n += 1; xs.push(n) };   // OK, on this thread
 let g = [ref n, move n] || n;                    // ERROR (E0058): both ref and move
 ```
 
-同一個值也可以改為以引數傳遞：`task::spawn_blocking_with_arg(xs, |xs| xs.len())`（[stdlib 2.18.1](../../refs-standard-libraries/200-core/218-task.md#2181-core-api)）。
+同一個值也可以改為以引數傳遞：`task::spawn_blocking_with_arg(xs, |xs| xs.len())`（[stdlib 2.18.1](../../refs-standard-libraries/200-core/218-task.md#2181-核心-api)）。

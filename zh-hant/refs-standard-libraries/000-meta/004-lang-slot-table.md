@@ -163,7 +163,7 @@ Trait 槽位指出：使用者撰寫的語法被去語法糖為標準函式庫 t
 
 ### 各層級共用的項目：`#[internal]`
 
-有少數 `pub` 項目不是由編譯器呼叫，而是由工具鏈的另一個層級呼叫：`std` 從 `core` 使用它們，`core` 從 `bare` 使用它們。它們標記為 `#[internal]`（[refs-lang 6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-shared-by-the-toolchains-packages)）：`bare`、`core` 和 `std` 可以使用它們，其他任何套件會得到錯誤「internal to the Nabi toolchain」，而文件和語言伺服器會略過它們。
+有少數 `pub` 項目不是由編譯器呼叫，而是由工具鏈的另一個層級呼叫：`std` 從 `core` 使用它們，`core` 從 `bare` 使用它們。它們標記為 `#[internal]`（[refs-lang 6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-由工具鏈的套件共用)）：`bare`、`core` 和 `std` 可以使用它們，其他任何套件會得到錯誤「internal to the Nabi toolchain」，而文件和語言伺服器會略過它們。
 
 | 項目                                   | 使用者                                                    | 參照 |
 |----------------------------------------|-----------------------------------------------------------|------|
@@ -184,7 +184,7 @@ Trait 槽位指出：使用者撰寫的語法被去語法糖為標準函式庫 t
 
 ## 0.4.5. 方法槽位（1）
 
-方法槽位用於編譯器在使用者沒有寫出呼叫時自動呼叫的方法。只有一個：`using` 繫結被釋放時的處置。`?` 運算子由編譯器針對 `T | none` 直接展開（[refs-lang 3.14.10](../../refs-lang/003-expressions/314-error-control-flow.md#31410-the--operator---early-return-of-none)），因此沒有方法槽位。值的複製（`Clone::clone`）永遠不會自動呼叫（[2.13.2](../200-core/213-marker.md#2132-clone深層複製)），因此它登記為 trait 槽位 `clone_trait`，而不是方法槽位。
+方法槽位用於編譯器在使用者沒有寫出呼叫時自動呼叫的方法。只有一個：`using` 繫結被釋放時的處置。`?` 運算子由編譯器針對 `T | none` 直接展開（[refs-lang 3.14.10](../../refs-lang/003-expressions/314-error-control-flow.md#31410--運算子提前回傳-none)），因此沒有方法槽位。值的複製（`Clone::clone`）永遠不會自動呼叫（[2.13.2](../200-core/213-marker.md#2132-clone深層複製)），因此它登記為 trait 槽位 `clone_trait`，而不是方法槽位。
 
 | 槽位名稱      | 意義                                 | 標準函式庫方法                  | 參照 |
 |---------------|--------------------------------------|---------------------------------|------|

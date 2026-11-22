@@ -42,7 +42,7 @@ d[k, default: v].f op= e;         →   the same, with t[i].f op= e
 d[k, default: v].m(args)          →   d.get_or_insert(k, v).m(args)
 ```
 
-`d` 與 `k` 只求值一次；`v` 則在每次執行該運算式時求值。型別只要有 `get_or` 與 `get_or_insert` 就能使用這種形式（`Dict`，[stdlib 2.9.13](../../refs-standard-libraries/200-core/209-collections.md#2913-defaults-operators-and-constructors)）。
+`d` 與 `k` 只求值一次；`v` 則在每次執行該運算式時求值。型別只要有 `get_or` 與 `get_or_insert` 就能使用這種形式（`Dict`，[stdlib 2.9.13](../../refs-standard-libraries/200-core/209-collections.md#2913-預設值運算子與建構函式)）。
 
 讀取與寫入對應到不同的 trait，因此嘗試寫入唯讀資料是編譯錯誤。多維索引去糖為單一的索引 trait 呼叫，其索引被打包成一個元組：`g[i, j]` 是透過 `Index<(I, J)>` 的 `g[(i, j)]`。當一個型別有多個 `Index<K>` impl 時，由引數型別選出一個。
 
@@ -133,7 +133,7 @@ xs[::0];               // panic: step 0
 
 ### 去糖
 
-切片去糖為一個範圍以及對 `Sliceable` trait 的呼叫（[stdlib 2.3.4](../../refs-standard-libraries/200-core/203-ops.md#234-indexing-traits)）。
+切片去糖為一個範圍以及對 `Sliceable` trait 的呼叫（[stdlib 2.3.4](../../refs-standard-libraries/200-core/203-ops.md#234-索引-trait)）。
 
 ```
 arr[a : b]            →   arr.slice(a..b)                       // unsigned bounds, no step
@@ -156,14 +156,14 @@ arr[a : b]            →   slice_mut(arr, a..b)                  // a List wher
 
 ### `Slice` 結果的種類
 
-結果型別由 `Sliceable` 的關聯型別決定。在標準函式庫中如下（[stdlib 2.9.7](../../refs-standard-libraries/200-core/209-collections.md#297-slicet---view)）。
+結果型別由 `Sliceable` 的關聯型別決定。在標準函式庫中如下（[stdlib 2.9.7](../../refs-standard-libraries/200-core/209-collections.md#297-slicet檢視)）。
 
 | 目標                 | 結果                                                                 |
 |----------------------|----------------------------------------------------------------------|
 | `List<T>`            | `Slice<T>`：串列緩衝區的視圖（元素的寫入看得到）                     |
 | `Slice<T>`           | `Slice<T>`：視圖的視圖                                               |
 | `[T; N]`             | `Slice<T>`：陣列複本的視圖（陣列是值）                               |
-| 在預期 `SliceMut<T>` 之處的 `List<T>` | `SliceMut<T>`：串列的可寫視圖（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt---writable-view)）；沒有步長 |
+| 在預期 `SliceMut<T>` 之處的 `List<T>` | `SliceMut<T>`：串列的可寫視圖（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可寫入檢視)）；沒有步長 |
 | `SliceMut<T>`        | `SliceMut<T>`：該視圖的可寫視圖                                      |
 | `str`、`StrBuf`      | 新的 `str`：位元組複本（因為 `str` 必須保持為 C 字串），並檢查 UTF-8 邊界 |
 
@@ -192,7 +192,7 @@ m[1:3, :] = x       →   IndexSet::index_set(m, (SliceArg::new(1, 3, none), Sli
 
 `SliceArg::indices(len)` 對一個軸套用 3.6.2 的規則，並回傳 `(first, count, step)`。
 
-實作了標記 trait `core::index::AxisIndexed` 的型別（`Array` 有實作，[stdlib 2.9.14](../../refs-standard-libraries/200-core/209-collections.md#2914-arrayt-const-n-usize---n-dimensional-array)），會把每個部分當作*軸引數*接收，因此一組針對 `isize` 的 impl 就能服務索引的每一種寫法：
+實作了標記 trait `core::index::AxisIndexed` 的型別（`Array` 有實作，[stdlib 2.9.14](../../refs-standard-libraries/200-core/209-collections.md#2914-arrayt-const-n-usizen-維陣列)），會把每個部分當作*軸引數*接收，因此一組針對 `isize` 的 impl 就能服務索引的每一種寫法：
 
 | 部分                        | 軸引數                           | 意義（對 `Array` 而言）                       |
 |-----------------------------|----------------------------------|-----------------------------------------------|

@@ -18,7 +18,7 @@ top_stmt    ::= let_stmt | let_else_stmt | expr ";" | block_like_expr ";"?   // 
 module_file ::= item*                          // lib.nabi and every module file other than main.nabi
 ```
 
-`item` 是[模組中的項目](../005-modules/504-modules.md#547-模組內的項目)（`fn`、`struct`、`enum`、`trait`、`impl`、`const`、`static`、`mod`、`use` 等），而 `let_stmt` / `let_else_stmt` / `expr ";"` 與[區塊運算式](../003-expressions/309-block-expressions.md)的陳述式相同。控制流程（`if`、`match`、`for`、`while`、`loop`、`try`）由運算式構成，因此包含在 `expr ";"` 中。與函式主體不同，這裡沒有不帶終止符的最後運算式（`tail_expr`）：隱含 `main` 不回傳任何值。只有項目而沒有陳述式（也沒有 `fn main`）的 `main.nabi` 會得到一個空的隱含 `main`，但匯出 WIT 的套件除外：那種套件是沒有進入點的 reactor（[stdlib 1.8.2](../../refs-standard-libraries/100-bare/108-wit.md#exports)）。
+`item` 是[模組中的項目](../005-modules/504-modules.md#547-模組內的項目)（`fn`、`struct`、`enum`、`trait`、`impl`、`const`、`static`、`mod`、`use` 等），而 `let_stmt` / `let_else_stmt` / `expr ";"` 與[區塊運算式](../003-expressions/309-block-expressions.md)的陳述式相同。控制流程（`if`、`match`、`for`、`while`、`loop`、`try`）由運算式構成，因此包含在 `expr ";"` 中。與函式主體不同，這裡沒有不帶終止符的最後運算式（`tail_expr`）：隱含 `main` 不回傳任何值。只有項目而沒有陳述式（也沒有 `fn main`）的 `main.nabi` 會得到一個空的隱含 `main`，但匯出 WIT 的套件除外：那種套件是沒有進入點的 reactor（[stdlib 1.8.2](../../refs-standard-libraries/100-bare/108-wit.md#匯出)）。
 
 > [!IMPORTANT]
 > 若單一 `main.nabi` **同時**包含頂層陳述式與 `fn main` 宣告，就是**編譯錯誤**（E0036）。這排除了讀者必須猜測兩個進入點中哪一個會執行的任何情況。

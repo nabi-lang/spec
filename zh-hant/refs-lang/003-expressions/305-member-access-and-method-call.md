@@ -52,7 +52,7 @@ let d = p.distance(other);
 1. 首先是定義在固有 `impl`（[`impl`](../002-types/209-impl.md)）中的方法。
 2. 然後是 trait `impl` 的方法，只限於左側型別所滿足、且在目前模組作用域內的 trait：`core` 的 trait（其中包括 prelude 的 trait：它們是內建型別本身的方法）、以 `use` 匯入的 trait（在模組或外層區塊中）、定義在同一個模組中的 trait，以及型別參數接收者的約束。`std` 或某個套件的 trait 需要 `use`（對 `(0..6).outcomes()` 寫 `use std::random::SampleRange;`），與 Rust 相同。透過型別寫出的關聯函式（`Point::origin()`）看得到這些 trait 以及其他所有標準函式庫的 trait。meta 樣板所寫出的方法名稱，以該樣板所屬模組作用域內的 trait 查找（[6.9.9](../006-meta-system/609-template-tokens.md#展開中的名稱)）。
 
-3. 當兩者都沒有該方法，而接收者的型別有一個不帶參數的方法 `iter()` 時，若 `iter()` 回傳的型別有 `m`，`x.m(args)` 就是 `x.iter().m(args)`。即使 `Ord::min` / `max` 存在（它們接受一個引數），不帶引數的 `x.min()` / `x.max()` 也以相同方式轉發。因此集合型別能回應迭代器方法：`xs.map(f).sum()`（[stdlib 2.7.14](../../refs-standard-libraries/200-core/207-iter.md#2714-collections-answer-iterator-methods)）。
+3. 當兩者都沒有該方法，而接收者的型別有一個不帶參數的方法 `iter()` 時，若 `iter()` 回傳的型別有 `m`，`x.m(args)` 就是 `x.iter().m(args)`。即使 `Ord::min` / `max` 存在（它們接受一個引數），不帶引數的 `x.min()` / `x.max()` 也以相同方式轉發。因此集合型別能回應迭代器方法：`xs.map(f).sum()`（[stdlib 2.7.14](../../refs-standard-libraries/200-core/207-iter.md#2714-集合型別回應迭代器方法)）。
 
 型別為型別參數的接收者（`T: Root` 之下的 `x: T`）只具有其約束所給予的東西，因此在泛型主體中，`x.sqrt()` 對每個實例都是 `Root::sqrt`，即使是對具有固有 `sqrt` 之型別的實例（`T = Complex<f64>`）也一樣。
 

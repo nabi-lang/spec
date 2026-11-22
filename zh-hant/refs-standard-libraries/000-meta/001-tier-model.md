@@ -11,7 +11,7 @@ core     (foundation, safe, all targets; uses bare internally)
 std   (target-dep; uses foundation + bare)
 ```
 
-每個層級各自是一個路徑根：`bare::..`、`core::..`、`std::..`（[refs-lang 5.7.4](../../refs-lang/005-modules/507-paths.md#574-std-core-bare-the-standard-library-tiers)）。
+每個層級各自是一個路徑根：`bare::..`、`core::..`、`std::..`（[refs-lang 5.7.4](../../refs-lang/005-modules/507-paths.md#574-stdcorebare標準函式庫層級)）。
 
 分成三層的理由很明確。可能破壞記憶體安全的原始操作，限制在狹小範圍內才容易
 稽核；必須在每個平台上行為一致的核心抽象，只有不與依賴作業系統的程式碼混在一起，
@@ -91,7 +91,7 @@ prelude 是 `core` 唯一指名 `std` 項目的地方：在對應的目標上，
 三個層級各自作為獨立的建置單元（獨立的封存檔）處理，並可在每次編譯時快取。
 連結順序為 `std` → `core` → `bare` → 執行環境，使用者套件位於
 所有層級之上。編譯器在首次使用時將它們建置到快取並自動連結，因此使用者
-不需要把它們加入相依宣告（請見 [0.5.4 發行形式與連結機制](../../refs-lang/000-meta/005-standard-libraries-tiers.md#054-distribution-form-and-linking-mechanism)）。
+不需要把它們加入相依宣告（請見 [0.5.4 發行形式與連結機制](../../refs-lang/000-meta/005-standard-libraries-tiers.md#054-散布形式與連結機制)）。
 
 ## 0.1.4. 目標可用性
 
@@ -116,9 +116,9 @@ API 仍可在每個目標上建置：目標所缺少的操作會在執行時以
 
 在同一個發行系列內，項目不會被移除，也不會以不相容的方式變更。被取代的項目
 仍可繼續運作，並標記為 `#[deprecated(since = "..", note = "..")]`
-（[6.2.7](../../refs-lang/006-meta-system/602-built-in-attributes.md#627-deprecated-discouraged-use-marker)），
+（[6.2.7](../../refs-lang/006-meta-system/602-built-in-attributes.md#627-deprecated-不建議使用的標記)），
 其 note 指出應改用什麼。必須改為 `unsafe` 的安全函式會標記為
-`#[deprecated_safe]`（[6.2.14](../../refs-lang/006-meta-system/602-built-in-attributes.md#6214-deprecated_safe-safe-today-unsafe-later)）。
+`#[deprecated_safe]`（[6.2.14](../../refs-lang/006-meta-system/602-built-in-attributes.md#6214-deprecated_safe-現在安全之後-unsafe)）。
 下一個破壞性版本會移除該項目，或將其改為 `unsafe`。
 
 ## 0.1.6. 每個項目只有一條路徑

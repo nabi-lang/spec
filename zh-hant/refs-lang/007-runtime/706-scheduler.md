@@ -4,7 +4,7 @@ Nabi 的排程器是 M:N [工作竊取](../000-meta/007-glossary.md#工作竊取
 
 ## 7.6.1. 統一的工作者模型
 
-一個行程有一個執行器，在第一次使用時啟動。工作者是與 CPU 數量一樣多的作業系統執行緒，加上一條阻塞通道與一個 I/O 驅動程式。`task::block_on` 把呼叫它的執行緒附加為訪客工作者；在它回傳之後，剩下的任務繼續執行。`par::*` 與 `spawn_blocking` 使用同一個執行器（[stdlib 2.18.3](../../refs-standard-libraries/200-core/218-task.md#2183-scheduler-model---work-stealing)）。每個工作者結合了下列角色：
+一個行程有一個執行器，在第一次使用時啟動。工作者是與 CPU 數量一樣多的作業系統執行緒，加上一條阻塞通道與一個 I/O 驅動程式。`task::block_on` 把呼叫它的執行緒附加為訪客工作者；在它回傳之後，剩下的任務繼續執行。`par::*` 與 `spawn_blocking` 使用同一個執行器（[stdlib 2.18.3](../../refs-standard-libraries/200-core/218-task.md#2183-排程器模型工作竊取)）。每個工作者結合了下列角色：
 
 ```
 worker = {

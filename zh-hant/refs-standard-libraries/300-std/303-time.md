@@ -194,7 +194,7 @@ Duration::ns(-20);       // "-20ns"
 
 ### 時間長度的算術策略
 
-`Duration` / `SystemTime` / `Instant` / `BootTime` 的算術（包括 `duration_since` 和 `from_unix`）在溢位檢查開啟時遇到溢位會觸發 panic，關閉時則飽和（`-C overflow-checks`，[refs-lang 9.1.2](../../refs-lang/009-tools/901-nabic-cli.md#nabic-build-aot-build)）。`f64` 形式（`Duration::secs_f64`、`f64 * Duration`）遵循相同的規則：非有限或超出範圍的結果在檢查開啟時觸發 panic，關閉時則飽和（NaN 變為零）。除以零一律觸發 panic。`Duration` 的 `checked_*` / `saturating_*` 變體則明確地做出選擇。
+`Duration` / `SystemTime` / `Instant` / `BootTime` 的算術（包括 `duration_since` 和 `from_unix`）在溢位檢查開啟時遇到溢位會觸發 panic，關閉時則飽和（`-C overflow-checks`，[refs-lang 9.1.2](../../refs-lang/009-tools/901-nabic-cli.md#nabic-buildaot-建置)）。`f64` 形式（`Duration::secs_f64`、`f64 * Duration`）遵循相同的規則：非有限或超出範圍的結果在檢查開啟時觸發 panic，關閉時則飽和（NaN 變為零）。除以零一律觸發 panic。`Duration` 的 `checked_*` / `saturating_*` 變體則明確地做出選擇。
 
 ```nabi
 impl Duration {

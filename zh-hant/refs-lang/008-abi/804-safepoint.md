@@ -137,7 +137,7 @@ loop:
 
 位於 C 或阻塞之執行環境呼叫中的執行緒無法到達安全點，因此它算作 `PARKED`：GC 把它視為已經在協作。
 
-- 編譯器包住每個 `extern "C"` 呼叫：呼叫期間為 `PARKED`，之後為 `RUNNING`，每次存入之後都檢查 yield 旗標。呼叫者的引數根保留在其影子堆疊框架中。快速路徑是行內的；`nabi_enter_native` / `nabi_leave_native` 是慢速路徑（[8.5.2](805-extern-symbols.md#852-執行環境區域)）。對 `#[leaf]` 宣告的呼叫沒有包住：執行緒保持 `RUNNING`，並阻擋每次回收直到呼叫回傳（[stdlib 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf---short-calls)）。
+- 編譯器包住每個 `extern "C"` 呼叫：呼叫期間為 `PARKED`，之後為 `RUNNING`，每次存入之後都檢查 yield 旗標。呼叫者的引數根保留在其影子堆疊框架中。快速路徑是行內的；`nabi_enter_native` / `nabi_leave_native` 是慢速路徑（[8.5.2](805-extern-symbols.md#852-執行環境區域)）。對 `#[leaf]` 宣告的呼叫沒有包住：執行緒保持 `RUNNING`，並阻擋每次回收直到呼叫回傳（[stdlib 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf短呼叫)）。
 - 每個 `extern "C" fn` 定義都以 `nabi_native_reenter` 開始、以 `nabi_native_resume` 結束，因此 C 回呼以 mutator 的身分執行。
 - 執行環境以相同方式包住它自己的阻塞呼叫（I/O 等待、`nabi_sync_wait`、join、sleep），以及它那些不碰任何 GC 物件、只碰呼叫者框架保持存活之緩衝區且不存入任何參照的長時間計算：`int` 核心函式（乘法、除法、gcd；從 64 Ki 個 limb 起的加法、減法、移位與單 limb 除法），以及從 64 KiB 起的 `str` 搜尋與計數、UTF-8 檢查與位元組複製（[8.5.2](805-extern-symbols.md#不是安全點的函式)）。它們的 `extern "nabi"` 宣告不是 `#[no_safepoint]`（[5.9.2](../005-modules/509-extern-block.md#592-abi-指定符)），因此對它們的呼叫是安全點，緩衝區也有根。
 - 對 `#[no_safepoint]` 執行環境函式的呼叫不會被包住。其他每個執行緒的回收都會等到它回傳，因此這樣的函式只做有限的工作；長的輸入改交給其停駐版本。偵錯版 nabic 會以 `nabi_nosp_enter()` / `nabi_nosp_leave()` 包住它（[8.5.2](805-extern-symbols.md#852-執行環境區域)），它們提高與降低執行緒的 `no_safepoint` 深度（[8.3.1](803-tls-slots.md#831-tls-槽位結構)）；若執行緒在深度不為零時要為回收而停下，偵錯版執行環境會以致命錯誤失敗。發行版 nabic 兩個呼叫都不發出。

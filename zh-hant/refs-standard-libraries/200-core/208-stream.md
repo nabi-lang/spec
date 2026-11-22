@@ -87,7 +87,7 @@ async yield fn ticks(interval: Duration) -> Instant {
 }
 ```
 
-`-> Instant` 是元素型別，呼叫的結果是 `AsyncStream<Instant>`（實作 `Stream<Item = Instant>`）（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#result-types-of-coroutine-functions)）。編譯器會把此函式轉成狀態機（[refs-lang 7.8](../../refs-lang/007-runtime/708-coroutine.md)）。每個 `yield` 都是**暫停點**，每個 `await` 也是。
+`-> Instant` 是元素型別，呼叫的結果是 `AsyncStream<Instant>`（實作 `Stream<Item = Instant>`）（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#協程函式的結果型別)）。編譯器會把此函式轉成狀態機（[refs-lang 7.8](../../refs-lang/007-runtime/708-coroutine.md)）。每個 `yield` 都是**暫停點**，每個 `await` 也是。
 
 語法的權威來源是 [refs-lang 4.13 stream（`async yield`）](../../refs-lang/004-functions/413-stream.md)。
 
@@ -182,7 +182,7 @@ fn select<S1: Stream, S2: Stream>(a: S1, b: S2) -> Select<S1, S2>;  // Stream<It
 
 ## 2.8.8a. `AsyncStream<T>` / `TryAsyncStream<T, E>`：非同步串流的值
 
-這兩者是 `async yield fn` 呼叫與 `async yield { .. }` 區塊的值（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#result-types-of-coroutine-functions)）。
+這兩者是 `async yield fn` 呼叫與 `async yield { .. }` 區塊的值（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#協程函式的結果型別)）。
 
 ```nabi
 struct AsyncStream<T> { /* private */ }
@@ -247,7 +247,7 @@ fn from_results<S: Stream<Item = Result<T, E>>, T, E>(s: S) -> FromResults<S, T,
 
 2.7.13 的規則同樣適用：配接器的函式可以擲回 `Error`，只有 `map_err` 會改變它，`collect` 在第一個錯誤處停止並擲回該錯誤，`results()` 在錯誤之後仍會繼續輪詢。非同步方法與 `Stream::collect` 一樣接受 `self`。`TryStream` 不在 prelude 中（`Stream` 也不在）；請寫成 `stream::TryStream`。
 
-`try for await x in s { .. }` 步進一個 `TryStream`；`try` 涵蓋串流運算式與每次 `poll_next`，而不涵蓋迴圈主體（[refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for-iterator-based-repetition)）。
+`try for await x in s { .. }` 步進一個 `TryStream`；`try` 涵蓋串流運算式與每次 `poll_next`，而不涵蓋迴圈主體（[refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for以迭代器為基礎的重複)）。
 
 ```nabi
 async fn sizes(urls: List<str>) throws (HttpError) -> List<usize> {

@@ -62,7 +62,7 @@ mod hkdf {                                          // crypto::hkdf (RFC 5869)
 }
 ```
 
-`HashAlgorithm` 列出參與金鑰化與簽章 API 的每個雜湊函式：`Digest`、`Hmac`、`hkdf`、ECDSA 與 RSA（PKCS #1 v1.5 與 PSS，包含 MGF1）都接受每個變體。它是 `#[non_exhaustive]`（[refs-lang 6.2.10](../../refs-lang/006-meta-system/602-built-in-attributes.md#6210-non_exhaustive-opting-out-of-external-exhaustiveness)）：在 `core` 之外對它進行 `match` 需要 `_` 分支，之後的版本可以加入新的函式。對於 SHA-3 函式，HMAC 的區塊是海綿結構的速率（rate）。`Sha3_256`、`Sha3_512`、`Shake128` 與 `Shake256` 是低階形式：每個都是在編譯時固定的一個函式（SHAKE 沒有 `HashAlgorithm` 變體，因為它的輸出長度由呼叫端決定）；`Sha3_256::digest(x)` 與 `HashAlgorithm::Sha3_256.digest(x)` 計算的是同一個函式。
+`HashAlgorithm` 列出參與金鑰化與簽章 API 的每個雜湊函式：`Digest`、`Hmac`、`hkdf`、ECDSA 與 RSA（PKCS #1 v1.5 與 PSS，包含 MGF1）都接受每個變體。它是 `#[non_exhaustive]`（[refs-lang 6.2.10](../../refs-lang/006-meta-system/602-built-in-attributes.md#6210-non_exhaustive-退出外部的窮盡性)）：在 `core` 之外對它進行 `match` 需要 `_` 分支，之後的版本可以加入新的函式。對於 SHA-3 函式，HMAC 的區塊是海綿結構的速率（rate）。`Sha3_256`、`Sha3_512`、`Shake128` 與 `Shake256` 是低階形式：每個都是在編譯時固定的一個函式（SHAKE 沒有 `HashAlgorithm` 變體，因為它的輸出長度由呼叫端決定）；`Sha3_256::digest(x)` 與 `HashAlgorithm::Sha3_256.digest(x)` 計算的是同一個函式。
 
 `Digest`、`Hmac` 以及 SHA-3 / SHAKE 的狀態都是值：複本會各自獨立地繼續（例如在中途讀取的對話紀錄雜湊）。連續的 `squeeze` 呼叫延續同一個輸出串流；在第一次 `squeeze` 之後呼叫 `update` 會觸發 panic。`Hmac::verify` 以常數時間比較完整長度的標籤。`hkdf::extract` 在 salt 為空時使用 `output_len` 個零位元組；`hkdf::expand` 在 `len > 255 * output_len` 時擲回 `ValueError`。
 
@@ -202,7 +202,7 @@ ECDSA 簽署金鑰是不超過曲線大小的大端序純量 `1 <= d < n`（否�
 - 剖析（DER、PEM、金鑰檔案）與公開資料的驗證是可變時間的；
 - 它是由隨附工具鏈編譯出的實作所具有的性質，不是語言提供的保證：以相同風格撰寫的使用者程式碼不在涵蓋範圍內。
 
-**記憶體中的金鑰材料**。秘密位元組存放在*秘密儲存區*中：這是垃圾回收器在大型物件空間（[refs-lang 7.1.2](../../refs-lang/007-runtime/701-object-layout.md#712-memory-spaces)）中配置的緩衝區，從不移動或複製，並在釋放記憶體之前用零覆寫。`Secret`（2.21）是它的公開形式。
+**記憶體中的金鑰材料**。秘密位元組存放在*秘密儲存區*中：這是垃圾回收器在大型物件空間（[refs-lang 7.1.2](../../refs-lang/007-runtime/701-object-layout.md#712-記憶體空間)）中配置的緩衝區，從不移動或複製，並在釋放記憶體之前用零覆寫。`Secret`（2.21）是它的公開形式。
 
 - `Secret` 的位元組在堆積中只存在於一個地方；移交給另一個執行緒（2.13.9）時會在秘密儲存區中建立第二個 `Secret`，並依相同的規則抹除。它們會被 `wipe` 用零覆寫、在 `using` 繫結釋放 `Secret` 時（直接或透過 drop glue）被覆寫，最遲也會在釋放該緩衝區的回收中被覆寫。歸零使用的是最佳化器不得移除的儲存操作。
 - 演算法只把依賴金鑰的狀態保存在秘密儲存區或區域變數中，從不放在普通的堆積物件裡。這些狀態包括 AES 輪金鑰、GHASH 金鑰與 ChaCha20 金鑰（`Aead`），HMAC 與 HKDF（填補後的金鑰、鏈結值、輸出區塊），X25519 私密金鑰以及 X25519 與 ML-KEM 的共用金鑰，ML-KEM 解封裝金鑰及其秘密多項式、種子與訊息，Ed25519 的種子、展開金鑰與 nonce 雜湊，ECDSA 純量，以及 RSA 的質數、CRT 指數與 `q^-1`。結果為金鑰材料的函式回傳 `Secret`。秘密儲存區中的暫存值在函式回傳前抹除，除非函式擲回錯誤；此時由回收來抹除它們。
@@ -211,7 +211,7 @@ ECDSA 簽署金鑰是不超過曲線大小的大端序純量 `1 <= d < n`（否�
 這項保證有其限制，實作會明確說明而不隱藏：
 
 - **暫存器與堆疊**。區域變數存放在暫存器與執行緒的堆疊上，不會被清除。這包括固定長度陣列與結構值，例如 `Digest`、`Hmac`、SHA-3 與加密器的狀態，以及 X25519、Ed25519 與 ECDSA 的體元素與純量。編譯器產生的溢出（spill）也不會被清除；槽位只有在堆疊被重複使用時才會被覆寫。沒有清除它們的程式碼產生機制，而 Rust 的 `zeroize`、Go 的 `crypto/subtle` 輔助函式以及 libsodium 的 `sodium_memzero` 同樣只能觸及交給它們的記憶體，無法觸及編譯器產生的複本。
-- **普通物件**。存放在堆積物件中的值就存在於該物件中：垃圾回收器可能在疏散時複製它，並在不清除的情況下釋放它。這涵蓋 `List` 的元素、GC 持有之結構的欄位、閉包環境，以及跨越暫停點的 `async` / 產生器框架（[refs-lang 7.8.2](../../refs-lang/007-runtime/708-coroutine.md#782-coroutine-frame)）。把 `Secret` 的位元組複製出來（`as_bytes().to_list()`、`str`、格式化）會產生普通的複本。
+- **普通物件**。存放在堆積物件中的值就存在於該物件中：垃圾回收器可能在疏散時複製它，並在不清除的情況下釋放它。這涵蓋 `List` 的元素、GC 持有之結構的欄位、閉包環境，以及跨越暫停點的 `async` / 產生器框架（[refs-lang 7.8.2](../../refs-lang/007-runtime/708-coroutine.md#782-協程框架)）。把 `Secret` 的位元組複製出來（`as_bytes().to_list()`、`str`、格式化）會產生普通的複本。
 - **普通的輸入與輸出**。不在涵蓋範圍內的有：以 `List<u8>` 或 `str` 傳入的金鑰、明文與密文、`Hmac` 標籤、`Digest` 的輸出，以及解碼後的金鑰檔案（PEM / DER 解碼在 `PrivateKey` 複製金鑰之前會產生普通串列）。
 - **簽署**。ECDSA 與 RSA 簽署不在涵蓋範圍內：RFC 6979 的狀態與 `bignum` 的 limb 是普通串列，而 RSA 運算是在普通串列上計算（`rsa::PrivateKey` 把質數、CRT 指數與 `q^-1` 保存在秘密儲存區中，並在每次運算時重建模數）。
 - **未鎖定在 RAM 中**。秘密儲存區沒有被鎖定（`mlock` / `VirtualLock`）。它可能被寫入置換空間或休眠檔案，並出現在核心傾印與行程快照中。鎖定以分頁為單位、每個行程有上限（RLIMIT_MEMLOCK），解除也以分頁為單位，因此需要一個自己的分頁粒度配置器。

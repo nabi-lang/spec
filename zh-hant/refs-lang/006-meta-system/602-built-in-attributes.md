@@ -29,9 +29,9 @@ struct Point { x: i64; y: i64; }
 
 ### 內建可衍生的 trait
 
-只有 `Clone`、`Copy`、`Debug`、`Default`、`PartialEq`、`Eq`、`PartialOrd`、`Ord`、`Hash` 與 `Error` 可以衍生。各 trait 的產生規則與要求定義於 [stdlib 2.13.11](../../refs-standard-libraries/200-core/213-marker.md#21311-derivable-traits)。
+只有 `Clone`、`Copy`、`Debug`、`Default`、`PartialEq`、`Eq`、`PartialOrd`、`Ord`、`Hash` 與 `Error` 可以衍生。各 trait 的產生規則與要求定義於 [stdlib 2.13.11](../../refs-standard-libraries/200-core/213-marker.md#21311-可衍生的-trait)。
 
-- `Display` 不能衍生。顯示格式由型別的作者決定，以 `impl Display` 或 `#[display("..")]` 撰寫（[stdlib 2.10.14](../../refs-standard-libraries/200-core/210-fmt.md#21014-derive-policy-summary)）。
+- `Display` 不能衍生。顯示格式由型別的作者決定，以 `impl Display` 或 `#[display("..")]` 撰寫（[stdlib 2.10.14](../../refs-standard-libraries/200-core/210-fmt.md#21014-衍生政策摘要)）。
 - `Error` 以其預設的 `source()` 實作 `Error`；`Display` 與 `Debug` 來自它們自己的 derive、屬性或 impl（[stdlib 2.14](../../refs-standard-libraries/200-core/214-error.md#deriveerror)）。
 - 衍生 `Eq` / `Ord` 而沒有其父 trait（`PartialEq` / `PartialOrd`、`Eq`）是編譯錯誤。`Copy` 需要 `Clone`，且不能與 `Drop` 結合。
 - 在 `union` 上使用 `#[derive]` 是編譯錯誤。
@@ -296,7 +296,7 @@ fn strict_zone() { ... }
 
 有些發現附帶能解決它的修改（`while true` -> `loop`、刪除未使用的 `use`）；編輯器把它當作快速修正提供，而 `nabi fix`（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-fix套用修正)）會在整個套件中套用它們。
 
-`nabic check --check-library`（[9.1.2](../009-tools/901-nabic-cli.md#nabic-check診斷)）與 `nabi lint --check-library`（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-lintlinter)）也會以標準函式庫的等級對其自身的程式碼執行 lint：每個預設等級，外加 `missing_docs` 為 `deny`：標準函式庫的每個公開項目都有文件註解（[stdlib 0.5.14](../../refs-standard-libraries/000-meta/005-notation.md#0514-docs-and-attributes)）。
+`nabic check --check-library`（[9.1.2](../009-tools/901-nabic-cli.md#nabic-check診斷)）與 `nabi lint --check-library`（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-lintlinter)）也會以標準函式庫的等級對其自身的程式碼執行 lint：每個預設等級，外加 `missing_docs` 為 `deny`：標準函式庫的每個公開項目都有文件註解（[stdlib 0.5.14](../../refs-standard-libraries/000-meta/005-notation.md#0514-文件與屬性)）。
 
 ## 6.2.10. `#[non_exhaustive]` 退出外部的窮盡性
 
@@ -344,7 +344,7 @@ pub struct JoinHandle<T> { ... }
 
 函式或方法上的 `#[discardable]` 表示其結果可以被捨棄：呼叫它的陳述式不會發出警告。它不接受引數。在 trait 方法上，它涵蓋每個 impl。標準函式庫標示了回傳其取代之值或附帶回報之值的方法：`Dict::insert` / `remove`、`Set::insert` / `remove`、`List::pop` / `remove` / `drain`、`Deque::pop_front` / `pop_back`、`BinaryHeap::pop`、`Atomic::swap` / `fetch_*`、`Cell::replace` / `take`、`marker::replace` / `take`、`mem::replace`、`Dir::copy`、`fs::copy`、`io::copy` 與 `io::copy_async`。短寫入（`Write::write -> usize`）、`checked_*` 以及 `str::trim` 之類的純方法不是 discardable 的。
 
-`#[must_use]` 可以附加在函式或方法、`struct` 或 `enum` 上，並可帶有訊息（`#[must_use("..")]`）。在函式上，它加入訊息：捨棄其結果會以 `unused_must_use` 而非 `unused_result` 發出警告。在型別上它更強：值具有該型別的運算式陳述式，或從未被讀取的該型別區域變數，會以屬性的訊息產生 `unused_must_use` 警告，即使它是由 `#[discardable]` 函式回傳的也一樣。`async fn` 呼叫或 `async` 區塊的值（從未被 await 的 future 永遠不會執行）以及 `thread::JoinHandle`（[stdlib 3.4.2](../../refs-standard-libraries/300-std/304-thread.md#342-api)；從未被 join 的執行緒可能在程式結束前還沒完成；`detach` 表示它自行執行）是 `#[must_use]`；[stdlib 0.5.14](../../refs-standard-libraries/000-meta/005-notation.md#0514-docs-and-attributes) 列出其餘的。`#[must_use]` 型別就是屬性所在的那個型別：另一個套件中同名的型別不是。
+`#[must_use]` 可以附加在函式或方法、`struct` 或 `enum` 上，並可帶有訊息（`#[must_use("..")]`）。在函式上，它加入訊息：捨棄其結果會以 `unused_must_use` 而非 `unused_result` 發出警告。在型別上它更強：值具有該型別的運算式陳述式，或從未被讀取的該型別區域變數，會以屬性的訊息產生 `unused_must_use` 警告，即使它是由 `#[discardable]` 函式回傳的也一樣。`async fn` 呼叫或 `async` 區塊的值（從未被 await 的 future 永遠不會執行）以及 `thread::JoinHandle`（[stdlib 3.4.2](../../refs-standard-libraries/300-std/304-thread.md#342-api)；從未被 join 的執行緒可能在程式結束前還沒完成；`detach` 表示它自行執行）是 `#[must_use]`；[stdlib 0.5.14](../../refs-standard-libraries/000-meta/005-notation.md#0514-文件與屬性) 列出其餘的。`#[must_use]` 型別就是屬性所在的那個型別：另一個套件中同名的型別不是。
 
 型別的訊息寫成接在「this」之後：警告讀作 `this <message>`。第一個 `": "` 之後的文字成為 `help:` 行，其中 `{}` 代表被捨棄之運算式的原始碼（或區域變數的名稱）：`#[must_use("future is never awaited, so its body never runs: write `await {}`")]` 會警告 ``this future is never awaited, so its body never runs``，並附帶 ``help: write `await fetch()` ``。沒有訊息時，警告會指出型別：``this value of type `T` is never used``。
 
@@ -380,16 +380,16 @@ fn expect_positive(n: i32) -> i32 {
 | 屬性                           | 位置                          | 意義 |
 |--------------------------------|-------------------------------|---------|
 | `#[path("file.nabi")]`          | `mod name;`                   | 從該檔案而不是 `name.nabi` 載入模組（[5.4.6](../005-modules/504-modules.md#546-自訂路徑path)） |
-| `#![no_implicit_nabi]`          | 檔案（內部）                  | 為該檔案關閉隱含的 `use core::prelude::*;`（[stdlib 0.2.6](../../refs-standard-libraries/000-meta/002-import.md#026-opting-out---no_implicit_nabi)） |
+| `#![no_implicit_nabi]`          | 檔案（內部）                  | 為該檔案關閉隱含的 `use core::prelude::*;`（[stdlib 0.2.6](../../refs-standard-libraries/000-meta/002-import.md#026-停用no_implicit_nabi)） |
 | `#[export_name("sym")]`        | `extern "C"` / `extern "system"` fn | 以未修飾的符號 `sym` 匯出函式（在 wasm32 上是同名的 wasm 匯出）；是無法到達函式消除的根（[9.5.8](../009-tools/905-symbol-mangling.md)）。在一般函式上是錯誤（[5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-定義對外公開)） |
 | `#[export]`                    | `extern "C"` / `extern "system"` fn | 以函式自己的名稱進行的 `#[export_name]`（[5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-定義對外公開)） |
 | `#[on_panic(return = v)]`、`#[on_panic]` | `extern "C"` / `extern "system"` fn | 函式中的 panic 會被回報，然後函式回傳 `v`（整數、浮點數或 `bool` 字面值，null 指標為 `0`；沒有結果時不回傳任何東西），而不是中止行程（[5.9.10](../005-modules/509-extern-block.md#on_panic給-c-一個值而不是中止)） |
-| `#[errno]`                     | `extern "C"` / `extern "system"` 區塊或宣告 | 每次呼叫在回傳之後立即儲存 errno（在 Windows 上還有 `GetLastError`），供 `bare::ffi::errno()` 使用（[stdlib 1.7.11](../../refs-standard-libraries/100-bare/107-ffi.md#1711-errno---errno-and-getlasterror)）；在 `extern "nabi"` 區塊與函式上是錯誤 |
-| `#[leaf]`                      | `extern "C"` / `extern "system"` 區塊或宣告 | 呼叫略過其周圍的停駐：成本較低，但函式既不得阻塞也不得回呼（[stdlib 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf---short-calls)）；在 `extern "nabi"` 區塊上是錯誤 |
+| `#[errno]`                     | `extern "C"` / `extern "system"` 區塊或宣告 | 每次呼叫在回傳之後立即儲存 errno（在 Windows 上還有 `GetLastError`），供 `bare::ffi::errno()` 使用（[stdlib 1.7.11](../../refs-standard-libraries/100-bare/107-ffi.md#1711-errnoerrno-與-getlasterror)）；在 `extern "nabi"` 區塊與函式上是錯誤 |
+| `#[leaf]`                      | `extern "C"` / `extern "system"` 區塊或宣告 | 呼叫略過其周圍的停駐：成本較低，但函式既不得阻塞也不得回呼（[stdlib 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf短呼叫)）；在 `extern "nabi"` 區塊上是錯誤 |
 | `#[no_mangle]`                 | 函式                          | 讓函式免於命名與未使用函式的 lint。它不改變符號；那要用 `#[export_name]` |
 | `#[wit::export]`               | 函式、`pub struct`            | 實作 WIT 匯出：函式或資源（[stdlib 1.8](../../refs-standard-libraries/100-bare/108-wit.md)） |
 | `#[niche(..)]`                 | newtype 結構                  | 宣告該型別永不容納的值，用作 `T \| none` 的 niche（[2.7.4](../002-types/207-niche-optimization.md#274-選用的-nicheniche)） |
-| `#[display("text")]`          | `struct`、`enum`、列舉變體    | 以寫出 `f"text"` 實作 `Display`（[stdlib 2.10.14](../../refs-standard-libraries/200-core/210-fmt.md#21014-derive-policy-summary)） |
+| `#[display("text")]`          | `struct`、`enum`、列舉變體    | 以寫出 `f"text"` 實作 `Display`（[stdlib 2.10.14](../../refs-standard-libraries/200-core/210-fmt.md#21014-衍生政策摘要)） |
 | `#[intrinsic("nabi.OP.TYPE")]`  | 僅限標準函式庫                | 把函式或方法繫結到編譯器運算；在使用者程式碼中是錯誤（[stdlib 0.3](../../refs-standard-libraries/000-meta/003-intrinsics.md)） |
 | `#[no_safepoint]`              | `extern "nabi"` 區塊           | 工具鏈內部：區塊的函式既不配置記憶體也不阻塞，因此對它們的呼叫不是安全點；在其他區塊上是錯誤（[5.9.2](../005-modules/509-extern-block.md#592-abi-指定符)） |
 | `#[sealed]`                    | `trait`                       | 只有定義它的套件能實作該 trait（[6.2.15](#6215-sealed-只在定義套件中實作)） |
@@ -397,8 +397,8 @@ fn expect_positive(n: i32) -> i32 {
 | `#[runtime_attribute(name)]`   | `struct`                      | 宣告執行時屬性 `#[name(..)]`，保留在 `Inspect` 描述中（[6.10.8](610-reflection.md#6108-執行時屬性)） |
 | `#[inspect(skip)]`             | 欄位                          | 讓該欄位不出現在其型別的 `Inspect` 描述中（[6.10.7](610-reflection.md#6107-typeinfo型別的描述)） |
 | `#[renamed_from("old")]`       | 欄位                          | 在其描述中記錄該欄位先前的名稱（[6.10.8](610-reflection.md#6108-執行時屬性)） |
-| `#[available(macos = "13.0")]` | 函式、方法、`extern "objc"` 區塊的方法 | 該 API 需要的 macOS 版本：除非部署目標或外圍的 `if objc::available(macos: "13.0")` 涵蓋它，否則呼叫是錯誤（[stdlib 1.10.13](../../refs-standard-libraries/100-bare/110-objc.md#11013-availability-and-the-deployment-target)） |
-| `#[objc::class(..)]`、`#[objc::protocol(..)]`、`#[objc::category(..)]`、`#[selector("..")]`、`#[returns_retained]`、`#[returns_not_retained]` | `extern "objc"` 區塊及其方法 | Objective-C 類別及其方法（[stdlib 1.10.2](../../refs-standard-libraries/100-bare/110-objc.md#1102-extern-objc-blocks)） |
+| `#[available(macos = "13.0")]` | 函式、方法、`extern "objc"` 區塊的方法 | 該 API 需要的 macOS 版本：除非部署目標或外圍的 `if objc::available(macos: "13.0")` 涵蓋它，否則呼叫是錯誤（[stdlib 1.10.13](../../refs-standard-libraries/100-bare/110-objc.md#11013-可用性與部署目標)） |
+| `#[objc::class(..)]`、`#[objc::protocol(..)]`、`#[objc::category(..)]`、`#[selector("..")]`、`#[returns_retained]`、`#[returns_not_retained]` | `extern "objc"` 區塊及其方法 | Objective-C 類別及其方法（[stdlib 1.10.2](../../refs-standard-libraries/100-bare/110-objc.md#1102-extern-objc-區塊)） |
 
 ## 6.2.14. `#[deprecated_safe]` 現在安全，之後 `unsafe`
 

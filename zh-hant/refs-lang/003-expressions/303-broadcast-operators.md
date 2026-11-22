@@ -78,10 +78,10 @@ g.(a, b)     →   a.iter().zip(b.iter()).map(|(x, y)| g(x, y))     // collected
 sin.(a) .+ cos.(b) .* 2.0f64
 ```
 
-當容器運算元全都是 core 的 `List`、`Slice` 或固定長度陣列，或全都是 `Broadcastable`（[stdlib 2.6.6](../../refs-standard-libraries/200-core/206-broadcast.md#266-loop-fusion)），而點運算子的其他每個運算元都是基本型別、元素型別，或（與自訂的 `Broadcastable` 型別並列時）`BroadcastScalar` 時，保證會融合：結果在一次走訪中建立，沒有中間集合。每個運算元依原始碼順序在迴圈之前各求值一次。
+當容器運算元全都是 core 的 `List`、`Slice` 或固定長度陣列，或全都是 `Broadcastable`（[stdlib 2.6.6](../../refs-standard-libraries/200-core/206-broadcast.md#266-迴圈融合)），而點運算子的其他每個運算元都是基本型別、元素型別，或（與自訂的 `Broadcastable` 型別並列時）`BroadcastScalar` 時，保證會融合：結果在一次走訪中建立，沒有中間集合。每個運算元依原始碼順序在迴圈之前各求值一次。
 
 - 對 core 集合而言，長度在第一個元素之前檢查（固定長度陣列在編譯期檢查）。結果是 `List`，或在每個容器運算元都是陣列時是陣列。
-- 對 `Broadcastable` 運算元（`Array`，或自訂型別）而言，每個運算元都被視為陣列，並在第一個元素之前依廣播規則（[stdlib 2.6.8](../../refs-standard-libraries/200-core/206-broadcast.md#268-numpy-style-broadcasting-rules)）把這些視圖伸展為同一個形狀。結果透過 `Materialize` 建立：對 `Array` 而言是主導運算元（秩最高者中的第一個）的，對自訂型別而言是點 trait 所給出之型別的，因此融合後的迴圈具有運算子逐一套用時會得到的型別（stdlib 2.6.6）。
+- 對 `Broadcastable` 運算元（`Array`，或自訂型別）而言，每個運算元都被視為陣列，並在第一個元素之前依廣播規則（[stdlib 2.6.8](../../refs-standard-libraries/200-core/206-broadcast.md#268-numpy-風格的廣播規則)）把這些視圖伸展為同一個形狀。結果透過 `Materialize` 建立：對 `Array` 而言是主導運算元（秩最高者中的第一個）的，對自訂型別而言是點 trait 所給出之型別的，因此融合後的迴圈具有運算子逐一套用時會得到的型別（stdlib 2.6.6）。
 - 混用兩類運算元的樹是錯誤，其說明會把串列轉換過來（`Array::from_list(xs, [xs.len()])`）。
 
 其他任何樹，即含有既非容器、也非基本型別或元素型別之運算元的樹，不會被融合：每個運算子呼叫其點 trait（3.3.1）並產生自己的結果。

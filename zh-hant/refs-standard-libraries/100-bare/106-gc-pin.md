@@ -73,7 +73,7 @@ impl<T> Drop for Pinned<T> {
 }
 ```
 
-它是一個守衛（guard）。只要 `pin()` 回傳的 `Pinned<T>` 還存活，GC 就不會移動該物件。`Pinned<T>` 是 `Drop` 值，只會釋放一次（[2.13.4](../200-core/213-marker.md#2134-drop釋放時的清理)）：在守衛的擁有者離開作用域之處，或在繫結它的 `using` 區塊結束時，`Pinned::drop` 會執行並解除對物件的固定。固定會計數：物件必須經過同樣次數的解除固定之後才會再次移動。`pin` 會固定 `gc_object` 所指出的物件；當它回傳 `none` 時則不固定任何東西。`GcBuf<u8>` 是 [1.3.9](103-mem.md#139-gcbuft-與-buf_-基本操作) 中抹除型別的 GC 緩衝區。`Pinnable` 是封閉的，`gc_object` 則是工具鏈內部的項目（[6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-shared-by-the-toolchains-packages)）：程式以 `pin(x)` 固定，不呼叫 `gc_object`。
+它是一個守衛（guard）。只要 `pin()` 回傳的 `Pinned<T>` 還存活，GC 就不會移動該物件。`Pinned<T>` 是 `Drop` 值，只會釋放一次（[2.13.4](../200-core/213-marker.md#2134-drop釋放時的清理)）：在守衛的擁有者離開作用域之處，或在繫結它的 `using` 區塊結束時，`Pinned::drop` 會執行並解除對物件的固定。固定會計數：物件必須經過同樣次數的解除固定之後才會再次移動。`pin` 會固定 `gc_object` 所指出的物件；當它回傳 `none` 時則不固定任何東西。`GcBuf<u8>` 是 [1.3.9](103-mem.md#139-gcbuft-與-buf_-基本操作) 中抹除型別的 GC 緩衝區。`Pinnable` 是封閉的，`gc_object` 則是工具鏈內部的項目（[6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-由工具鏈的套件共用)）：程式以 `pin(x)` 固定，不呼叫 `gc_object`。
 
 ### 範例：FFI 呼叫
 
@@ -129,7 +129,7 @@ struct GcPtr<T> {
 }
 ```
 
-Nabi 的 GC 透過編譯器直接產生的**每執行緒影子堆疊**（shadow stack）追蹤根集合（[refs-lang 7.4.1](../../refs-lang/007-runtime/704-barriers-and-roots.md#741-root-tracking-a-shadow-stack-emitted-directly-by-the-compiler)）。
+Nabi 的 GC 透過編譯器直接產生的**每執行緒影子堆疊**（shadow stack）追蹤根集合（[refs-lang 7.4.1](../../refs-lang/007-runtime/704-barriers-and-roots.md#741-根追蹤由編譯器直接發出的影子堆疊)）。
 
 ## 1.6.4. pin / unpin 在 GC 端的機制
 
@@ -165,7 +165,7 @@ drop(Pinned):
 每個 `extern "C"` 呼叫都會讓呼叫端執行緒進入停駐狀態（[1.7.1](107-ffi.md#171-extern-c-區塊)）：C 執行期間，回收器不等待該執行緒，因此在任何 C 呼叫期間，不論多短，都可能進行回收並移動物件。C 在呼叫期間使用的、指向 GC 物件的指標，只有在以下情況才有效：
 
 - 該物件在整個呼叫期間都已固定（`gc::pin`，1.6.2），且在 C 保留該指標的期間之後也持續固定；或
-- 該指標指向某個根本身所指出的物件：`str` 引數（呼叫端的框架會將其作為根，直到呼叫回傳，[refs-lang 7.4.1](../../refs-lang/007-runtime/704-barriers-and-roots.md#objects-pointed-to-by-roots-are-not-moved)），以及在 [2.15.2](../200-core/215-string.md#2152-str不可變的-utf-8-字串) 規則下的 `str::as_ptr` / `CStr::as_ptr`。
+- 該指標指向某個根本身所指出的物件：`str` 引數（呼叫端的框架會將其作為根，直到呼叫回傳，[refs-lang 7.4.1](../../refs-lang/007-runtime/704-barriers-and-roots.md#被根指向的物件不會被移動)），以及在 [2.15.2](../200-core/215-string.md#2152-str不可變的-utf-8-字串) 規則下的 `str::as_ptr` / `CStr::as_ptr`。
 
 其他所有指向 GC 物件的指標，例如串列的緩衝區（`as_data_ptr`）、切片的元素、`StrBuf` 的位元組、`GcPtr` 的值，都需要固定。不論是什麼呼叫，編譯器都不會自行省略固定：固定由程式撰寫。`#[leaf]`（[1.7.1](107-ffi.md#171-extern-c-區塊)）讓呼叫更便宜，但不改變這條規則。C 在多次呼叫之間保留的值要放進 `Handle`（[1.7.10](107-ffi.md#1710-handletc-持有的-nabi-值)），它會固定該值直到被釋放。
 
@@ -285,7 +285,7 @@ impl<T> !Send for Weak<T> {}    // a hand-off cannot copy what it names (2.13.9)
 
 弱參考不會讓它的物件保持存活。一旦某次回收釋放了該物件，所有指向它的 `Weak` 都會讀到 `none`；移動該物件的回收則會更新 `Weak`。這是 `WEAK_REF` 掃描種類（[refs-lang 8.2.8](../../refs-lang/008-abi/802-scan-table.md#828-weak_ref)）的函式庫介面。
 
-執行時，`Weak` 是型別 ID 為 `3` 的 GC 儲存格（[refs-lang 8.2.12](../../refs-lang/008-abi/802-scan-table.md#8212-runtime-reserved-type-ids)），內含一個 `WEAK_REF` 字組，由 `nabi_gc_weak_new` 建立、由 `nabi_gc_weak_get` 讀取（[refs-lang 8.5.12](../../refs-lang/008-abi/805-extern-symbols.md#8512-auxiliary-symbols-appendix-non-normative)）。
+執行時，`Weak` 是型別 ID 為 `3` 的 GC 儲存格（[refs-lang 8.2.12](../../refs-lang/008-abi/802-scan-table.md#8212-執行環境保留的型別-id)），內含一個 `WEAK_REF` 字組，由 `nabi_gc_weak_new` 建立、由 `nabi_gc_weak_get` 讀取（[refs-lang 8.5.12](../../refs-lang/008-abi/805-extern-symbols.md#8512-輔助符號附錄非規範性)）。
 
 ## 1.6.10. `stats`：回收器計數器
 
@@ -310,7 +310,7 @@ struct GcStats {
 fn stats() -> GcStats;
 ```
 
-`stats()` 讀取程式啟動以來的計數器，供指標統計或影格預算使用。它會短暫取得回收器的鎖，因此是用來偶爾讀取的（一次匯出、每個影格一次），而不是在熱迴圈中讀取。暫停從停止請求起算，因此包含抵達安全點的時間（[refs-lang 9.9.8](../../refs-lang/009-tools/909-debug-tools.md#998-memory--gc-tools)）。
+`stats()` 讀取程式啟動以來的計數器，供指標統計或影格預算使用。它會短暫取得回收器的鎖，因此是用來偶爾讀取的（一次匯出、每個影格一次），而不是在熱迴圈中讀取。暫停從停止請求起算，因此包含抵達安全點的時間（[refs-lang 9.9.8](../../refs-lang/009-tools/909-debug-tools.md#998-記憶體--gc-工具)）。
 
 `collect()` 在整個完整回收期間停止所有執行緒，比執行環境自行啟動的回收（次要回收，或並行標記的完整回收）更久。要讓暫停保持短暫，就把回收交給執行環境，或在影格之間呼叫 `collect_young`（1.6.11）。
 
@@ -335,9 +335,9 @@ fn set_pause_goal(ms: f64);   // 0: no goal (the default)
 
 設定目標後，回收器會切分工作，讓每次暫停接近 `ms` 毫秒：
 
-- 年輕預算跟隨目標：取最近次要回收顯示能放進目標的量的四分之三，範圍從 1 MiB 到預設預算（[refs-lang 7.2.8](../../refs-lang/007-runtime/702-allocation.md#728-gc-trigger)）。`GcStats::young_budget` 顯示目前的值。
+- 年輕預算跟隨目標：取最近次要回收顯示能放進目標的量的四分之三，範圍從 1 MiB 到預設預算（[refs-lang 7.2.8](../../refs-lang/007-runtime/702-allocation.md#728-gc-觸發)）。`GcStats::young_budget` 顯示目前的值。
 - 不論堆積大小，每次完整回收都並行標記，而且堆積絕不會自行疏散：只有 `collect()` 會壓縮它。
-- 並行標記之後的清掃及其標記協助本來就在暫停之外執行（[refs-lang 7.5.2](../../refs-lang/007-runtime/705-concurrent-collection.md#752-phases)）。
+- 並行標記之後的清掃及其標記協助本來就在暫停之外執行（[refs-lang 7.5.2](../../refs-lang/007-runtime/705-concurrent-collection.md#752-階段)）。
 
 這是目標，而非保證：暫停仍可能更長，例如在存活堆積快速成長時，或在配置量很大的並行標記剛結束後。
 
@@ -394,7 +394,7 @@ impl<T> !Sync for Arena<T> {}
 記憶體安全建立在兩條規則上：
 
 - 緩衝區是一般的 GC 物件。值在 arena 中的期間，它們參考的東西都保持存活，arena 中沒有任何東西會成為懸置參考。（`reset` 之後，持有 GC 參考的型別的值會被清除；不持有 GC 參考的型別的值則由後續的 `alloc` 覆寫。）
-- `ArenaRef` 是純資料：一個索引和一個世代。每次 `reset` 都取得程式中任何 arena 都未曾用過的世代（[refs-lang 8.5.12](../../refs-lang/008-abi/805-extern-symbols.md#8512-auxiliary-symbols-appendix-non-normative)），因此 reset 之前的參考，或來自另一個 arena 的參考，都無法通過 `get` 和 `set` 中的檢查而觸發 panic（`try_get` 給出 `none`，`holds` 回傳 `false`）。它可以存放在任何地方，包括 GC 物件中：晚了才使用它是有定義的 panic，絕不會讀到下一個影格的值。
+- `ArenaRef` 是純資料：一個索引和一個世代。每次 `reset` 都取得程式中任何 arena 都未曾用過的世代（[refs-lang 8.5.12](../../refs-lang/008-abi/805-extern-symbols.md#8512-輔助符號附錄非規範性)），因此 reset 之前的參考，或來自另一個 arena 的參考，都無法通過 `get` 和 `set` 中的檢查而觸發 panic（`try_get` 給出 `none`，`holds` 回傳 `false`）。它可以存放在任何地方，包括 GC 物件中：晚了才使用它是有定義的 panic，絕不會讀到下一個影格的值。
 
 因此 arena 不需要生命週期、不需要帶標記的作用域，也不需要限制 `T` 可以持有什麼；代價是每次存取一次整數比較。
 

@@ -51,7 +51,7 @@ fn set_literal<T: Hash>(items: ...T) -> Set<T> { ... }
 
 沒有預期的元素型別時，各元素的型別以與分支相同的方式取得一致（[refs-lang 3](../../refs-lang/003-expressions/README.md)）：所有元素是同一個型別，或者某個元素的和型別包含其他所有元素的型別，取先成立者（當 `x: f64 | none` 時，`[none, x]` 和 `[x, none]` 都是 `List<f64 | none>`）。不會為不同型別的元素自行構造和型別：`[0.5, none]` 是錯誤（E0040），其說明會要求寫出串列的型別，即 `let xs: List<f64 | none> = [0.5, none];`。
 
-重複字面值 `[v; N]` 一律是固定長度陣列。它只對 `v` 求值一次，並讓每個元素各自持有一份副本：`Copy` 或一般值的元素採逐位元複製，持有集合型別的元素則採 `v.clone()`，因此 `[List::<i32>::new(); 3]` 是三個各自獨立的串列（[refs-lang 2.11.6](../../refs-lang/002-types/211-const-generics.md#2116-parameter-inference)）。`[T; N]` 的 `Default` 同樣對每個元素各呼叫一次 `T::default()`。
+重複字面值 `[v; N]` 一律是固定長度陣列。它只對 `v` 求值一次，並讓每個元素各自持有一份副本：`Copy` 或一般值的元素採逐位元複製，持有集合型別的元素則採 `v.clone()`，因此 `[List::<i32>::new(); 3]` 是三個各自獨立的串列（[refs-lang 2.11.6](../../refs-lang/002-types/211-const-generics.md#2116-參數推論)）。`[T; N]` 的 `Default` 同樣對每個元素各呼叫一次 `T::default()`。
 
 當元素實作 `Clone` / `Copy` / `Default` / `Debug` / `PartialEq` / `Eq` / `PartialOrd` / `Ord` / `Hash` 時，固定長度陣列也實作這些 trait。排序採字典序，因此可以直接使用比較運算子（`==`、`<` 等）。其方法如下：
 
@@ -87,7 +87,7 @@ a < [1, 2, 4];           //→ true (lexicographic)
 
 ### 參考控制代碼
 
-`List`、`Dict` 和 `Set` 的值是指向 GC 堆積物件的參考控制代碼。`let ys = xs;` 和引數傳遞複製的是控制代碼，因此共用同一個集合。所以修改集合的方法接收 `self`，而不是 `ref self`。需要獨立的副本時，呼叫 `clone()`。結構元素是值：`xs[i]` 和 `d[k]` 回傳副本，修改要以 `xs[i] = v` 存回（[refs-lang 2.3.8](../../refs-lang/002-types/203-struct.md#238-value-semantics)）。`iter` / `keys` / `values` 回傳不複製集合的惰性迭代器。
+`List`、`Dict` 和 `Set` 的值是指向 GC 堆積物件的參考控制代碼。`let ys = xs;` 和引數傳遞複製的是控制代碼，因此共用同一個集合。所以修改集合的方法接收 `self`，而不是 `ref self`。需要獨立的副本時，呼叫 `clone()`。結構元素是值：`xs[i]` 和 `d[k]` 回傳副本，修改要以 `xs[i] = v` 存回（[refs-lang 2.3.8](../../refs-lang/002-types/203-struct.md#238-值語意)）。`iter` / `keys` / `values` 回傳不複製集合的惰性迭代器。
 
 ## 2.9.2. `List<T>`：動態陣列
 
@@ -562,7 +562,7 @@ let latest = events.last();                   //→ (1720, "login")
 struct Tuple { /* heterogeneous, determined at compile time */ }
 ```
 
-元組是語言內建的，不能註冊為字面值處理函式（[refs-lang 6.5.7](../../refs-lang/006-meta-system/605-literal-magic.md#657-user-defined-literals)）。元組運算式必須至少含有一個逗號。`(e)` 是分組運算式；單一元素的元組是 `(e,)`。
+元組是語言內建的，不能註冊為字面值處理函式（[refs-lang 6.5.7](../../refs-lang/006-meta-system/605-literal-magic.md#657-使用者定義的字面值)）。元組運算式必須至少含有一個逗號。`(e)` 是分組運算式；單一元素的元組是 `(e,)`。
 
 每個位置可以有不同的型別，長度在編譯時固定。
 
@@ -595,7 +595,7 @@ let (n, s, b) = t;
 
 ### 多重回傳值
 
-[refs-lang 4.3.5 多重回傳](../../refs-lang/004-functions/403-return.md#435-multiple-returns-tuples)的多重回傳以回傳 Tuple 的方式處理。
+[refs-lang 4.3.5 多重回傳](../../refs-lang/004-functions/403-return.md#435-多個回傳值元組)的多重回傳以回傳 Tuple 的方式處理。
 
 ```nabi
 fn divmod(a: i32, b: i32) -> (i32, i32) {
@@ -675,9 +675,9 @@ trait AsBytes {
 }
 ```
 
-它為 `str`（其 UTF-8 位元組）、`List<u8>`、`Slice<u8>` 和 `[u8; N]` 實作，因此位元組字串可以作為搜尋目標傳入（依其 `Slice<u8>` 規則，[refs-lang 1.7.5](../../refs-lang/001-lexical/107-string-literals.md#175-byte-strings)）。
+它為 `str`（其 UTF-8 位元組）、`List<u8>`、`Slice<u8>` 和 `[u8; N]` 實作，因此位元組字串可以作為搜尋目標傳入（依其 `Slice<u8>` 規則，[refs-lang 1.7.5](../../refs-lang/001-lexical/107-string-literals.md#175-位元組字串)）。
 
-`Slice` 是唯讀的（沒有 `IndexSet`）；可寫入串列的檢視是 `SliceMut<T>`（[2.9.7a](#297a-slicemutt可寫入檢視)）。負索引從尾端算起（[refs-lang 3.6.1](../../refs-lang/003-expressions/306-indexing-and-slicing.md#361-indexing-arri)）。
+`Slice` 是唯讀的（沒有 `IndexSet`）；可寫入串列的檢視是 `SliceMut<T>`（[2.9.7a](#297a-slicemutt可寫入檢視)）。負索引從尾端算起（[refs-lang 3.6.1](../../refs-lang/003-expressions/306-indexing-and-slicing.md#361-索引arri)）。
 
 ### 範例
 
@@ -697,7 +697,7 @@ let owned: List<i32> = s1.to_list();    //→ [2, 30, 4] (new List)
 
 ### 與可變引數的整合
 
-`fn f(xs: ...T)` 的 `xs` 是 `Slice<T>` 檢視（[refs-lang 4.2.5](../../refs-lang/004-functions/402-parameters.md#425-variadic-t)）。個別引數和串列展開（`f(..ys)`）都以相同的形式接收。
+`fn f(xs: ...T)` 的 `xs` 是 `Slice<T>` 檢視（[refs-lang 4.2.5](../../refs-lang/004-functions/402-parameters.md#425-可變參數t)）。個別引數和串列展開（`f(..ys)`）都以相同的形式接收。
 
 ```nabi
 fn sum(xs: ...i32) -> i32 {
@@ -724,8 +724,8 @@ struct SliceMut<T> {
 
 | 該處寫的是                      | 檢視                                                                     |
 |---------------------------------|--------------------------------------------------------------------------|
-| `xs`（`List<T>`）               | 整個串列（[refs-lang 2.14.6](../../refs-lang/002-types/214-cast-and-conversion.md#2146-context-based-automatic-conversion)） |
-| `xs[a:b]`、`xs[a..b]`、`xs[..]` | 串列的該範圍，邊界和 `Slice` 一樣被夾限（[refs-lang 3.6.2](../../refs-lang/003-expressions/306-indexing-and-slicing.md#362-slicing-arrstartend)） |
+| `xs`（`List<T>`）               | 整個串列（[refs-lang 2.14.6](../../refs-lang/002-types/214-cast-and-conversion.md#2146-依上下文的自動轉換)） |
+| `xs[a:b]`、`xs[a..b]`、`xs[..]` | 串列的該範圍，邊界和 `Slice` 一樣被夾限（[refs-lang 3.6.2](../../refs-lang/003-expressions/306-indexing-and-slicing.md#362-切片arrstartend)） |
 | `s[a:b]`（`SliceMut<T>`）       | 該檢視的可寫入檢視                                              |
 
 在其他任何地方，`xs[a:b]` 仍是唯讀的 `Slice<T>`。有步長的範圍（`xs[a:b:k]`）永遠不是 `SliceMut`：它不連續。
@@ -775,7 +775,7 @@ impl<T: Debug> Debug for SliceMut<T> { ... }
 
 調整大小可能把串列的元素搬到新的緩衝區，因此串列調整大小之後，不得再使用其檢視。調整大小是指任何改變長度或緩衝區的 `List` 方法：`push`、`pop`、`insert`、`remove`、`clear`、`truncate`、`drain`、`set_len`、`reserve`、`shrink_to_fit`、`extend`、`retain`、`dedup`、`freeze` 和 `+=`。元素的寫入（`xs[i] = x`、`fill`、`swap`、`sort`、`reverse`）不是調整大小。
 
-- 當同一個函式中同時出現兩者時，在串列調整大小後使用其檢視是編譯錯誤 `E0137`（[refs-lang 9.9.4](../../refs-lang/009-tools/909-debug-tools.md#994-diagnostics--error-messages)）。檢視會透過串列的副本（`let ys = xs`）、檢視的檢視（`s[1:]`、`split_at`）、走訪它的 `for` 迴圈、分支以及迴圈的下一輪被追蹤。重新指派檢視（`s = xs[..]`）會使它再次可用，而位於離開路徑（`return`、`break`）上的調整大小不會影響其後的程式碼。
+- 當同一個函式中同時出現兩者時，在串列調整大小後使用其檢視是編譯錯誤 `E0137`（[refs-lang 9.9.4](../../refs-lang/009-tools/909-debug-tools.md#994-診斷--錯誤訊息)）。檢視會透過串列的副本（`let ys = xs`）、檢視的檢視（`s[1:]`、`split_at`）、走訪它的 `for` 迴圈、分支以及迴圈的下一輪被追蹤。重新指派檢視（`s = xs[..]`）會使它再次可用，而位於離開路徑（`return`、`break`）上的調整大小不會影響其後的程式碼。
 - 其他所有情況都在執行時檢查：被呼叫函式內的調整大小、存放在結構中的檢視、在呼叫者調整大小時等待的 `async fn`。串列帶有一個版本號，每次調整大小都會遞增，而在遞增之前建立的檢視，其方法會觸發 panic（`SliceMut used after its list was resized (push, insert, clear, ...): make the view again after the resize`）；走訪它的 `for` 或 `for ref` 迴圈的每一步、它的移交，以及項目中含有它的 `par` 呼叫也是如此。元素的讀取和寫入（`s[i]`、`s[i] = x`、`get`、`first`、`last`）不做任何檢查，因此走訪檢視的迴圈成本與走訪串列相同：對於過時的檢視，它們觸及的是建立檢視時的儲存空間。若調整大小後保留了該儲存空間，它仍屬於串列，否則就不再屬於串列；其他執行緒不會觸及它（`freeze` 會複製曾有檢視的串列）。
 
 ```nabi
@@ -950,7 +950,7 @@ Nabi 最主要的差異如下。第一，`List`、`Dict`、`Set`、`Tuple` 和 `
 
 ## 2.9.12. `GcBuf<T>`：原始 GC 緩衝區
 
-`GcBuf<T>`（`bare::mem::GcBuf`）是 `List` / `Dict` 等集合型別實作所使用的固定長度 GC 緩衝區，是編譯器知道的型別。它唯一的公開路徑是 `bare::mem`（[0.1.6](../000-meta/001-tier-model.md#016-每個項目只有一條路徑)）；集合型別透過 core 內部的模組取得它。不含 GC 參考的 `T`（數值、`bool`、`char`、`Pod` 結構）的緩衝區是垃圾回收器從不掃描的原始資料（型別 ID `1`，[refs-lang 8.2.12](../../refs-lang/008-abi/802-scan-table.md#8212-runtime-reserved-type-ids)）；含有參考的 `T` 的緩衝區則透過 `T` 的陣列 `ScanTable` 掃描，只掃描其參考槽位。
+`GcBuf<T>`（`bare::mem::GcBuf`）是 `List` / `Dict` 等集合型別實作所使用的固定長度 GC 緩衝區，是編譯器知道的型別。它唯一的公開路徑是 `bare::mem`（[0.1.6](../000-meta/001-tier-model.md#016-每個項目只有一條路徑)）；集合型別透過 core 內部的模組取得它。不含 GC 參考的 `T`（數值、`bool`、`char`、`Pod` 結構）的緩衝區是垃圾回收器從不掃描的原始資料（型別 ID `1`，[refs-lang 8.2.12](../../refs-lang/008-abi/802-scan-table.md#8212-執行環境保留的型別-id)）；含有參考的 `T` 的緩衝區則透過 `T` 的陣列 `ScanTable` 掃描，只掃描其參考槽位。
 
 ```nabi
 struct GcBuf<T> { /* representation known to the compiler */ }
@@ -966,7 +966,7 @@ impl<T> GcBuf<T> {
 #[intrinsic("nabi.buf_set")] unsafe fn buf_set<T>(buf: GcBuf<T>, i: usize, v: T);
 ```
 
-元素緊密排列：第 `i` 個元素位於酬載的第 `i * size_of::<T>()` 個位元組，採用 `T` 本身的對齊。8 KiB 以上的緩衝區是大型物件：其酬載以 64 位元組對齊，在可達期間絕不移動（[refs-lang 7.2.9](../../refs-lang/007-runtime/702-allocation.md#729-los-allocation-of-large-objects)）。一般的使用者程式碼使用 `List<T>` 或 `Array<T, N>`（2.9.14）；`GcBuf<T>` 用於實作集合型別。
+元素緊密排列：第 `i` 個元素位於酬載的第 `i * size_of::<T>()` 個位元組，採用 `T` 本身的對齊。8 KiB 以上的緩衝區是大型物件：其酬載以 64 位元組對齊，在可達期間絕不移動（[refs-lang 7.2.9](../../refs-lang/007-runtime/702-allocation.md#729-大型物件的-los-配置)）。一般的使用者程式碼使用 `List<T>` 或 `Array<T, N>`（2.9.14）；`GcBuf<T>` 用於實作集合型別。
 
 `GcBuf<T>` 及其基本操作（`bare::mem::{buf_new, buf_get, buf_set}`、`new` / `get` / `set`、對 `GcBuf` 進行索引）是 `unsafe`：它們略過集合型別所保有的元素型別與初始化檢查。
 
@@ -1004,7 +1004,7 @@ pub type Vector<T> = Array<T, 1>;
 pub type Matrix<T> = Array<T, 2>;
 ```
 
-**儲存**。緩衝區是 `GcBuf<T>`（2.9.12）：緊密排列，`T` 不含參考時垃圾回收器從不掃描，以 64 位元組對齊，8 KiB 起絕不移動（[refs-lang 7.2.9](../../refs-lang/007-runtime/702-allocation.md#729-los-allocation-of-large-objects)）。新建立的陣列是列優先（最後一軸連續）。任何軸的長度都不超過 `isize::MAX`：含有更長軸的形狀會觸發 panic（`capacity overflow`），即使另一軸的長度為 0 也一樣。`Array` 是 `!Sync`（其副本共用未加鎖的緩衝區）。
+**儲存**。緩衝區是 `GcBuf<T>`（2.9.12）：緊密排列，`T` 不含參考時垃圾回收器從不掃描，以 64 位元組對齊，8 KiB 起絕不移動（[refs-lang 7.2.9](../../refs-lang/007-runtime/702-allocation.md#729-大型物件的-los-配置)）。新建立的陣列是列優先（最後一軸連續）。任何軸的長度都不超過 `isize::MAX`：含有更長軸的形狀會觸發 panic（`capacity overflow`），即使另一軸的長度為 0 也一樣。`Array` 是 `!Sync`（其副本共用未加鎖的緩衝區）。
 
 **字面值**。在 `Array<T, N>` 槽位中，巢狀串列字面值會建立陣列：巢狀深度即為秩，形狀取自巢狀結構，葉節點是依列優先順序排列的元素，每個都以 `T` 為型別。長度不同的列是編譯錯誤（E0142），其說明會要求讓它們等長，或保留為 `List<List<T>>`；應為一列卻不是 `[..]` 字面值的元素也是同一個錯誤。在沒有 `List` 成員的和型別槽位中，字面值會建立其中唯一的 `Array` 成員：傳給 `x: Vector<f64> | none` 的 `[1.0, 2.0]` 是 `Vector<f64>`（有 `List` 成員時，優先取 `List` 成員）。`N` 未定的泛型函式的參數 `x: Array<f64, N>` 從字面值取得秩：對 `fn sum<const N: usize>(x: Array<f64, N>)` 而言，`sum([[1.0, 2.0]])` 的 `N = 2`。
 
@@ -1027,7 +1027,7 @@ let e: Array<f64, 2> = [[]];               // shape [1, 0]
 
 **形狀與檢視**。`shape() -> [usize; N]`、`strides() -> [isize; N]`（以元素為單位）、`ndim()`、`len()`（元素數）、`is_empty()`、`is_contiguous()`。下列操作回傳相同元素的檢視，不複製：`t()`（軸反轉）、`permute(axes)`、`broadcast_to(shape)`（長度為 1 的軸以步幅 0 重複）、`reshape(shape)`（連續時為檢視，否則為連續副本的檢視；數量不一致時觸發 panic），以及所有基本索引（見下文）。`copy()` 建立擁有自己緩衝區的連續陣列；`clone()` 另外也複製元素。
 
-**索引**。`Array` 是 `AxisIndexed`（[refs-lang 3.6.3](../../refs-lang/003-expressions/306-indexing-and-slicing.md#363-multi-axis-indexing)）：方括號中的每個部分都是一個軸引數。位置（任何型別的整數，視為 `isize`（[refs-lang 3.6.3](../../refs-lang/003-expressions/306-indexing-and-slicing.md#363-multi-axis-indexing)）；負值從尾端算起，超出範圍時觸發 panic 並指出該軸）會去掉其軸，切片（`SliceArg`，每軸依 Python 的規則）以步幅保留其軸，`..`（`Rest`）代表其他部分剩下的軸，`none`（`NewAxis`）加入長度為 1 的軸，沒有任何部分指名的軸則整個取用。位置數量與秩相同時得到元素 `T`（秩 1 到 4）；其他情況得到檢視 `Array<T, M>`，`M = N - positions + new axes`。與陣列形狀相同的遮罩 `Array<bool, N>` 選取其值為 `true` 的元素，結果為秩 1 的副本。這些實作涵蓋任意種類的至多兩個部分，以及由位置、切片和一個 `..` 組成的三個部分；對同一個陣列使用更多部分，則是缺少 `Index` 實作。
+**索引**。`Array` 是 `AxisIndexed`（[refs-lang 3.6.3](../../refs-lang/003-expressions/306-indexing-and-slicing.md#363-多軸索引)）：方括號中的每個部分都是一個軸引數。位置（任何型別的整數，視為 `isize`（[refs-lang 3.6.3](../../refs-lang/003-expressions/306-indexing-and-slicing.md#363-多軸索引)）；負值從尾端算起，超出範圍時觸發 panic 並指出該軸）會去掉其軸，切片（`SliceArg`，每軸依 Python 的規則）以步幅保留其軸，`..`（`Rest`）代表其他部分剩下的軸，`none`（`NewAxis`）加入長度為 1 的軸，沒有任何部分指名的軸則整個取用。位置數量與秩相同時得到元素 `T`（秩 1 到 4）；其他情況得到檢視 `Array<T, M>`，`M = N - positions + new axes`。與陣列形狀相同的遮罩 `Array<bool, N>` 選取其值為 `true` 的元素，結果為秩 1 的副本。這些實作涵蓋任意種類的至多兩個部分，以及由位置、切片和一個 `..` 組成的三個部分；對同一個陣列使用更多部分，則是缺少 `Index` 實作。
 
 ```nabi
 m[1, 2]          // 6.0
@@ -1101,4 +1101,4 @@ where(m .> 2.0, m, m .* 0.0); //→ [[0.0, 0.0, 3.0], [4.0, 5.0, 6.0]]
 (m .* 0.1 .* 10.0).all_close(m);   //→ true
 ```
 
-**逐元素運算子**。每個點運算子（2.6）都接受同秩的陣列與陣列、陣列與純量，以及純量與陣列；算術運算得到 `Array<T, N>`，比較得到 `Array<bool, N>`，`.&&` / `.||` 組合 `Array<bool, N>`。兩個陣列依 `broadcast_shape(a, b)` 延展為同一形狀：每一軸上，長度相等則保留，長度為 1 則延展為另一方的長度；其他組合會觸發 panic 並列出兩個形狀（`broadcast: shapes [2, 3] and [2, 2] differ on axis 1; ...`）。在點運算式中，秩較低的陣列對齊到最後幾軸（2.6.8），整個運算式以單一迴圈執行，不產生中間陣列：`Array` 是 `Broadcastable` 和 `Materialize`（2.6.6）。`.=` 和 `.+=` 等就地寫入陣列或陣列的檢視（`a[:, 0] .= 0.0`，[refs-lang 3.3.7](../../refs-lang/003-expressions/303-broadcast-operators.md#337-in-place-broadcast)）。`PartialEq` 比較形狀和元素；`Debug` / `Display` 以巢狀方括號輸出。
+**逐元素運算子**。每個點運算子（2.6）都接受同秩的陣列與陣列、陣列與純量，以及純量與陣列；算術運算得到 `Array<T, N>`，比較得到 `Array<bool, N>`，`.&&` / `.||` 組合 `Array<bool, N>`。兩個陣列依 `broadcast_shape(a, b)` 延展為同一形狀：每一軸上，長度相等則保留，長度為 1 則延展為另一方的長度；其他組合會觸發 panic 並列出兩個形狀（`broadcast: shapes [2, 3] and [2, 2] differ on axis 1; ...`）。在點運算式中，秩較低的陣列對齊到最後幾軸（2.6.8），整個運算式以單一迴圈執行，不產生中間陣列：`Array` 是 `Broadcastable` 和 `Materialize`（2.6.6）。`.=` 和 `.+=` 等就地寫入陣列或陣列的檢視（`a[:, 0] .= 0.0`，[refs-lang 3.3.7](../../refs-lang/003-expressions/303-broadcast-operators.md#337-原地廣播)）。`PartialEq` 比較形狀和元素；`Debug` / `Display` 以巢狀方括號輸出。

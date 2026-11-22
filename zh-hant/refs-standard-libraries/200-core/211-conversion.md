@@ -240,7 +240,7 @@ let z: f32 = 3.14;           // OK: round to nearest f32
 let w: u8 = 256;             // compile error: 256 ∉ u8 0..=255
 ```
 
-從字面值選擇實作的規則，如 `T::from(1)` / `1.into()`，遵循 [refs-lang 3.1.3](../../refs-lang/003-expressions/301-operator-dispatch.md#selecting-an-impl)。此機制之所以可行，是因為字面值是編譯時已知的值。轉換執行時的值則必須明確寫出 `from`、`into`、`try_into` 或 `as` 之一。
+從字面值選擇實作的規則，如 `T::from(1)` / `1.into()`，遵循 [refs-lang 3.1.3](../../refs-lang/003-expressions/301-operator-dispatch.md#選擇-impl)。此機制之所以可行，是因為字面值是編譯時已知的值。轉換執行時的值則必須明確寫出 `from`、`into`、`try_into` 或 `as` 之一。
 
 ## 2.11.8. `From` 實作矩陣：基本型別之間
 

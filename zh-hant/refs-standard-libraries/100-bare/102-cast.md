@@ -137,7 +137,7 @@ unsafe impl<A: Pod, B: Pod, C: Pod, D: Pod> Pod for (A, B, C, D) { }
 
 `bool` 和 `char` 不是 `Pod`：它們的大多數位元模式都不是值（`bool` 是 0 或 1，`char` 是 Unicode 純量）。請重新解讀為 `u8` / `u32`，再帶檢查地轉換（`b != 0u8`、`char::from_u32`）。
 
-`Pod` 是 `unsafe trait`（[4.15.4](../../refs-lang/004-functions/415-unsafe.md#4154-in-traits)）：它的實作承諾每一種位元模式都是值，而編譯器無法檢查這一點，因此手寫的實作是 `unsafe impl Pod for T {}`。`#[derive(Pod)]` 會寫出它。
+`Pod` 是 `unsafe trait`（[4.15.4](../../refs-lang/004-functions/415-unsafe.md#4154-在-trait-中)）：它的實作承諾每一種位元模式都是值，而編譯器無法檢查這一點，因此手寫的實作是 `unsafe impl Pod for T {}`。`#[derive(Pod)]` 會寫出它。
 
 下列型別不會自動取得它：
 
@@ -178,7 +178,7 @@ let bits: u64 = unsafe { bare::transmute_unchecked(s) };   // code where SomeNew
 
 ## 1.2.7. `as` 強制轉型適用的地方
 
-`as` 是數值強制轉型（[refs-lang 2.14.2](../../refs-lang/002-types/214-cast-and-conversion.md#2142-as-casts)）：它允許在整數型別、浮點數型別、`bool`、`char` 和 `c_char` 之中的任意兩者之間使用，遵守 refs-lang 所列的目標限制，結果與 `.wrapping_into()` 相同。有損失的配對會環繞（整數），或向零截斷並飽和（浮點數轉整數）。只有指標會被拒絕。
+`as` 是數值強制轉型（[refs-lang 2.14.2](../../refs-lang/002-types/214-cast-and-conversion.md#2142-as-強制轉型)）：它允許在整數型別、浮點數型別、`bool`、`char` 和 `c_char` 之中的任意兩者之間使用，遵守 refs-lang 所列的目標限制，結果與 `.wrapping_into()` 相同。有損失的配對會環繞（整數），或向零截斷並飽和（浮點數轉整數）。只有指標會被拒絕。
 
 | 運算式             | 結果                                                   |
 |--------------------|--------------------------------------------------------|

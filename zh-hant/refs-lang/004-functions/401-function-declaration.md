@@ -237,7 +237,7 @@ unsafe unsafe fn bad3() { ... }          // ERROR: duplicate unsafe
 | `async fn`       | `AsyncFuture<T>`  | `Future<Output = T>`   | `TryAsyncFuture<T, E>`    |
 | `async yield fn` | `AsyncStream<T>`  | `Stream<Item = T>`     | `TryAsyncStream<T, E>`    |
 
-這些型別位於 `iter`（`GenIter`、`TryGenIter`）、`future`（`AsyncFuture`、`TryAsyncFuture`）與 `stream`（`AsyncStream`、`TryAsyncStream`），不在 prelude 中：請透過其模組（`future::AsyncFuture<T>`）或 `use` 指稱它們。`Try*` 變體在下一個推進點擲回錯誤。例如 `TryGenIter<T, E>` 的 `next` 是 `next(ref self) throws (E) -> T | none`，而 `TryAsyncFuture` 在 `try await` 處擲回錯誤。這些變體不實作一般的 `Iterator` / `Future` / `Stream` trait（[4.14.10](414-throws.md#41410-throws-對和型別簽章的影響)）；`TryGenIter` 實作 `TryIterator`，`TryAsyncStream` 實作 `TryStream`（[stdlib 2.7.13](../../refs-standard-libraries/200-core/207-iter.md#2713-tryiterator---fallible-iteration)、[2.8.11](../../refs-standard-libraries/200-core/208-stream.md#2811-trystream---fallible-streams)）。
+這些型別位於 `iter`（`GenIter`、`TryGenIter`）、`future`（`AsyncFuture`、`TryAsyncFuture`）與 `stream`（`AsyncStream`、`TryAsyncStream`），不在 prelude 中：請透過其模組（`future::AsyncFuture<T>`）或 `use` 指稱它們。`Try*` 變體在下一個推進點擲回錯誤。例如 `TryGenIter<T, E>` 的 `next` 是 `next(ref self) throws (E) -> T | none`，而 `TryAsyncFuture` 在 `try await` 處擲回錯誤。這些變體不實作一般的 `Iterator` / `Future` / `Stream` trait（[4.14.10](414-throws.md#41410-throws-對和型別簽章的影響)）；`TryGenIter` 實作 `TryIterator`，`TryAsyncStream` 實作 `TryStream`（[stdlib 2.7.13](../../refs-standard-libraries/200-core/207-iter.md#2713-tryiterator可能失敗的迭代)、[2.8.11](../../refs-standard-libraries/200-core/208-stream.md#2811-trystream可能失敗的串流)）。
 
 ```nabi
 async fn fetch_user(id: i64) -> User { ... }

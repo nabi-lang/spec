@@ -107,7 +107,7 @@ trait Copy: Clone {
 }
 ```
 
-在 Nabi 中，每個值都以值的方式複製。對集合型別與 GC 物件，複製的是控制代碼，指向同一個物件；基本型別的值、`str`（不可變的 `(ptr, len)`）、結構、列舉和元組則複製其本身（[refs-lang 2.3.8](../../refs-lang/002-types/203-struct.md#238-value-semantics)）。因此 `Copy` **只是一個標記**，不改變指派或引數傳遞的意義。`Copy` 只用在泛型約束（`T: Copy`）中，用來選出「位元複製就是獨立副本」的型別。
+在 Nabi 中，每個值都以值的方式複製。對集合型別與 GC 物件，複製的是控制代碼，指向同一個物件；基本型別的值、`str`（不可變的 `(ptr, len)`）、結構、列舉和元組則複製其本身（[refs-lang 2.3.8](../../refs-lang/002-types/203-struct.md#238-值語意)）。因此 `Copy` **只是一個標記**，不改變指派或引數傳遞的意義。`Copy` 只用在泛型約束（`T: Copy`）中，用來選出「位元複製就是獨立副本」的型別。
 
 ### impl 政策
 
@@ -173,7 +173,7 @@ let copy = other.clone(); // a second sender with its own owner
 
 ### 呼叫時機
 
-編譯器在擁有者離開作用域之處，於每一種離開方式（正常完成、`return`、`break`、錯誤傳遞）釋放值；任務完成或被取消時，則釋放其 `async` 區塊所擷取的值。`using` 在其區塊結束時釋放它的值（[refs-lang 3.17 `using`](../../refs-lang/003-expressions/317-using-expression.md)）。已經移走的值由新的擁有者釋放，而不是在這裡。重新宣告擁有者名稱的 `let`（[refs-lang 5.1.4](../../refs-lang/005-modules/501-variable-declaration.md#514-redeclaration-in-the-same-scope)）既不移動也不釋放舊值：舊值在舊繫結離開作用域之處釋放，而必須關閉的值要在重新宣告之前關閉或移走。
+編譯器在擁有者離開作用域之處，於每一種離開方式（正常完成、`return`、`break`、錯誤傳遞）釋放值；任務完成或被取消時，則釋放其 `async` 區塊所擷取的值。`using` 在其區塊結束時釋放它的值（[refs-lang 3.17 `using`](../../refs-lang/003-expressions/317-using-expression.md)）。已經移走的值由新的擁有者釋放，而不是在這裡。重新宣告擁有者名稱的 `let`（[refs-lang 5.1.4](../../refs-lang/005-modules/501-variable-declaration.md#514-同一作用域中的重新宣告)）既不移動也不釋放舊值：舊值在舊繫結離開作用域之處釋放，而必須關閉的值要在重新宣告之前關閉或移走。
 
 關閉可能失敗的型別實作 `io::Close`（`fn close(self) throws (IoError)`）：`File`、包著 `File` 的 `BufWriter` 或 `LineWriter`，以及任何持有這些值的結構。編譯器不會代你關閉這種值，因為關閉時的錯誤會遺失：用 `try x.close()` 關閉，或以 `using` 繫結。在某條路徑上不關閉就離開其作用域是編譯錯誤；只為一次借用它的呼叫而建立的暫時值（`(try File::open(p)).read_to_str()`、`io::BufReader::new(try File::open(p)).lines()`）也是編譯錯誤：呼叫之後沒有任何東西擁有它，因此沒有任何東西會關閉它（E0134）；請以 `using` 繫結它（`using f = try File::open(p) { try f.read_to_str() }`）。帶著錯誤離開的路徑會釋放它（這時關閉本身的錯誤會被丟棄）。`try?` 會丟棄它攔截到的錯誤，因此對錯誤可能持有這種值的呼叫使用 `try?`（`SendError<File>` 會交回未送出的值）是編譯錯誤：請用 `try .. catch` 攔截錯誤，取出值並關閉它。失敗的 `try!` 會觸發 panic，因此它持有的錯誤不需要關閉。持有這種值的和型別或列舉按成員關閉：看到該值的 `match` 分支要關閉它，而只看到由編譯器釋放之成員（`Sender`）的分支則不需要關閉。模式將和型別收窄成的成員（`if let x: Pair = p`、`match` 分支、`let .. else`）會像結構一樣逐部分追蹤：關閉 `x.a` 之後 `x.b` 仍未關閉，而再次關閉 `x.a`，或之後整體使用 `p`，都是錯誤。
 
@@ -343,26 +343,26 @@ trait Sync { }      // safe to read from multiple threads through shared referen
 - 基本數值、`bool`、`char`、`c_char`、`str` 和 `none` 是 `Send + Sync`。
 - `struct`、`enum`、`union`、元組、陣列或和型別，若其所有欄位（分量）都是 `Send` 則為 `Send`，若都是 `Sync` 則為 `Sync`。泛型容器的 `Send` 依相同規則跟隨 `T`。
 - 集合型別（`List`、`Dict`、`Set`、`StrBuf`、`Deque`、`BinaryHeap`、`Slice`、`SliceMut`）是 `Send` 且 `!Sync`：它們共用可變的控制代碼。要跨執行緒使用，可以凍結它們以唯讀方式共用（`FrozenList`、`FrozenDict`、`FrozenSet`，在元素為 `Send + Sync` 時也是 `Send + Sync`，[2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s唯讀集合型別)），透過交給 `par` 的 `chunks_mut` 檢視分別寫入互不重疊的部分（[2.19.1](219-par.md#2191-核心-api)），或透過 `Mutex` / `RwLock` / 通道共用。
-- 交出一個值（`Mutex::new(xs)`、`RwLock::new(xs)`、`tx.send(xs)` / `try_send` / `send_async`、`task::spawn_blocking_with_arg(xs, f)`、閉包的 `[move xs]` 擷取、`xs.freeze()`）之後，傳送端的控制代碼就不能再使用：新的擁有者得到一份副本（見下文的執行時複製），而傳送端不得使用它已交出的東西。從 guard 取出的控制代碼（`get`）、交給 guard 的控制代碼（`set`），或 `update` 的閉包所接觸的控制代碼，在 guard 的 `using` 區塊結束之後仍然指向受保護的物件。之後在任何路徑上使用這種值都是編譯錯誤（已交出的值為 `E0105`，從 guard 取出的值為 `E0106`；[refs-lang 9.9.4](../../refs-lang/009-tools/909-debug-tools.md#994-diagnostics--error-messages)）。編譯器會沿著以下各處追蹤該值：
+- 交出一個值（`Mutex::new(xs)`、`RwLock::new(xs)`、`tx.send(xs)` / `try_send` / `send_async`、`task::spawn_blocking_with_arg(xs, f)`、閉包的 `[move xs]` 擷取、`xs.freeze()`）之後，傳送端的控制代碼就不能再使用：新的擁有者得到一份副本（見下文的執行時複製），而傳送端不得使用它已交出的東西。從 guard 取出的控制代碼（`get`）、交給 guard 的控制代碼（`set`），或 `update` 的閉包所接觸的控制代碼，在 guard 的 `using` 區塊結束之後仍然指向受保護的物件。之後在任何路徑上使用這種值都是編譯錯誤（已交出的值為 `E0105`，從 guard 取出的值為 `E0106`；[refs-lang 9.9.4](../../refs-lang/009-tools/909-debug-tools.md#994-診斷--錯誤訊息)）。編譯器會沿著以下各處追蹤該值：
   - 副本（`let ys = xs`、結構欄位或元組元素、欄位指派）；
   - 傳遞它的欄位（`Mutex::new(s.items)`）；
   - 持有它的物件（`all.push(xs)`、擷取它的閉包），雙向追蹤：交出 `xs` 也會讓 `all` 不能再使用；
   - 集合型別的元素。存入集合的東西與從集合讀出的東西（`xs[i]`、`get`、迭代、它的切片）是同一個值，因此交出任一方都會讓另一方不能再使用（`let x = xs[0]; tx.send(xs); x.len()`、`tx.send(xs[0]); xs[1].len()`）。在元素已被交出的集合上，只允許 `len`、`is_empty`、`capacity`、`clear`、`truncate`、`reserve`、`shrink_to_fit`、`push` 和 `insert`（以及 `Deque` 的 `push_back` / `push_front`）；`clear` 會清空它，因此之後就能完全正常使用。從另一個集合複製而來的集合（`extend`、`+=`、`collect`、`par::filter`）與來源共用元素。以 `pop` 或 `remove` 取出的元素（`List`、`Deque`、`Dict`、`BinaryHeap`）已經離開集合：交出它之後集合仍可使用，除非集合可能持有該物件兩次：同一個值存了兩次、兩個存入的值共用一個物件，或在迴圈中把一個集合的元素存入另一個集合（元素不以位置區分）；
   - 交出某物之直接呼叫的引數：透過兩個引數傳入同一個物件，而被呼叫端透過其中一個交出它、透過另一個使用它（`f(tx, a, a)`；`h.go(tx, h.items)`，其中 `go` 使用 `self.items`，即一個從中 pop 並送出、再加上其一個元素的串列），是編譯錯誤。同一個集合的兩個元素視為不同（`f(tx, rows[0], rows[1])` 可被接受）；
   - `ref` 參數。當被呼叫端交出它的一部分，並在每條交出它的路徑上為那一部分賦予新值（`tx.send(self.buf)` 之後的 `self.buf = []`），呼叫端的變數會取回新值並保持可用；指向舊值的其他控制代碼則不行。以值傳遞的參數是副本：為其欄位賦予新值不會傳到呼叫端，呼叫端持有的仍然是已交出的東西；
-  - 呼叫。交出參數、回傳參數或其一部分、把它存入另一個參數的物件或 `ref` 參數、把它擷取到所回傳的閉包中，或回傳 guard 參數所持有之物的函式，對其呼叫端也有同樣效果，跨越預先建置的函式庫亦然（[refs-lang 9.4.7](../../refs-lang/009-tools/904-nabihir-bytecode.md#947-body)）。
+  - 呼叫。交出參數、回傳參數或其一部分、把它存入另一個參數的物件或 `ref` 參數、把它擷取到所回傳的閉包中，或回傳 guard 參數所持有之物的函式，對其呼叫端也有同樣效果，跨越預先建置的函式庫亦然（[refs-lang 9.4.7](../../refs-lang/009-tools/904-nabihir-bytecode.md#947-主體)）。
 
   透過函式值的呼叫，視為可能到達每一個以其參數型別作為值使用的函式。條件只在它所測試的值在每條路徑上都為編譯器所知時才會追蹤：由常數設定或複製而來的 `bool`、和型別或列舉變體（`let sent = false; if c { tx.send(xs); sent = true; } if !sent { xs.len() }`），以及呼叫如何結束。只有在沒有錯誤地回傳，或回傳 `none` / `false` 以外的值時才交出參數的函式，在其呼叫端代表另一種結果的 `catch`、`try?`、`??`、`else` 或 `if` 路徑上不會交出它；對 `async fn` 使用 `try await` 時的 `catch` 也一樣。其他條件不追蹤：在某條路徑上交出的值，在該路徑與其他路徑匯合之處就消失了。
 
-  要繼續使用某個值，請交出 `clone()`（一個獨立的值），或先為變數或欄位賦予新值（對結構副本而言，只有該欄位）；`set` 會釋放先前 `get` 所回傳的東西。`Sync` 值的使用、讀取值的標籤（`x is none`、`match x`），以及 `unsafe` 內的使用（[refs-lang 4.15.2](../../refs-lang/004-functions/415-unsafe.md#4152-unsafe------block-expression)）不受此限。被啟動之閉包的一般擷取不需要檢查：閉包與建立它的程式碼共用這些值，因此它們必須是 `Send + Sync`。`[move x]` 擷取把 `x` 交給閉包（[refs-lang 4.6.11](../../refs-lang/004-functions/406-capture-semantics.md#4611-move-capture-the-move-x-capture-list)），只需要 `Send`。把擁有非 `Sync` 之值的閉包（或未標記 `Sync`、因而可能擁有這種值的 `fn(..) + Send` 值）傳給型別為不帶 `Sync` 的 `fn(..) + Send` 的參數，就是交出它，因為被呼叫端可能在另一個執行緒上執行它（`thread::spawn`、`task::spawn_blocking`、`par::join`、`par::Scope::spawn`、`par::TryScope::spawn`……）；之後無論它經過什麼途徑（在一次呼叫中出現兩次、經過回傳其引數的函式、從串列或元組中取出），使用它都是編譯錯誤（`E0133`）。`async [move ..]` 閉包與其呼叫所產生的 future 是同一個擁有者：交出其中之一會連同其他一起交出（[refs-lang 4.6.11](../../refs-lang/004-functions/406-capture-semantics.md#4611-move-capture-the-move-x-capture-list)）。`task::spawn` 會交出它的 future：任務的框架得到 future 所擷取之物的副本，而對啟動端而言，future 及其所擷取之物都已消失，與送出之後一樣（[2.18.1](218-task.md#2181-核心-api)）。
+  要繼續使用某個值，請交出 `clone()`（一個獨立的值），或先為變數或欄位賦予新值（對結構副本而言，只有該欄位）；`set` 會釋放先前 `get` 所回傳的東西。`Sync` 值的使用、讀取值的標籤（`x is none`、`match x`），以及 `unsafe` 內的使用（[refs-lang 4.15.2](../../refs-lang/004-functions/415-unsafe.md#4152-unsafe---區塊運算式)）不受此限。被啟動之閉包的一般擷取不需要檢查：閉包與建立它的程式碼共用這些值，因此它們必須是 `Send + Sync`。`[move x]` 擷取把 `x` 交給閉包（[refs-lang 4.6.11](../../refs-lang/004-functions/406-capture-semantics.md#4611-移動擷取move-x-擷取清單)），只需要 `Send`。把擁有非 `Sync` 之值的閉包（或未標記 `Sync`、因而可能擁有這種值的 `fn(..) + Send` 值）傳給型別為不帶 `Sync` 的 `fn(..) + Send` 的參數，就是交出它，因為被呼叫端可能在另一個執行緒上執行它（`thread::spawn`、`task::spawn_blocking`、`par::join`、`par::Scope::spawn`、`par::TryScope::spawn`……）；之後無論它經過什麼途徑（在一次呼叫中出現兩次、經過回傳其引數的函式、從串列或元組中取出），使用它都是編譯錯誤（`E0133`）。`async [move ..]` 閉包與其呼叫所產生的 future 是同一個擁有者：交出其中之一會連同其他一起交出（[refs-lang 4.6.11](../../refs-lang/004-functions/406-capture-semantics.md#4611-移動擷取move-x-擷取清單)）。`task::spawn` 會交出它的 future：任務的框架得到 future 所擷取之物的副本，而對啟動端而言，future 及其所擷取之物都已消失，與送出之後一樣（[2.18.1](218-task.md#2181-核心-api)）。
 
   以下也是編譯錯誤：交出從 `Sync` 物件讀出、但本身不是 `Sync` 的值（使用者 `unsafe impl Sync` 型別的欄位），因為其他程式碼不經交接就能到達它（請改為交出 `clone()`）；`thread::local` 的值，它被借給 `with` 閉包（3.4.4）；通道的 `recv`、任務的結果或鎖的 guard 所給出的值屬於接收端，不在此規則的範圍內；在 guard 仍持有時交出 guard 的 `get` 所回傳之物（直到 `set` 為鎖賦予新值為止），或把它傳給會保留它的被呼叫端（要保留的副本是 `get_clone()`）；在 `using` 區塊內回傳或擲回它、在那裡 yield 它（產生器中的 `yield g.get()`）、讓它成為區塊本身的值（`let x = using g = m.lock() { g.get() }`、`f(using g = m.lock() { g.get() })`），無論是以何種形式帶出（迴圈的 `break` 值、帶標籤的區塊、`if` / `match` 分支、`catch`、閉包的結果），或把它交給在區塊內建立、在區塊之後執行的協程（`async fn` 的 future、產生器：`fut = grow(g.get()[0])`）：區塊的結束會在該值被使用之前釋放鎖。guard 只在其 `using` 區塊內有效：在該區塊結束之後使用它的副本（被推入集合、被閉包擷取、被被呼叫端存起來、被第二個 `using` 繫結、被協程持有：`async fn` 或產生器的引數、`async` 區塊的擷取）是編譯錯誤；guard 是 `!Sync`（[2.16.3](216-sync.md#2163-mutext互斥鎖)）。`par::for_each`、`par::map` 和 `par::filter` 把每個項目交給一個工作者，因此兩個項目不得到達同一個非 `Sync` 的集合。每次呼叫都會在執行時檢查這一點（[2.19.1](219-par.md#2191-核心-api)）：如果兩個項目到達同一個集合，這些項目會在呼叫端執行緒上逐一執行，並且每個呼叫位置發出一次警告。切片只會讀取，因此項目可以透過串列的切片共用該串列，只要沒有項目持有串列本身；可寫入的檢視（`SliceMut`）在沒有其他項目的檢視與其中一個所寫入的部分重疊時，也可以共用它。
 
   不在這些規則範圍內的有：`unsafe` 內的程式碼；透過函式值或閉包的呼叫，它會跳過上述的引數檢查；以及多次 yield 同一個物件、被收集到集合中、之後再把該集合的元素逐一交出的產生器。這種集合不會被視為持有該物件兩次。
 
   在執行時，每次交接也都會複製，因此在上述規則漏掉的途徑上（以及 `unsafe` 內的程式碼中），被交出的值以值方式到達的任何集合，都不會最終由傳送端與新擁有者共用（例外列於下文）。`Mutex::new`、`RwLock::new`、guard 的 `set` 和 `update`、`send` / `try_send` / `send_async`、`task::spawn_blocking_with_arg` 的值、`[move x]` 擷取（在建立閉包時），以及任務、執行緒或 `par` 作用域工作的結果（還有 `try_scope` 的錯誤），會給新擁有者一份該值所到達之每個集合的副本：經由結構、元組、陣列、列舉和和型別的各部分，以及集合的元素，深度不限，使用工作清單而非每層一個堆疊框架。被到達多次的集合只複製一次，因此副本保留了值的共用關係與環狀參考。被複製的有 `List`、`Dict`、`Deque`、`StrBuf`、`Slice` 以及建立在它們之上的集合型別，還有 `GcPtr`（[1.6.3](../100-bare/106-gc-pin.md)）。協程 future（`AsyncFuture`、`TryAsyncFuture`）會得到自己的框架，其中持有在同一次複製中做出的、它所擷取之物的副本；已經開始或已經完成的 future，或其框架（或所擷取之 future 的框架）含有 `[ref x]` 擷取的 future，不能交出，交接時會觸發 panic（[2.18.1](218-task.md#2181-核心-api)）。`Task` 不會被複製，但一旦交出，它的每次 `await` 都會得到結果的獨立副本（[2.18.2](218-task.md#2182-taskt-型別)）。串列與其緩衝區的每個檢視繼續共用同一個被複製的緩衝區；`str` 位元組的檢視只複製那些位元組（它們不會改變）。`update` 保留 guard 已經持有的東西：只複製閉包帶進來的部分。傳送端的控制代碼維持原樣：上述規則遺漏的控制代碼，指向的是沒有其他執行緒使用的物件。擲回錯誤的送出會帶回一個相等的值（呼叫端的值或其副本）。複製所花的時間與記憶體與複製的量成正比；一段連續的單純值（沒有 GC 參考）只是一次記憶體複製。工具鏈內部的 `core::marker::hand_over(x)` 回傳相同的副本。`xs.freeze()` 不會複製：凍結後的集合接管儲存空間並讓 `xs` 變空，而帶有檢視的串列會給出副本（[2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s唯讀集合型別)）。保持共用的有：`Sync` 部分（包括凍結的集合型別）、具有 `unsafe impl Send` 之型別的值（它們自行管理共用：任務、檔案、通訊端），以及產生器和串流（不是 `Send`：它們永遠不會被交出）。`Mutex::new_unshared`（2.16.3）不會複製。從 guard 取出的控制代碼（`get`、`update` 的閉包引數）在執行時不會被複製：上述規則會追蹤它以及 guard 本身，經過每個副本、`return`、`yield`、區塊的值以及在區塊內建立之協程的框架，一直追到 `using` 區塊之外。
-- 以下排除在外：`Cell<T>`、原始指標（`Ptr<T>`、`ConstPtr<T>`、`CPtr<T>`）、單獨的 `any` 以及約束缺少 `Send` / `Sync` 的 `any Tr`（只有當約束同時具有 `Send` 和 `Sync` 時，`any Tr` 才是 `Send`：`any` 的副本共用其 box，就像閉包的一般擷取被共用一樣，因此跨執行緒的 `any` 之中不得有任何集合）、沒有約束的函式型別，以及帶有 `[ref]` 擷取的閉包（[refs-lang 4.6.9](../../refs-lang/004-functions/406-capture-semantics.md#469-additional-constraints-in-parallel-and-concurrent-contexts)）。其他例外規定在各型別的章節中。
-- 函式型別只有在寫出約束時才具有這些 trait，例如 `fn(..) -> R + Send`（[refs-lang 4.4](../../refs-lang/004-functions/404-function-type.md#send--sync-bounds)）。單獨的 `+ Send` 不會讓它成為 `Sync`：其背後的閉包可能擁有非 `Sync` 的 `[move x]` 擷取。由多個執行緒呼叫的函式值（`static`、`par::*` 閉包）是 `+ Send + Sync`。
+- 以下排除在外：`Cell<T>`、原始指標（`Ptr<T>`、`ConstPtr<T>`、`CPtr<T>`）、單獨的 `any` 以及約束缺少 `Send` / `Sync` 的 `any Tr`（只有當約束同時具有 `Send` 和 `Sync` 時，`any Tr` 才是 `Send`：`any` 的副本共用其 box，就像閉包的一般擷取被共用一樣，因此跨執行緒的 `any` 之中不得有任何集合）、沒有約束的函式型別，以及帶有 `[ref]` 擷取的閉包（[refs-lang 4.6.9](../../refs-lang/004-functions/406-capture-semantics.md#469-平行與並行上下文中的額外限制)）。其他例外規定在各型別的章節中。
+- 函式型別只有在寫出約束時才具有這些 trait，例如 `fn(..) -> R + Send`（[refs-lang 4.4](../../refs-lang/004-functions/404-function-type.md#send--sync-約束)）。單獨的 `+ Send` 不會讓它成為 `Sync`：其背後的閉包可能擁有非 `Sync` 的 `[move x]` 擷取。由多個執行緒呼叫的函式值（`static`、`par::*` 閉包）是 `+ Send + Sync`。
 
 自動實作不正確的型別會直接宣告。內部持有原始指標、但以執行緒安全方式包裝它的型別，以 `unsafe impl` 選擇性加入（安全性由作者負責）；在結構上會被自動實作、但並非執行緒安全的型別，以 `impl !Send` 選擇退出。`Cell<T>` 的排除就是以這種方式宣告的。
 
@@ -433,11 +433,11 @@ trait Default {
 | `List`、`Dict`、`Set` 等集合型別 | 空集合 |
 | `T \| none`                          | `none`             |
 
-`Default` 可以衍生；它以每個欄位宣告的預設值建立值（[refs-lang 2.3.3](../../refs-lang/002-types/203-struct.md#233-field-default-values)），沒有預設值的欄位則用欄位型別的 `default()`：`#[derive(Default)] struct Cfg { host: str = "localhost"; port: i32; }` 得到 `Cfg { host: "localhost", port: 0 }`。
+`Default` 可以衍生；它以每個欄位宣告的預設值建立值（[refs-lang 2.3.3](../../refs-lang/002-types/203-struct.md#233-欄位預設值)），沒有預設值的欄位則用欄位型別的 `default()`：`#[derive(Default)] struct Cfg { host: str = "localhost"; port: i32; }` 得到 `Cfg { host: "localhost", port: 0 }`。
 
 ## 2.13.11. 可衍生的 trait
 
-`#[derive(...)]`（[refs-lang 6.2.1](../../refs-lang/006-meta-system/602-built-in-attributes.md#621-derive-automatic-trait-implementation)）能產生的內建 trait 只有這些：
+`#[derive(...)]`（[refs-lang 6.2.1](../../refs-lang/006-meta-system/602-built-in-attributes.md#621-derive-自動-trait-實作)）能產生的內建 trait 只有這些：
 
 | Trait         | 產生的實作                      | 需求                            |
 |---------------|-----------------------------------------------|----------------------------------------|

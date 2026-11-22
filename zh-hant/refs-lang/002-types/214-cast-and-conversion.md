@@ -43,7 +43,7 @@ let z: f64 = x as f64;        // 256.0
 - 沒有酬載的 `enum` 轉成整數型別，得到其標籤或值（[2.4.2](204-enum.md#強制轉型為整數)）。
 - 轉成或轉出任意精度的 std 型別 `int` / `float`。轉成它們會執行無損的 `From` impl，因此沒有該 impl 的配對（`f64 as int`）是錯誤；從它們轉出會執行目標的 `WrappingFrom` impl。
 
-從浮點數型別轉成整數型別時，`as` 向零截斷並飽和：超出目標範圍的值得到最接近的端點（`1e10 as i32` 是 `i32::MAX`，`-1.5 as u8` 是 `0`），NaN 得到 `0`，在每個最佳化等級都是如此。`as` 結果的完整表格見 [stdlib 2.11.6](../../refs-standard-libraries/200-core/211-conversion.md#2116-as-t---bit-reinterpretation--numeric-cast)。
+從浮點數型別轉成整數型別時，`as` 向零截斷並飽和：超出目標範圍的值得到最接近的端點（`1e10 as i32` 是 `i32::MAX`，`-1.5 as u8` 是 `0`），NaN 得到 `0`，在每個最佳化等級都是如此。`as` 結果的完整表格見 [stdlib 2.11.6](../../refs-standard-libraries/200-core/211-conversion.md#2116-as-t位元重新解讀--數值強制轉型)。
 
 整數、浮點數或 `char` 值 `as bool` 是編譯錯誤 ``cannot cast `i32` as `bool` ``：請改寫成比較，整數寫 `x != 0`，浮點數寫 `x != 0.0`。這個錯誤附帶該修改作為修正建議。`bool` 強制轉型為整數型別時是 `0` 與 `1`。
 
@@ -80,7 +80,7 @@ let y = x.into::<int>();
 expr.try_into::<Type>()
 ```
 
-這會去糖為 `Target::try_from(expr)`（`Target: TryFrom<typeof(expr)>`）。`try_into` 是一個 [`throws`](../004-functions/414-throws.md) 方法：成功時回傳目標型別的值，失敗時擲回錯誤（目標的 `TryFrom::Error`；數值轉換為 `OverflowError`，[stdlib 2.11.4](../../refs-standard-libraries/200-core/211-conversion.md#2114-tryfromu-trait---fallible-conversion)）。因此該呼叫必須以 `try` 標示。它用於轉換可能失敗的情況，例如把大的整數移到較小的整數，或把浮點數值轉成整數。
+這會去糖為 `Target::try_from(expr)`（`Target: TryFrom<typeof(expr)>`）。`try_into` 是一個 [`throws`](../004-functions/414-throws.md) 方法：成功時回傳目標型別的值，失敗時擲回錯誤（目標的 `TryFrom::Error`；數值轉換為 `OverflowError`，[stdlib 2.11.4](../../refs-standard-libraries/200-core/211-conversion.md#2114-tryfromu-trait可能失敗的轉換)）。因此該呼叫必須以 `try` 標示。它用於轉換可能失敗的情況，例如把大的整數移到較小的整數，或把浮點數值轉成整數。
 
 ```nabi
 let big: i64 = 10_000_000_000i64;
@@ -106,7 +106,7 @@ let m: i32 | none = try? big.try_into::<i32>();
 
 無後綴的數值字面值不會被轉換；其型別由預期型別決定。`let x: f64 = 1` 中的 `1` 從一開始就是 `f64`。確切規則定義於[數值字面值](../001-lexical/106-numeric-literals.md#163-無後綴的字面值)。
 
-相對地，執行時變數的自動轉換是不允許的。必須一律寫出上述三種形式之一。唯一的例外是視圖而非轉換：在預期 `SliceMut<T>` 之處的 `List<T>`，會以整個串列的可寫視圖傳遞，而在那裡的 `xs[a:b]` 則以該範圍的視圖傳遞（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt---writable-view)）。不會複製任何東西。
+相對地，執行時變數的自動轉換是不允許的。必須一律寫出上述三種形式之一。唯一的例外是視圖而非轉換：在預期 `SliceMut<T>` 之處的 `List<T>`，會以整個串列的可寫視圖傳遞，而在那裡的 `xs[a:b]` 則以該範圍的視圖傳遞（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可寫入檢視)）。不會複製任何東西。
 
 ```nabi
 let a: i64 = 100i64;

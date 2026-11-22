@@ -86,7 +86,7 @@ struct Config {
 
 預設值受到下列限制。只允許 `const` 運算式：字面值、`const` 變數、`const` 函式呼叫，以及由這類值構成的 `List` / `Dict` 字面值（`[]`、`[1, 2]`、`{"a": 1}`）。集合型別的預設值在編譯期檢查，並為每個實例重新建立，因此實例之間絕不會共用它。`const` 運算式定義於 [`const`](../005-modules/502-const.md)。需要執行時呼叫的運算式，例如目前時間或隨機數，不能使用；這樣的程式碼是編譯錯誤。參照同一個結構的其他欄位也是禁止的。預設值只在建立實例時省略該欄位才會求值，而且每個實例都會求值一次。由於求值是確定性的，編譯器可以套用快取最佳化。
 
-這些限制確保了確定性、可預測的成本以及 SemVer 安全性。若需要執行時初始化，請使用另外的工廠函式，即 `fn new() -> T` 模式。欄位預設值中的名稱在宣告該結構的模組作用域中解析，而不是在建立值的地方。衍生的 `Default` 也使用宣告的預設值（[stdlib 2.13.10](../../refs-standard-libraries/200-core/213-marker.md#21310-default---default-values)）。
+這些限制確保了確定性、可預測的成本以及 SemVer 安全性。若需要執行時初始化，請使用另外的工廠函式，即 `fn new() -> T` 模式。欄位預設值中的名稱在宣告該結構的模組作用域中解析，而不是在建立值的地方。衍生的 `Default` 也使用宣告的預設值（[stdlib 2.13.10](../../refs-standard-libraries/200-core/213-marker.md#21310-default預設值)）。
 
 在結構所屬模組之外的字面值，只有在私有欄位有預設值時才能省略它（[5.6.8](../005-modules/506-visibility.md#568-struct-欄位的可見性)）。`#[non_exhaustive]` 結構會為第一個版本之後新增的每個欄位提供預設值，讓其他套件中的字面值能繼續編譯（[6.2.10](../006-meta-system/602-built-in-attributes.md#6210-non_exhaustive-退出外部的窮盡性)）。
 
@@ -153,7 +153,7 @@ let qs = ps.map(|p| { p.x = 0.0; p }).to_list();  // returned: kept
 let c = self;                     // a local copy on purpose: change `c`, then read or return it
 ```
 
-共享要透過參照控制代碼：集合型別（`List`、`Dict`、`Set`、`StrBuf`、`Deque`……，[stdlib 2.9](../../refs-standard-libraries/200-core/209-collections.md#reference-handles)）、`Mutex`、`RwLock`、atomics、通道，以及 `[ref x]` 擷取儲存格。複製控制代碼會共享物件。
+共享要透過參照控制代碼：集合型別（`List`、`Dict`、`Set`、`StrBuf`、`Deque`……，[stdlib 2.9](../../refs-standard-libraries/200-core/209-collections.md#參考控制代碼)）、`Mutex`、`RwLock`、atomics、通道，以及 `[ref x]` 擷取儲存格。複製控制代碼會共享物件。
 
 |                         | 值型別（`struct`、`enum`、元組、基本型別）      | 參照控制代碼（`List`、`Dict`、`Mutex`……）     |
 |-------------------------|-------------------------------------------------|-----------------------------------------------|

@@ -70,7 +70,7 @@ bit  6 ~ 31 : reserved / GC implementation-defined
 | 10   | `SATB`     | 在並行標記期間，屏障記錄這個物件的參照時設定。競爭的存入會等到它被清除（[7.5.3](../007-runtime/705-concurrent-collection.md#753-satb-屏障)） |
 | 11   | `SCANNED`  | 這個物件已在並行標記中被掃描 |
 | 12   | `WIPE`     | 機密緩衝區（`nabi_gc_secret_new`，[8.5.1](805-extern-symbols.md#nabi_gc_secret_new--nabi_gc_secret_wipe)）。釋放它的清除階段會先把其酬載清零。絕不會被清除 |
-| 13 ~ 28 | `VISIT_STAMP` | 供 `par` 走訪使用（[stdlib 2.19.1](../../refs-standard-libraries/200-core/219-par.md#2191-core-api)）：到達該物件之最後一次走訪的 16 位元時期編號。回收器保留這些位元 |
+| 13 ~ 28 | `VISIT_STAMP` | 供 `par` 走訪使用（[stdlib 2.19.1](../../refs-standard-libraries/200-core/219-par.md#2191-核心-api)）：到達該物件之最後一次走訪的 16 位元時期編號。回收器保留這些位元 |
 | 29   | `VISIT_OTHERS` | `par` 走訪：被不只一個項目到達，每個都是透過切片 |
 | 30   | `VISIT_SLICED` | `par` 走訪：到目前為止只透過切片被到達 |
 | 31   | `VISIT_CUR` | `par` 走訪：被正在走訪的項目到達 |

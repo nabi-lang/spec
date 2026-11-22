@@ -95,7 +95,7 @@ PrefixVarInt 是 LEB128 的一種變體。第一個位元組開頭的 1 位元�
 
 原始碼檔案之後是套件之 `ffi::wit` 項目所讀取的 `.wit` 檔案（[stdlib 1.8](../../refs-standard-libraries/100-bare/108-wit.md)），連同其 `deps/` 完整收錄。它們的路徑相對於 source dir，並可以經由 `..` 離開它。下游從主體讀取 WIT，不讀取磁碟。
 
-主體之後是套件函式的交出摘要（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）。摘要由以 tab 分隔欄位的行組成：
+主體之後是套件函式的交出摘要（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)）。摘要由以 tab 分隔欄位的行組成：
 
 - `g <root> <mutex|rwlock|channel> <line> <function> <file>`：交出 `<root>`；
 - `s <root> <root>`：同一個物件；

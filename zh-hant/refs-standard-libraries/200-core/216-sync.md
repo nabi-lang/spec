@@ -87,7 +87,7 @@ enum UpdateOrdering { Relaxed, Acquire, Release, AcqRel, SeqCst }    // swap, fe
 | `AcqRel`  | 讀取-修改-寫入的雙向同步         |
 | `SeqCst`  | 全域循序一致性（預設，安全）   |
 
-這些順序具有 C++20 中的意義；它們所屬的記憶體模型（happens-before、哪些函式庫操作會同步、資料競爭）見 [refs-lang 7.9](../../refs-lang/007-runtime/709-memory-model.md)。預設為安全的 `SeqCst`。載入不能 release，儲存也不能 acquire：`a.store(x, Acquire)` 是編譯錯誤（`StoreOrdering` 沒有 `Acquire`；儲存接受 `Relaxed`、`Release` 或 `SeqCst`）。compare-exchange 的失敗順序是載入順序。變體不加前綴書寫：由參數的型別決定列舉（[refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-bare-variants-from-the-expected-type)）。這三個型別不在 prelude 中，其名稱也不會與比較用的 `cmp::Ordering` 衝突。順序引數必須是編譯期常數。較弱的順序應當謹慎使用，且只用於效能關鍵之處。
+這些順序具有 C++20 中的意義；它們所屬的記憶體模型（happens-before、哪些函式庫操作會同步、資料競爭）見 [refs-lang 7.9](../../refs-lang/007-runtime/709-memory-model.md)。預設為安全的 `SeqCst`。載入不能 release，儲存也不能 acquire：`a.store(x, Acquire)` 是編譯錯誤（`StoreOrdering` 沒有 `Acquire`；儲存接受 `Relaxed`、`Release` 或 `SeqCst`）。compare-exchange 的失敗順序是載入順序。變體不加前綴書寫：由參數的型別決定列舉（[refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-依預期型別使用不帶路徑的變體)）。這三個型別不在 prelude 中，其名稱也不會與比較用的 `cmp::Ordering` 衝突。順序引數必須是編譯期常數。較弱的順序應當謹慎使用，且只用於效能關鍵之處。
 
 ### 範例
 
@@ -120,7 +120,7 @@ fn store_max(cell: Atomic<i64>, x: i64) {
 }
 ```
 
-元素型別必須是 `AtomicPrimitive`：`List<T>` 這類集合型別無法放進 `Atomic`。此 trait 是封閉的（sealed，[refs-lang 6.2.15](../../refs-lang/006-meta-system/602-built-in-attributes.md#6215-sealed-impls-only-in-the-defining-package)）：上述型別就是它全部的實作，在其他套件中撰寫 `impl AtomicPrimitive` 是錯誤。共用的集合型別應放進 `Mutex<T>`（2.16.3）。
+元素型別必須是 `AtomicPrimitive`：`List<T>` 這類集合型別無法放進 `Atomic`。此 trait 是封閉的（sealed，[refs-lang 6.2.15](../../refs-lang/006-meta-system/602-built-in-attributes.md#6215-sealed-只在定義套件中實作)）：上述型別就是它全部的實作，在其他套件中撰寫 `impl AtomicPrimitive` 是錯誤。共用的集合型別應放進 `Mutex<T>`（2.16.3）。
 
 ## 2.16.3. `Mutex<T>`：互斥鎖
 

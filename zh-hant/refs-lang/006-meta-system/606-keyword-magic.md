@@ -24,7 +24,7 @@ fn with_handler(...) { ... }
 
 基本形式是 `#[keyword("name")]`，以關鍵字名稱（識別字形狀的字串字面值）作為引數。處理器是一個**自由函式**；它不能附加在方法或 trait 項目上。
 
-`struct` 上的 `#[keyword("name")]` 註冊一個**型別關鍵字**：該名稱在型別位置指稱該結構（`int` → `core::num::bigint::Int`、`float` → `core::num::bigfloat::Float`，[stdlib 2.1.2](../../refs-standard-libraries/200-core/201-numbers.md#212-int---arbitrary-precision-integer)）。只有標準函式庫可以註冊型別關鍵字。附加在既不是函式也不是結構的項目上是錯誤。
+`struct` 上的 `#[keyword("name")]` 註冊一個**型別關鍵字**：該名稱在型別位置指稱該結構（`int` → `core::num::bigint::Int`、`float` → `core::num::bigfloat::Float`，[stdlib 2.1.2](../../refs-standard-libraries/200-core/201-numbers.md#212-int任意精度整數)）。只有標準函式庫可以註冊型別關鍵字。附加在既不是函式也不是結構的項目上是錯誤。
 
 ## 6.6.3. 註冊的效果
 

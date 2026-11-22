@@ -25,7 +25,7 @@ use core::ops::{Add, Sub};           // operator traits are not in the prelude
 
 > [!NOTE]
 > prelude 的清單是規範性的，且不含任何列舉變體：裸變體從預期型別解析
->（[refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-bare-variants-from-the-expected-type)）。
+>（[refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-依預期型別使用不帶路徑的變體)）。
 
 完整政策請見 [0.2 匯入政策](../000-meta/002-import.md)。
 
@@ -96,7 +96,7 @@ core 層級提供的模組，依領域分組。每個項目最後列出它所規
 
 ### 基準測試／最佳化器提示
 
-- `bench`：`Bench`，`#[bench]` 函式收到的控制代碼。量測方式規範於 [refs-lang 9.9.11](../../refs-lang/009-tools/909-debug-tools.md#9911-benchmarks)。
+- `bench`：`Bench`，`#[bench]` 函式收到的控制代碼。量測方式規範於 [refs-lang 9.9.11](../../refs-lang/009-tools/909-debug-tools.md#9911-效能測試)。
 
   ```nabi
   pub struct Bench { /* private fields */ }   // Debug: `Bench { name: "parse_1kb", .. }`

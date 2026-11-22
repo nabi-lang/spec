@@ -34,9 +34,9 @@ I/O 等待依下列方式進行：
 
 這個流程與 `async` `fn` 中的 `await` 結合（見[非同步](../004-functions/412-async.md)）。註冊是邊緣觸發的，因此每次等待都會重新啟用。標準函式庫的就緒 future 在停駐之後會再檢查一次 fd，以免錯過期間經過的邊緣。被喚醒的任務可能發現 fd 尚未就緒，因此呼叫者會重試該操作。那些 future（`task::readable` / `task::writable`）是 `#[internal]`（[stdlib 2.18](../../refs-standard-libraries/200-core/218-task.md)）：手寫的 future 透過 `nabi_io_register` 等待 fd（[8.5.5](../008-abi/805-extern-symbols.md#855-io--計時器區域)）。
 
-阻塞的呼叫（`TcpStream::read` 等）不使用這條路徑；它們會阻塞呼叫它們的作業系統執行緒。暫停任務的 I/O 由標準函式庫的 `*_async` 方法提供（[stdlib 3.2.0](../../refs-standard-libraries/300-std/302-net.md#320-common-rules)）。
+阻塞的呼叫（`TcpStream::read` 等）不使用這條路徑；它們會阻塞呼叫它們的作業系統執行緒。暫停任務的 I/O 由標準函式庫的 `*_async` 方法提供（[stdlib 3.2.0](../../refs-standard-libraries/300-std/302-net.md#320-共通規則)）。
 
-一般檔案無法以就緒模型等待（在 epoll / kqueue 之下它們一律是就緒的）。因此一般檔案的非同步 I/O（`fs::*_async`，[stdlib 3.1.4a](../../refs-standard-libraries/300-std/301-fs.md#314a-asynchronous-file-io-_async)）在另一個作業系統執行緒上執行阻塞的系統呼叫（`task::spawn_blocking`），並在此期間暫停任務。
+一般檔案無法以就緒模型等待（在 epoll / kqueue 之下它們一律是就緒的）。因此一般檔案的非同步 I/O（`fs::*_async`，[stdlib 3.1.4a](../../refs-standard-libraries/300-std/301-fs.md#314a-非同步檔案-io_async)）在另一個作業系統執行緒上執行阻塞的系統呼叫（`task::spawn_blocking`），並在此期間暫停任務。
 
 ## 7.7.3. I/O 驅動程式的抽象
 
@@ -108,7 +108,7 @@ loop {
 
 ## 7.7.9. 取消
 
-`Task::cancel` **請求**取消（[stdlib 2.18.4](../../refs-standard-libraries/200-core/218-task.md#2184-cooperative-cancellation---taskcancel)）。執行環境設定一個旗標並喚醒該任務。
+`Task::cancel` **請求**取消（[stdlib 2.18.4](../../refs-standard-libraries/200-core/218-task.md#2184-協作式取消taskcancel)）。執行環境設定一個旗標並喚醒該任務。
 
 - 每個 `await` 都是取消點。`await` 在進入時以及即將暫停之前檢查旗標。在任務被輪詢期間到達的取消，會在其下一次輪詢時處理，而那次輪詢正是取消的喚醒所帶來的：被 await 的 future 會先看到它，因此巢狀的協程，以及 `task::select` 每個已啟動的子項，都會執行其清理。
 - 在被 await 的 future 回傳 `Ready` 之後的檢查，不是「旗標是否已設定」，而是「**被 await 的協程是否因取消而離開**」。因此 future 所交出的值（收到的訊息、取得的鎖守衛）會被保留，而任務在下一個 `await` 處離開。
@@ -120,7 +120,7 @@ loop {
 - 在通訊端 I/O、`sleep` / `timeout`、`lock_async` 或 `recv_async` / `send_async` 中等待的任務，在被取消時會被喚醒，並在下一個 `await` 處離開。
 - 任務結束時，它所有的喚醒註冊（I/O 就緒等待、計時器、停駐表中的 waker）都會被釋放。執行中之池的註冊數量可以用診斷函式 `task::registrations()` 檢視；該值的確切意義由實作定義。
 
-在 `task::timeout` 到期或 `task::race` 決定勝者之後，落敗的任務會繼續執行。要停止它們，請呼叫 `cancel`。`task::select` 不會產生任務，因此它自己取消落敗的 future（[stdlib 2.18.1](../../refs-standard-libraries/200-core/218-task.md#select---the-first-future-to-finish)）；清理中會 `await` 的落敗者，會作為它自己的任務完成清理。
+在 `task::timeout` 到期或 `task::race` 決定勝者之後，落敗的任務會繼續執行。要停止它們，請呼叫 `cancel`。`task::select` 不會產生任務，因此它自己取消落敗的 future（[stdlib 2.18.1](../../refs-standard-libraries/200-core/218-task.md#select最先完成的-future)）；清理中會 `await` 的落敗者，會作為它自己的任務完成清理。
 
 ## 7.7.10. 與 reactor 模式的比較
 

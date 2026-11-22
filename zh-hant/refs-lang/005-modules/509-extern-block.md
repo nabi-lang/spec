@@ -37,7 +37,7 @@ extern "C" {
 | `"C"`      | 平台的 C ABI。無論符號名稱為何都相同。                                           |
 | `"system"` | 作業系統的系統呼叫 ABI。在某些平台上與 `"C"` 不同（例如 Win32 的 `stdcall`）。   |
 | `"nabi"`    | 執行環境（`nabir`）的 ABI。見下文。                                               |
-| `"objc"`   | Apple 目標上的 Objective-C 類別及其方法（[stdlib 1.10](../../refs-standard-libraries/100-bare/110-objc.md)）；`ffi::objc::import { "AppKit/AppKit.h" }` 從 SDK 的標頭檔寫出這些區塊（[stdlib 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-headers-ffiobjcimport)）。 |
+| `"objc"`   | Apple 目標上的 Objective-C 類別及其方法（[stdlib 1.10](../../refs-standard-libraries/100-bare/110-objc.md)）；`ffi::objc::import { "AppKit/AppKit.h" }` 從 SDK 的標頭檔寫出這些區塊（[stdlib 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-標頭檔ffiobjcimport)）。 |
 
 在 `"system"` 與 `"C"` 相同的目標上（除 32 位元 x86 Windows 之外的每個支援目標），`"system"` 就是 `"C"`。在 32 位元 x86 Windows 上它是 stdcall（[5.9.10](#5910-extern-fn-定義對外公開)）。
 
@@ -83,7 +83,7 @@ extern "C" {
 }
 ```
 
-這種形式參照在外部定義的全域變數；`static mut` 只允許出現在 `extern` 區塊內（[`static`](503-static.md)）。C 的 `errno` 不是這樣的變數：它是每個執行緒各自的巨集，因此 `static errno` 會讀到錯誤的記憶體。在宣告上加上 `#[errno]` 會在呼叫之後儲存它（[stdlib 1.7.11](../../refs-standard-libraries/100-bare/107-ffi.md#1711-errno---errno-and-getlasterror)）。
+這種形式參照在外部定義的全域變數；`static mut` 只允許出現在 `extern` 區塊內（[`static`](503-static.md)）。C 的 `errno` 不是這樣的變數：它是每個執行緒各自的巨集，因此 `static errno` 會讀到錯誤的記憶體。在宣告上加上 `#[errno]` 會在呼叫之後儲存它（[stdlib 1.7.11](../../refs-standard-libraries/100-bare/107-ffi.md#1711-errnoerrno-與-getlasterror)）。
 
 ### 不允許的項目
 
@@ -94,7 +94,7 @@ extern "C" {
 參數、回傳與 `static` 的型別都必須與 FFI 相容。FFI 型別如下：
 
 - 基本整數：`i8` 到 `i64`、`u8` 到 `u64`、`usize`、`isize`。
-- C 的具名型別，即這些基本型別的別名，大小與目標的 C 編譯器所定的相同：`c_int`、`c_uint`、`c_long`、`c_ulong`、`c_size_t`、`c_wchar` 以及 `bare::ffi::types` 的其餘部分，全都在 prelude 中（[stdlib 1.7.9](../../refs-standard-libraries/100-bare/107-ffi.md#179-c-types---c_int-c_long-c_void)）。`c_long` 在 Windows 與 32 位元目標上是 32 位元，因此 C 的 `long` 要宣告為 `c_long`，而不是 `i64`。`c_void` 代表指標背後的 `void`（`CPtr<c_void>`）。
+- C 的具名型別，即這些基本型別的別名，大小與目標的 C 編譯器所定的相同：`c_int`、`c_uint`、`c_long`、`c_ulong`、`c_size_t`、`c_wchar` 以及 `bare::ffi::types` 的其餘部分，全都在 prelude 中（[stdlib 1.7.9](../../refs-standard-libraries/100-bare/107-ffi.md#179-c-型別c_intc_longc_void)）。`c_long` 在 Windows 與 32 位元目標上是 32 位元，因此 C 的 `long` 要宣告為 `c_long`，而不是 `i64`。`c_void` 代表指標背後的 `void`（`CPtr<c_void>`）。
 - 基本浮點數：`f32`、`f64`。
 - `bool`（C 的 `bool`）與 `c_char`（1 位元組）。
 - `f16` / `bf16`：C 的 `_Float16` / `__bf16`，在其 C 具有它們的目標上（[8.6.3](../008-abi/806-calling-convention.md#863-struct-引數--回傳小-struct-規則)）。
@@ -103,12 +103,12 @@ extern "C" {
 - 欄位都是 FFI 型別（包括由它們組成的固定長度陣列）的 `struct` 與 `union` 型別。預設配置就已經是 C 的配置；`#[repr(packed)]` 與 `#[repr(align(N))]` 像在 C 中那樣改變它。
 - 帶有整數 `#[repr]`（`#[repr(i32)]`）的無欄位列舉：C 的 `enum`。
 - 函式指標：`extern "C" fn(...) -> ...`（見下文的「C 函式指標型別」）。
-- 函式型別的參數：`extern "C"` 宣告中的 `fn(..) -> R` 參數與 `extern "C" fn(..) -> R` 相同。引數必須指稱一個函式；閉包是錯誤（`` `each` is a C function: a `fn` argument must name a function (a C callback has no room for a closure's captures) ``），其說明會指出其狀態放在哪裡：`` a C callback cannot capture: keep the state in `Handle::new(..)` (`bare::ffi`), pass `h.as_ptr()` as the `void*` argument, and read it back in an `extern "C" fn` with `Handle::<T>::from_ptr(p).get()` ``（[stdlib 1.7.10](../../refs-standard-libraries/100-bare/107-ffi.md#1710-handlet---nabi-values-c-holds)）。
+- 函式型別的參數：`extern "C"` 宣告中的 `fn(..) -> R` 參數與 `extern "C" fn(..) -> R` 相同。引數必須指稱一個函式；閉包是錯誤（`` `each` is a C function: a `fn` argument must name a function (a C callback has no room for a closure's captures) ``），其說明會指出其狀態放在哪裡：`` a C callback cannot capture: keep the state in `Handle::new(..)` (`bare::ffi`), pass `h.as_ptr()` as the `void*` argument, and read it back in an `extern "C" fn` with `Handle::<T>::from_ptr(p).get()` ``（[stdlib 1.7.10](../../refs-standard-libraries/100-bare/107-ffi.md#1710-handletc-持有的-nabi-值)）。
 - 可為 null 的指標：`Ptr<T> | none`、`ConstPtr<T> | none`、`extern "C" fn(..) -> R | none`（帶有 null niche 的指標，[2.7.2](../002-types/207-niche-optimization.md#272-自動-niche)），以及任何 `#[niche(0)]` 結構 `| none`（`NonZero<i32> | none` 是一個 `int`）；`none` 就是 null。
 - 作為 `extern "C"` 宣告之參數的 `str`：依下列規則轉換。
 - 作為結果的 `()` 與 `!`。
 
-`extern "C"` 宣告中的 `str` 參數是單一個以 NUL 結尾的 `char*`。若位元組之後接著 NUL，就原樣傳遞那些位元組；否則（切片等）傳遞一份在呼叫期間釘選的複本。C 不得在呼叫回傳之後保留那個指標。`str` 結果是錯誤：回傳之 `char*` 的位元組屬於 C（下一次呼叫會覆寫的靜態緩衝區、呼叫者必須釋放的記憶體、指向隨呼叫消失之引數複本內部的指標），因此建立在它們之上的 `str` 可能改變或懸置，而且它們不一定是 UTF-8。請把結果宣告為 `ConstPtr<c_char> | none`，並以 `CStr::from_ptr` 複製字串（[stdlib 1.7.2](../../refs-standard-libraries/100-bare/107-ffi.md#172-cstr--cstring---null-terminated-string)），它也會說明是否為 UTF-8：
+`extern "C"` 宣告中的 `str` 參數是單一個以 NUL 結尾的 `char*`。若位元組之後接著 NUL，就原樣傳遞那些位元組；否則（切片等）傳遞一份在呼叫期間釘選的複本。C 不得在呼叫回傳之後保留那個指標。`str` 結果是錯誤：回傳之 `char*` 的位元組屬於 C（下一次呼叫會覆寫的靜態緩衝區、呼叫者必須釋放的記憶體、指向隨呼叫消失之引數複本內部的指標），因此建立在它們之上的 `str` 可能改變或懸置，而且它們不一定是 UTF-8。請把結果宣告為 `ConstPtr<c_char> | none`，並以 `CStr::from_ptr` 複製字串（[stdlib 1.7.2](../../refs-standard-libraries/100-bare/107-ffi.md#172-cstr--cstring以-null-結尾的字串)），它也會說明是否為 UTF-8：
 
 ```nabi
 extern "C" {

@@ -89,8 +89,8 @@ TLAB 是 Immix 區塊內一段連續的可用行範圍。補充時，該範圍�
 慢速路徑在下列情況下啟動回收。條件以及在 minor 與 full 之間的選擇遵循 [7.3.2](703-gc-algorithm.md#732-sticky-mark-bit-分代回收)。
 
 - 無法交出新的 TLAB 或區塊時。
-- 自上次回收以來配置的量超過下一個週期的預算時。區塊在執行緒取得時以整塊計算。年輕代預算是上一個週期中每個有配置的執行緒 8 MiB，至少 32 MiB、最多 128 MiB；較大的堆積會得到與老年代一樣多的年輕代位元組，最多 128 MiB。`NABIR_GC_YOUNG` 可以精確設定它（[9.9.8](../009-tools/909-debug-tools.md#998-記憶體--gc-工具)）；有暫停目標時，它跟隨該目標（[bare 1.6.12](../../refs-standard-libraries/100-bare/106-gc-pin.md#1612-set_pause_goal---a-pause-goal)）。
-- 堆積上限會限制預算（[bare 1.6.14](../../refs-standard-libraries/100-bare/106-gc-pin.md#1614-set_heap_limit---a-heap-limit)）。在不回收區域開啟期間，任何配置都不會回收：超過預算時改為擴大堆積（[bare 1.6.13](../../refs-standard-libraries/100-bare/106-gc-pin.md#1613-no_collect---a-region-without-collections)）。
+- 自上次回收以來配置的量超過下一個週期的預算時。區塊在執行緒取得時以整塊計算。年輕代預算是上一個週期中每個有配置的執行緒 8 MiB，至少 32 MiB、最多 128 MiB；較大的堆積會得到與老年代一樣多的年輕代位元組，最多 128 MiB。`NABIR_GC_YOUNG` 可以精確設定它（[9.9.8](../009-tools/909-debug-tools.md#998-記憶體--gc-工具)）；有暫停目標時，它跟隨該目標（[bare 1.6.12](../../refs-standard-libraries/100-bare/106-gc-pin.md#1612-set_pause_goal暫停目標)）。
+- 堆積上限會限制預算（[bare 1.6.14](../../refs-standard-libraries/100-bare/106-gc-pin.md#1614-set_heap_limit堆積上限)）。在不回收區域開啟期間，任何配置都不會回收：超過預算時改為擴大堆積（[bare 1.6.13](../../refs-standard-libraries/100-bare/106-gc-pin.md#1613-no_collect不進行回收的區域)）。
 
 `nabi_gc_collect` 明確地執行完整回收，`nabi_gc_collect_young` 執行 minor 回收。
 
@@ -101,7 +101,7 @@ TLAB 是 Immix 區塊內一段連續的可用行範圍。補充時，該範圍�
 對每個 8 KiB 以上的物件，有兩項保證：
 
 - **對齊。**其酬載（緊接在 16 位元組標頭之後的位址）以 64 位元組（`LOS_ALIGN`）對齊，即一條快取線，足以應付每一種 SIMD 寬度。要求更多的緩衝區（`align > 64`）會得到它自己的對齊。
-- **位址穩定。**回收器絕不移動它：只要該物件可到達，其酬載位址就保持不變。從它取得的指標（`Array::as_ptr`、`List::as_ptr`，[stdlib 2.9.12](../../refs-standard-libraries/200-core/209-collections.md#2912-gcbuft---raw-gc-buffer)）可以不經釘選就交給向量程式碼或 C（BLAS、LAPACK），前提是其擁有者在使用期間保持可到達。較小的物件可能會移動（疏散，7.3.1）；當其位址必須保持固定時，請釘選它（[7.2.10](#7210-釘選的物件)）。
+- **位址穩定。**回收器絕不移動它：只要該物件可到達，其酬載位址就保持不變。從它取得的指標（`Array::as_ptr`、`List::as_ptr`，[stdlib 2.9.12](../../refs-standard-libraries/200-core/209-collections.md#2912-gcbuft原始-gc-緩衝區)）可以不經釘選就交給向量程式碼或 C（BLAS、LAPACK），前提是其擁有者在使用期間保持可到達。較小的物件可能會移動（疏散，7.3.1）；當其位址必須保持固定時，請釘選它（[7.2.10](#7210-釘選的物件)）。
 
 ## 7.2.10. 釘選的物件
 

@@ -106,7 +106,7 @@ Config::fields()[1].type_name      // "i32"
 
 `Inspect` 之所以是選用的，是因為其中繼資料必須儲存在二進位檔中。自動把它附加在每個型別上，會帶來過大的二進位檔大小成本。即使有了 derive，在程式要求之前也不會儲存任何東西：從不呼叫 `type_info()`、`info::<T>()` 或建立在它們之上之方法的程式，建置出的程式碼與沒有該 derive 的程式相同。
 
-`#[derive(Inspect)]` 由 `core::reflect` 中的[元區塊](608-meta-blocks.md) `#[impl_derive(Inspect)]` 實作，這是元系統本身實作標準函式庫 trait 的一種模式（[stdlib 2.12.3](../../refs-standard-libraries/200-core/212-reflect.md#2123-inspect---opt-in-fields--methods)）。
+`#[derive(Inspect)]` 由 `core::reflect` 中的[元區塊](608-meta-blocks.md) `#[impl_derive(Inspect)]` 實作，這是元系統本身實作標準函式庫 trait 的一種模式（[stdlib 2.12.3](../../refs-standard-libraries/200-core/212-reflect.md#2123-inspect選擇性加入的欄位--方法)）。
 
 ## 6.10.3. REPL / Jupyter 的自動印出
 
