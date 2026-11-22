@@ -124,7 +124,7 @@ mod mlkem {                                         // crypto::mlkem (FIPS 203)
 }
 ```
 
-X25519 密钥为 32 字节（否则为 `ValueError`）；私钥在使用时进行钳位（clamp），对端的 u 坐标按 RFC 7748 第 5 节的规定读取（忽略第 255 位，≥ p 的值取模约简），因此小阶点或扭曲点不算错误：`diffie_hellman` 恰好在结果全为零时返回 `none`（RFC 7748 6.1）。ML-KEM 操作采用 FIPS 203 的确定性内部形式：调用方从随机源提供 32 字节的种子 `d`、`z` 和 `m`。解封装密钥由其种子构造（`from_seed`），或者以低层形式由其 2400 字节的扩展编码 `dk_PKE ‖ ek ‖ H(ek) ‖ z` 构造（`from_expanded_bytes`，FIPS 203 7.3），其中存储的 `H(ek)` 必须匹配（`ValueError`）。`EncapsulationKey768::from_bytes` 执行 FIPS 203 7.2 的输入检查（长度和模数，`ValueError`），`decapsulate` 执行 7.3 的密文长度检查；重新加密后与自身不一致的密文会得到隐式拒绝密钥，而不是错误。
+X25519 密钥为 32 字节（否则为 `ValueError`）；私钥在使用时进行钳制（clamp），对端的 u 坐标按 RFC 7748 第 5 节的规定读取（忽略第 255 位，≥ p 的值取模约简），因此小阶点或扭曲点不算错误：`diffie_hellman` 恰好在结果全为零时返回 `none`（RFC 7748 6.1）。ML-KEM 操作采用 FIPS 203 的确定性内部形式：调用方从随机源提供 32 字节的种子 `d`、`z` 和 `m`。解封装密钥由其种子构造（`from_seed`），或者以低层形式由其 2400 字节的扩展编码 `dk_PKE ‖ ek ‖ H(ek) ‖ z` 构造（`from_expanded_bytes`，FIPS 203 7.3），其中存储的 `H(ek)` 必须匹配（`ValueError`）。`EncapsulationKey768::from_bytes` 执行 FIPS 203 7.2 的输入检查（长度和模数，`ValueError`），`decapsulate` 执行 7.3 的密文长度检查；重新加密后与自身不一致的密文会得到隐式拒绝密钥，而不是错误。
 
 ## 2.21.4. 签名
 
