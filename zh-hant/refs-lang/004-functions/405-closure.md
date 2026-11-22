@@ -63,7 +63,7 @@ capture_list   ::= "[" capture_item ("," capture_item)* "]"
 |x| x * 2                          // inferred
 ```
 
-推論由閉包被使用的上下文決定，例如它被傳入之引數位置的函式型別，或變數宣告的型別。沒有上下文時，由之後的呼叫決定參數型別（`let f = |x| x * 2; f(4);` 中的 `x: i32`，[2.10.2](../002-types/210-generics.md#type-argument-inference)）。
+推論由閉包被使用的上下文決定，例如它被傳入之引數位置的函式型別，或變數宣告的型別。沒有上下文時，由之後的呼叫決定參數型別（`let f = |x| x * 2; f(4);` 中的 `x: i32`，[2.10.2](../002-types/210-generics.md#型別引數推論)）。
 
 ```nabi
 let f: fn(i32) -> i32 = |x| x * 2;   // x: i32 inferred from context

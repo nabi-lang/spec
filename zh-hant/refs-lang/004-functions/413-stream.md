@@ -1,6 +1,6 @@
 # 4.13. 串流（`async yield`）
 
-同時使用 `async` 與 `yield` 兩個修飾詞，會定義一個非同步產生器，即隨時間送出多個值的函式。其結果是函式庫型別 `AsyncStream<T>`（實作 `Stream<Item = T>`）的值，帶有 `throws (E)` 時則是 `TryAsyncStream<T, E>`（[4.1.11](401-function-declaration.md#result-types-of-coroutine-functions)）。
+同時使用 `async` 與 `yield` 兩個修飾詞，會定義一個非同步產生器，即隨時間送出多個值的函式。其結果是函式庫型別 `AsyncStream<T>`（實作 `Stream<Item = T>`）的值，帶有 `throws (E)` 時則是 `TryAsyncStream<T, E>`（[4.1.11](401-function-declaration.md#協程函式的結果型別)）。
 
 ## 4.13.1. 三種定義形式
 

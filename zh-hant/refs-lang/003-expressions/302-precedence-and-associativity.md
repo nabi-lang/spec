@@ -57,10 +57,10 @@ Level Operators                                                 Assoc
      .= .+= .-= .*= ./= .%= .%%= .**= .&= .|= .^= .<<= .>>=  (in-place broadcast, 3.3.7)
 ```
 
-表中的 Unicode 運算子（`× ⋅ ÷ ∩ ∪ ∘ √ ≡ ≠ ≤ ≥ ∈ ∉ ⊂ ⊆`）是 [1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-fixed-token-table) 的固定語彙單元。不在 3.2 表中的擴充語彙單元（[1.10.4](../001-lexical/110-punctuation-and-operator-tokens.md#1104-extension-tokens)）不會建立新的等級；它們取註冊時指定之既有語彙單元的等級與結合性，例如 `like = "+"`（[6.7.2](../006-meta-system/607-operator-magic.md#672-arguments)）。
+表中的 Unicode 運算子（`× ⋅ ÷ ∩ ∪ ∘ √ ≡ ≠ ≤ ≥ ∈ ∉ ⊂ ⊆`）是 [1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-固定語彙單元表) 的固定語彙單元。不在 3.2 表中的擴充語彙單元（[1.10.4](../001-lexical/110-punctuation-and-operator-tokens.md#1104-擴充語彙單元)）不會建立新的等級；它們取註冊時指定之既有語彙單元的等級與結合性，例如 `like = "+"`（[6.7.2](../006-meta-system/607-operator-magic.md#672-引數)）。
 
 > [!IMPORTANT]
-> **`??` 與 `..` 的相對優先順序**：`??`（prec=1）的結合比範圍運算子 `..` / `..=`（prec=0）**緊**。因此 `a ?? 0..3` 分組為 `(a ?? 0)..3`，而範圍運算子比 `|>` 與指派以外的每個二元運算子都弱（`a || b..c` 是 `(a || b)..c`，`0..n |> f` 是 `f(0..n)`）。這兩個運算子都不透過運算子 trait 分派：`??` 是作用於和型別的語言層級去糖（[3.8.4](308-optional-chaining-and-coalescing.md#384-null-coalescing-)），而語言把六種範圍形式辨識為不同的運算式，各自由 `core::range` 的 `#[literal]` 處理器建立（[3.7](307-range-expressions.md)、[6.5](../006-meta-system/605-literal-magic.md)）。範圍運算子是不結合的，因此 `a..b..c` 是編譯錯誤。
+> **`??` 與 `..` 的相對優先順序**：`??`（prec=1）的結合比範圍運算子 `..` / `..=`（prec=0）**緊**。因此 `a ?? 0..3` 分組為 `(a ?? 0)..3`，而範圍運算子比 `|>` 與指派以外的每個二元運算子都弱（`a || b..c` 是 `(a || b)..c`，`0..n |> f` 是 `f(0..n)`）。這兩個運算子都不透過運算子 trait 分派：`??` 是作用於和型別的語言層級去糖（[3.8.4](308-optional-chaining-and-coalescing.md#384-空值合併)），而語言把六種範圍形式辨識為不同的運算式，各自由 `core::range` 的 `#[literal]` 處理器建立（[3.7](307-range-expressions.md)、[6.5](../006-meta-system/605-literal-magic.md)）。範圍運算子是不結合的，因此 `a..b..c` 是編譯錯誤。
 
 > [!IMPORTANT]
 > **作為範圍運算元的比較**：比較運算子（prec=4）的結合比 `..` / `..=` 緊，因此 `x == 0..3` 分組為 `(x == 0)..3`，即 `bool` 的範圍，而 `0..n < m` 分組為 `0..(n < m)`。這樣的範圍絕不會是本意，因此以單獨的比較作為範圍的起點或終點是編譯錯誤（E0019）；說明會寫出兩種讀法：與範圍比較寫 `x == (0..3)`，範圍本身寫 `(x == 0)..3`。加上括號時會被接受。`in` / `!in` 不受影響：它們的右側原樣接受範圍（`i in 0..n`，見下文）。
@@ -69,16 +69,16 @@ Level Operators                                                 Assoc
 > **`try` 與 `catch` / `finally` 的結合**：`try` / `try?` / `try!` 以及[錯誤控制流程](314-error-control-flow.md)的 `catch` / `finally` 子句，也是與 trait 無關的語言語法。`try` 是前綴形式，但與表中的前綴一元運算子（prec=13a）不同，它涵蓋其右側的整個運算式。它的運算元延伸到 `catch` / `finally` 子句、陳述式終止符 `;`、結尾括號或逗號為止，因此 `try a + b()` 是 `try (a + b())`。`try?` / `try!` 的運算元也在 `??` 之前結束：`try? f() ?? d` 是 `(try? f()) ?? d`，而 `try f() ?? d` 是 `try (f() ?? d)`。`catch` / `finally` 子句的結合比指派（prec=-2）緊，比其他每個運算子（包括 `|>`（prec=-1））弱，附加在其左側的整個運算式上。因此 `try parse(s) catch _ { 0 }` 是 `(try parse(s)) catch _ { 0 }`，`x = try f() catch _ { 0 }` 是 `x = ((try f()) catch _ { 0 })`。
 
 > [!IMPORTANT]
-> **`in` / `!in` 與範圍**：`in` 與 `!in` 是 `∈` / `∉` 的 ASCII 拼法（[1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-fixed-token-table)）。成員運算子右側的範圍不需要括號：在右運算元之後，`..` / `..=` 把它延續為一個範圍，其終點的結合方式與右運算元本身相同（prec=5）。因此 `i in 0..n` 是 `i ∈ (0..n)`，`i in 0..n + 1` 是 `i ∈ (0..(n + 1))`，`i in 0..n && ok` 是 `(i ∈ (0..n)) && ok`。
+> **`in` / `!in` 與範圍**：`in` 與 `!in` 是 `∈` / `∉` 的 ASCII 拼法（[1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-固定語彙單元表)）。成員運算子右側的範圍不需要括號：在右運算元之後，`..` / `..=` 把它延續為一個範圍，其終點的結合方式與右運算元本身相同（prec=5）。因此 `i in 0..n` 是 `i ∈ (0..n)`，`i in 0..n + 1` 是 `i ∈ (0..(n + 1))`，`i in 0..n && ok` 是 `(i ∈ (0..n)) && ok`。
 
 > [!IMPORTANT]
 > **`**` 與前綴運算子**：`**`（乘冪，trait `Pow`，[stdlib 2.3.1](../../refs-standard-libraries/200-core/203-ops.md#231-arithmetic-traits)）位於等級 13b，比前綴運算子（13a）高一階，因此它的左運算元絕不會是前綴運算式，與數學、Python 和 Fortran 相同：`-x**2` 是 `-(x**2)`，而 `(-x)**2` 是 `-x` 的平方。它是右結合的，`2**3**2` 是 `2**(3**2)` = 512，而它的右運算元在 13a 剖析，因此本身可以以前綴運算子開頭：`2.0 ** -1` 是 `0.5`，`2 ** -x ** 2` 是 `2 ** (-(x ** 2))`。後綴形式結合得更緊（`a.b**2` 是 `(a.b)**2`），`as` 則較鬆（`n ** 2 as f64` 是 `(n ** 2) as f64`）。`.**` 是同一等級的逐元素形式。這兩個半等級只為這一對而存在：沒有其他運算子位於它們之間。
 
 > [!IMPORTANT]
-> **`await`**：`await` 是 prec=13a 的前綴一元運算子，與 `-` 和 `!` 相同，因此它的運算元是一元運算式：`await f() == x` 是 `(await f()) == x`（[4.12.2](../004-functions/412-async.md#4122-the-await-operator)）。
+> **`await`**：`await` 是 prec=13a 的前綴一元運算子，與 `-` 和 `!` 相同，因此它的運算元是一元運算式：`await f() == x` 是 `(await f()) == x`（[4.12.2](../004-functions/412-async.md#4122-await-運算子)）。
 
 > [!IMPORTANT]
-> **`as` 與 `is`**：這兩個後綴運算子是與 trait 無關的語言語法，共用一個等級（prec=12）。它們比前綴一元弱、比算術強，因此 `-x as i64` 是 `(-x) as i64`，`a + b is i32` 是 `a + (b is i32)`。`e is T` 的結果是 `bool`（[2.2.5](../002-types/202-any-slot.md#225-checking-the-slots-current-type)）。
+> **`as` 與 `is`**：這兩個後綴運算子是與 trait 無關的語言語法，共用一個等級（prec=12）。它們比前綴一元弱、比算術強，因此 `-x as i64` 是 `(-x) as i64`，`a + b is i32` 是 `a + (b is i32)`。`e is T` 的結果是 `bool`（[2.2.5](../002-types/202-any-slot.md#225-檢查槽位目前的型別)）。
 
 > [!NOTE]
 > **帶點前綴（廣播）運算子的優先順序**：`.+`、`.*`、`.&&`、`.%%` 等帶點前綴的形式，其優先順序與結合性與不帶點的形式相同。它們不另列一列；每個帶點前綴的語彙單元都取其對應一般語彙單元的等級。例如 `.+` 與 `+` 一樣是 prec=9 left，`.&&` 與 `&&` 一樣是 prec=3 left。
@@ -96,7 +96,7 @@ Level Operators                                                 Assoc
 
 ## 3.2.4. 衝突
 
-由於表格固定了優先順序，註冊不會在優先順序上衝突。把不同的 trait 連接到同一組（語彙單元、位置）是編譯錯誤，見 [6.7.5](../006-meta-system/607-operator-magic.md#675-conflict-checking)。
+由於表格固定了優先順序，註冊不會在優先順序上衝突。把不同的 trait 連接到同一組（語彙單元、位置）是編譯錯誤，見 [6.7.5](../006-meta-system/607-operator-magic.md#675-衝突檢查)。
 
 ## 3.2.5. 比較鏈
 
@@ -138,7 +138,7 @@ a + b * c       →   a + (b * c)             // default grouping
 
 ## 3.2.6a. 實作限制
 
-超過 4096 個運算子 / 後綴運算的鏈，或深度超過 256 的巢狀，是錯誤。這些是 Nabi 的限制（由實作定義，[0.4.4](../000-meta/004-language-vs-standard-libraries.md#044-implementation-limits)）。
+超過 4096 個運算子 / 後綴運算的鏈，或深度超過 256 的巢狀，是錯誤。這些是 Nabi 的限制（由實作定義，[0.4.4](../000-meta/004-language-vs-standard-libraries.md#044-實作限制)）。
 
 ## 3.2.7. 優先順序相同而結合性不同的兩個語彙單元
 

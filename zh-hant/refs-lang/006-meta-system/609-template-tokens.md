@@ -155,7 +155,7 @@ fn typed<T>() where T == @field.type { ... }
 
 ### `@field.has_default` / `@field.default`
 
-若欄位有預設值（`x: i32 = 0`，[2.3.3](../002-types/203-struct.md#233-field-default-values)），`@field.has_default` 為真，而 `@field.default` 是該 `= expr` 的運算式。在沒有預設值的欄位上使用 `@field.default` 是錯誤。
+若欄位有預設值（`x: i32 = 0`，[2.3.3](../002-types/203-struct.md#233-欄位預設值)），`@field.has_default` 為真，而 `@field.default` 是該 `= expr` 的運算式。在沒有預設值的欄位上使用 `@field.default` 是錯誤。
 
 ```nabi
 @apply_if(@field.has_default) {
@@ -181,7 +181,7 @@ fn typed<T>() where T == @field.type { ... }
 
 ### `@variant.pattern` 比對模式
 
-`@variant.pattern` 是比對模式形式的變體，例如 `Shape::Circle(r)`、`Shape::Pending` 或 `Shape::Click { x: x1, y: y1 }`。在 `r`、`x1`、`y1` 位置的繫結是編譯器產生的名稱（衛生，[6.9.9](#hygiene)），其值在 `@for_variant_fields` 內以 `@field` 取得。樣板不能直接使用這些繫結名稱。
+`@variant.pattern` 是比對模式形式的變體，例如 `Shape::Circle(r)`、`Shape::Pending` 或 `Shape::Click { x: x1, y: y1 }`。在 `r`、`x1`、`y1` 位置的繫結是編譯器產生的名稱（衛生，[6.9.9](#衛生)），其值在 `@for_variant_fields` 內以 `@field` 取得。樣板不能直接使用這些繫結名稱。
 
 ```nabi
 match self {
@@ -299,7 +299,7 @@ let made: @Self = @Self.pattern;
 }
 ```
 
-這裡的 `Same` 是使用者的 trait（`Eq` 之類的內建 derive 不能被重新定義，[6.8.11](608-meta-blocks.md#6811-combination-with-registrationvisibility)）。產生的 `impl` 於是為目標型別的每個型別參數得到 `T: Same`。對具體的欄位型別不加入子句；那些欄位是否實作 `Same`，由對產生之主體的型別檢查決定。目標型別的泛型參數放在樣板的 `impl` 之後，而唯一的約束是 `@where_all` 加入的那些。
+這裡的 `Same` 是使用者的 trait（`Eq` 之類的內建 derive 不能被重新定義，[6.8.11](608-meta-blocks.md#6811-與註冊--可見性的結合)）。產生的 `impl` 於是為目標型別的每個型別參數得到 `T: Same`。對具體的欄位型別不加入子句；那些欄位是否實作 `Same`，由對產生之主體的型別檢查決定。目標型別的泛型參數放在樣板的 `impl` 之後，而唯一的約束是 `@where_all` 加入的那些。
 
 ## 6.9.6. derive_attribute 記號
 
@@ -315,7 +315,7 @@ let made: @Self = @Self.pattern;
 
 ### `@Self.has_derive_key(k)`
 
-型別自己的 `#[attr(..)]` 是否列出了鍵 `k`。`k` 必須以 `#[impl_derive_attribute(Trait, attr(k, ..))]` 宣告（[6.8.4](608-meta-blocks.md#684-impl_derive_attributetrait-attr-per-field-derive-attribute)）；未宣告的鍵是錯誤。`#[derive(Nabion)]` 就是以這種方式讀取 `#[nabion(deny_unknown_fields)]`。
+型別自己的 `#[attr(..)]` 是否列出了鍵 `k`。`k` 必須以 `#[impl_derive_attribute(Trait, attr(k, ..))]` 宣告（[6.8.4](608-meta-blocks.md#684-impl_derive_attributetrait-attr-逐欄位的-derive-屬性)）；未宣告的鍵是錯誤。`#[derive(Nabion)]` 就是以這種方式讀取 `#[nabion(deny_unknown_fields)]`。
 
 ```nabi
 #[impl_derive_attribute(Serialize, rename)] pub @derive {
@@ -388,7 +388,7 @@ fn run() { ... }
 
 ## 6.9.8. 呼叫處（巨集）記號
 
-上述記號繫結定義所附加的型別或項目。巨集（[6.8.12](608-meta-blocks.md#6812-the-macro-form)）則透過匹配器繫結呼叫者的語彙單元，並使用下列記號；`@for` 也只用於巨集：在 `@attribute` 或 `@derive` 區塊中它是錯誤（它們以 `@for_fields` / `@for_variants` 重複）。`@concat` 在三種形式中都可以使用。反過來，形狀記號（`@apply_if` 以及它所測試的 `@Self` / `@field` / `@variant` 記號）在巨集中是錯誤：巨集沒有可以測試的型別形狀。
+上述記號繫結定義所附加的型別或項目。巨集（[6.8.12](608-meta-blocks.md#6812-巨集形式)）則透過匹配器繫結呼叫者的語彙單元，並使用下列記號；`@for` 也只用於巨集：在 `@attribute` 或 `@derive` 區塊中它是錯誤（它們以 `@for_fields` / `@for_variants` 重複）。`@concat` 在三種形式中都可以使用。反過來，形狀記號（`@apply_if` 以及它所測試的 `@Self` / `@field` / `@variant` 記號）在巨集中是錯誤：巨集沒有可以測試的型別形狀。
 
 | 記號                                   | 在匹配器 / 樣板中                                              | 節 |
 |----------------------------------------|----------------------------------------------------------------|---------|
@@ -400,15 +400,15 @@ fn run() { ... }
 
 ### `@name: <fragment>` 片段擷取
 
-在匹配器中，`@name: <fragment>` 以原始語彙單元的形式擷取呼叫的一部分；比對時不剖析任何東西，因此會選擇第一個字面語彙單元與語彙單元數量都相符的規則（[6.8.12](608-meta-blocks.md#matchers-and-fragments)）。`ident`、`literal` 與 `tt` 分別取一個識別字、一個字面值語彙單元與一個語彙單元樹（一個語彙單元或一個平衡的分組）；其他片段取到匹配器的下一個字面語彙單元為止的語彙單元序列。展開在轉錄之後被當作一般程式碼剖析，因此被擷取的程式碼在那裡進行型別檢查，工具也能解析其中的名稱；在樣板所放置之處不相符的引數，是在呼叫處回報的語法錯誤。`tt` 是用於非 Nabi 之 DSL 的片段。匹配器中其他地方的字面語彙單元必須原樣出現。在樣板中，`@name` 替換為擷取的內容，並保留呼叫處的衛生性（[6.9.9](#699-expansion-mechanism)）。
+在匹配器中，`@name: <fragment>` 以原始語彙單元的形式擷取呼叫的一部分；比對時不剖析任何東西，因此會選擇第一個字面語彙單元與語彙單元數量都相符的規則（[6.8.12](608-meta-blocks.md#匹配器與片段)）。`ident`、`literal` 與 `tt` 分別取一個識別字、一個字面值語彙單元與一個語彙單元樹（一個語彙單元或一個平衡的分組）；其他片段取到匹配器的下一個字面語彙單元為止的語彙單元序列。展開在轉錄之後被當作一般程式碼剖析，因此被擷取的程式碼在那裡進行型別檢查，工具也能解析其中的名稱；在樣板所放置之處不相符的引數，是在呼叫處回報的語法錯誤。`tt` 是用於非 Nabi 之 DSL 的片段。匹配器中其他地方的字面語彙單元必須原樣出現。在樣板中，`@name` 替換為擷取的內容，並保留呼叫處的衛生性（[6.9.9](#699-展開機制)）。
 
 ### `@rep` / `@for` 重複
 
-`@rep[sep = ",", trailing] { <sub-pattern> }` 比對子模式零次以上；在其中擷取的後設變數繫結一個序列。`@for @name { <body> }` 與 `@for_fields`（[6.9.3](#693-field-iteration)）是同一種迭代器，這裡是走訪那個序列；來自同一個 `@rep` 的後設變數同步迭代，長度必須相等。`@rep` 與 `@for` 可以巢狀。
+`@rep[sep = ",", trailing] { <sub-pattern> }` 比對子模式零次以上；在其中擷取的後設變數繫結一個序列。`@for @name { <body> }` 與 `@for_fields`（[6.9.3](#693-欄位迭代)）是同一種迭代器，這裡是走訪那個序列；來自同一個 `@rep` 的後設變數同步迭代，長度必須相等。`@rep` 與 `@for` 可以巢狀。
 
 ### `@concat(..)` 名稱合成
 
-`@concat(..)` 把名稱語彙單元（`@name`、單獨的識別字）與字串字面值接合成單一識別字，只能用在定義或路徑位置。它所形成的識別字會被記錄，因此符號搜尋與跳到定義能到達所產生的項目（[6.8.12](608-meta-blocks.md#tooling-and-hygiene)）；非名稱的片段，或在名稱位置之外使用，是錯誤。
+`@concat(..)` 把名稱語彙單元（`@name`、單獨的識別字）與字串字面值接合成單一識別字，只能用在定義或路徑位置。它所形成的識別字會被記錄，因此符號搜尋與跳到定義能到達所產生的項目（[6.8.12](608-meta-blocks.md#工具與衛生)）；非名稱的片段，或在名稱位置之外使用，是錯誤。
 
 在 `@derive` 或 `@attribute` 區塊中，其片段也可以是目標的名稱與索引記號（`@Self.name`、`@field.name`、`@variant.name`、`@field.index`、`@variant.index`、`@item.name`），因此 derive 可以宣告一個具名的配套項目。不以字母或 `_` 開頭的結果是錯誤。
 
@@ -429,10 +429,10 @@ struct Point { x: f32; y: f32; }    // also declares `PointColumns { x: List<f32
 
 meta 展開依下列方式進行。
 
-1. 剖析之前的預處理，從函式庫與使用者套件的每個檔案收集元區塊（[6.8.11](608-meta-blocks.md#6811-combination-with-registrationvisibility)）。
+1. 剖析之前的預處理，從函式庫與使用者套件的每個檔案收集元區塊（[6.8.11](608-meta-blocks.md#6811-與註冊--可見性的結合)）。
 2. 當剖析器遇到帶有 `#[derive(X)]` 或 `#[x]` 的項目時，它以該項目的值替換該元區塊主體中的樣板記號，並重新剖析結果。
 3. 產生的項目會再次進行 meta 處理，重複直到到達固定點。
-4. 循環（`A → B → A`）是錯誤（[6.8.8](608-meta-blocks.md#688-fixed-point-expansion)）。
+4. 循環（`A → B → A`）是錯誤（[6.8.8](608-meta-blocks.md#688-固定點展開)）。
 
 ### 與 `cfg` 的關係
 
@@ -504,7 +504,7 @@ pub(pkg) fn combine(h: u64, x: u64) -> u64 { .. }
 
 ## 6.9.10. 偵錯
 
-`nabic build --emit=expansions`（[9.9.10](../009-tools/909-debug-tools.md#9910-meta-block-debugging)）把使用者套件的展開結果以原始碼文字寫到 `target/<profile>/build/<name>.expanded.nabi`（或 `-o` 路徑）。每個展開是一行 ``// expanded from this `#[derive(X)]` (file:line:col)`` 註解，後接產生的原始碼；若輸出又被展開，它接在外層展開之後。
+`nabic build --emit=expansions`（[9.9.10](../009-tools/909-debug-tools.md#9910-meta-區塊偵錯)）把使用者套件的展開結果以原始碼文字寫到 `target/<profile>/build/<name>.expanded.nabi`（或 `-o` 路徑）。每個展開是一行 ``// expanded from this `#[derive(X)]` (file:line:col)`` 註解，後接產生的原始碼；若輸出又被展開，它接在外層展開之後。
 
 ## 6.9.11. 總結
 

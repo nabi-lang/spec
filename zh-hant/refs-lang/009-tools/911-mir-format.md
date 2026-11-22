@@ -1,9 +1,9 @@
 # 9.11. nabi-mir 檔案格式
 
-本節定義 `<unit>.nabimir`，即 `nabic` 把一個 codegen 單元最佳化後的 nabi-mir 交給另外安裝之程式碼產生器（[8.11.13](../008-abi/811-backend-contract.md#81113-separately-installed-code-generators)）所用的檔案。它容納程式碼產生器契約（[8.11](../008-abi/811-backend-contract.md)）留給 `nabic` 決定的一切：符號及其連結性、型別配置、GC 型別、安全點資訊以及目標。
+本節定義 `<unit>.nabimir`，即 `nabic` 把一個 codegen 單元最佳化後的 nabi-mir 交給另外安裝之程式碼產生器（[8.11.13](../008-abi/811-backend-contract.md#81113-另外安裝的程式碼產生器)）所用的檔案。它容納程式碼產生器契約（[8.11](../008-abi/811-backend-contract.md)）留給 `nabic` 決定的一切：符號及其連結性、型別配置、GC 型別、安全點資訊以及目標。
 
 > [!NOTE]
-> 0.2 的草案。0.1 的 `nabic` 不會寫出或讀取這個格式；下文是一份設計，在某個版本實作它之前都會改變。`--emit=mir` 仍會把 nabi-mir 印成供人閱讀的文字（[9.9.1](909-debug-tools.md#991-intermediate-output---emit)）。
+> 0.2 的草案。0.1 的 `nabic` 不會寫出或讀取這個格式；下文是一份設計，在某個版本實作它之前都會改變。`--emit=mir` 仍會把 nabi-mir 印成供人閱讀的文字（[9.9.1](909-debug-tools.md#991-中間輸出--emit)）。
 
 ## 9.11.1. 二進位，而非文字
 
@@ -80,13 +80,13 @@ sections         at their offsets, in any order
 
 | 欄位 | 編碼 | 意義 |
 |-------|----------|---------|
-| producer | `str` | `nabic <version> (<compiler id>)`，與 NABIHIR 相同（[9.4.4](904-nabihir-bytecode.md#944-header-and-producer)） |
-| name | `str` | 單元的名稱：其所屬模組（套件根為 `<root>`），或對函式庫實例的分桶而言為 `<module>#k`（[9.2.16](902-aot-pipeline.md#codegen-units)） |
+| producer | `str` | `nabic <version> (<compiler id>)`，與 NABIHIR 相同（[9.4.4](904-nabihir-bytecode.md#944-標頭與產生者)） |
+| name | `str` | 單元的名稱：其所屬模組（套件根為 `<root>`），或對函式庫實例的分桶而言為 `<module>#k`（[9.2.16](902-aot-pipeline.md#codegen-單元)） |
 | opt | `u8` | `0` `-O0`、`1` `-O1`、`2` `-O2`、`3` `-O3`、`4` `-Os`、`5` `-Oz` |
 | flags | `u` | 位元 0：開啟溢位檢查；位元 1：`-g`；位元 2：依程式碼範圍描述變數（`-O0` 以上的 `-g`，wasm32 除外） |
 | source directory | `str` | `files` 中的相對路徑所相對的目錄（偵錯資訊） |
 
-**target**：以程式碼產生器所讀取之欄位表示的目標（[0.6.5](../000-meta/006-platform-targets.md#065-target-specifications)），然後是完整的規格：
+**target**：以程式碼產生器所讀取之欄位表示的目標（[0.6.5](../000-meta/006-platform-targets.md#065-目標規格)），然後是完整的規格：
 
 | 欄位 | 編碼 |
 |-------|----------|
@@ -123,7 +123,7 @@ sections         at their offsets, in any order
 | 2 | 未解析的字組 | |
 | 3 | 元組 | `list<ty>` 欄位 |
 | 4 | 結構 | `u` 結構編號、`list<ty>` 欄位 |
-| 5 | `any Tr` 值 | （[8.8.9](../008-abi/808-lowering-types.md#889-representation-of-any-slots) 的 `(u32 tag, payload)` 組合） |
+| 5 | `any Tr` 值 | （[8.8.9](../008-abi/808-lowering-types.md#889-any-槽位的表示方式) 的 `(u32 tag, payload)` 組合） |
 | 6 | 陣列 | `ty` 元素、`u` 長度 |
 | 7 | 函式指標 | `list<ty>` 參數、`ty` 結果 |
 | 8 | GC 參照 | |
@@ -131,13 +131,13 @@ sections         at their offsets, in any order
 
 基本型別：`0` `i8`、`1` `i16`、`2` `i32`、`3` `i64`、`4` `isize`、`5` `u8`、`6` `u16`、`7` `u32`、`8` `u64`、`9` `usize`、`10` `f32`、`11` `f64`、`12` `bool`、`13` `c_char`、`14` `char`、`15` `str`。
 
-在其標籤與運算元之後，每筆紀錄都有其配置，即 `nabic` 為目標所計算的配置（[8.11.5](../008-abi/811-backend-contract.md#8115-data-layout)）：
+在其標籤與運算元之後，每筆紀錄都有其配置，即 `nabic` 為目標所計算的配置（[8.11.5](../008-abi/811-backend-contract.md#8115-資料配置)）：
 
 | 欄位 | 編碼 | 意義 |
 |-------|----------|---------|
 | size、align | `u`、`u` | 以位元組計 |
 | offsets | `list<u>` | 元組與結構：每個欄位的偏移；其他型別為空 |
-| roots | `list<u>` | 影子堆疊框架為這個型別之區域變數所註冊之字組的偏移，遞增排列（[8.11.6](../008-abi/811-backend-contract.md#8116-gc-allocation-roots-and-barriers)）；型別不容納 GC 參照時為空 |
+| roots | `list<u>` | 影子堆疊框架為這個型別之區域變數所註冊之字組的偏移，遞增排列（[8.11.6](../008-abi/811-backend-contract.md#8116-gc配置根與屏障)）；型別不容納 GC 參照時為空 |
 | barrier | `b` | 把這個型別存入 GC 物件需要寫入屏障 |
 
 函式值是函式指標與 GC 參照的元組 `(code, env)`；會擲回錯誤之函式的承載結構是元組 `(is_err, payload)`；和型別是種類 0 的元組 `(i32, union)`。型別表沒有其他種類。
@@ -149,8 +149,8 @@ sections         at their offsets, in any order
 | 欄位 | 編碼 | 意義 |
 |-------|----------|---------|
 | id | `u` | 型別 id，當程式碼可以把它當作常數使用時；否則為 `0` |
-| symbol | `str` | 在單元建置中，容納該 id 的 `_Y<pkg>_gctype.<hash>` 符號（[8.11.3](../008-abi/811-backend-contract.md#8113-symbols-and-linkage)）；否則為空 |
-| table | `list<u>` | ScanTable 的 `u32` 字組（[8.2.3](../008-abi/802-scan-table.md#823-serialization-format)），僅供讀取：由共用單元發出並註冊它 |
+| symbol | `str` | 在單元建置中，容納該 id 的 `_Y<pkg>_gctype.<hash>` 符號（[8.11.3](../008-abi/811-backend-contract.md#8113-符號與連結性)）；否則為空 |
+| table | `list<u>` | ScanTable 的 `u32` 字組（[8.2.3](../008-abi/802-scan-table.md#823-序列化格式)），僅供讀取：由共用單元發出並註冊它 |
 
 進行配置的 rvalue 以其在這個清單中的索引指名其 GC 型別。
 
@@ -177,9 +177,9 @@ sections         at their offsets, in any order
 | 欄位 | 編碼 | 意義 |
 |-------|----------|---------|
 | name | `str` | 其項目路徑 |
-| symbol | `str` | 其連結器符號（[8.11.3](../008-abi/811-backend-contract.md#8113-symbols-and-linkage)） |
+| symbol | `str` | 其連結器符號（[8.11.3](../008-abi/811-backend-contract.md#8113-符號與連結性)） |
 | type | `ty` | |
-| flags | `u` | 位元 0：`mut`；位元 1：定義在程式之外（`extern`）；位元 2：經由 `__imp_<symbol>` 取用（DLL 的，Windows）；位元 3：延遲（[8.11.10](../008-abi/811-backend-contract.md#81110-statics)）；位元 4：定義在這個程式自己的目的檔中（否則在格式有 GOT 時經由 GOT） |
+| flags | `u` | 位元 0：`mut`；位元 1：定義在程式之外（`extern`）；位元 2：經由 `__imp_<symbol>` 取用（DLL 的，Windows）；位元 3：延遲（[8.11.10](../008-abi/811-backend-contract.md#81110-static)）；位元 4：定義在這個程式自己的目的檔中（否則在格式有 GOT 時經由 GOT） |
 | init | `opt<const>` | 初始值，僅供讀取：由共用單元定義儲存空間 |
 
 ## 9.11.9. 函式
@@ -196,7 +196,7 @@ sections         at their offsets, in any order
 | define | `u8` | `0` 宣告、`1` 區域、`2` 全域、`3` weak 全域 |
 | flags | `u` | 見下文 |
 | ABI | `u8`，然後 | `0` Nabi；`1` C：`b` 可變參數、`b` `extern "system"` |
-| C classification | `opt<cabi>` | 供需要它的 C ABI 函式與 `extern "nabi"` 宣告使用（[8.11.4](../008-abi/811-backend-contract.md#8114-calling-conventions)） |
+| C classification | `opt<cabi>` | 供需要它的 C ABI 函式與 `extern "nabi"` 宣告使用（[8.11.4](../008-abi/811-backend-contract.md#8114-呼叫慣例)） |
 | wasm import | `opt<(str, str)>` | wasm32 匯入的模組與名稱 |
 | position | `pos` | 宣告 |
 | parameters | `list<local>` | |
@@ -211,7 +211,7 @@ sections         at their offsets, in any order
 | 位元 | 意義 |
 |-----|---------|
 | 0 | 以隱藏的最後一個引數接受 `nabi_tls` 位址 |
-| 1 | 永不到達安全點：沒有框架、沒有輪詢，對它的呼叫不是安全點（[8.11.7](../008-abi/811-backend-contract.md#8117-safepoints-and-polls)） |
+| 1 | 永不到達安全點：沒有框架、沒有輪詢，對它的呼叫不是安全點（[8.11.7](../008-abi/811-backend-contract.md#8117-安全點與輪詢)） |
 | 2 | 可重入：在其第一個安全點之前輪詢 |
 | 3 | 以直接的 Nabi 呼叫以外的方式進入：在進入處輪詢 |
 | 4 | `#[track_caller]`：最後一個參數是呼叫者的位置（`str`） |
@@ -298,8 +298,8 @@ debug 區段容納 `list<(u struct, list<dty>)>`，即依結構排列的欄位�
 標頭中的 `major` 與 `minor` 是格式的版本。
 
 - 讀取者接受其 `major` 是它能讀取的檔案。在同一個 `major` 內，較高的 `minor` 只會新增區段種類，較舊的讀取者會略過它們；既有區段的編碼，因而每個陳述式、rvalue、型別與常數標籤，都不會改變。
-- 對既有區段的任何改變都是新的 `major`：新的陳述式、rvalue 或型別種類、新的欄位、改變的意義。讀取者會拒絕它無法讀取的 `major`，並指出兩個版本（[8.11.13](../008-abi/811-backend-contract.md#81113-separately-installed-code-generators) 的結束狀態 2）。
+- 對既有區段的任何改變都是新的 `major`：新的陳述式、rvalue 或型別種類、新的欄位、改變的意義。讀取者會拒絕它無法讀取的 `major`，並指出兩個版本（[8.11.13](../008-abi/811-backend-contract.md#81113-另外安裝的程式碼產生器) 的結束狀態 2）。
 - 當 `major` 是 `0` 時（本草案），讀取者只接受它建置時所針對的確切 `major.minor`。
-- 元件的版本就是其工具鏈的版本（[8.11.13](../008-abi/811-backend-contract.md#81113-separately-installed-code-generators)），因此工具鏈的 `nabic` 與其元件一律一致；版本規則對在工具鏈之外建置的元件才有意義。
+- 元件的版本就是其工具鏈的版本（[8.11.13](../008-abi/811-backend-contract.md#81113-另外安裝的程式碼產生器)），因此工具鏈的 `nabic` 與其元件一律一致；版本規則對在工具鏈之外建置的元件才有意義。
 
 寫出是確定性的：相同的單元產生相同的位元組。字串、型別與函式依寫出者第一次遇到它們的順序編號，依 nabi-mir 順序走訪單元的函式；對應表依鍵排序寫出。

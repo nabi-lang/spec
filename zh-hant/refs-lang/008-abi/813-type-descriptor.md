@@ -1,6 +1,6 @@
 # 8.13. 型別描述子 ABI
 
-*型別描述子*（`TypeDesc`）是一個型別的唯讀紀錄。反射會讀取它（[6.10](../006-meta-system/610-reflection.md)），模組載入器用它檢查兩個模組對某個型別的看法是否一致（[8.12](812-module-abi.md)）。其配置在 `nabir_abi::typedesc` 中定義一次；適用 [8.12.2](812-module-abi.md#8122-layout-rules) 的配置規則。
+*型別描述子*（`TypeDesc`）是一個型別的唯讀紀錄。反射會讀取它（[6.10](../006-meta-system/610-reflection.md)），模組載入器用它檢查兩個模組對某個型別的看法是否一致（[8.12](812-module-abi.md)）。其配置在 `nabir_abi::typedesc` 中定義一次；適用 [8.12.2](812-module-abi.md#8122-配置規則) 的配置規則。
 
 ## 8.13.1. 描述子何時存在
 
@@ -27,7 +27,7 @@
 | `version` | `u16` | 1 |
 | `kind` | `u16` | `STRUCT` 1、`TUPLE_STRUCT` 2、`UNIT` 3、`ENUM` 4、`UNION` 5、`SUM` 6、`PRIM` 7、`STR` 8、`LIST` 9、`DICT` 10、`ARRAY` 11、`TUPLE` 12、`FN` 13、`ANY` 14、`OPAQUE` 15 |
 | `flags` | `u32` | `INSPECT` 1（已填入欄位、屬性與 `ops`）、`LAYOUT_ONLY` 2、`INSTANCE` 4、`HAS_DEFAULT` 8 |
-| `tag_index` | `u32` | 模組之 `Tags` 中的索引（[8.12.5](812-module-abi.md#8125-tags)）；沒有時為 `u32::MAX` |
+| `tag_index` | `u32` | 模組之 `Tags` 中的索引（[8.12.5](812-module-abi.md#8125-標籤)）；沒有時為 `u32::MAX` |
 | `key_hash` | `u64` | 8.13.2 |
 | `layout_hash` | `u64` | 大小、對齊、欄位偏移與型別鍵、變體標籤以及 GC 字組的雜湊 |
 | `size` | `u64` | 與 `T::size()` 相同 |
@@ -39,7 +39,7 @@
 | `fields` | `Slice<FieldDesc>` | 結構依宣告順序排列的欄位；enum 為空 |
 | `variants` | `Slice<VariantDesc>` | 列舉依宣告順序排列的變體 |
 | `generics` | `Slice<TypeRef>` | 實例的型別引數；和型別的成員；元組的各部分；串列或陣列的元素；字典的鍵，然後是值 |
-| `attrs` | `Slice<AttrDesc>` | 型別上的執行時屬性（[6.10.8](../006-meta-system/610-reflection.md#6108-runtime-attributes)） |
+| `attrs` | `Slice<AttrDesc>` | 型別上的執行時屬性（[6.10.8](../006-meta-system/610-reflection.md#6108-執行時屬性)） |
 | `ops` | `*const TypeOps` | 動態存取（8.13.5），或 null |
 | `reserved1` | `usize` | 0 |
 

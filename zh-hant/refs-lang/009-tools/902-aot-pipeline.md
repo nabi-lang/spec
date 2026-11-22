@@ -30,10 +30,10 @@
 
 找到時，該目錄就是套件根，其 `src/` 是套件的原始碼（見[原始碼單元](../000-meta/003-source-units.md)）。其他情況：
 
-- 若 path 是位於所找到之套件 `src/` 之外的檔案（套件原始碼旁邊的腳本或工具），或往上走也找不到套件，它就是由該單一檔案組成的匿名可執行套件（[4.16.8](../004-functions/416-entry-point.md#4168-single-file-execution)）。其檔案子模組位於它旁邊。
+- 若 path 是位於所找到之套件 `src/` 之外的檔案（套件原始碼旁邊的腳本或工具），或往上走也找不到套件，它就是由該單一檔案組成的匿名可執行套件（[4.16.8](../004-functions/416-entry-point.md#4168-單一檔案執行)）。其檔案子模組位於它旁邊。
 - 若 path 是目錄且沒有套件，則是錯誤。
 
-套件名稱是套件目錄的名稱（對匿名套件而言，是去掉 `.nabi` 的檔案名稱），並成為輸出名稱（9.2.15）。兩個根檔案都有的套件建置為兩個目標：先是其函式庫，然後是其執行檔，後者把該函式庫掛載為相依套件 `<name>`（[0.3.1](../000-meta/003-source-units.md#library-and-executable-in-one-package)）。
+套件名稱是套件目錄的名稱（對匿名套件而言，是去掉 `.nabi` 的檔案名稱），並成為輸出名稱（9.2.15）。兩個根檔案都有的套件建置為兩個目標：先是其函式庫，然後是其執行檔，後者把該函式庫掛載為相依套件 `<name>`（[0.3.1](../000-meta/003-source-units.md#同一套件中的函式庫與執行檔)）。
 
 ## 9.2.3. 相依套件解析
 
@@ -54,10 +54,10 @@ nabic build --extern util=../util --extern parser=target/debug/deps/libparser.a
 
 - 使用者程式碼經由 `use name::..` 使用該套件的項目。
 - 相依套件內部的 `pkg::` 指稱該相依套件本身。
-- 相依套件是獨立的套件。只有 `pub` 項目可以從外部使用；`pub(pkg)` / `pub(sub)` / 私有項目不行（[5.7.14](../005-modules/507-paths.md#5714-paths-between-packages)）。
+- 相依套件是獨立的套件。只有 `pub` 項目可以從外部使用；`pub(pkg)` / `pub(sub)` / 私有項目不行（[5.7.14](../005-modules/507-paths.md#5714-套件之間的路徑)）。
 - 使用者套件根部的模組與建置中某個套件同名是錯誤。
 - 路徑與先前某個 `--extern` 相同的後續 `--extern`，是同一個套件的另一個名稱（各套件可以用不同的名稱稱呼一個相依套件，[9.10.2](910-nabi-frontend.md)）。該套件只以第一個名稱建置並掛載一次；以另一個名稱開頭的路徑（`other::..`，在以該名稱稱呼它之套件的程式碼與 meta 區塊範本中）指稱它，因此其項目與型別在每個名稱下都相同。
-- `--extern-dep <package>=<name>` 表示套件 `<package>`（一個 `--extern` 名稱，或以 `pkg` 表示正在建置的套件）相依於 extern `<name>`；`nabi` 為每個套件的每個相依套件傳入一個。有任何一個時，每個套件只看得到它所相依的 extern，並以它給它們的名稱稱呼（[5.7.14](../005-modules/507-paths.md#5714-paths-between-packages)）；沒有任何 `--extern-dep` 指名的 extern（套件自己的函式庫，由 `nabic` 掛載）屬於正在建置的套件，並相依於它所相依的東西。沒有任何一個時，每個套件都看得到每個 extern。
+- `--extern-dep <package>=<name>` 表示套件 `<package>`（一個 `--extern` 名稱，或以 `pkg` 表示正在建置的套件）相依於 extern `<name>`；`nabi` 為每個套件的每個相依套件傳入一個。有任何一個時，每個套件只看得到它所相依的 extern，並以它給它們的名稱稱呼（[5.7.14](../005-modules/507-paths.md#5714-套件之間的路徑)）；沒有任何 `--extern-dep` 指名的 extern（套件自己的函式庫，由 `nabic` 掛載）屬於正在建置的套件，並相依於它所相依的東西。沒有任何一個時，每個套件都看得到每個 extern。
 
 對有 `src/lib.nabi` 的套件，`nabic build` 產生 `lib<name>.a` 與 `<name>.nabihir`；有 `src/main.nabi` 時產生執行檔 `<name>`；兩者都有的套件產生全部三個，執行檔對照該函式庫連結。`--name <n>` 設定套件名稱（輸出名稱與掛載名稱）；預設是目錄名稱。
 
@@ -84,7 +84,7 @@ target/<profile>/deps/
 
 每個會編譯的指令都使用這條路徑：`build` / `run` / `test` / `bench` / `check` / `lint` / `doc` / `lsp` / `repl` / `jupyter`、單一檔案腳本，以及具名環境。REPL 主機也會連結預先建置的封存檔。若既沒有套件也沒有目標目錄（`--target-dir`、`NABI_TARGET_DIR`），它們會放在系統暫存目錄中的單獨檔案快取下（9.2.16）。
 
-標準函式庫在每次建置時都從原始碼編譯，只編譯程式所觸及的部分；其已編譯的函式保存在工具鏈的函式快取中（[9.3.6](903-package-archive.md#936-standard-library)）。
+標準函式庫在每次建置時都從原始碼編譯，只編譯程式所觸及的部分；其已編譯的函式保存在工具鏈的函式快取中（[9.3.6](903-package-archive.md#936-標準函式庫)）。
 
 ## 9.2.4. 原始碼剖析
 
@@ -112,7 +112,7 @@ target/<profile>/deps/
 
 ## 9.2.7. nabi-hir 建立
 
-經過型別檢查的 AST 被轉換成 nabi-hir（[HIR](../000-meta/007-glossary.md#hir-high-level-ir--mir-mid-level-ir)）資料結構。
+經過型別檢查的 AST 被轉換成 nabi-hir（[HIR](../000-meta/007-glossary.md#hir高階-ir-mir中階-ir)）資料結構。
 
 HIR 是富含型別資訊的中間表示，反映上述步驟 4-5 的所有結果。它在結構上經過壓縮，讓相同的型別與識別字共用同一個表示。
 
@@ -129,17 +129,17 @@ HIR 是富含型別資訊的中間表示，反映上述步驟 4-5 的所有結�
 
 從程式的根（`main`、匯出的符號、`#[export_name]` 項目、執行環境所參照的符號）無法到達的函式不會被發出。函式庫建置也是如此：從套件的 `pub` 項目與那些根無法到達的函式不會放進封存檔。
 
-這個步驟讓 [AOT](../000-meta/007-glossary.md#aot-ahead-of-time) 能夠不經 vtable 進行直接呼叫（見[禁止把 trait 當作型別](../002-types/212-trait-as-type-banned.md)）。
+這個步驟讓 [AOT](../000-meta/007-glossary.md#aot預先編譯) 能夠不經 vtable 進行直接呼叫（見[禁止把 trait 當作型別](../002-types/212-trait-as-type-banned.md)）。
 
 ## 9.2.9. nabi-mir 建立
 
-[特化](../000-meta/007-glossary.md#specialize)後的 HIR 被轉換成 nabi-mir（MIR）。
+[特化](../000-meta/007-glossary.md#特化specialize)後的 HIR 被轉換成 nabi-mir（MIR）。
 
 MIR 是比 HIR 低一層的 IR。在這個步驟中，運算子去糖完成（見[運算子分派](../003-expressions/301-operator-dispatch.md)），模式比對的決策樹被決定（見 [`match` 運算式](../003-expressions/312-match-expression.md)），閉包與協程的框架配置也被固定。
 
 ## 9.2.10. 最佳化等級
 
-最佳化等級決定 nabi-mir 在程式碼產生之前如何最佳化（[8.7.3](../008-abi/807-code-generation.md#873-optimization-levels)）；程式碼產生器在每個等級都相同（[0.2.4](../000-meta/002-pipeline.md#024-code-generation)）。
+最佳化等級決定 nabi-mir 在程式碼產生之前如何最佳化（[8.7.3](../008-abi/807-code-generation.md#873-最佳化等級)）；程式碼產生器在每個等級都相同（[0.2.4](../000-meta/002-pipeline.md#024-程式碼產生)）。
 
 | 等級          | 效果 |
 |---------------|--------|
@@ -149,15 +149,15 @@ MIR 是比 HIR 低一層的 IR。在這個步驟中，運算子去糖完成（�
 | `-O3`         | 另外在迴圈中內嵌更大的主體，並展開保持純量的迴圈：保有浮點數總和或呼叫函式之迴圈的完整一段，每 2 或 4 次迭代才測試一次其計數器 |
 | `-Os`         | 只在主體大約與呼叫一樣小之處（在迴圈中則是其數倍）內嵌，迴圈仍會變成計數迴圈並分段，主體短時會向量化 |
 
-`-g` 既不改變最佳化也不改變程式碼（8.7.3）：偵錯資訊跟隨最佳化後的程式碼，內嵌的主體作為框架，每個變數位於暫存器、其堆疊槽位中，或被最佳化掉（[9.9.6](909-debug-tools.md#996-debugger-integration-gdb--lldb)）。最佳化器在套件被分割成 codegen 單元（9.2.16）之前一次看到整個套件，因此它會跨模組內嵌，也會內嵌進入與移出標準函式庫的函式，而標準函式庫在每次建置時都與程式一起編譯（[9.3.6](903-package-archive.md#936-standard-library)）。以不同等級建置的目的檔遵循相同的執行環境 ABI（[8](../008-abi/README.md)），並能連結在一起，包括以其他等級建置的預先建置相依套件。REPL 以 `:opt` 所設定的等級編譯儲存格（[9.9.9](909-debug-tools.md#999-repl--jupyter-debugging)），不最佳化其 nabi-mir。
+`-g` 既不改變最佳化也不改變程式碼（8.7.3）：偵錯資訊跟隨最佳化後的程式碼，內嵌的主體作為框架，每個變數位於暫存器、其堆疊槽位中，或被最佳化掉（[9.9.6](909-debug-tools.md#996-偵錯工具整合gdb--lldb)）。最佳化器在套件被分割成 codegen 單元（9.2.16）之前一次看到整個套件，因此它會跨模組內嵌，也會內嵌進入與移出標準函式庫的函式，而標準函式庫在每次建置時都與程式一起編譯（[9.3.6](903-package-archive.md#936-標準函式庫)）。以不同等級建置的目的檔遵循相同的執行環境 ABI（[8](../008-abi/README.md)），並能連結在一起，包括以其他等級建置的預先建置相依套件。REPL 以 `:opt` 所設定的等級編譯儲存格（[9.9.9](909-debug-tools.md#999-repl--jupyter-偵錯)），不最佳化其 nabi-mir。
 
 ## 9.2.11. 程式碼產生器
 
-程式碼產生器（[8.7](../008-abi/807-code-generation.md)）經由所有目標共用的一種低階形式，直接從 nabi-mir 產生機器碼與目的檔，支援 `x86_64`、`aarch64`、i686、armv7、riscv64、riscv32、powerpc64le、s390x 與 wasm32。有 `-g` 時，它發出 DWARF：函式、行號表、參數、區域變數及其型別，以及在最佳化後的程式碼中，被內嵌的主體與每個變數依程式碼範圍所在的位置（[9.9.6](909-debug-tools.md#996-debugger-integration-gdb--lldb)）；對 Windows 目標，它在目的檔中以 CodeView（`.debug$S`、`.debug$T`）發出相同的內容，由連結器彙整成 PDB（9.2.14）。使用了它尚不支援之東西的程式碼是指出其名稱的 `E0129` 錯誤。
+程式碼產生器（[8.7](../008-abi/807-code-generation.md)）經由所有目標共用的一種低階形式，直接從 nabi-mir 產生機器碼與目的檔，支援 `x86_64`、`aarch64`、i686、armv7、riscv64、riscv32、powerpc64le、s390x 與 wasm32。有 `-g` 時，它發出 DWARF：函式、行號表、參數、區域變數及其型別，以及在最佳化後的程式碼中，被內嵌的主體與每個變數依程式碼範圍所在的位置（[9.9.6](909-debug-tools.md#996-偵錯工具整合gdb--lldb)）；對 Windows 目標，它在目的檔中以 CodeView（`.debug$S`、`.debug$T`）發出相同的內容，由連結器彙整成 PDB（9.2.14）。使用了它尚不支援之東西的程式碼是指出其名稱的 `E0129` 錯誤。
 
 ## 9.2.12. 目的檔
 
-每個目標的目的檔都由 `nabic` 寫出：Apple 目標是 Mach-O，Linux、FreeBSD 與 riscv32 是 ELF，Windows 是 COFF，wasm32 是 wasm 目的檔。建置的 codegen 單元（9.2.16）平行編譯，每個單元一個目的檔。`--emit=obj` 寫出目的檔而不連結它（[9.9.1](909-debug-tools.md#991-intermediate-output---emit)）。
+每個目標的目的檔都由 `nabic` 寫出：Apple 目標是 Mach-O，Linux、FreeBSD 與 riscv32 是 ELF，Windows 是 COFF，wasm32 是 wasm 目的檔。建置的 codegen 單元（9.2.16）平行編譯，每個單元一個目的檔。`--emit=obj` 寫出目的檔而不連結它（[9.9.1](909-debug-tools.md#991-中間輸出--emit)）。
 
 ```
 target/debug/build/foo.o
@@ -180,7 +180,7 @@ target/debug/foo.nabihir
 foo.o + <deps>/lib*.a + <sysroot>/lib/libnabir.a + target libc  →  target/debug/foo
 ```
 
-Mach-O 執行檔對照 macOS SDK（Xcode Command Line Tools）連結。Windows 執行檔對照 `nabic` 從它所攜帶之模組定義（衍生自 mingw-w64）建立的匯入函式庫連結，並在 UCRT 之上使用 Nabi 自己的啟動程式碼；不需要 MSVC 工具或 Windows SDK。Nabi 的 Windows 啟動程式碼在 `main` 之前執行 `.CRT$XCA`..`.CRT$XCZ` 中的 C 初始化器。對 x86 Windows，匯入名稱來自 mingw-w64 的 `lib32` 定義，帶有 stdcall 的 `@N` 修飾，映像以 `/SAFESEH:NO` 連結。Linux 目標，無論原生或交叉，一律連結 `<sysroot>/lib/nabi/targets/<triple>/` 中隨附的 C 函式庫：musl 以靜態方式，glibc 經由連結 stub（執行檔需要 glibc 2.34 以上）。其他函式庫經由 `-L` 與 `LIBRARY_PATH` 尋找。32 位元 glibc 目標所指定的動態載入器是 `/lib/ld-linux.so.2`（i686）與 `/lib/ld-linux-armhf.so.3`（armv7hf）。riscv32 映像（沒有作業系統，進行中）是靜態的，不連結任何 C 函式庫：執行環境自帶其進入點與堆積（[0.6.2](../000-meta/006-platform-targets.md#riscv32imac-unknown-none-elf)）。若設定了 `NABI_CC`，則改由該 C 編譯器驅動程式進行最終連結（`$NABI_CC <objects> <archives> -o <out>`）；這是選用的覆寫。以 `--native-runtime` 給出的共用函式庫會複製到執行檔旁邊，執行檔取得 rpath `@loader_path`（Mach-O）/ `$ORIGIN`（ELF）；Windows 從執行檔的目錄載入 DLL。執行檔會經過 dead-strip：移除未被參照的函式與資料；`release` 建置還會合併相同的函式並合併相同的字串字面值（[9.2.15](#9215-output)）。Mach-O 執行檔帶有 ad-hoc 程式碼簽章，這是 arm64 macOS 執行它所必需的。當 Apple 目標上的執行檔帶有偵錯資訊時，`nabic` 把目的檔的 DWARF 彙整成執行檔旁邊的 `.dSYM` 套組；在 Windows 目標上，連結器寫出一個 PDB（MSF 7.0）：合併後的目的檔 CodeView 型別、每個目的檔一個帶有其符號與行號表的模組、全域與公開符號，以及區段貢獻；執行檔的偵錯目錄會指名它（一筆帶有 PDB 之 GUID 與 age 的 RSDS 紀錄）。`wasm32-wasip2` 執行檔先連結為核心 wasm 模組，再以工具鏈為該目標隨附的 preview 1 轉接器做成 WASI preview 2 元件；`ffi::wit` world（[std 1.8](../../refs-standard-libraries/100-bare/108-wit.md)）決定其匯入與匯出的形狀。
+Mach-O 執行檔對照 macOS SDK（Xcode Command Line Tools）連結。Windows 執行檔對照 `nabic` 從它所攜帶之模組定義（衍生自 mingw-w64）建立的匯入函式庫連結，並在 UCRT 之上使用 Nabi 自己的啟動程式碼；不需要 MSVC 工具或 Windows SDK。Nabi 的 Windows 啟動程式碼在 `main` 之前執行 `.CRT$XCA`..`.CRT$XCZ` 中的 C 初始化器。對 x86 Windows，匯入名稱來自 mingw-w64 的 `lib32` 定義，帶有 stdcall 的 `@N` 修飾，映像以 `/SAFESEH:NO` 連結。Linux 目標，無論原生或交叉，一律連結 `<sysroot>/lib/nabi/targets/<triple>/` 中隨附的 C 函式庫：musl 以靜態方式，glibc 經由連結 stub（執行檔需要 glibc 2.34 以上）。其他函式庫經由 `-L` 與 `LIBRARY_PATH` 尋找。32 位元 glibc 目標所指定的動態載入器是 `/lib/ld-linux.so.2`（i686）與 `/lib/ld-linux-armhf.so.3`（armv7hf）。riscv32 映像（沒有作業系統，進行中）是靜態的，不連結任何 C 函式庫：執行環境自帶其進入點與堆積（[0.6.2](../000-meta/006-platform-targets.md#riscv32imac-unknown-none-elf)）。若設定了 `NABI_CC`，則改由該 C 編譯器驅動程式進行最終連結（`$NABI_CC <objects> <archives> -o <out>`）；這是選用的覆寫。以 `--native-runtime` 給出的共用函式庫會複製到執行檔旁邊，執行檔取得 rpath `@loader_path`（Mach-O）/ `$ORIGIN`（ELF）；Windows 從執行檔的目錄載入 DLL。執行檔會經過 dead-strip：移除未被參照的函式與資料；`release` 建置還會合併相同的函式並合併相同的字串字面值（[9.2.15](#9215-輸出)）。Mach-O 執行檔帶有 ad-hoc 程式碼簽章，這是 arm64 macOS 執行它所必需的。當 Apple 目標上的執行檔帶有偵錯資訊時，`nabic` 把目的檔的 DWARF 彙整成執行檔旁邊的 `.dSYM` 套組；在 Windows 目標上，連結器寫出一個 PDB（MSF 7.0）：合併後的目的檔 CodeView 型別、每個目的檔一個帶有其符號與行號表的模組、全域與公開符號，以及區段貢獻；執行檔的偵錯目錄會指名它（一筆帶有 PDB 之 GUID 與 age 的 RSDS 紀錄）。`wasm32-wasip2` 執行檔先連結為核心 wasm 模組，再以工具鏈為該目標隨附的 preview 1 轉接器做成 WASI preview 2 元件；`ffi::wit` world（[std 1.8](../../refs-standard-libraries/100-bare/108-wit.md)）決定其匯入與匯出的形狀。
 
 ## 9.2.15. 輸出
 
@@ -235,12 +235,12 @@ target/
 - 套件及其相依套件 `src/` 下的檔案、它們的 `nabi.nabion`，以及建置所讀取的其他每個檔案（`src/` 之外的 `#[path]` / `include_str!`）
 - 由 `include_str!` / `include_bytes!` 讀取的檔案（[6.11](../006-meta-system/611-include.md)），連同其內容
 - lint 等級（`-A` / `-W` / `-D`，以及經由它們的資訊清單 `lints`）
-- 執行環境函式庫、工具鏈為目標隨附的 C 執行環境目的檔與 C 函式庫（[9.2.19](#9219-installation-layout)），以及預先建置相依套件的 `.a`，各自依其大小、修改時間與檔案身分（inode 與狀態變更時間；在 Windows 上是其建立時間），因此保留修改時間的複本也算是改變
+- 執行環境函式庫、工具鏈為目標隨附的 C 執行環境目的檔與 C 函式庫（[9.2.19](#9219-安裝配置)），以及預先建置相依套件的 `.a`，各自依其大小、修改時間與檔案身分（inode 與狀態變更時間；在 Windows 上是其建立時間），因此保留修改時間的複本也算是改變
 - 輸出的大小、修改時間與檔案身分
 
 建置所發出的警告，包括 lint 警告與後端的警告，都會被記錄，而 `Fresh` 建置會再次印出它們。
 
-每次建置，無論原生或交叉，都會編譯程式所觸及的標準函式庫函式（[9.3.6](903-package-archive.md#936-standard-library)）；其最佳化後的程式碼及其單元的目的檔保存在工具鏈的函式快取 `lib/nabi-cache/fn/`（9.2.19）中，供該工具鏈的每次建置使用，單獨檔案的建置也是：
+每次建置，無論原生或交叉，都會編譯程式所觸及的標準函式庫函式（[9.3.6](903-package-archive.md#936-標準函式庫)）；其最佳化後的程式碼及其單元的目的檔保存在工具鏈的函式快取 `lib/nabi-cache/fn/`（9.2.19）中，供該工具鏈的每次建置使用，單獨檔案的建置也是：
 
 - 項目的鍵涵蓋其結果所依賴的東西：對最佳化後的程式碼而言，是該步驟之前的函式程式碼、等級、目標，以及該步驟從它所呼叫之函式讀取的內容，全都以名稱表示；對目的檔而言，是單元的鍵（見下文）；兩者都包含編譯器的身分。套件把標準函式庫的降階後主體與它自己的一起保存（前端，見下文）。建置取用鍵相符的項目，並寫出它所產生的項目；輸出與以空快取進行的建置所產生的相同。
 - 項目是完整寫出後再重新命名就位的檔案，因此同時執行的建置能安全地共用快取。
@@ -265,10 +265,10 @@ target/
 
 - 只有在單元的鍵自上次建置到同一個目標目錄以來改變時，才會編譯該單元。否則重複使用保存在 `target/<profile>/incremental/<name>/`（函式庫的：`lib<name>/`）下的結果；然後連結一切。標準函式庫的單元則改為保存在函式快取中（見上文），供每個套件的建置使用；單獨的檔案也會使用它，雖然它不保存自己的單元。預先建置的相依套件（9.2.3）編譯為一個目的檔，不分單元。
 - 匿名檔案的單元保存在沒有套件時使用的目標目錄中（`--target-dir`、`NABI_TARGET_DIR`，否則為單獨檔案快取），位於 `[<triple>/]<profile>/incremental/<stem>-<hash of its path>/` 下。單獨檔案快取在 Unix 上是 `<system temporary directory>/nabic-target-<uid>/`，`<uid>` 是有效使用者 ID，在 Windows 上是 `%TEMP%\nabic-target\`，其暫存目錄是使用者自己的。它是一個快取：nabic 每天最多一次移除其中一週內沒有任何建置寫入過的檔案。
-- 單獨檔案的執行檔保存在同一個目標目錄中，位於 `[<triple>/]<profile>/scripts/<key>/` 下，在其鍵相符期間會被重複使用；一天未使用的項目會在建置另一個項目時被移除（[9.10.7](910-nabi-frontend.md#9107-inline-manifest-for-single-file-scripts)）。`nabi run` 執行它，`nabic build` 把它複製到檔案旁邊。對腳本而言，`nabi` 以 `$NABI_HOME/cache/scripts/<hash>/` 下該腳本自己的 `target/` 傳入 `--target-dir`；單獨檔案快取容納其餘的部分：由 `nabic` 本身建置的單獨檔案，以及位於其 `nabi.nabion` 使它成為單一檔案套件之目錄中的檔案（9.10.1）。
+- 單獨檔案的執行檔保存在同一個目標目錄中，位於 `[<triple>/]<profile>/scripts/<key>/` 下，在其鍵相符期間會被重複使用；一天未使用的項目會在建置另一個項目時被移除（[9.10.7](910-nabi-frontend.md#9107-單一檔案腳本的行內資訊清單)）。`nabi run` 執行它，`nabic build` 把它複製到檔案旁邊。對腳本而言，`nabi` 以 `$NABI_HOME/cache/scripts/<hash>/` 下該腳本自己的 `target/` 傳入 `--target-dir`；單獨檔案快取容納其餘的部分：由 `nabic` 本身建置的單獨檔案，以及位於其 `nabi.nabion` 使它成為單一檔案套件之目錄中的檔案（9.10.1）。
 - 單獨檔案快取容納會被執行的執行檔，因此在 Unix 上它是私有的：編譯器以模式 `0700` 建立它，並在使用前檢查它是一個目錄（不是符號連結）、由有效使用者擁有，而且沒有群組或其他人的權限位元。否則指令以結束碼 `1` 失敗，並印出 ``nabic: error: <dir> is not private to you (owner uid N, mode 0755); remove it or set NABI_TARGET_DIR``。`--target-dir` 與 `NABI_TARGET_DIR` 原樣使用。
 - 單元的鍵涵蓋其函式的程式碼、它從其他單元所使用之東西的簽章與程式碼產生資訊（函式的簽章改變會重新編譯其呼叫者的單元）、它所使用的 static 與 GC 型別、目標、最佳化等級、程式碼產生選項、編譯器的身分，以及在 `-g` 下其偵錯資訊所指名之原始碼檔案的路徑（新增檔案只會重新編譯參照它的單元）。
-- 符號與 GC 型別 id 不取決於其他單元包含什麼（單元從套件之共用單元所定義的符號讀取 GC 型別 id；[9.5.7](905-symbol-mangling.md#957-collision-avoidance-typehash-stability)），因此輸出與乾淨建置所產生的相同。
+- 符號與 GC 型別 id 不取決於其他單元包含什麼（單元從套件之共用單元所定義的符號讀取 GC 型別 id；[9.5.7](905-symbol-mangling.md#957-避免衝突typehash-的穩定性)），因此輸出與乾淨建置所產生的相同。
 - 最佳化建置仍會跨單元內嵌：套件在被分割之前整體最佳化（9.2.10）。
 - `-v` 回報有多少單元被重複使用與編譯；`-vv` 指出被編譯的單元。
 
@@ -284,7 +284,7 @@ target/
 
 ## 9.2.18. 自給自足的工具鏈
 
-`nabic` 是自給自足的：其程式碼產生器與連結器都是它自己的（[0.2.4](../000-meta/002-pipeline.md#024-code-generation)），它不執行任何外部編譯器、組譯器或連結器。交叉編譯是內建的：工具鏈為其支援的 Linux 目標隨附 C 函式庫（musl、glibc 連結 stub）。
+`nabic` 是自給自足的：其程式碼產生器與連結器都是它自己的（[0.2.4](../000-meta/002-pipeline.md#024-程式碼產生)），它不執行任何外部編譯器、組譯器或連結器。交叉編譯是內建的：工具鏈為其支援的 Linux 目標隨附 C 函式庫（musl、glibc 連結 stub）。
 
 | 需要系統提供的東西     | 目標                                     |
 |------------------------|------------------------------------------|
@@ -293,7 +293,7 @@ target/
 | 無（從隨附之模組定義建立的匯入函式庫；UCRT） | Windows 目標 |
 | `NABI_CC`（選用）       | 覆寫最終連結（9.2.14）                   |
 
-C 編譯器 `nabicc` 還需要目標的 C 標頭檔：工具鏈為其 Linux 與 wasm32 目標隨附它們，Apple 目標從 macOS SDK 取得，Windows 目標則在 Windows 主機上從 Windows SDK 與 Visual Studio 取得（[9.13.7](913-c-compiler.md#9137-headers-and-c-library)）。
+C 編譯器 `nabicc` 還需要目標的 C 標頭檔：工具鏈為其 Linux 與 wasm32 目標隨附它們，Apple 目標從 macOS SDK 取得，Windows 目標則在 Windows 主機上從 Windows SDK 與 Visual Studio 取得（[9.13.7](913-c-compiler.md#9137-標頭檔與-c-函式庫)）。
 
 ## 9.2.19. 安裝配置
 

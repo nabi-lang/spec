@@ -1,6 +1,6 @@
 # 9.5. 符號修飾方案
 
-由於 [AOT 建置管線](902-aot-pipeline.md)中的 [specialize](../000-meta/007-glossary.md#specialize)，一個函式會依每個具體型別分成個別的函式。本節定義賦予這些函式唯一符號名稱的規則。
+由於 [AOT 建置管線](902-aot-pipeline.md)中的 [specialize](../000-meta/007-glossary.md#特化specialize)，一個函式會依每個具體型別分成個別的函式。本節定義賦予這些函式唯一符號名稱的規則。
 
 ## 9.5.1. 形式
 
@@ -36,7 +36,7 @@ _Y3f8a1c2b_std_vec_push_a7c91d8e44b2f190
 
 ### `_Y`：Nabi 符號前綴
 
-每個 Nabi 符號都以 `_Y` 開頭。以底線 + 大寫字母開頭的名稱在 C 中保留給實作使用，因此它們不會與一般的 C 符號衝突；選擇 `_Y` 也是為了不與廣泛使用的修飾方案重疊（C++ Itanium 的 `_Z`、Rust v0 的 `_R`、D 的 `_D`、Swift 的 `$s`）。它也讓 Nabi 所發出的符號在 `nm` 或連結器錯誤輸出中容易辨識。前綴之後緊接著小寫十六進位的 `<pkg_hash_8>`，因此只憑第一個字元就能與後面接大寫字母的保留前綴（`_YK` 等，[9.5.5](#955-reserved-prefixes)）區分。
+每個 Nabi 符號都以 `_Y` 開頭。以底線 + 大寫字母開頭的名稱在 C 中保留給實作使用，因此它們不會與一般的 C 符號衝突；選擇 `_Y` 也是為了不與廣泛使用的修飾方案重疊（C++ Itanium 的 `_Z`、Rust v0 的 `_R`、D 的 `_D`、Swift 的 `$s`）。它也讓 Nabi 所發出的符號在 `nm` 或連結器錯誤輸出中容易辨識。前綴之後緊接著小寫十六進位的 `<pkg_hash_8>`，因此只憑第一個字元就能與後面接大寫字母的保留前綴（`_YK` 等，[9.5.5](#955-保留前綴)）區分。
 
 ### `<pkg_hash_8>`
 
@@ -80,7 +80,7 @@ fn α             → _Y<pkg>___13b1__
 
 ### 方法名稱
 
-方法以 `<type>.<method>` 作為其名稱、以定義該型別的模組作為其路徑進行修飾。若多個 trait 為同一個型別提供同名的方法，則附加 `__by_<trait>`。相依套件（[9.2.3](902-aot-pipeline.md#923-dependency-resolution)）的方法也以這個穩定的路徑 `<module>::<type>.<method>[__by_<trait>]` 修飾，因此分開建置的套件與程式會產生相同的符號。`.` 與 `_` 依上表跳脫。
+方法以 `<type>.<method>` 作為其名稱、以定義該型別的模組作為其路徑進行修飾。若多個 trait 為同一個型別提供同名的方法，則附加 `__by_<trait>`。相依套件（[9.2.3](902-aot-pipeline.md#923-相依套件解析)）的方法也以這個穩定的路徑 `<module>::<type>.<method>[__by_<trait>]` 修飾，因此分開建置的套件與程式會產生相同的符號。`.` 與 `_` 依上表跳脫。
 
 ### 巢狀函式
 
@@ -120,7 +120,7 @@ _ZN3std3vec10push_inner17h2d4c3e9d8f1a2b3cE
 ```
 
 - 每個組成部分都帶有長度前綴（`3std3vec`）。
-- 包含一個 [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) 識別雜湊（17h...）。
+- 包含一個 [ABI](../000-meta/007-glossary.md#abi應用程式二進位介面) 識別雜湊（17h...）。
 - 以 `E` 結尾。
 
 它有 Itanium 相容的優點，但難以閱讀，而且長度前綴的編碼效率不佳。
@@ -169,7 +169,7 @@ _Y + 8 + _ + path (tens) + _ + name (a few to tens) + _ + 16
 ≈ 30 ~ 80 characters
 ```
 
-非常長的路徑加上深層的[泛型](../000-meta/007-glossary.md#generic)可能超過 100 個字元。偵錯工具與其他工具都能毫無問題地處理這樣的長度（一般建議在 2KB 以下）。
+非常長的路徑加上深層的[泛型](../000-meta/007-glossary.md#泛型generic)可能超過 100 個字元。偵錯工具與其他工具都能毫無問題地處理這樣的長度（一般建議在 2KB 以下）。
 
 ## 9.5.7. 避免衝突：typehash 的穩定性
 
@@ -204,7 +204,7 @@ extern "C" {
 }
 ```
 
-在另一個方向上，`#[export_name("name")]` 在對外公開 `extern "C"` 函式時直接指定名稱，而 `#[export]` 以其自己的名稱匯出它（見 [`extern` 區塊（[FFI](../000-meta/007-glossary.md#ffi-foreign-function-interface) 宣告）](../005-modules/509-extern-block.md)）。這樣的項目是消除無法到達之函式時的根，一律會被發出（[9.2.8](902-aot-pipeline.md#928-specialize-monomorphization)）。
+在另一個方向上，`#[export_name("name")]` 在對外公開 `extern "C"` 函式時直接指定名稱，而 `#[export]` 以其自己的名稱匯出它（見 [`extern` 區塊（[FFI](../000-meta/007-glossary.md#ffi外部函式介面) 宣告）](../005-modules/509-extern-block.md)）。這樣的項目是消除無法到達之函式時的根，一律會被發出（[9.2.8](902-aot-pipeline.md#928-specialize單態化)）。
 
 ```nabi
 #[export_name("nabi_compute")]
@@ -231,9 +231,9 @@ _initialize, then main              (wasm32-unknown-unknown; reactor exports cal
 
 在 Windows 上，Nabi 自己的啟動目的檔提供 `mainCRTStartup`（主控台）或 `WinMainCRTStartup` 與 `WinMain`（GUI），它們呼叫 nabic 產生的包裝函式 `nabi_main`；Windows 執行檔沒有 `main` 符號。在偵錯資訊（DWARF 與 CodeView）中，該包裝函式在每個目標上都是 `nabi_main`，在 C 函式庫呼叫它之處其符號仍是 `main`，因此在回溯中只有程式自己的 `main` 叫做 `main`。
 
-平台進入點在 nabic 產生的包裝函式內呼叫使用者定義的 main 函式。包裝函式依序呼叫 `nabi_runtime_init` 與型別註冊函式 `nabi.register_types`（[8.2.13](../008-abi/802-scan-table.md#8213-registration-time)），然後呼叫進入函式，依 [4.16.4](../004-functions/416-entry-point.md#4164-exit-codes-and-unhandled-exceptions) 的規則決定結束碼，並經由 `nabi_runtime_shutdown` 回傳。
+平台進入點在 nabic 產生的包裝函式內呼叫使用者定義的 main 函式。包裝函式依序呼叫 `nabi_runtime_init` 與型別註冊函式 `nabi.register_types`（[8.2.13](../008-abi/802-scan-table.md#8213-註冊時機)），然後呼叫進入函式，依 [4.16.4](../004-functions/416-entry-point.md#4164-結束碼與未處理的例外) 的規則決定結束碼，並經由 `nabi_runtime_shutdown` 回傳。
 
-當 `main.nabi` 由頂層陳述式組成時（[4.16.2](../004-functions/416-entry-point.md#4162-meaning-of-top-level-statements-implicit-main)），編譯器合成的隱含 `main` 就是進入函式。隱含的 `main` 以與一般函式相同的規則修飾，但無法從使用者程式碼以名稱參照；只有包裝函式會呼叫它。
+當 `main.nabi` 由頂層陳述式組成時（[4.16.2](../004-functions/416-entry-point.md#4162-頂層陳述式的意義隱含-main)），編譯器合成的隱含 `main` 就是進入函式。隱含的 `main` 以與一般函式相同的規則修飾，但無法從使用者程式碼以名稱參照；只有包裝函式會呼叫它。
 
 ## 9.5.10. 偵錯資訊
 

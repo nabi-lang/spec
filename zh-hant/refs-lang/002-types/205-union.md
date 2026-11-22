@@ -45,7 +45,7 @@ x.fd = 7i32;                    // write: safe
 let y = unsafe { x.val };       // read: requires unsafe; reinterprets x's bit pattern as u64
 ```
 
-以某個欄位建立實例，會把該欄位的位元寫入記憶體。之後透過另一個欄位讀取，會把相同的記憶體位元重新解讀為該欄位的型別。寫入欄位是安全的，但讀取欄位只允許在 [`unsafe`](../004-functions/415-unsafe.md#4152-unsafe------block-expression) 內進行，因為語言不保證讀出的位元是該型別的有效值（例如 `bool`、`char`、指標）。
+以某個欄位建立實例，會把該欄位的位元寫入記憶體。之後透過另一個欄位讀取，會把相同的記憶體位元重新解讀為該欄位的型別。寫入欄位是安全的，但讀取欄位只允許在 [`unsafe`](../004-functions/415-unsafe.md#4152-unsafe---區塊運算式) 內進行，因為語言不保證讀出的位元是該型別的有效值（例如 `bool`、`char`、指標）。
 
 ## 2.5.3. 安全性在哪裡
 
@@ -57,7 +57,7 @@ let y = unsafe { x.val };       // read: requires unsafe; reinterprets x's bit p
 
 `union` 的預設配置交給編譯器。它只需滿足最大欄位的大小與對齊；確切的欄位對齊與填充由編譯器決定。
 
-若需要與 C [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) 相容的 `union`，請加上 `#[repr(C)]`。
+若需要與 C [ABI](../000-meta/007-glossary.md#abi應用程式二進位介面) 相容的 `union`，請加上 `#[repr(C)]`。
 
 ```nabi
 #[repr(C)]
@@ -67,7 +67,7 @@ union CUnion {
 }
 ```
 
-帶有 `#[repr(C)]` 的 `union` 與 C 的 `union` 位元相容，用於 [FFI](../000-meta/007-glossary.md#ffi-foreign-function-interface) 介面。確切的意義定義於[內建屬性](../006-meta-system/602-built-in-attributes.md)。
+帶有 `#[repr(C)]` 的 `union` 與 C 的 `union` 位元相容，用於 [FFI](../000-meta/007-glossary.md#ffi外部函式介面) 介面。確切的意義定義於[內建屬性](../006-meta-system/602-built-in-attributes.md)。
 
 ## 2.5.5. `union` 與 `#[repr(C)] union`
 

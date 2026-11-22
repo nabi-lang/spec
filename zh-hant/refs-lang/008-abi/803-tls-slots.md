@@ -18,7 +18,7 @@ TLS 槽位是一個由執行環境定義並匯出的 `thread_local` 區塊 `nabi
 | 5p       | `nabi_tls_satb_cursor`       | ptr  | 在 SATB 緩衝區中的位置（並行標記期間）  |
 | 6p       | `nabi_tls_satb_limit`        | ptr  | SATB 緩衝區的末端                       |
 | 7p       | `nabi_tls_task_worker`       | ptr  | 這個執行緒的執行器工作者（GC 物件，若無則為 0） |
-| 8p       | `nabi_tls_stack_guard`       | [usize; 2] | `[lo, hi)`：在此範圍內的錯誤是這個執行緒的堆疊溢位（`[0, 0)` 表示未知，[8.5.7](805-extern-symbols.md#stack-overflow)） |
+| 8p       | `nabi_tls_stack_guard`       | [usize; 2] | `[lo, hi)`：在此範圍內的錯誤是這個執行緒的堆疊溢位（`[0, 0)` 表示未知，[8.5.7](805-extern-symbols.md#堆疊溢位)） |
 | 10p      | `nabi_tls_worker_id`         | u64  | 工作者 id                               |
 | 10p+8    | `nabi_tls_yield_flag`        | u8   | 是否要在安全點 `yield`                  |
 | 10p+9    | `nabi_tls_mutator_state`     | u8   | mutator 狀態                            |
@@ -30,7 +30,7 @@ TLS 槽位是一個由執行環境定義並匯出的 `thread_local` 區塊 `nabi
 > [!NOTE]
 > Nabi 的執行環境把下列槽位放在 ABI 部分之後。該區塊為 16p+16 位元組。
 >
-> - 10p+10：`no_safepoint`（`u8`）。偵錯版 nabic 以 `nabi_nosp_enter` / `nabi_nosp_leave` 包住的 `#[no_safepoint]` 呼叫深度（[8.4.10](804-safepoint.md#8410-native-calls)）。
+> - 10p+10：`no_safepoint`（`u8`）。偵錯版 nabic 以 `nabi_nosp_enter` / `nabi_nosp_leave` 包住的 `#[no_safepoint]` 呼叫深度（[8.4.10](804-safepoint.md#8410-原生呼叫)）。
 > - 10p+11：`attached`（`u8`）。執行緒如何加入執行環境：0 表示尚未或已不再加入，1 表示 `nabi_thread_init` 或由執行環境啟動的執行緒，2 表示在 `extern "C"` 定義的 C 進入點附加（8.3.8）。
 > - 10p+16：`task_lane`
 > - 11p+16：`static_inits`
@@ -57,13 +57,13 @@ TLS 槽位是一個由執行環境定義並匯出的 `thread_local` 區塊 `nabi
 
 ### `nabi_tls_yield_flag`（u8）
 
-[GC](../000-meta/007-glossary.md#gc-garbage-collector) 為安全點所設定的旗標；mutator 在輪詢時檢查它。位元 0 是執行環境的停止請求，由執行環境設定與清除；其他位元屬於嵌入它的主機（例如 REPL 的中斷），執行環境不會碰它們。只要旗標不為零，輪詢就會呼叫 `nabi_runtime_yield`。
+[GC](../000-meta/007-glossary.md#gc垃圾回收器) 為安全點所設定的旗標；mutator 在輪詢時檢查它。位元 0 是執行環境的停止請求，由執行環境設定與清除；其他位元屬於嵌入它的主機（例如 REPL 的中斷），執行環境不會碰它們。只要旗標不為零，輪詢就會呼叫 `nabi_runtime_yield`。
 
 詳細機制定義於[屏障與根](../007-runtime/704-barriers-and-roots.md)中的安全點輪詢。
 
 ### `nabi_tls_tlab_cursor`（ptr）
 
-指向[記憶體配置](../007-runtime/702-allocation.md)中 [TLAB](../000-meta/007-glossary.md#tlab-thread-local-allocation-buffer) 下一次配置發生之處。
+指向[記憶體配置](../007-runtime/702-allocation.md)中 [TLAB](../000-meta/007-glossary.md#tlab執行緒區域配置緩衝區) 下一次配置發生之處。
 
 ```
 allocate(size):
@@ -102,7 +102,7 @@ write_barrier(p, q):
 
 大多數操作都是非原子且執行緒區域的。
 
-這兩個槽位指向一個每個執行緒一份、512 字組的記錄區塊（在 64 位元目標上為 4 KiB，在 32 位元上為 2 KiB）。已滿的區塊會被推入回收器會取出的無鎖堆疊（[7.4.2](../007-runtime/704-barriers-and-roots.md#742-write-barrier-object-remembering)）。
+這兩個槽位指向一個每個執行緒一份、512 字組的記錄區塊（在 64 位元目標上為 4 KiB，在 32 位元上為 2 KiB）。已滿的區塊會被推入回收器會取出的無鎖堆疊（[7.4.2](../007-runtime/704-barriers-and-roots.md#742-寫入屏障物件記錄)）。
 
 ### `nabi_tls_mutator_state`（u8）
 
@@ -119,7 +119,7 @@ mutator 目前的狀態。
 
 ### `nabi_tls_worker_id`（u64）
 
-執行緒的工作者 id（在排程器內部使用），用於[工作竊取](../000-meta/007-glossary.md#work-stealing)、統計等。
+執行緒的工作者 id（在排程器內部使用），用於[工作竊取](../000-meta/007-glossary.md#工作竊取work-stealing)、統計等。
 
 ## 8.3.4. 槽位的寬度與對齊
 
@@ -164,7 +164,7 @@ nabi_thread_shutdown():
 
 該區塊是由執行環境定義並匯出的 `thread_local` 全域變數。編譯器以外部宣告參照它，並以相對於該區塊位址的偏移載入槽位。Nabi 函式以隱藏的最後一個引數從其呼叫者取得該位址（8.6.6），因此 Nabi 函式之間的呼叫不會讀取 TLS。從 Nabi 之外進入的程式碼自己取得該位址一次，並往下傳遞：C 的 `main`、`extern "C"` 定義的 C 進入點、`#[export_name]` 的 Nabi 函式、`any` 分派器、延遲 `static` 的初始化式，以及函式值所經過的 thunk（8.6.11）。
 
-`extern "C"` 定義的 C 進入點，可能在由 C 程式碼啟動、執行環境不認識的執行緒上執行。在這樣的執行緒上，它會先附加該執行緒：像 `nabi_thread_init` 一樣初始化槽位（8.3.6），並把該執行緒註冊為 mutator，然後才執行主體。在這類呼叫之間回到 C 時，該執行緒算作 `PARKED`（[8.4.10](804-safepoint.md#8410-native-calls)），因此回收不會等待它；而當該執行緒結束時，它會像 `nabi_thread_shutdown` 一樣離開登錄（8.3.7）。無法以這種方式附加執行緒的目標（WebAssembly）則改為中止，並印出 `nabi: callback on a thread nabi does not know; call nabi_thread_init() first`。
+`extern "C"` 定義的 C 進入點，可能在由 C 程式碼啟動、執行環境不認識的執行緒上執行。在這樣的執行緒上，它會先附加該執行緒：像 `nabi_thread_init` 一樣初始化槽位（8.3.6），並把該執行緒註冊為 mutator，然後才執行主體。在這類呼叫之間回到 C 時，該執行緒算作 `PARKED`（[8.4.10](804-safepoint.md#8410-原生呼叫)），因此回收不會等待它；而當該執行緒結束時，它會像 `nabi_thread_shutdown` 一樣離開登錄（8.3.7）。無法以這種方式附加執行緒的目標（WebAssembly）則改為中止，並印出 `nabi: callback on a thread nabi does not know; call nabi_thread_init() first`。
 
 ```
 ; nabi_tls: defined by the runtime; compiler output refers to it as an undefined symbol
@@ -180,10 +180,10 @@ if flag != 0 then bb_slow else bb_cont
 
 ### 影子堆疊的開頭
 
-`nabi_tls` 偏移 0 的槽位（`nabi_tls_shadow_stack_top`）是[屏障與根追蹤](../007-runtime/704-barriers-and-roots.md#741-root-tracking-a-shadow-stack-emitted-directly-by-the-compiler)中[影子堆疊](../000-meta/007-glossary.md#shadow-stack)鏈的開頭，即最內層 `ShadowFrame` 的位址（若無則為 null）。它是唯一的鏈開頭。編譯器發出的程式碼在函式中每條路徑的第一個安全點之前連上框架，並在連上了它之路徑的每個 `return` 之前立即解開它（8.4.7）。
+`nabi_tls` 偏移 0 的槽位（`nabi_tls_shadow_stack_top`）是[屏障與根追蹤](../007-runtime/704-barriers-and-roots.md#741-根追蹤由編譯器直接發出的影子堆疊)中[影子堆疊](../000-meta/007-glossary.md#影子堆疊shadow-stack)鏈的開頭，即最內層 `ShadowFrame` 的位址（若無則為 null）。它是唯一的鏈開頭。編譯器發出的程式碼在函式中每條路徑的第一個安全點之前連上框架，並在連上了它之路徑的每個 `return` 之前立即解開它（8.4.7）。
 
 ## 8.3.9. 穩定性
 
-8.3.1 表中的偏移、型別與意義是 [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) 的一部分；其變更遵循[概觀](README.md#stability)中的穩定性方針。改變偏移，或改變既有槽位的型別或意義，會破壞 ABI（1.0 之前是 0.x.0 版本，從 1.0 起是主版本）。新的槽位取既有槽位之後的偏移，這是相容的變更。
+8.3.1 表中的偏移、型別與意義是 [ABI](../000-meta/007-glossary.md#abi應用程式二進位介面) 的一部分；其變更遵循[概觀](README.md#穩定性)中的穩定性方針。改變偏移，或改變既有槽位的型別或意義，會破壞 ABI（1.0 之前是 0.x.0 版本，從 1.0 起是主版本）。新的槽位取既有槽位之後的偏移，這是相容的變更。
 
 由實作定義的槽位不屬於 ABI，可能在任何版本中改變。

@@ -44,8 +44,8 @@ v.type_name_of_val()              // "i32" or "f64" (sum type variant check)
 
 - 手寫的 `impl Reflect for T` 是錯誤。約束 `T: Reflect` 一律成立。
 - 若型別有自己的同名方法，例如 `size()` / `type_name()`，該方法會隱藏反射方法。
-- 名稱（`type_name`）不帶模組路徑（`List<i64>`、`Config`）。和型別的靜態名稱依標準順序（[2.6.4](../002-types/206-sum-types.md#264-set-semantics)）寫出（`f64 | i32`，`none` 在最後）。`type_name_of_val(self)` 之類的實例形式，回報執行時所容納的成員（對和型別而言）或 `any` 的內容。
-- `core::reflect::cast<T>(value: any) -> T | none` 依與 `set_field` 相同的規則，把 `any` 取出為 `T`。型別的方法與欄位是 `T::methods()` / `T::fields()`（[6.10.2](#6102-inspect---opt-in-trait)）；沒有取得它們的自由函式。
+- 名稱（`type_name`）不帶模組路徑（`List<i64>`、`Config`）。和型別的靜態名稱依標準順序（[2.6.4](../002-types/206-sum-types.md#264-集合語意)）寫出（`f64 | i32`，`none` 在最後）。`type_name_of_val(self)` 之類的實例形式，回報執行時所容納的成員（對和型別而言）或 `any` 的內容。
+- `core::reflect::cast<T>(value: any) -> T | none` 依與 `set_field` 相同的規則，把 `any` 取出為 `T`。型別的方法與欄位是 `T::methods()` / `T::fields()`（[6.10.2](#6102-inspect選用的-trait)）；沒有取得它們的自由函式。
 
 ## 6.10.2. `Inspect`：選用的 trait
 
@@ -110,7 +110,7 @@ Config::fields()[1].type_name      // "i32"
 
 ## 6.10.3. REPL / Jupyter 的自動印出
 
-當 REPL 印出單獨的最後一個運算式時，它使用 `Display`，否則使用 `Debug`；結尾的 `?` 使用 `Debug`；`:type` 印出運算式的靜態型別，由型別檢查得出而不執行它（[9.7.7](../009-tools/907-jit-cells.md#977-visualization--output)）。
+當 REPL 印出單獨的最後一個運算式時，它使用 `Display`，否則使用 `Debug`；結尾的 `?` 使用 `Debug`；`:type` 印出運算式的靜態型別，由型別檢查得出而不執行它（[9.7.7](../009-tools/907-jit-cells.md#977-視覺化--輸出)）。
 
 ```
 >>> let x = 42i32;
@@ -200,7 +200,7 @@ hp.get(e)                          // 100 inside an any
 - `TypeInfo::build(fields: Dict<str, any>)` 從具名欄位建立一個值；省略的欄位取其 `= expr` 預設值，沒有預設值的欄位是錯誤，錯誤訊息會指出它。`Variant::build` 對列舉做相同的事。`new_default()` 是每個欄位都取預設值的值，或 `none`。
 - 串列、陣列或字典的 `TypeInfo` 能存取其項目：`list_items`、`list_len`、`list_get`、`list_from`、`dict_items`、`dict_from`；`element()` 與 `key()` 是項目的型別。
 - `info_of(value: any)` 是 `value` 所容納之型別的描述，`find(path)` 是 `"game::Player"` 這類路徑上之型別的描述；當程式沒有描述這樣的型別時，兩者都是 `none`。當程式要求某個型別或由它構成的型別時，該型別就會被描述。
-- 當兩個 `TypeInfo` 描述同一個型別時（依鍵，[8.13.2](../008-abi/813-type-descriptor.md#8132-keys)），它們相等，即使來自不同的模組。
+- 當兩個 `TypeInfo` 描述同一個型別時（依鍵，[8.13.2](../008-abi/813-type-descriptor.md#8132-鍵)），它們相等，即使來自不同的模組。
 - 欄位上的 `#[inspect(skip)]` 讓它不出現在描述中，也不出現在 `field_names`、`get_field` 與 `set_field` 中。
 
 ## 6.10.8. 執行時屬性

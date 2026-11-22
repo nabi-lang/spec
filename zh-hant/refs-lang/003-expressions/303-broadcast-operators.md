@@ -126,7 +126,7 @@ m[:, 0] .= 0.0;            // a view is a target: the column of m
 xs .*= ys;                 // a List, lengths equal
 ```
 
-- `.=` 先依原始碼順序對運算元求值，再對目標求值；`.op=` 先對目標求值（它是第一個運算元），再對其他運算元求值（[3.4.7](304-assignment.md#347-evaluation-order)）。
+- `.=` 先依原始碼順序對運算元求值，再對目標求值；`.op=` 先對目標求值（它是第一個運算元），再對其他運算元求值（[3.4.7](304-assignment.md#347-求值順序)）。
 - `List` 或固定長度陣列目標接受其長度的運算元（在第一個元素之前檢查，固定長度陣列在編譯期檢查）；每個元素透過 `IndexSet` 存入。`Slice` 是唯讀視圖，不能作為目標。
 - `Broadcastable` 目標保持其形狀：運算元伸展為它的形狀（stdlib 2.6.8），秩較高的運算元是編譯錯誤；結果形狀不同時會 panic（`broadcast: the result has shape [2, 3], which does not fit the destination of shape [1, 3]; the destination is not stretched`）。元素透過目標的視圖寫入，因此陣列的切片（`a[1:]`）會寫入該陣列。
 - 在其他位置與目標共用緩衝區的運算元（`v .= v[::-1]`），從迴圈之前製作的複本讀取；同一個視圖（`v .+= v`）或與之分開的緩衝區則原地讀取。結果就像每個元素都在任何元素被存入之前就已計算完畢。

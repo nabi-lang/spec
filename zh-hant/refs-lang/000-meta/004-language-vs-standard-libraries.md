@@ -72,7 +72,7 @@
 | 限制 | Nabi |
 |-------|-----|
 | 剖析器巢狀深度 | 256 |
-| 運算子 / 後綴鏈的環節數（[3.2.6a](../003-expressions/302-precedence-and-associativity.md#326a-implementation-limits)） | 4096 |
+| 運算子 / 後綴鏈的環節數（[3.2.6a](../003-expressions/302-precedence-and-associativity.md#326a-實作限制)） | 4096 |
 | 值型別大小（[2.6.3](../002-types/206-sum-types.md)） | 65536 個攤平後的純量槽位或 4 GiB |
 | `const` 求值（[5.2.4](../005-modules/502-const.md)） | 4,000,000 步，呼叫深度 128 |
 

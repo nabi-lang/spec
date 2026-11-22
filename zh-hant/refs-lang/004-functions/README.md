@@ -25,7 +25,7 @@
 
 函式是接受輸入值並產生結果值的程式碼單位。Nabi 的函式可以具有下列所有特性。
 
-依命名：有寫成 `fn name(...)` 的具名函式，以及寫成 `|...|` 的匿名閉包。依型別標註：函式是靜態的或漸進式的。若寫出參數的型別，就是靜態的；若在私有或 `pub(sub)` 函式上省略，就會在呼叫處進行泛型單態化（[`any` 槽位](../002-types/202-any-slot.md)、[泛型](../002-types/210-generics.md)）。`pub` 或 `pub(pkg)` 函式要寫出其參數型別（E0138），但 trait impl 的方法除外，它從 trait 取得參數型別（[4.2.2](402-parameters.md#422-omitting-the-type)）。依執行模型：同步、非同步與產生器形式都是可能的：一般函式、`async fn`（回傳 Future）、`yield fn`（回傳 Iterator）與 `async yield fn`（回傳 Stream）。依例外行為：函式要麼能擲回錯誤，要麼不能。在簽章中放上 `throws` 就允許它擲回錯誤（[錯誤控制流程](../003-expressions/314-error-control-flow.md)）。最後，依歸屬：函式要麼是定義在 `impl` 區塊中、附加在型別上的方法，要麼是模組層級的自由函式。
+依命名：有寫成 `fn name(...)` 的具名函式，以及寫成 `|...|` 的匿名閉包。依型別標註：函式是靜態的或漸進式的。若寫出參數的型別，就是靜態的；若在私有或 `pub(sub)` 函式上省略，就會在呼叫處進行泛型單態化（[`any` 槽位](../002-types/202-any-slot.md)、[泛型](../002-types/210-generics.md)）。`pub` 或 `pub(pkg)` 函式要寫出其參數型別（E0138），但 trait impl 的方法除外，它從 trait 取得參數型別（[4.2.2](402-parameters.md#422-省略型別)）。依執行模型：同步、非同步與產生器形式都是可能的：一般函式、`async fn`（回傳 Future）、`yield fn`（回傳 Iterator）與 `async yield fn`（回傳 Stream）。依例外行為：函式要麼能擲回錯誤，要麼不能。在簽章中放上 `throws` 就允許它擲回錯誤（[錯誤控制流程](../003-expressions/314-error-control-flow.md)）。最後，依歸屬：函式要麼是定義在 `impl` 區塊中、附加在型別上的方法，要麼是模組層級的自由函式。
 
 ## 函式定義的兩種形式
 

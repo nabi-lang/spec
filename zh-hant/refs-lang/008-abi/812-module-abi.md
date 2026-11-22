@@ -80,7 +80,7 @@
 |---|---|---|
 | `flags` | `PLUGIN` | `HOST` |
 | `text_lo`、`text_hi` | 指向 `nabi.module.text_lo` / `nabi.module.text_hi` 的重定位，由連結器定義；載入器從對應的映像取得程式碼的範圍 | 相同 |
-| `provides` | 它自己的套件以及它所打包的套件（[9.12.2](../009-tools/912-plugins.md#9122-building)） | 它所連結的每個套件，標準函式庫除外 |
+| `provides` | 它自己的套件以及它所打包的套件（[9.12.2](../009-tools/912-plugins.md#9122-建置)） | 它所連結的每個套件，標準函式庫除外 |
 | `needs` | 建置中的其他每個套件，標準函式庫除外 | 空 |
 | `imports` | 指向 `nabi.module.imports` 的重定位，即連結器從保持未定義的符號（每個 `nabi_*` 進入點與 `_Y` 符號）建立的表；連結器把其長度寫入描述子；`sig` 為 0 | 空 |
 | `exports` | 依 `sym` 排序：其套件的每個函式為 `FN`（`pub` 非泛型者設定 `path`），其值 thunk 為 `FN_VALUE`（設定 `path`、`sig` 與 `sig_text`），其 static 為 `DATA`（設定 `path`），以及它從行程取得之 static 的自有複本（見下文） | 指向 `nabi.module.exports` 的重定位，即連結器建立的表（每個已定義的 `nabi_*` 進入點與 `_Y` 符號，`sig` 為 0）；連結器寫入其長度 |

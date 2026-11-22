@@ -25,9 +25,9 @@ Frame {
 ```
 
 - 框架是一般的 GC 物件，由配置的快速 / 慢速路徑建立（[7.2](702-allocation.md)）。每個型別都有一個框架 [ScanTable](../008-abi/802-scan-table.md)。
-- 暫停期間，框架的 GC 參照由 ScanTable 追蹤；恢復函式執行期間，其區域變數由影子堆疊追蹤（[7.4.1](704-barriers-and-roots.md#741-root-tracking-a-shadow-stack-emitted-directly-by-the-compiler)）。
-- 長期存活之任務的框架透過 sticky mark-bit 變成老物件（[7.3.2](703-gc-algorithm.md#732-sticky-mark-bit-generational-collection)）。
-- 呼叫的結果（`GenIter<T>`、`AsyncFuture<T>`、`AsyncStream<T>` 及其 `Try*` 變體）是包裝框架的值（[4.1.11](../004-functions/401-function-declaration.md#result-types-of-coroutine-functions)）。
+- 暫停期間，框架的 GC 參照由 ScanTable 追蹤；恢復函式執行期間，其區域變數由影子堆疊追蹤（[7.4.1](704-barriers-and-roots.md#741-根追蹤由編譯器直接發出的影子堆疊)）。
+- 長期存活之任務的框架透過 sticky mark-bit 變成老物件（[7.3.2](703-gc-algorithm.md#732-sticky-mark-bit-分代回收)）。
+- 呼叫的結果（`GenIter<T>`、`AsyncFuture<T>`、`AsyncStream<T>` 及其 `Try*` 變體）是包裝框架的值（[4.1.11](../004-functions/401-function-declaration.md#協程函式的結果型別)）。
 
 ## 7.8.3. 產生器
 
@@ -37,7 +37,7 @@ Frame {
 3. Next next() → continues from the saved state. When finished, none.
 ```
 
-由呼叫者驅動進展（`for x in g { .. }`）。提前離開產生器的 `for` 會關閉它：產生器以關閉模式恢復，並在它所等待的 `yield` 處像 `return` 一樣離開，執行其清理（[4.11.10](../004-functions/411-generators.md#41110-generator-termination)）。
+由呼叫者驅動進展（`for x in g { .. }`）。提前離開產生器的 `for` 會關閉它：產生器以關閉模式恢復，並在它所等待的 `yield` 處像 `return` 一樣離開，執行其清理（[4.11.10](../004-functions/411-generators.md#41110-產生器的結束)）。
 
 ## 7.8.4. 非同步
 
@@ -55,7 +55,7 @@ Frame {
 
 ## 7.8.6. 配置消除
 
-每次協程呼叫都會配置一個框架。對於由其呼叫者執行到完成的協程，沒有專用的消除；從不逃逸的框架可以像任何配置一樣被移除（[7.2.12](702-allocation.md#7212-allocation-elision)）。
+每次協程呼叫都會配置一個框架。對於由其呼叫者執行到完成的協程，沒有專用的消除；從不逃逸的框架可以像任何配置一樣被移除（[7.2.12](702-allocation.md#7212-配置消除)）。
 
 ## 7.8.7. `yield` / `await` 的降階
 
@@ -67,11 +67,11 @@ Frame {
 
 ## 7.8.8. 執行環境符號
 
-`await` 的等待與喚醒由 `core::task` 的停駐登錄處理（由 `core::task` 透過 `nabi_task_hooks_install` 安裝的掛鉤，[8.5.4](../008-abi/805-extern-symbols.md#854-scheduler-area)）。執行環境的 `nabi_coro_frame_alloc` / `nabi_coro_park` / `nabi_coro_unpark` 供 C 與低階程式碼使用；編譯器不使用它們（[8.5](../008-abi/805-extern-symbols.md)）。
+`await` 的等待與喚醒由 `core::task` 的停駐登錄處理（由 `core::task` 透過 `nabi_task_hooks_install` 安裝的掛鉤，[8.5.4](../008-abi/805-extern-symbols.md#854-排程器區域)）。執行環境的 `nabi_coro_frame_alloc` / `nabi_coro_park` / `nabi_coro_unpark` 供 C 與低階程式碼使用；編譯器不使用它們（[8.5](../008-abi/805-extern-symbols.md)）。
 
 ## 7.8.9. 堆疊深度
 
-巢狀的 `await` 透過原生呼叫進行，其中外層的恢復函式呼叫內層 future 的輪詢。因此 `await` 遞迴的深度受原生堆疊限制，非常深的遞迴會造成堆疊溢位（[執行時錯誤](README.md#runtime-error-stack-overflow)）。若需要深層的遞迴，請把它拆成多個任務。
+巢狀的 `await` 透過原生呼叫進行，其中外層的恢復函式呼叫內層 future 的輪詢。因此 `await` 遞迴的深度受原生堆疊限制，非常深的遞迴會造成堆疊溢位（[執行時錯誤](README.md#執行時錯誤堆疊溢位)）。若需要深層的遞迴，請把它拆成多個任務。
 
 ## 7.8.10. 協程框架的生命週期
 

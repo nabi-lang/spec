@@ -22,7 +22,7 @@
 
 ### 1. 執行環境 ABI
 
-編譯器產生的程式碼與 `libnabir.a` 一起連結並執行時所使用的介面。物件的記憶體配置有明確規定，讓 [GC](../000-meta/007-glossary.md#gc-garbage-collector) 能精確地解讀編譯器所建立的物件。[Extern "C" 符號](../000-meta/007-glossary.md#extern-c-symbol)是編譯器可以呼叫的執行環境函式；每個符號的執行緒安全類別（`thread-safe` / `caller-thread-only` / `process-init` 等）定義於 [8.5.0 執行緒安全類別](805-extern-symbols.md#850-thread-safety-classes)。TLS 槽位是由編譯器發出的行內程式碼讀寫的執行緒區域位置。呼叫慣例規定函式呼叫中暫存器與堆疊的使用方式。
+編譯器產生的程式碼與 `libnabir.a` 一起連結並執行時所使用的介面。物件的記憶體配置有明確規定，讓 [GC](../000-meta/007-glossary.md#gc垃圾回收器) 能精確地解讀編譯器所建立的物件。[Extern "C" 符號](../000-meta/007-glossary.md#extern-c-符號)是編譯器可以呼叫的執行環境函式；每個符號的執行緒安全類別（`thread-safe` / `caller-thread-only` / `process-init` 等）定義於 [8.5.0 執行緒安全類別](805-extern-symbols.md#850-執行緒安全類別)。TLS 槽位是由編譯器發出的行內程式碼讀寫的執行緒區域位置。呼叫慣例規定函式呼叫中暫存器與堆疊的使用方式。
 
 ### 2. 降階
 
@@ -30,7 +30,7 @@
 
 ## 為什麼本規格的文字具權威性
 
-除了那些共用的原始檔之外，編譯器與執行環境不共用任何程式碼或標頭檔。兩者遵循同一個 [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) 的保證，來自本規格的文字以及整合測試中的端對端驗證。
+除了那些共用的原始檔之外，編譯器與執行環境不共用任何程式碼或標頭檔。兩者遵循同一個 [ABI](../000-meta/007-glossary.md#abi應用程式二進位介面) 的保證，來自本規格的文字以及整合測試中的端對端驗證。
 
 這個模型採用與 Swift ABI Stability 相同的做法：規格具權威性，實作遵循它。
 

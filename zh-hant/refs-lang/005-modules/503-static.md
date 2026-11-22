@@ -1,6 +1,6 @@
 # 5.3. `static`
 
-`static` 關鍵字（上下文關鍵字，只在項目開頭是關鍵字；其後的 `mut` 同樣只在 `static mut` 位置是關鍵字，[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)）宣告在程式整個生命週期內持續存在的全域記憶體。
+`static` 關鍵字（上下文關鍵字，只在項目開頭是關鍵字；其後的 `mut` 同樣只在 `static mut` 位置是關鍵字，[1.5.4](../001-lexical/105-keywords.md#154-上下文關鍵字)）宣告在程式整個生命週期內持續存在的全域記憶體。
 
 ```
 static_decl     ::= "static" "mut"? identifier ":" type_expr "=" expr ";"
@@ -15,9 +15,9 @@ static DEFAULT_CONFIG: Config = Config::default();
 static APP_NAME: str = "nabi";
 ```
 
-基本形式是 `static`、名稱、帶型別的 `:`，以及帶初始化式的 `=`。型別必須寫出。`const` 初始化式（[`const`](502-const.md)）在編譯期求值；其他任何初始化式在第一次存取時執行一次（[5.3.9](#539-initializers-compile-time-or-first-use)）。
+基本形式是 `static`、名稱、帶型別的 `:`，以及帶初始化式的 `=`。型別必須寫出。`const` 初始化式（[`const`](502-const.md)）在編譯期求值；其他任何初始化式在第一次存取時執行一次（[5.3.9](#539-初始化式編譯期或第一次使用)）。
 
-`static` 可以從每個執行緒存取，因此其型別必須是 `Sync`（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）；延遲初始化的 static 也是如此。`static XS: List<i32> = [];` 是編譯錯誤（集合型別、`StrBuf` 與 `Cell<T>` 是 `!Sync`）；請寫 `static XS: Mutex<List<i32>> = Mutex::new([]);`。每個執行緒各自的狀態使用 `thread::local`（[stdlib 3.4.4](../../refs-standard-libraries/300-std/304-thread.md#344-thread-local-storage)），其 `ThreadLocal<T>` 是 `Sync`。`extern` 區塊的 static（[5.3.10](#5310-extern-static-ffi)）豁免。
+`static` 可以從每個執行緒存取，因此其型別必須是 `Sync`（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）；延遲初始化的 static 也是如此。`static XS: List<i32> = [];` 是編譯錯誤（集合型別、`StrBuf` 與 `Cell<T>` 是 `!Sync`）；請寫 `static XS: Mutex<List<i32>> = Mutex::new([]);`。每個執行緒各自的狀態使用 `thread::local`（[stdlib 3.4.4](../../refs-standard-libraries/300-std/304-thread.md#344-thread-local-storage)），其 `ThreadLocal<T>` 是 `Sync`。`extern` 區塊的 static（[5.3.10](#5310-extern-staticffi)）豁免。
 
 ## 5.3.2. 與 `const` 的差異
 
@@ -35,7 +35,7 @@ static X: i32 = 42i32;             // stable memory address (program lifetime)
 
 ## 5.3.3. 允許的位置
 
-`static` 可以宣告在模組層級或區塊中（[3.9.1](../003-expressions/309-block-expressions.md#391-form)），而不能在 trait 或 `impl` 中（[5.3.8](#538-combination-with-methods--traits)）。
+`static` 可以宣告在模組層級或區塊中（[3.9.1](../003-expressions/309-block-expressions.md#391-形式)），而不能在 trait 或 `impl` 中（[5.3.8](#538-與方法--trait-的組合)）。
 
 ```nabi
 static APP_NAME: str = "nabi";                          // module level: OK
@@ -65,9 +65,9 @@ static CACHE: Mutex<Dict<str, Data>> = Mutex::new(Dict::new());
 
 這些全都是標準函式庫型別；其確切簽章定義於函式庫規格。
 
-## 5.3.5. `static mut`：僅用於 [FFI](../000-meta/007-glossary.md#ffi-foreign-function-interface)
+## 5.3.5. `static mut`：僅用於 [FFI](../000-meta/007-glossary.md#ffi外部函式介面)
 
-只有為了直接與 C [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) 介接時才能使用 `static mut`，而且只能在 `extern "C"` 區塊內。
+只有為了直接與 C [ABI](../000-meta/007-glossary.md#abi應用程式二進位介面) 介接時才能使用 `static mut`，而且只能在 `extern "C"` 區塊內。
 
 ```nabi
 extern "C" {
@@ -118,7 +118,7 @@ impl Counter {
 
 ## 5.3.9. 初始化式：編譯期或第一次使用
 
-若初始化式是常數運算式（[5.2.4](502-const.md#524-constant-expressions-and-the-evaluator)），就在編譯期初始化。其他任何初始化式在第一次使用時初始化一次（延遲初始化）。延遲初始化是執行緒安全的，同時存取的執行緒會等待初始化完成。初始化式中的函式不必是 `const fn`（`Mutex::new` 等）。
+若初始化式是常數運算式（[5.2.4](502-const.md#524-常數運算式與求值器)），就在編譯期初始化。其他任何初始化式在第一次使用時初始化一次（延遲初始化）。延遲初始化是執行緒安全的，同時存取的執行緒會等待初始化完成。初始化式中的函式不必是 `const fn`（`Mutex::new` 等）。
 
 ```nabi
 static PI: f64 = 3.14159f64;             // const: compile time
@@ -140,6 +140,6 @@ extern "C" {
 
 ## 5.3.11. 生命週期與 GC 根
 
-`static` 的記憶體持續存在到程式終止（`const` 初始化式在啟動時初始化，其他在第一次存取時）。`static` 中每個容納 GC 參照的字組，都在程式啟動時註冊為 GC 根（`nabi_gc_add_root`，[8.5](../008-abi/805-extern-symbols.md)），因此 [GC](../000-meta/007-glossary.md#gc-garbage-collector) 會讓 `static` 所參照的物件保持存活。
+`static` 的記憶體持續存在到程式終止（`const` 初始化式在啟動時初始化，其他在第一次存取時）。`static` 中每個容納 GC 參照的字組，都在程式啟動時註冊為 GC 根（`nabi_gc_add_root`，[8.5](../008-abi/805-extern-symbols.md)），因此 [GC](../000-meta/007-glossary.md#gc垃圾回收器) 會讓 `static` 所參照的物件保持存活。
 
 其他執行緒所看到的 `static` 遵循記憶體模型（[7.9](../007-runtime/709-memory-model.md)）。GC 與執行環境的行為在 [7. 執行環境模型](../007-runtime/README.md)與 [8. 執行環境 ABI](../008-abi/README.md) 中說明。

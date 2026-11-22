@@ -33,7 +33,7 @@ let words = text
 
 ## 3.18.2. 優先順序
 
-`|>` 的結合比其他每個運算子（包括範圍）都鬆，比指派緊（[3.2.3](302-precedence-and-associativity.md#323-precedence-and-associativity-table)）；它是左結合的。因此其左側的整個計算就是被傳遞的值：
+`|>` 的結合比其他每個運算子（包括範圍）都鬆，比指派緊（[3.2.3](302-precedence-and-associativity.md#323-優先順序與結合性表)）；它是左結合的。因此其左側的整個計算就是被傳遞的值：
 
 ```nabi
 a + b |> f          // f(a + b)
@@ -50,4 +50,4 @@ a |> f |> g         // g(f(a))
 
 右側是指向函式（或任何可呼叫之物）的路徑、一個呼叫，或括號中的閉包。其他任何東西都是編譯錯誤，錯誤訊息會說明應寫什麼：`x |> 2` 與 `x |> a + b` 是錯誤，而由於 `|>` 結合最鬆，`x |> f + 1` 也是（請寫 `(x |> f) + 1`）。
 
-`|>` 是固定語彙單元（[1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-fixed-token-table)）：它不能以 `#[infix]` 註冊，而 `a|>b` 一律是管線。
+`|>` 是固定語彙單元（[1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-固定語彙單元表)）：它不能以 `#[infix]` 註冊，而 `a|>b` 一律是管線。

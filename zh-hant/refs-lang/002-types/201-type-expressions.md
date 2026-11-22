@@ -43,7 +43,7 @@ tuple_type  ::= "(" ")"
 array_type  ::= "[" type_expr ";" const_expr "]"
 ```
 
-`extern "C" fn(A, B) -> R` 是 C 函式指標型別（[5.9.4](../005-modules/509-extern-block.md#c-function-pointer-types)）。ABI 字串只能是 `"C"` 或 `"system"`（[5.9](../005-modules/509-extern-block.md)）；其他任何字串都是錯誤。
+`extern "C" fn(A, B) -> R` 是 C 函式指標型別（[5.9.4](../005-modules/509-extern-block.md#c-函式指標型別)）。ABI 字串只能是 `"C"` 或 `"system"`（[5.9](../005-modules/509-extern-block.md)）；其他任何字串都是錯誤。
 
 各形式整理如下。
 
@@ -61,7 +61,7 @@ array_type  ::= "[" type_expr ";" const_expr "]"
 | `none` / never    | `none`、`!`                                 |
 | `Self` 及其項目   | `Self`、`Self::Item`                        |
 | 限定路徑          | `<T as Iterator>::Item`                     |
-| 巨集呼叫          | `name!(..)`，展開為型別（[6.8.12](../006-meta-system/608-meta-blocks.md#6812-the-macro-form)） |
+| 巨集呼叫          | `name!(..)`，展開為型別（[6.8.12](../006-meta-system/608-meta-blocks.md#6812-巨集形式)） |
 | 常數引數          | `Buf<16>`、`Buf<-1>`、`Buf<{ N + 1 }>`      |
 
 各形式的確切意義依序定義於下文。
@@ -135,7 +135,7 @@ A | B | C | D
 
 ## 2.1.5a. 可選型別（`T?`）
 
-後綴 `?` 構成可選型別。`T?` 的行為與 `Maybe<T>`（`type Maybe<T> = T | none;`）完全相同。也就是說，`?` 的運算元是一個泛型項，並適用[和型別的分層規則](206-sum-types.md#264-set-semantics)。
+後綴 `?` 構成可選型別。`T?` 的行為與 `Maybe<T>`（`type Maybe<T> = T | none;`）完全相同。也就是說，`?` 的運算元是一個泛型項，並適用[和型別的分層規則](206-sum-types.md#264-集合語意)。
 
 ```nabi
 i32?                // i32 | none
@@ -202,7 +202,7 @@ any Iterator<Item = i32>
 any Future<Output = User>
 ```
 
-`any` 是[關鍵字](../001-lexical/105-keywords.md)中保留的型別名稱槽位關鍵字；其意義定義於 [`any` 槽位](202-any-slot.md)。在 `any` 之後接一個 trait 路徑，或接以 `+` 連接、加上括號的多個 trait 路徑，就構成只容納實作了這些 trait 之值的受約束動態槽位（[2.2.10](202-any-slot.md#2210-constrained-any-any-trait)）。在 trait 路徑的 `<...>` 內，除了型別引數之外，也可以出現固定關聯型別的繫結，例如 `Item = T`（`trait_arg`）。兩個以上的 trait 路徑需要括號；`any` 只繫結緊接在它之後的單一 trait，因此 `any Error | none` 是 `(any Error) | none`。trait 路徑只能在 `any` 之後出現在型別位置（[trait 不能作為型別](212-trait-as-type-banned.md)）。
+`any` 是[關鍵字](../001-lexical/105-keywords.md)中保留的型別名稱槽位關鍵字；其意義定義於 [`any` 槽位](202-any-slot.md)。在 `any` 之後接一個 trait 路徑，或接以 `+` 連接、加上括號的多個 trait 路徑，就構成只容納實作了這些 trait 之值的受約束動態槽位（[2.2.10](202-any-slot.md#2210-受約束的-anyany-trait)）。在 trait 路徑的 `<...>` 內，除了型別引數之外，也可以出現固定關聯型別的繫結，例如 `Item = T`（`trait_arg`）。兩個以上的 trait 路徑需要括號；`any` 只繫結緊接在它之後的單一 trait，因此 `any Error | none` 是 `(any Error) | none`。trait 路徑只能在 `any` 之後出現在型別位置（[trait 不能作為型別](212-trait-as-type-banned.md)）。
 
 ## 2.1.10. 優先順序 / 結合
 

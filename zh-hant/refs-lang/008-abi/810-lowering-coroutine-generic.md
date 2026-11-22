@@ -8,7 +8,7 @@
 
 1. HIR：`yield` / `async` / `async yield` 區塊像閉包一樣被提升為主體函式。建立框架的運算式留在原區塊的位置。
 2. MIR：主體函式被轉換成恢復函式。每個暫停點得到一個狀態編號，而跨越該點仍存活的區域變數被移入框架欄位。
-3. 框架型別是 `(i32 state, locals..)`，並具有 ScanTable。框架經由一般的配置路徑建立（[8.9.9](809-lowering-control.md#899-gc-alloc-fast--slow-path)）。
+3. 框架型別是 `(i32 state, locals..)`，並具有 ScanTable。框架經由一般的配置路徑建立（[8.9.9](809-lowering-control.md#899-gc-配置快速--慢速路徑)）。
 4. 恢復函式的進入處依 `state` 分派：一串把它與每個狀態編號比較的雙向分支（8.9.3）。
 
 ## 8.10.2. 產生器（`yield fn`）
@@ -69,7 +69,7 @@ poll(frame, cx) -> Poll<Data>:
 
 ## 8.10.5. 框架配置
 
-每次協程呼叫都會配置一個框架。對於由其呼叫者執行到完成的協程，沒有專門的省略；從不逃逸的框架可以像任何配置一樣被移除（[7.2.12](../007-runtime/702-allocation.md#7212-allocation-elision)）。
+每次協程呼叫都會配置一個框架。對於由其呼叫者執行到完成的協程，沒有專門的省略；從不逃逸的框架可以像任何配置一樣被移除（[7.2.12](../007-runtime/702-allocation.md#7212-配置消除)）。
 
 ## 8.10.6. 泛型單態化
 
@@ -106,7 +106,7 @@ fn main(tls):
 nabi-hir -> specialize(hir, type_tuple) -> nabi-mir -> machine code
 ```
 
-在 [AOT](../000-meta/007-glossary.md#aot-ahead-of-time) 模式下，先收集所有呼叫處，然後一次執行 [specialize](../000-meta/007-glossary.md#specialize)。在 [JIT](../000-meta/007-glossary.md#jit-just-in-time) 模式下，specialize 在第一次呼叫時執行，其結果會被快取（見[執行引擎與使用者介面](../000-meta/001-execution-modes.md)）。兩種模式共用相同的 specialize 機制。
+在 [AOT](../000-meta/007-glossary.md#aot預先編譯) 模式下，先收集所有呼叫處，然後一次執行 [specialize](../000-meta/007-glossary.md#特化specialize)。在 [JIT](../000-meta/007-glossary.md#jit即時編譯) 模式下，specialize 在第一次呼叫時執行，其結果會被快取（見[執行引擎與使用者介面](../000-meta/001-execution-modes.md)）。兩種模式共用相同的 specialize 機制。
 
 ### 符號命名
 
@@ -210,6 +210,6 @@ fn add_all<T: Add<T, Output = T>>(items: List<T>) -> T {
 
 編譯器自己把協程降階為狀態機（8.10.1）。泛型降階透過單態化為每個具體型別產生個別的程式碼，不使用 vtable。
 
-這兩種機制是本 [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) 部分中最複雜的降階；其餘的[降階：資料型別與運算式](808-lowering-types.md)與[降階：控制流程與 GC 整合](809-lowering-control.md)，都接近直接對應到機器運算。
+這兩種機制是本 [ABI](../000-meta/007-glossary.md#abi應用程式二進位介面) 部分中最複雜的降階；其餘的[降階：資料型別與運算式](808-lowering-types.md)與[降階：控制流程與 GC 整合](809-lowering-control.md)，都接近直接對應到機器運算。
 
 第 8 章（執行環境 ABI / 降階 / 程式碼產生）到此結束。

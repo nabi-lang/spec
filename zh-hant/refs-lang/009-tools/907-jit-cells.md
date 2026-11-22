@@ -16,7 +16,7 @@
 不支援下列繫結與效果。
 
 - 無法在頂層命名之型別的繫結（閉包、私有型別等）。它們在建立它們的儲存格中就會被拒絕。
-- 在儲存格內呼叫 `exit(..)`。該儲存格被當作失敗的儲存格處理（規則 5）。（單獨的 `exit` 或 `quit` 會結束工作階段，[9.9.9](909-debug-tools.md#999-repl--jupyter-debugging)。）
+- 在儲存格內呼叫 `exit(..)`。該儲存格被當作失敗的儲存格處理（規則 5）。（單獨的 `exit` 或 `quit` 會結束工作階段，[9.9.9](909-debug-tools.md#999-repl--jupyter-偵錯)。）
 - 由失敗的儲存格產生的執行緒。它們不會在它之後存活（規則 5）。
 
 ## 9.7.1. 儲存格的種類
@@ -31,12 +31,12 @@ REPL 的一行或 Jupyter 的一個儲存格依其內容以不同方式處理。
 5. meta / attribute          → handle as appropriate
 ```
 
-五種都遵循相同的儲存格處理流程；只有最後的輸出不同。運算式儲存格所顯示的值會繫結到 `it`，供之後的儲存格使用（9.7.7）。運算式儲存格會印出其值（`Display`，否則 `Debug`，否則其型別名稱）；`let` 儲存格不印出任何東西。發散的運算式儲存格（[4.3.7](../004-functions/403-return.md#437-divergent-functions)；`panic(..)`、`exit(..)`、`throw`）作為陳述式執行。
+五種都遵循相同的儲存格處理流程；只有最後的輸出不同。運算式儲存格所顯示的值會繫結到 `it`，供之後的儲存格使用（9.7.7）。運算式儲存格會印出其值（`Display`，否則 `Debug`，否則其型別名稱）；`let` 儲存格不印出任何東西。發散的運算式儲存格（[4.3.7](../004-functions/403-return.md#437-發散的函式)；`panic(..)`、`exit(..)`、`throw`）作為陳述式執行。
 
-儲存格可以在頂層陳述式中 `await`，就像隱含的 `main` 一樣（[4.16.5](../004-functions/416-entry-point.md#4165-async-main)）：此時該儲存格在執行器上執行直到完成。其 `let` 繫結與其值就像其他任何儲存格的一樣延續到之後的儲存格。
+儲存格可以在頂層陳述式中 `await`，就像隱含的 `main` 一樣（[4.16.5](../004-functions/416-entry-point.md#4165-非同步-main)）：此時該儲存格在執行器上執行直到完成。其 `let` 繫結與其值就像其他任何儲存格的一樣延續到之後的儲存格。
 
 > [!IMPORTANT]
-> 就語言語意而言，一連串的儲存格等同於把頂層陳述式與項目附加到一個隱含之 `main.nabi` 的結尾（[4.16.10](../004-functions/416-entry-point.md#41610-relationship-to-jit--repl)）。儲存格的 `let` 是隱含 `main` 的區域變數，因此之後儲存格的陳述式看得到它，但在儲存格中宣告之 `fn` 的主體內看不到。下文 9.7.3 的全域儲存是讓區域變數跨越儲存格邊界保持存活的實作技術，不會改變這個可見性規則。儲存格重新執行（9.7.4）、自動顯示最後一個運算式的值及其繫結 `it`（9.7.7）是只存在於互動式介面上的工作階段操作。
+> 就語言語意而言，一連串的儲存格等同於把頂層陳述式與項目附加到一個隱含之 `main.nabi` 的結尾（[4.16.10](../004-functions/416-entry-point.md#41610-與-jit--repl-的關係)）。儲存格的 `let` 是隱含 `main` 的區域變數，因此之後儲存格的陳述式看得到它，但在儲存格中宣告之 `fn` 的主體內看不到。下文 9.7.3 的全域儲存是讓區域變數跨越儲存格邊界保持存活的實作技術，不會改變這個可見性規則。儲存格重新執行（9.7.4）、自動顯示最後一個運算式的值及其繫結 `it`（9.7.7）是只存在於互動式介面上的工作階段操作。
 
 ## 9.7.2. 執行流程：詳細說明
 
@@ -51,7 +51,7 @@ REPL 的一行或 Jupyter 的一個儲存格依其內容以不同方式處理。
 
 每個步驟都是交易式的；失敗時會回復到先前的狀態。
 
-當 REPL 讀取終端機時，儲存格的標準輸入就是終端機，否則為空（[9.7.10](#9710-loading-a-program-repl-path)）；Jupyter 儲存格經由用戶端讀取（[9.8.1](908-jupyter-integration.md#981-kernel)）。儲存格的標準輸出在每個換行時都會清空緩衝，即使它不是終端機也一樣，因此其輸出會在寫出時就顯示。無論使用者的環境怎麼說，REPL 主機都會在執行環境啟動之前設定 `NABIR_GC_CONCURRENT=off`：並行標記的執行緒不會被納入快照，因此工作階段中的完整回收在沒有它的情況下標記（[7.5](../007-runtime/705-concurrent-collection.md)）。
+當 REPL 讀取終端機時，儲存格的標準輸入就是終端機，否則為空（[9.7.10](#9710-載入程式repl-path)）；Jupyter 儲存格經由用戶端讀取（[9.8.1](908-jupyter-integration.md#981-核心)）。儲存格的標準輸出在每個換行時都會清空緩衝，即使它不是終端機也一樣，因此其輸出會在寫出時就顯示。無論使用者的環境怎麼說，REPL 主機都會在執行環境啟動之前設定 `NABIR_GC_CONCURRENT=off`：並行標記的執行緒不會被納入快照，因此工作階段中的完整回收在沒有它的情況下標記（[7.5](../007-runtime/705-concurrent-collection.md)）。
 
 ## 9.7.3. 頂層變數的儲存
 
@@ -76,7 +76,7 @@ heap payload                → register GC root
 
 ### GC 根的註冊
 
-指向堆積物件的頂層變數必須作為根被 GC 追蹤，因此它們被連結到[影子堆疊](../000-meta/007-glossary.md#shadow-stack)鏈中。
+指向堆積物件的頂層變數必須作為根被 GC 追蹤，因此它們被連結到[影子堆疊](../000-meta/007-glossary.md#影子堆疊shadow-stack)鏈中。
 
 詳細的機制請見[屏障與根追蹤](../007-runtime/704-barriers-and-roots.md)中影子堆疊的部分。
 
@@ -87,7 +87,7 @@ heap payload                → register GC root
 [2] let x = "hi";            // redeclaration at cell top level: new binding (x: str)
 ```
 
-對已在儲存格頂層繫結之名稱的 `let` 是重新宣告，與原始碼檔案中相同（[5.1.4](../005-modules/501-variable-declaration.md#514-redeclaration-in-the-same-scope)）。它建立一個新的繫結，其型別可以與先前的繫結不同。之後的儲存格看到新的繫結。
+對已在儲存格頂層繫結之名稱的 `let` 是重新宣告，與原始碼檔案中相同（[5.1.4](../005-modules/501-variable-declaration.md#514-同一作用域中的重新宣告)）。它建立一個新的繫結，其型別可以與先前的繫結不同。之後的儲存格看到新的繫結。
 
 既有的全域變數於是被覆寫：其記憶體留在原處，只有名稱槽位被重新導向到新的定義。
 
@@ -150,7 +150,7 @@ other (a fault)   the cell failed; the session is unchanged
 
 ### 位置
 
-正在輸入之儲存格中的診斷指名 `<repl>:line:col`，以儲存格自己的文字計算。先前儲存格之項目中的診斷，以及執行中程式碼所回報的位置（panic、未捕捉的錯誤、`try!`），指名 `<repl cell N>:line:col`：儲存格 N 是工作階段中輸入的第 N 個儲存格（`:type` 等指令不是儲存格；失敗的儲存格也算在內），行與欄以其文字計算。在 Jupyter 核心中，N 是筆記本儲存格的執行計數，而拆成多個 REPL 儲存格的筆記本儲存格會把它們編號為 `N.1`、`N.2` 等（[9.8.1](908-jupyter-integration.md#notebook-cells-and-repl-cells)）。在先前儲存格中定義的函式會回報在該儲存格中的位置。
+正在輸入之儲存格中的診斷指名 `<repl>:line:col`，以儲存格自己的文字計算。先前儲存格之項目中的診斷，以及執行中程式碼所回報的位置（panic、未捕捉的錯誤、`try!`），指名 `<repl cell N>:line:col`：儲存格 N 是工作階段中輸入的第 N 個儲存格（`:type` 等指令不是儲存格；失敗的儲存格也算在內），行與欄以其文字計算。在 Jupyter 核心中，N 是筆記本儲存格的執行計數，而拆成多個 REPL 儲存格的筆記本儲存格會把它們編號為 `N.1`、`N.2` 等（[9.8.1](908-jupyter-integration.md#筆記本儲存格與-repl-儲存格)）。在先前儲存格中定義的函式會回報在該儲存格中的位置。
 
 ```
 >>> fn boom(n: i32) {
@@ -177,7 +177,7 @@ error: the cell panicked; the session is unchanged
 hi
 ```
 
-最後一個運算式的值以 `Display` 印出，否則以 `Debug`。結尾的 `?`（如 `xs?`）則印出 `Debug` 形式，而 `:type xs` 只印出型別。沒有 `Display` 與 `Debug`（對 `?` 而言是 `Debug`）的值只印出其型別名稱（`type_name_of_val`，[stdlib 2.12.4](../../refs-standard-libraries/200-core/212-reflect.md#2124-repl-output)：`any` 值會指出它所容納的型別）。`let` 儲存格不印出任何東西。在 Jupyter 筆記本中，帶有 `RichDisplay` 的值改為顯示其 MIME bundle（[9.8.2](908-jupyter-integration.md#982-local-native-kernel-operation)）。
+最後一個運算式的值以 `Display` 印出，否則以 `Debug`。結尾的 `?`（如 `xs?`）則印出 `Debug` 形式，而 `:type xs` 只印出型別。沒有 `Display` 與 `Debug`（對 `?` 而言是 `Debug`）的值只印出其型別名稱（`type_name_of_val`，[stdlib 2.12.4](../../refs-standard-libraries/200-core/212-reflect.md#2124-repl-output)：`any` 值會指出它所容納的型別）。`let` 儲存格不印出任何東西。在 Jupyter 筆記本中，帶有 `RichDisplay` 的值改為顯示其 MIME bundle（[9.8.2](908-jupyter-integration.md#982-本機原生核心運作)）。
 
 ```
 >>> let xs = [1, 2, 3];
@@ -232,8 +232,8 @@ REPL 以完整的運算式或陳述式為單位處理輸入。
 
 - **啟動。** 當標準輸入與輸出都是終端機時，REPL 在第一個提示符號之前印出兩行：`Nabi <version> (<commit> <date>) on <host triple>`，其中版本文字與 `nabic --version` 印出的相同，然後是 `Type :help for help, :exit to quit.`。`-q` 會省略兩者；經由管道的輸入絕不會得到它們。
 - **按鍵。** 方向鍵、Home / End 與 Emacs 按鍵用於移動與編輯：`C-a` / `C-e` 移到行首與行尾，`C-b` / `C-f` 與 `M-b` / `M-f`（也可以是 Alt 或 Ctrl 搭配方向鍵）以字元或單字移動，`C-k` / `C-u` / `C-w` / `M-Backspace` 刪除到行尾、到行首或前一個單字，`C-d` 刪除下一個字元，或在空行上結束輸入，`C-l` 清除畫面，`C-c` 捨棄該行以及未結束的儲存格。在 Unix 上，`C-z` 把 REPL 作為工作暫停。
-- **顯示。** 長行會水平捲動。欄位以顯示寬度計算：East Asian Wide 與 Fullwidth 字元以及表情符號占兩欄，組合用附加符號與其他零寬度字元不占欄。輸入依語彙單元類別上色，與文件相同：關鍵字與屬性為淺粉紅色，型別為天藍色，字串為綠色，數字為琥珀色，註解為灰色，使用 [9.1.8](901-nabic-cli.md#colour) 的調色盤與色深。標準輸出上的色彩遵循 [9.1.5](901-nabic-cli.md#915-global-options)：`--color=never`、`NO_COLOR` 或 `TERM=dumb` 會關閉它。
-- **補全。** Tab 把游標前的單字補全到各候選項的最長共同前綴，若這樣沒有增加任何東西，就列出它們。候選項是游標處範圍內的區域變數、工作階段的繫結與項目、prelude 的名稱（`use core::prelude::*;`）、工作階段之 `use` 項目所匯入的名稱，以及關鍵字；在 `x.` 之後是 `x` 之型別的欄位與方法（對標準函式庫的型別只有其公開者），在 `a::` 之後是 `a` 之下的模組與項目。在行首按 Tab 會縮排四個空白。Jupyter 核心從相同的候選項補全（[9.8.5](908-jupyter-integration.md#985-code-completion)），語言伺服器也使用相同的引擎（[9.9.13](909-debug-tools.md#9913-lsp-server)）。
+- **顯示。** 長行會水平捲動。欄位以顯示寬度計算：East Asian Wide 與 Fullwidth 字元以及表情符號占兩欄，組合用附加符號與其他零寬度字元不占欄。輸入依語彙單元類別上色，與文件相同：關鍵字與屬性為淺粉紅色，型別為天藍色，字串為綠色，數字為琥珀色，註解為灰色，使用 [9.1.8](901-nabic-cli.md#色彩) 的調色盤與色深。標準輸出上的色彩遵循 [9.1.5](901-nabic-cli.md#915-全域選項)：`--color=never`、`NO_COLOR` 或 `TERM=dumb` 會關閉它。
+- **補全。** Tab 把游標前的單字補全到各候選項的最長共同前綴，若這樣沒有增加任何東西，就列出它們。候選項是游標處範圍內的區域變數、工作階段的繫結與項目、prelude 的名稱（`use core::prelude::*;`）、工作階段之 `use` 項目所匯入的名稱，以及關鍵字；在 `x.` 之後是 `x` 之型別的欄位與方法（對標準函式庫的型別只有其公開者），在 `a::` 之後是 `a` 之下的模組與項目。在行首按 Tab 會縮排四個空白。Jupyter 核心從相同的候選項補全（[9.8.5](908-jupyter-integration.md#985-程式碼補全)），語言伺服器也使用相同的引擎（[9.9.13](909-debug-tools.md#9913-lsp-伺服器)）。
 - **貼上。** REPL 開啟 bracketed paste：貼上的區塊，包括換行與 Tab，會作為文字插入，並在按下 Enter 時成為一個儲存格，而不是逐行執行。編輯時，輸入中的換行顯示為 `↵`；輸入之後，儲存格顯示為 `...` 之後的各行。
 - **歷史。** 歷史容納整個儲存格：跨多行輸入或貼上的儲存格是一個項目。Up / Down（`C-p` / `C-n`）走訪它；已輸入文字時，Up 與 Down 只走訪以該文字開頭的項目。`C-r` 向後漸進式搜尋：輸入的文字會縮小搜尋範圍，再按 `C-r` 會找到更舊的相符項目，Enter 執行該相符項目，其他按鍵會編輯它，`C-g` 回到原本的行。歷史在啟動時載入，並保存在 `$NABI_HOME/repl_history` 中；它保留最後 1000 個儲存格，在容納 2000 個時捨棄較舊的，並且不儲存超過 64 KiB 的儲存格。
 - **Windows。** 主控台會切換為 VT 輸入與輸出。在支援它的終端機（例如 Windows Terminal）中，bracketed paste 可以運作。
@@ -263,7 +263,7 @@ y                       # last expression = cell result
 - **`fn main`。** 帶有 `fn main` 的程式以 `main` 作為進入點執行；之後 `main` 離開工作階段，因此其區域變數不可見。
 - **位置。** 診斷與 panic 使用檔案自己的位置。
 - **輸入。** 程式與任何儲存格一樣讀取 stdin。在終端機上，執行中的儲存格讀取終端機（控制終端機；在 Windows 上是主控台 `CONIN$`）；儲存格結束之後，行編輯器以儲存格之前的模式取回終端機。經由管道的輸入屬於 REPL：儲存格讀取空的 stdin（`/dev/null`，在 Windows 上是 `NUL`），並立即看到輸入結束，而其後的各行仍作為儲存格讀取。
-- **`:load`、`:reload`。** `:load <file>` 依相同規則把程式載入執行中的工作階段；其項目取代工作階段中同名的項目。`:reload` 再次載入最後載入的程式（[9.9.9](909-debug-tools.md#999-repl--jupyter-debugging)）。由 `:save` 寫出的腳本不會作為程式載入：其儲存格會一個一個地再次執行，就像被輸入一樣，因此再次宣告的名稱保留其最後的繫結。
+- **`:load`、`:reload`。** `:load <file>` 依相同規則把程式載入執行中的工作階段；其項目取代工作階段中同名的項目。`:reload` 再次載入最後載入的程式（[9.9.9](909-debug-tools.md#999-repl--jupyter-偵錯)）。由 `:save` 寫出的腳本不會作為程式載入：其儲存格會一個一個地再次執行，就像被輸入一樣，因此再次宣告的名稱保留其最後的繫結。
 
 ## 9.7.11. 接下來
 

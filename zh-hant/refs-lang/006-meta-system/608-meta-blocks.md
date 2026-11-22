@@ -1,6 +1,6 @@
 # 6.8. 使用者定義的 meta 定義
 
-**meta 定義**是使用者定義的程式碼產生器。它們全都是同一種機制：定義繫結輸入的各部分，並轉錄由 Nabi 程式碼與樣板記號（[6.9](609-template-tokens.md)）構成的樣板，以衛生的方式（[6.8.9](#689-no-token-stream-manipulation)）進行到固定點（[6.8.8](#688-fixed-point-expansion)）。它們的差別只在於如何被*觸發*以及繫結什麼輸入。共有四種形式；前三種由項目上的屬性觸發，第四種由呼叫觸發：
+**meta 定義**是使用者定義的程式碼產生器。它們全都是同一種機制：定義繫結輸入的各部分，並轉錄由 Nabi 程式碼與樣板記號（[6.9](609-template-tokens.md)）構成的樣板，以衛生的方式（[6.8.9](#689-不操作語彙單元串流)）進行到固定點（[6.8.8](#688-固定點展開)）。它們的差別只在於如何被*觸發*以及繫結什麼輸入。共有四種形式；前三種由項目上的屬性觸發，第四種由呼叫觸發：
 
 | 形式                                    | 定義為                             | 觸發方式               | 繫結                                    |
 |-----------------------------------------|------------------------------------|------------------------|-----------------------------------------|
@@ -9,7 +9,7 @@
 | 逐欄位的 derive 屬性                    | `#[impl_derive_attribute(T, a)] @derive {}` | `#[derive(T)]` + 欄位上的 `#[a]` | 形狀 + 欄位屬性        |
 | **巨集**                                | `#[impl_macro(n)] @macro { (m) => {t} }` | `n!(..)` 呼叫      | 呼叫的語彙單元（`@x: expr`、`@rep`）    |
 
-前三種*從作者附加它們的型別或項目*產生程式碼；巨集則*從呼叫者寫出的內容*產生程式碼，這是其他形式無法滿足的唯一需求（[6.8.12](#6812-the-macro-form)）。它們共用樣板引擎、`@` 記號、衛生性以及下文的工具保證；本章與 [6.9](609-template-tokens.md) 會指出所繫結的輸入在何處不同。這四種形式是 Nabi 全部的超程式設計介面：它們一起取代了 Rust 的 derive、屬性與類函式巨集，而不需要過程式（procedural）程式碼或原始的語彙單元操作。
+前三種*從作者附加它們的型別或項目*產生程式碼；巨集則*從呼叫者寫出的內容*產生程式碼，這是其他形式無法滿足的唯一需求（[6.8.12](#6812-巨集形式)）。它們共用樣板引擎、`@` 記號、衛生性以及下文的工具保證；本章與 [6.9](609-template-tokens.md) 會指出所繫結的輸入在何處不同。這四種形式是 Nabi 全部的超程式設計介面：它們一起取代了 Rust 的 derive、屬性與類函式巨集，而不需要過程式（procedural）程式碼或原始的語彙單元操作。
 
 ```
 meta_block      ::= meta_attr visibility? meta_kind block
@@ -54,7 +54,7 @@ macro_rule      ::= "(" matcher ")" "=>" block
 | `#[impl_attribute(name)]`               | 使用者定義的屬性（項目包裝）               |
 | `#[impl_derive_attribute(Trait, attr)]` | 逐欄位的 derive 屬性                       |
 
-第四種，由呼叫觸發的 `macro`，定義於 [6.8.12](#6812-the-macro-form)。
+第四種，由呼叫觸發的 `macro`，定義於 [6.8.12](#6812-巨集形式)。
 
 ## 6.8.2. `#[impl_derive(TraitName)]` 使用者定義的 derive
 
@@ -165,11 +165,11 @@ struct User {
 
 這種形式接受兩個引數：被衍生的 Trait，以及標示逐欄位資訊的屬性。它在 derive 主體內讀取欄位的屬性資訊來分支。
 
-該屬性可以以 `attr(k, ..)` 的形式宣告它接受的鍵：`#[impl_derive_attribute(Nabion, nabion(deny_unknown_fields))]`。此時型別、其變體與其欄位上的每個 `#[attr(..)]` 都只能列出已宣告的鍵；其他任何東西都是錯誤，錯誤訊息會指出有效的鍵。`@Self.has_derive_key(k)` 從型別讀取某個鍵（[6.9.6](609-template-tokens.md#696-derive_attribute-tokens)）。
+該屬性可以以 `attr(k, ..)` 的形式宣告它接受的鍵：`#[impl_derive_attribute(Nabion, nabion(deny_unknown_fields))]`。此時型別、其變體與其欄位上的每個 `#[attr(..)]` 都只能列出已宣告的鍵；其他任何東西都是錯誤，錯誤訊息會指出有效的鍵。`@Self.has_derive_key(k)` 從型別讀取某個鍵（[6.9.6](609-template-tokens.md#696-derive_attribute-記號)）。
 
 ## 6.8.5. 主體（樣板區塊）
 
-在每種形式中，主體都是同時含有一般 Nabi 程式碼與樣板記號的樣板區塊（由屬性觸發的形式用 `@Self`、`@field`、`@for_fields`；巨集用 `@x`、`@rep`、`@for`、`@concat`，[6.8.12](#6812-the-macro-form)）。
+在每種形式中，主體都是同時含有一般 Nabi 程式碼與樣板記號的樣板區塊（由屬性觸發的形式用 `@Self`、`@field`、`@for_fields`；巨集用 `@x`、`@rep`、`@for`、`@concat`，[6.8.12](#6812-巨集形式)）。
 
 樣板記號的完整清單定義於[樣板記號與展開](609-template-tokens.md)。
 
@@ -190,7 +190,7 @@ pub(pkg) @attribute { ... }
 | `pub`（包括 `pub(pkg)`）      | 整個建置。其他套件以本套件的名稱撰寫它：`#[derive(dep::X)]` / `#[dep::x]` / `dep::x!(..)`（6.8.11） |
 | 私有                          | 定義該元區塊的檔案內                                       |
 
-meta 名稱沒有模組路徑：名稱屬於註冊它的元區塊所在的套件，在該套件中不帶前綴撰寫，在其他套件中則加上該套件的名稱（6.8.11）。元區塊的樣板看得到其模組看得到的東西：它所寫出的名稱在那裡解析並接受存取檢查（[6.9.9](609-template-tokens.md#names-in-an-expansion)）。元區塊或關鍵字處理器的 `#[cfg]` 以定義它之套件的 cfg 求值（其自身的功能特性，[9.10.4c](../009-tools/910-nabi-frontend.md#9104c-features)）。
+meta 名稱沒有模組路徑：名稱屬於註冊它的元區塊所在的套件，在該套件中不帶前綴撰寫，在其他套件中則加上該套件的名稱（6.8.11）。元區塊的樣板看得到其模組看得到的東西：它所寫出的名稱在那裡解析並接受存取檢查（[6.9.9](609-template-tokens.md#展開中的名稱)）。元區塊或關鍵字處理器的 `#[cfg]` 以定義它之套件的 cfg 求值（其自身的功能特性，[9.10.4c](../009-tools/910-nabi-frontend.md#9104c-feature)）。
 
 ## 6.8.7. 主體引導符（`@derive` / `@attribute`）
 
@@ -200,7 +200,7 @@ meta 名稱沒有模組路徑：名稱屬於註冊它的元區塊所在的套件
 |--------------|-----------------------------------------------------------|
 | `@derive`    | derive 定義（`impl_derive`、`impl_derive_attribute`）     |
 | `@attribute` | 屬性定義（`impl_attribute`）                              |
-| `@macro`     | 巨集定義（`impl_macro`）；其區塊容納規則（[6.8.12](#6812-the-macro-form)） |
+| `@macro`     | 巨集定義（`impl_macro`）；其區塊容納規則（[6.8.12](#6812-巨集形式)） |
 
 引導符決定哪些樣板記號在主體中有意義。例如 `@item` 只用於屬性，而匹配器記號（`@x: expr`、`@rep`）只用於 `@macro`。
 
@@ -245,7 +245,7 @@ Nabi 的選擇以表達力換取可預測性與除錯的便利。
 
 ## 6.8.11. 與註冊 / 可見性的結合
 
-帶有 `#[impl_derive(TraitName)]` 的元區塊註冊名為 `TraitName` 的 derive，`#[impl_attribute(name)]` 註冊 `#[name]` 屬性，`#[impl_macro(name)]` 註冊巨集 `name!`。編譯器在剖析之前從函式庫與使用者套件的每個檔案收集元區塊，因此無論定義位置或檔案順序為何都可以使用它們。若元區塊上的 `#[cfg]` 為假，該區塊不會被註冊（[6.9.9](609-template-tokens.md#relation-to-cfg)）。
+帶有 `#[impl_derive(TraitName)]` 的元區塊註冊名為 `TraitName` 的 derive，`#[impl_attribute(name)]` 註冊 `#[name]` 屬性，`#[impl_macro(name)]` 註冊巨集 `name!`。編譯器在剖析之前從函式庫與使用者套件的每個檔案收集元區塊，因此無論定義位置或檔案順序為何都可以使用它們。若元區塊上的 `#[cfg]` 為假，該區塊不會被註冊（[6.9.9](609-template-tokens.md#與-cfg-的關係)）。
 
 meta 名稱屬於註冊它的元區塊所在的套件。在該套件中，它不帶前綴撰寫（`#[derive(MyHash)]`、`#[x]`、`x!(..)`），或帶 `pkg::` 撰寫。其他套件在它之前寫出定義套件的名稱，即與該套件之路徑相同的根：`#[derive(dep::MyHash)]`、`#[dep::x]`、`dep::x!(..)`。限定詞只有套件；元區塊不是命名空間中的項目，也沒有模組路徑。
 
@@ -270,7 +270,7 @@ fn main() {
 }
 ```
 
-單獨的名稱解析為本套件的區塊，否則是 `use` 所匯入的那一個，否則是標準函式庫的（其 meta 名稱保持不帶前綴：`#[derive(Inspect)]`）。否則就是錯誤，錯誤訊息會列出限定形式：`` `log!` is package `json`'s macro, which a bare name does not reach ``，說明 ``write `json::log!`, or add `use json::log!;` ``。兩個套件的 `use` 都匯入該名稱時就有歧義，也是錯誤。在展開內，樣板所寫出的 meta 名稱從定義它的套件與檔案依相同規則解析，因此相依套件的巨集無論在哪裡展開都能繼續運作；使用處傳入的名稱則從使用處解析（[6.9.9](609-template-tokens.md#names-in-an-expansion)）。
+單獨的名稱解析為本套件的區塊，否則是 `use` 所匯入的那一個，否則是標準函式庫的（其 meta 名稱保持不帶前綴：`#[derive(Inspect)]`）。否則就是錯誤，錯誤訊息會列出限定形式：`` `log!` is package `json`'s macro, which a bare name does not reach ``，說明 ``write `json::log!`, or add `use json::log!;` ``。兩個套件的 `use` 都匯入該名稱時就有歧義，也是錯誤。在展開內，樣板所寫出的 meta 名稱從定義它的套件與檔案依相同規則解析，因此相依套件的巨集無論在哪裡展開都能繼續運作；使用處傳入的名稱則從使用處解析（[6.9.9](609-template-tokens.md#展開中的名稱)）。
 
 下列是錯誤：
 
@@ -294,7 +294,7 @@ fn main() {
 }
 ```
 
-`#[impl_macro(name)]` 註冊巨集 `name!`，與 `#[impl_derive(T)]` 註冊 derive `T` 完全相同。呼叫時，規則由上到下嘗試，第一個匹配器相符的規則會被展開；若沒有任何一個相符，就是呼叫處的編譯錯誤。與 derive 或屬性的名稱一樣，巨集的名稱屬於其套件：在那裡是 `name!`，在其他套件中則是 `dep::name!` 或 `use dep::name!;`（[6.8.11](#6811-combination-with-registrationvisibility)）。每次呼叫結尾的 `!` 標示它是巨集而不是函式。
+`#[impl_macro(name)]` 註冊巨集 `name!`，與 `#[impl_derive(T)]` 註冊 derive `T` 完全相同。呼叫時，規則由上到下嘗試，第一個匹配器相符的規則會被展開；若沒有任何一個相符，就是呼叫處的編譯錯誤。與 derive 或屬性的名稱一樣，巨集的名稱屬於其套件：在那裡是 `name!`，在其他套件中則是 `dep::name!` 或 `use dep::name!;`（[6.8.11](#6811-與註冊--可見性的結合)）。每次呼叫結尾的 `!` 標示它是巨集而不是函式。
 
 ```nabi
 #[impl_macro(twice)] pub @macro {
@@ -332,7 +332,7 @@ let p = twice!(compute());      // (the value, the same value)
 
 ### 重複
 
-`@rep` 比對子模式零次以上。`@for` 為每個元素轉錄一次；它與 `@for_fields`（[6.9.3](609-template-tokens.md#693-field-iteration)）是同一種迭代器，這裡是走訪擷取的序列。
+`@rep` 比對子模式零次以上。`@for` 為每個元素轉錄一次；它與 `@for_fields`（[6.9.3](609-template-tokens.md#693-欄位迭代)）是同一種迭代器，這裡是走訪擷取的序列。
 
 ```nabi
 #[impl_macro(list)] pub @macro {
@@ -390,7 +390,7 @@ nonzero_div!(i8, i16, i32, i64, u8, u16, u32, u64);
 
 ### 工具與衛生
 
-巨集保有每個 meta 定義的保證（[6.8.9](#689-no-token-stream-manipulation)），並加上呼叫處所帶來的細節：
+巨集保有每個 meta 定義的保證（[6.8.9](#689-不操作語彙單元串流)），並加上呼叫處所帶來的細節：
 
 - **衛生**是自動的：樣板所繫結的名稱（`let` 或 `for` 迴圈的變數）是全新的，不能擷取呼叫處的名稱，也不能被呼叫處擷取；而透過後設變數傳入的名稱在呼叫處解析。樣板所寫出的其他任何名稱，例如 `impl Tr for E` 標頭中的型別或匯入的 `Complex`，都指向巨集定義處的項目。
 - **位置範圍**：每個展開後的語彙單元都帶有呼叫的位置範圍，因此診斷會指向該呼叫，並把展開作為附註顯示。

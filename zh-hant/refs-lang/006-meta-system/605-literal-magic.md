@@ -23,7 +23,7 @@
 
 `#[literal]` 魔法把這個決定附加到 trait 或函式上。
 
-數值字面值的型別由語言而不是這個魔法決定（[1.6.2](../001-lexical/106-numeric-literals.md#162-type-suffixes)、[1.6.3](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)）。對數字而言，`#[literal]` 只處理語言沒有定義的後綴。標準函式庫註冊了其中一個，`i`（`2i` 是虛數 `Complex<f64>`，[stdlib 2.1.11](../../refs-standard-libraries/200-core/201-numbers.md#2111-numeric-traits-float-ordering-ranges-complex-numbers)），其優先度為 -1，好讓套件自己的 `i` 處理器勝出（6.5.5）。
+數值字面值的型別由語言而不是這個魔法決定（[1.6.2](../001-lexical/106-numeric-literals.md#162-型別後綴)、[1.6.3](../001-lexical/106-numeric-literals.md#163-無後綴的字面值)）。對數字而言，`#[literal]` 只處理語言沒有定義的後綴。標準函式庫註冊了其中一個，`i`（`2i` 是虛數 `Complex<f64>`，[stdlib 2.1.11](../../refs-standard-libraries/200-core/201-numbers.md#2111-numeric-traits-float-ordering-ranges-complex-numbers)），其優先度為 -1，好讓套件自己的 `i` 處理器勝出（6.5.5）。
 
 ## 6.5.2. 形式
 
@@ -67,7 +67,7 @@ fn matrix_literal<const C: usize>(rows: ...[f64; C]) -> Matrix { ... }   // [f64
 
 基本形式是 `#[literal(pattern)]`，其後可選地接 `, priority = N`（可以為負，預設為 0）（6.5.5）。處理器是一個函式，而符合該模式的字面值會變成對該函式的呼叫。
 
-註冊的範圍：標準函式庫中的註冊在每個套件中都可見。其他任何套件中的註冊適用於該套件自己的原始碼，而當其處理器是 `pub` 時，也適用於直接相依於它之每個套件的原始碼，就像運算子對應會到達其 trait 可見之處一樣（[6.7.8](607-operator-magic.md#678-visibility-of-mappings)）：相依於一個匯出 `#[literal(number "m")] pub fn meters(..)` 的 `units` 套件，會讓 `9.81m` 表示 `units::meters(9.81)`，不需要 `use`。不是 `pub` 的處理器留在其套件內，而一個套件的註冊絕不會到達相依於其相依者的套件。套件之間的衝突遵循 6.5.5（相依套件的 `i` 優於標準函式庫優先度 -1 的那一個；兩個相依套件以相同優先度註冊同一個後綴，會讓其使用有歧義）。編譯器在剖析之前收集註冊，因此無論在哪裡註冊，它們都會適用。處理器就像從它自己的模組被呼叫一樣（[6.9.9](609-template-tokens.md#names-in-an-expansion)），因此它可以有任何可見性：標準函式庫的處理器（`list_literal`、`set_literal`、`dict_literal` 以及六個 `range_*_literal`）是 `pub(pkg)`，在 `core` 之外指名其中之一是錯誤。
+註冊的範圍：標準函式庫中的註冊在每個套件中都可見。其他任何套件中的註冊適用於該套件自己的原始碼，而當其處理器是 `pub` 時，也適用於直接相依於它之每個套件的原始碼，就像運算子對應會到達其 trait 可見之處一樣（[6.7.8](607-operator-magic.md#678-對應的可見性)）：相依於一個匯出 `#[literal(number "m")] pub fn meters(..)` 的 `units` 套件，會讓 `9.81m` 表示 `units::meters(9.81)`，不需要 `use`。不是 `pub` 的處理器留在其套件內，而一個套件的註冊絕不會到達相依於其相依者的套件。套件之間的衝突遵循 6.5.5（相依套件的 `i` 優於標準函式庫優先度 -1 的那一個；兩個相依套件以相同優先度註冊同一個後綴，會讓其使用有歧義）。編譯器在剖析之前收集註冊，因此無論在哪裡註冊，它們都會適用。處理器就像從它自己的模組被呼叫一樣（[6.9.9](609-template-tokens.md#展開中的名稱)），因此它可以有任何可見性：標準函式庫的處理器（`list_literal`、`set_literal`、`dict_literal` 以及六個 `range_*_literal`）是 `pub(pkg)`，在 `core` 之外指名其中之一是錯誤。
 
 ## 6.5.3. 語法模式的格式
 
@@ -130,7 +130,7 @@ List<i64> instance
 | 單一擷取（`expr` 等）              | 一個值                                                                              |
 | `?` 分組內的擷取                   | 每個擷取一個值或 `none`                                                             |
 | `*` / `+` 重複                     | 元素放在一個引數中。每個元素是一個值，若有多個擷取則是元組，若重複巢狀則是陣列      |
-| 位於可變參數 `...T` 位置的重複     | 元素成為可變引數（[4.2.5](../004-functions/402-parameters.md#425-variadic-t)）    |
+| 位於可變參數 `...T` 位置的重複     | 元素成為可變引數（[4.2.5](../004-functions/402-parameters.md#425-可變參數t)）    |
 
 編譯器會檢查處理器簽章與擷取的數量及重複位置是否相符。
 
@@ -158,7 +158,7 @@ List<i64> instance
 
 由於 `{ ... }` 也用作[區塊運算式](../003-expressions/309-block-expressions.md)，下列規則區分它們。
 
-- 若有陳述式，例如 `{ expr ; ... }`，它就是[區塊](../000-meta/007-glossary.md#block)。
+- 若有陳述式，例如 `{ expr ; ... }`，它就是[區塊](../000-meta/007-glossary.md#區塊block)。
 - 若有 `:`，例如 `{ expr : expr , ... }`，它就是 Dict。
 - 若至少有一個逗號，例如 `{ expr , ... }`，它就是 Set。單一元素的 Set 寫成 `{ expr , }`。
 - `{ expr }` 一律是區塊，無論接收槽位的型別為何。
@@ -185,14 +185,14 @@ let p = (3.14, 2.71)@;        // → coord_literal(3.14, 2.71) → Coord
 | 模式                                                         | 處理方式                                                                   |
 |--------------------------------------------------------------|----------------------------------------------------------------------------|
 | 內建形狀（`[..]`、`{k: v}`、`{a, b}`、六種範圍形式）         | 剖析器依語言規則剖析，並呼叫為該形狀註冊的處理器                           |
-| `number "suffix"`                                            | 語言所沒有的數值後綴（`2i`，[1.6.2](../001-lexical/106-numeric-literals.md#162-type-suffixes)） |
+| `number "suffix"`                                            | 語言所沒有的數值後綴（`2i`，[1.6.2](../001-lexical/106-numeric-literals.md#162-型別後綴)） |
 | 以帶引號的語彙單元開頭的其他任何模式                         | 在每個運算式開頭先於內建語法嘗試；最長匹配                                 |
 
 後綴是黏在數字上的名稱，與語言自己的後綴相同（`2i`、`5kg`）。`%` 是餘數運算子，因此 `95%` 絕不是字面值，而 `number "%"` 是錯誤：百分比以具名的後綴撰寫，`#[literal(number "pct")]` 與 `95pct`。
 
 由一個帶引號的名稱後接 `string` 組成的模式，`#[literal("date" string)]`，是字串前綴：`date"2024-01-15"` 是以該字串呼叫其處理器。
 
-數字後綴與字串前綴都是名稱，在數字與字串形式中都一樣：每個都以識別字開頭字元開頭，且只含識別字字元（[1.4.1](../001-lexical/104-identifiers.md#141-format)），第一個字元之後也可以含數字（`x2`）。附綴是符號的註冊，例如 `number "+"`、`number "°"`、`number "$"`、`number "⊛"`、`"$" string` 或 `"€" string`，在該屬性處是錯誤，錯誤訊息會提示使用名稱（`pct`、`deg`、`usd`、`eur`）。數字後綴不得以 `e` 或 `E`（`2e3` 是指數）或 `_`（數字分隔符）開頭，而字串前綴不得是語言自己的字串前綴 `r`、`b`、`f` 或 `br`。
+數字後綴與字串前綴都是名稱，在數字與字串形式中都一樣：每個都以識別字開頭字元開頭，且只含識別字字元（[1.4.1](../001-lexical/104-identifiers.md#141-格式)），第一個字元之後也可以含數字（`x2`）。附綴是符號的註冊，例如 `number "+"`、`number "°"`、`number "$"`、`number "⊛"`、`"$" string` 或 `"€" string`，在該屬性處是錯誤，錯誤訊息會提示使用名稱（`pct`、`deg`、`usd`、`eur`）。數字後綴不得以 `e` 或 `E`（`2e3` 是指數）或 `_`（數字分隔符）開頭，而字串前綴不得是語言自己的字串前綴 `r`、`b`、`f` 或 `br`。
 
 作用域內沒有任何處理器接受的後綴，在該後綴處是錯誤；黏在字串上而沒有任何 `"name" string` 處理器接受的名稱（`dat"2024-01-15"`）也是。當作用域內註冊的某個後綴或前綴與它相近時（大小寫不同，或約三分之一的字元不同），錯誤訊息會指出那一個，``did you mean `10hz`?``，並附帶寫出它的修正。在編譯期拒絕其引數的處理器（`date"2024-13-01"`）在該字面值處回報。
 
@@ -210,8 +210,8 @@ let p = (3.14, 2.71)@;        // → coord_literal(3.14, 2.71) → Coord
 const fn list_literal<T>(items: ...T) -> List<T> { ... }
 ```
 
-- 若 `const fn` 處理器的所有引數都是常數，它會在編譯期求值（[5.2.4](../005-modules/502-const.md#524-constant-expressions-and-the-evaluator)）。其中的 panic 或 `throw` 是在該字面值位置的編譯錯誤。超過步數或呼叫深度限制（[0.4.4](../000-meta/004-language-vs-standard-libraries.md#044-implementation-limits)）的求值則不是錯誤：該呼叫留到程式執行時才執行（`[List::from_fn(1000000, f)]`）。
-- 若結果使用堆積（`List` 等），它只在編譯期檢查，在執行時建構（[5.2.5](../005-modules/502-const.md#525-const-fn-functions-evaluable-at-compile-time)）。
+- 若 `const fn` 處理器的所有引數都是常數，它會在編譯期求值（[5.2.4](../005-modules/502-const.md#524-常數運算式與求值器)）。其中的 panic 或 `throw` 是在該字面值位置的編譯錯誤。超過步數或呼叫深度限制（[0.4.4](../000-meta/004-language-vs-standard-libraries.md#044-實作限制)）的求值則不是錯誤：該呼叫留到程式執行時才執行（`[List::from_fn(1000000, f)]`）。
+- 若結果使用堆積（`List` 等），它只在編譯期檢查，在執行時建構（[5.2.5](../005-modules/502-const.md#525-const-fn能在編譯期求值的函式)）。
 - 若任何引數是執行時的值，它就是一般的呼叫。
 - 不是 `const fn` 的處理器在執行時被呼叫。
 

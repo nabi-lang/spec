@@ -146,7 +146,7 @@ let (head, ..tail) = items;             // split
 (a, b) = (b, a + b);             // reassigns a and b
 ```
 
-`let` 宣告，單獨的元組目標重新指派，這與 `let x = ..` 和 `x = ..` 的區分相同。規則見 [3.4.6](304-assignment.md#346-destructuring-assignment)。
+`let` 宣告，單獨的元組目標重新指派，這與 `let x = ..` 和 `x = ..` 的區分相同。規則見 [3.4.6](304-assignment.md#346-解構指派)。
 
 ## 3.15.13. 參數中的模式
 

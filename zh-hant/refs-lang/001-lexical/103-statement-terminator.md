@@ -38,9 +38,9 @@ Nabi 不採用 JavaScript 的 ASI（Automatic Semicolon Insertion）、Go 的行
 
 ## 1.3.4. 類區塊運算式陳述式
 
-類區塊運算式以 `}` 結尾：`if`、`match`、`loop`、`while`、`for`，或區塊（`{ }`、`unsafe { }`、帶標籤的區塊）。當它出現在陳述式位置時，結尾的 `;` 可以省略（與 Rust 的規則相同）。此時該運算式的值必須是 unit；要捨棄非 unit 的值，請加上 `;`。那裡出現非 unit 的值是錯誤（E0067），無論在函式主體中還是在進入檔案的頂層陳述式中都是如此（[4.16.2](../004-functions/416-entry-point.md#4162-meaning-of-top-level-statements-implicit-main)）。
+類區塊運算式以 `}` 結尾：`if`、`match`、`loop`、`while`、`for`，或區塊（`{ }`、`unsafe { }`、帶標籤的區塊）。當它出現在陳述式位置時，結尾的 `;` 可以省略（與 Rust 的規則相同）。此時該運算式的值必須是 unit；要捨棄非 unit 的值，請加上 `;`。那裡出現非 unit 的值是錯誤（E0067），無論在函式主體中還是在進入檔案的頂層陳述式中都是如此（[4.16.2](../004-functions/416-entry-point.md#4162-頂層陳述式的意義隱含-main)）。
 
-帶有區塊主體[尾隨閉包](../004-functions/408-trailing-closure.md)的呼叫（`retry(3) { .. }`、`xs.each |x| { .. }`），當閉包的 `}` 之後沒有東西接續它時，也不需要 `;` 就能結束陳述式（[4.8.8](../004-functions/408-trailing-closure.md)）。此時該呼叫是一個運算式陳述式，就像寫了 `;` 一樣：它的值不必是 unit，而且會被捨棄；`()`、`none` 或 `Never` 以外的值會和任何運算式陳述式一樣以 lint `unused_result` 發出警告（`_ = run { .. };` 或 `#[discardable]` 函式可讓它安靜，[6.2.11](../006-meta-system/602-built-in-attributes.md#6211-unused-results-unused_result-discardable-must_use)）。當呼叫位於陳述式開頭時，它和以關鍵字開頭的陳述式一樣在那個 `}` 結束，因此 `}` 之後的二元運算子會開始一個新的陳述式（見下文）。
+帶有區塊主體[尾隨閉包](../004-functions/408-trailing-closure.md)的呼叫（`retry(3) { .. }`、`xs.each |x| { .. }`），當閉包的 `}` 之後沒有東西接續它時，也不需要 `;` 就能結束陳述式（[4.8.8](../004-functions/408-trailing-closure.md)）。此時該呼叫是一個運算式陳述式，就像寫了 `;` 一樣：它的值不必是 unit，而且會被捨棄；`()`、`none` 或 `Never` 以外的值會和任何運算式陳述式一樣以 lint `unused_result` 發出警告（`_ = run { .. };` 或 `#[discardable]` 函式可讓它安靜，[6.2.11](../006-meta-system/602-built-in-attributes.md#6211-未使用的結果unused_resultdiscardablemust_use)）。當呼叫位於陳述式開頭時，它和以關鍵字開頭的陳述式一樣在那個 `}` 結束，因此 `}` 之後的二元運算子會開始一個新的陳述式（見下文）。
 
 ```nabi
 if ready { start(); }        // no ;
@@ -73,7 +73,7 @@ let u = { let y = 1 };           // u is unit, as with { let y = 1; }
 let s = { let y = 1; y + 1 };    // s is 2: the last expression is the value
 ```
 
-文法由[區塊運算式](../003-expressions/309-block-expressions.md#391-form)中的 `stmt` 定義。
+文法由[區塊運算式](../003-expressions/309-block-expressions.md#391-形式)中的 `stmt` 定義。
 
 ## 1.3.5. 與其他語彙單元相鄰
 

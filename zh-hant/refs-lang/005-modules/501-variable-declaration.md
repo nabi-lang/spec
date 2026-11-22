@@ -90,7 +90,7 @@ let g = 1;                             // ERROR (E0134): the first `g` is never 
 
 從舊繫結建立的串流視圖，在舊值移動之處結束，移入新繫結時也是如此（E0139，[stdlib 2.23.1](../../refs-standard-libraries/200-core/223-io.md#2231-read)）。
 
-要改變一個繫結的值而不是建立新的繫結，請不帶 `let` 地指派（5.1.2）。REPL 與 Jupyter 在儲存格的頂層遵循相同的規則（[9.7.3](../009-tools/907-jit-cells.md#redeclaration-of-the-same-name)）。
+要改變一個繫結的值而不是建立新的繫結，請不帶 `let` 地指派（5.1.2）。REPL 與 Jupyter 在儲存格的頂層遵循相同的規則（[9.7.3](../009-tools/907-jit-cells.md#同名的重新宣告)）。
 
 ## 5.1.5. 作用域：以區塊為單位
 
@@ -154,7 +154,7 @@ n = 2i32;                          // OK
 n = "hi";                          // ERROR: n is i32
 ```
 
-若初始化式沒有完全決定型別，推論會從變數作用域內之後的使用（把值傳到型別已決定之位置的使用）繼續（[2.10.2](../002-types/210-generics.md#type-argument-inference)）。若仍無法決定型別，就是編譯錯誤，必須標註型別。
+若初始化式沒有完全決定型別，推論會從變數作用域內之後的使用（把值傳到型別已決定之位置的使用）繼續（[2.10.2](../002-types/210-generics.md#型別引數推論)）。若仍無法決定型別，就是編譯錯誤，必須標註型別。
 
 ```nabi
 let x = none;                      // ERROR: type cannot be determined
@@ -192,13 +192,13 @@ let a = 1; let b = 2;              // two statements: OK
 
 `let` 是陳述式（見[運算式概觀](../003-expressions/README.md)中的轉換規則）。
 
-`let` 不允許出現在模組層級（模組層級的值槽位必須以 [`const`](502-const.md) 或 [`static`](503-static.md) 宣告）。例外是進入檔案 `main.nabi`，其頂層陳述式（包括 `let`）構成隱含 `main`（[4.16.2](../004-functions/416-entry-point.md#4162-meaning-of-top-level-statements-implicit-main)）；在其他任何模組中它們是錯誤（E0036）。它可以用在函式主體與區塊中。`if` / `match` / `loop` 等控制結構的主體本身就是區塊，因此也可以在那裡使用。`let` 不能直接出現在運算式位置，因為 `let` 是陳述式而不是運算式。
+`let` 不允許出現在模組層級（模組層級的值槽位必須以 [`const`](502-const.md) 或 [`static`](503-static.md) 宣告）。例外是進入檔案 `main.nabi`，其頂層陳述式（包括 `let`）構成隱含 `main`（[4.16.2](../004-functions/416-entry-point.md#4162-頂層陳述式的意義隱含-main)）；在其他任何模組中它們是錯誤（E0036）。它可以用在函式主體與區塊中。`if` / `match` / `loop` 等控制結構的主體本身就是區塊，因此也可以在那裡使用。`let` 不能直接出現在運算式位置，因為 `let` 是陳述式而不是運算式。
 
 ## 5.1.10. 以 `let` 宣告之變數的生命週期
 
 變數從宣告處存活到引入它的作用域結束為止。同一作用域中對其名稱的重新宣告（5.1.4）不會結束它。
 
-經由 `ref` 擷取（[擷取語意](../004-functions/406-capture-semantics.md)）被閉包擷取的變數，在該閉包物件存活期間也會額外保持存活。它由 [GC](../000-meta/007-glossary.md#gc-garbage-collector) 管理，因此使用者絕不需要手動釋放它。
+經由 `ref` 擷取（[擷取語意](../004-functions/406-capture-semantics.md)）被閉包擷取的變數，在該閉包物件存活期間也會額外保持存活。它由 [GC](../000-meta/007-glossary.md#gc垃圾回收器) 管理，因此使用者絕不需要手動釋放它。
 
 ## 5.1.11. `let` 的左側與[解構指派](../003-expressions/315-destructuring.md)
 

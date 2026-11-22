@@ -23,7 +23,7 @@ fn(str) throws (ParseError) -> i32  // typed
 fn(Path) throws (IoError)           // return type omitted: unit
 ```
 
-`unsafe fn(..) -> R` 是呼叫時需要 `unsafe` 之函式的型別。`unsafe fn` 與 C 函式作為值時具有這種型別。安全的 `fn` 值可以用在預期 `unsafe fn` 之處，反之則不行（[4.15](415-unsafe.md#unsafe-fn-types)）。
+`unsafe fn(..) -> R` 是呼叫時需要 `unsafe` 之函式的型別。`unsafe fn` 與 C 函式作為值時具有這種型別。安全的 `fn` 值可以用在預期 `unsafe fn` 之處，反之則不行（[4.15](415-unsafe.md#unsafe-fn-型別)）。
 
 `throws` 是函式型別的一部分，因此呼叫會擲回錯誤之函式型別的值也必須以 `try` 標示。`rethrows` 只用於函式宣告，絕不用於函式型別。
 
@@ -112,7 +112,7 @@ fn(i32) -> i32 + Send
 fn() + Send + Sync
 ```
 
-- 當閉包字面值出現在 `+ Send` 位置時，每個一般擷取都必須是 `Send + Sync`：一般擷取是建立者會繼續使用的控制代碼，因此兩個執行緒都能存取它。`[move x]` 擷取只屬於該閉包（[4.6.11](406-capture-semantics.md#4611-move-capture-the-move-x-capture-list)），因此只需要 `Send`。
+- 當閉包字面值出現在 `+ Send` 位置時，每個一般擷取都必須是 `Send + Sync`：一般擷取是建立者會繼續使用的控制代碼，因此兩個執行緒都能存取它。`[move x]` 擷取只屬於該閉包（[4.6.11](406-capture-semantics.md#4611-移動擷取move-x-擷取清單)），因此只需要 `Send`。
 - `+ Sync` 位置要求每個擷取都是 `Sync`，無論是否移動。`fn(..) + Send` 值不是 `Sync`，除非其型別這樣寫：它背後的閉包可能擁有一個不是 `Sync` 的移動擷取。會被多個執行緒同時呼叫的值（`static`、`par::*` 閉包）具有型別 `fn(..) + Send + Sync`。
 - 產生執行緒 / 任務的函式（`task::spawn_blocking`、`thread::spawn`、`par::Scope::spawn`）接受 `+ Send` 閉包，因此被產生的程式碼不與其建立者共享任何非 `Sync` 的值；`[move x]` 則改為交給它一個值。`par::for_each`、`par::map` 與 `par::filter` 接受 `+ Send + Sync` 閉包，由每個工作者呼叫。
 - 要使用 `fn` 型別的變數，該變數的型別必須已經具有相同的約束。`fn() -> T` 值不適合 `fn() -> T + Send` 位置。擷取了 `fn(..) + Send` 值的閉包，只有在把該值移入（`[move f]`），或該值的型別是 `+ Send + Sync` 時，才能跨越執行緒。
@@ -160,7 +160,7 @@ let f: fn() -> i32 = || panic("never");     // fn() -> ! value → fn() -> i32 p
 
 ### 函式值的表示方式
 
-函式值是 `{code, env}` 組合：`code` 是程式碼指標，`env` 是擷取環境。對具名函式的值而言，`env` 是 null。`extern "C"` 宣告中函式型別的參數具有型別 `extern "C" fn(..)`，即沒有 `env` 的 C 函式指標，它與 Nabi 函式值之間不能互相轉換（[5.9.4](../005-modules/509-extern-block.md#c-function-pointer-types)）。方法路徑（`S::new`、`i32::add`）也是函式值（[3.5.3](../003-expressions/305-member-access-and-method-call.md#method-path-values)）。
+函式值是 `{code, env}` 組合：`code` 是程式碼指標，`env` 是擷取環境。對具名函式的值而言，`env` 是 null。`extern "C"` 宣告中函式型別的參數具有型別 `extern "C" fn(..)`，即沒有 `env` 的 C 函式指標，它與 Nabi 函式值之間不能互相轉換（[5.9.4](../005-modules/509-extern-block.md#c-函式指標型別)）。方法路徑（`S::new`、`i32::add`）也是函式值（[3.5.3](../003-expressions/305-member-access-and-method-call.md#方法路徑值)）。
 
 ## 4.4.9. 函式型別之間的子型別關係（無）
 

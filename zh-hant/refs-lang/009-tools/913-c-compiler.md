@@ -1,6 +1,6 @@
 # 9.13. `nabicc`：C 編譯器
 
-工具鏈以它自己的 C 編譯器編譯 C。它以與 `nabi bindgen`（[9.10.8](910-nabi-frontend.md#nabi-bindgen-c-header-bindings)）相同的前端讀取 C，把它降階為 nabi-mir，並以 `nabic` 所使用的程式碼產生器與連結器編譯並連結它（[0.2.4](../000-meta/002-pipeline.md#024-code-generation)）。沒有其他 C 編譯器、組譯器或連結器參與，也不需要安裝任何一個。
+工具鏈以它自己的 C 編譯器編譯 C。它以與 `nabi bindgen`（[9.10.8](910-nabi-frontend.md#nabi-bindgenc-標頭檔繫結)）相同的前端讀取 C，把它降階為 nabi-mir，並以 `nabic` 所使用的程式碼產生器與連結器編譯並連結它（[0.2.4](../000-meta/002-pipeline.md#024-程式碼產生)）。沒有其他 C 編譯器、組譯器或連結器參與，也不需要安裝任何一個。
 
 前端也讀取 Objective-C 標頭檔，供 `ffi::objc::import` 與 `nabi bindgen -x objective-c` 使用（[stdlib 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-headers-ffiobjcimport)）：只有宣告（`@interface`、`@protocol`、方法、屬性），預先定義 `__OBJC__`、`__OBJC2__` 與 ARC 的功能，`#import` 每個檔案只讀取一次。`nabicc` 本身只編譯 C；`.m` 檔案不是 C 原始碼。
 
@@ -9,7 +9,7 @@
 C 編譯器有兩種行為相同的形式：
 
 - `nabicc`，獨立的執行檔。它安裝在工具鏈的 `bin/` 中，並作為代理程式安裝在 `$NABI_HOME/bin/` 中，位於 `nabi`、`nabic` 與 `nabils` 旁邊（[9.10.6](910-nabi-frontend.md#9106-toolchain)）。
-- `nabi cc`。`nabi` 以 `cc` 之後的引數原樣執行它自己工具鏈的 `nabicc`，就像它委派給 `nabic` 一樣（[9.10.1](910-nabi-frontend.md#9101-subcommands-and-global-options)）。`nabi` 的全域選項可以出現在 `cc` 之前；其後的每個字詞都屬於 C 編譯器。
+- `nabi cc`。`nabi` 以 `cc` 之後的引數原樣執行它自己工具鏈的 `nabicc`，就像它委派給 `nabic` 一樣（[9.10.1](910-nabi-frontend.md#9101-子指令與全域選項)）。`nabi` 的全域選項可以出現在 `cc` 之前；其後的每個字詞都屬於 C 編譯器。
 
 ```
 nabicc [options] <file>...
@@ -23,7 +23,7 @@ make CC="nabi cc"
 cmake -DCMAKE_C_COMPILER=nabicc -B build
 ```
 
-訊息會指出所執行的形式：`nabi cc: error: ..` 或 `nabicc: error: ..`。成功時結束碼為 `0`，原始碼編譯失敗、選項錯誤或連結失敗時為 `1`。編譯器內部錯誤以 [9.1.6](901-nabic-cli.md#916-exit-codes) 的結束碼結束。
+訊息會指出所執行的形式：`nabi cc: error: ..` 或 `nabicc: error: ..`。成功時結束碼為 `0`，原始碼編譯失敗、選項錯誤或連結失敗時為 `1`。編譯器內部錯誤以 [9.1.6](901-nabic-cli.md#916-結束碼) 的結束碼結束。
 
 ## 9.13.2. 語言
 
@@ -142,11 +142,11 @@ C89、C99、C11、C17 與 C23 被當作一種方言讀取：為其中任何一�
 
 ## 9.13.6. 程式碼產生
 
-每個 C 函式都被降階為 nabi-mir 中的 C 函式：以其 C 名稱、採用 C ABI 的主體，與帶有 `#[export_name]` 的 `extern "C" fn` 相同（[5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-definitions-exposed-externally)）。Nabi 的原生程式碼產生器編譯它，在 `-O1` 以上會套用 nabi-mir 最佳化器與程式碼產生器的最佳化（[9.2.10](902-aot-pipeline.md#9210-optimization-levels)）。整數算術遵循 C：沒有溢位檢查。
+每個 C 函式都被降階為 nabi-mir 中的 C 函式：以其 C 名稱、採用 C ABI 的主體，與帶有 `#[export_name]` 的 `extern "C" fn` 相同（[5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-定義對外公開)）。Nabi 的原生程式碼產生器編譯它，在 `-O1` 以上會套用 nabi-mir 最佳化器與程式碼產生器的最佳化（[9.2.10](902-aot-pipeline.md#9210-最佳化等級)）。整數算術遵循 C：沒有溢位檢查。
 
 呼叫慣例是目標的 C ABI，與 Nabi 的 `extern "C"` 所使用的相同（[8.6](../008-abi/806-calling-convention.md)），因此從 Nabi 呼叫由 `nabicc` 編譯的 C，或從該 C 呼叫 Nabi 的 `extern "C" fn`，在構造上就會相符。浮點數運算不會被縮約：`a * b + c` 是一次乘法與一次加法，絕不是融合乘加，與 Nabi 程式碼相同。
 
-`-g` 發出 DWARF（Linux、Apple、wasm32）或 CodeView（Windows）的行號表與型別。在 Apple 目標上，連結會把 DWARF 彙整成執行檔旁邊的 `.dSYM` 套組；在 Windows 上，連結器會寫出 PDB（[9.2.14](902-aot-pipeline.md#9214-linking-for-executables)）。
+`-g` 發出 DWARF（Linux、Apple、wasm32）或 CodeView（Windows）的行號表與型別。在 Apple 目標上，連結會把 DWARF 彙整成執行檔旁邊的 `.dSYM` 套組；在 Windows 上，連結器會寫出 PDB（[9.2.14](902-aot-pipeline.md#9214-連結執行檔)）。
 
 執行檔由 Nabi 的連結器對照目標的 C 函式庫（9.13.7）連結。在 ELF 目標上一律會加上 `-lm`。`-lc`、`-lpthread`、`-ldl` 與 `-lrt` 指名的是連結已經擁有的 C 函式庫部分，會被捨棄，`-nostdlib`、`-nodefaultlibs` 與 `-nostartfiles` 也是。在 Windows 上，工具鏈的啟動程式碼呼叫 C 的 `main(argc, argv, envp)`（不會呼叫 `wmain`），而連結提供 `atexit`。在 32 位元 Arm 與 wasm32 上，連結從工具鏈為該目標提供的執行環境封存檔取得編譯器輔助函式（`__aeabi_idiv`、`__multi3`……）。
 
@@ -157,7 +157,7 @@ C89、C99、C11、C17 與 C23 被當作一種方言讀取：為其中任何一�
 | 目標 | 標頭檔 | C 函式庫 |
 |--------|---------|-----------|
 | Apple | macOS SDK：`SDKROOT`，否則為 Xcode 的或 Command Line Tools 的 | libSystem |
-| Linux、glibc | 工具鏈為該目標提供的 sysroot `lib/nabi/targets/<target>/sysroot`：來自與其所連結之 C 執行環境（[9.2.14](902-aot-pipeline.md#9214-linking-for-executables)）相同之固定版本 Debian 套件的 glibc 2.36 標頭檔 | 隨附的 glibc 連結 stub |
+| Linux、glibc | 工具鏈為該目標提供的 sysroot `lib/nabi/targets/<target>/sysroot`：來自與其所連結之 C 執行環境（[9.2.14](902-aot-pipeline.md#9214-連結執行檔)）相同之固定版本 Debian 套件的 glibc 2.36 標頭檔 | 隨附的 glibc 連結 stub |
 | Linux、musl | 目前尚未隨附 sysroot：在 musl 主機上使用主機自己的，否則使用 `--sysroot <dir>` | 隨附的 musl |
 | Windows | 在 Windows 主機上，Windows SDK 的 UCRT 標頭檔與 Visual Studio 的 C 標頭檔：`INCLUDE`，否則為 `vswhere` 所找到的最新 Visual Studio 與 Windows SDK | UCRT，經由工具鏈自己的匯入函式庫與啟動程式碼；不連結任何 MSVC 函式庫 |
 | wasm32 | wasi-libc 的標頭檔，作為該目標的 sysroot 隨附 | 隨附的 wasi-libc |

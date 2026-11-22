@@ -88,7 +88,7 @@ struct Config {
 
 這些限制確保了確定性、可預測的成本以及 SemVer 安全性。若需要執行時初始化，請使用另外的工廠函式，即 `fn new() -> T` 模式。欄位預設值中的名稱在宣告該結構的模組作用域中解析，而不是在建立值的地方。衍生的 `Default` 也使用宣告的預設值（[stdlib 2.13.10](../../refs-standard-libraries/200-core/213-marker.md#21310-default---default-values)）。
 
-在結構所屬模組之外的字面值，只有在私有欄位有預設值時才能省略它（[5.6.8](../005-modules/506-visibility.md#568-visibility-of-struct-fields)）。`#[non_exhaustive]` 結構會為第一個版本之後新增的每個欄位提供預設值，讓其他套件中的字面值能繼續編譯（[6.2.10](../006-meta-system/602-built-in-attributes.md#6210-non_exhaustive-opting-out-of-external-exhaustiveness)）。
+在結構所屬模組之外的字面值，只有在私有欄位有預設值時才能省略它（[5.6.8](../005-modules/506-visibility.md#568-struct-欄位的可見性)）。`#[non_exhaustive]` 結構會為第一個版本之後新增的每個欄位提供預設值，讓其他套件中的字面值能繼續編譯（[6.2.10](../006-meta-system/602-built-in-attributes.md#6210-non_exhaustive-退出外部的窮盡性)）。
 
 ## 2.3.4. 欄位展開
 
@@ -115,15 +115,15 @@ struct Account {
 }
 ```
 
-元組結構的欄位也各自有自己的可見性（`struct S(pub i32, i32);`，預設為私有）。建構、`x.N` 存取與模式的規則，以及可見性等級的意義，見 [5.6.8](../005-modules/506-visibility.md#568-visibility-of-struct-fields)。
+元組結構的欄位也各自有自己的可見性（`struct S(pub i32, i32);`，預設為私有）。建構、`x.N` 存取與模式的規則，以及可見性等級的意義，見 [5.6.8](../005-modules/506-visibility.md#568-struct-欄位的可見性)。
 
 ## 2.3.6. 記憶體配置
 
-欄位依宣告順序以自然對齊配置，與 `#[repr(C)]` 相同（[6.2.2](../006-meta-system/602-built-in-attributes.md#622-repr-explicit-memory-representation)）。`packed` 與 `align(N)` 會改變這一點。
+欄位依宣告順序以自然對齊配置，與 `#[repr(C)]` 相同（[6.2.2](../006-meta-system/602-built-in-attributes.md#622-repr-明確的記憶體表示)）。`packed` 與 `align(N)` 會改變這一點。
 
 ## 2.3.7. 同一模組內不得重複定義
 
-在同一個模組中宣告兩個同名的結構是編譯錯誤。一個結構內欄位名稱重複也是錯誤。這條規則不論可見性等級都適用。元組結構或 unit 結構的建構子是一個值，位於函式、`const` 與 `static` 的命名空間中（[4.1.10](../004-functions/401-function-declaration.md#4110-no-duplicate-definitions-in-the-same-module)）：同一個模組中的 `struct Point(i32, i32);` 與名為 `Point` 的 `fn`、`const` 或 `static` 構成重複定義（`E0026`）。
+在同一個模組中宣告兩個同名的結構是編譯錯誤。一個結構內欄位名稱重複也是錯誤。這條規則不論可見性等級都適用。元組結構或 unit 結構的建構子是一個值，位於函式、`const` 與 `static` 的命名空間中（[4.1.10](../004-functions/401-function-declaration.md#4110-同一模組內不得重複定義)）：同一個模組中的 `struct Point(i32, i32);` 與名為 `Point` 的 `fn`、`const` 或 `static` 構成重複定義（`E0026`）。
 
 ## 2.3.8. 值語意
 
@@ -140,7 +140,7 @@ q.x = 9.0;                        // ps[0].x unchanged
 ps[0] = q;                        // written back
 ```
 
-對之後沒有任何東西讀取的複本進行欄位寫入，是編譯錯誤 `E0057`：那個變更會遺失。受檢查的複本包括以值傳遞的參數或 `self`、閉包以值傳遞的參數（`xs.for_each(|p| { p.x = 0.0; })`）、`for` 繫結，以及元素的 `let`（`let q = xs[i];`）。當之後沒有任何讀取、迴圈迭代、回傳或呼叫能看到該變更時，寫入就是錯誤；只用來餵給對同一變數另一次寫入的讀取不算數，而被閉包或協程區塊擷取的變數不受檢查。說明會指出應改寫成什麼：`ref self` 或 `ref` 參數（[4.7](../004-functions/407-ref-keyword.md)）、`for ref`（[3.13.3](../003-expressions/313-loop-expressions.md#for-ref-elements-as-places)）、回傳閉包的引數並使用結果，或把元素寫回去。
+對之後沒有任何東西讀取的複本進行欄位寫入，是編譯錯誤 `E0057`：那個變更會遺失。受檢查的複本包括以值傳遞的參數或 `self`、閉包以值傳遞的參數（`xs.for_each(|p| { p.x = 0.0; })`）、`for` 繫結，以及元素的 `let`（`let q = xs[i];`）。當之後沒有任何讀取、迴圈迭代、回傳或呼叫能看到該變更時，寫入就是錯誤；只用來餵給對同一變數另一次寫入的讀取不算數，而被閉包或協程區塊擷取的變數不受檢查。說明會指出應改寫成什麼：`ref self` 或 `ref` 參數（[4.7](../004-functions/407-ref-keyword.md)）、`for ref`（[3.13.3](../003-expressions/313-loop-expressions.md#for-ref元素作為位置)）、回傳閉包的引數並使用結果，或把元素寫回去。
 
 ```nabi
 impl Counter {

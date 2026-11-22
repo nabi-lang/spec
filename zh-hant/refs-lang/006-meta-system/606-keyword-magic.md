@@ -41,7 +41,7 @@ with(m) { critical(); }
 // ⇒ pkg::with_handler(m) { critical(); }     (handler + trailing closure)
 ```
 
-在註冊之前，`name` 可以作為一般識別字使用；註冊之後它是關鍵字語彙單元。因此把 `name` 用作宣告或成員的名稱是編譯錯誤。這些位置是 `let name`、`fn name`、`struct name`、`enum name`、`trait name`、`mod name`、`for name in`、`.name`、`::name`、`name:`（欄位 / 引數名稱）以及 `name::`。同樣的規則也適用於 f-string 的 `{..}` 內。原始識別字 `r#name`（[1.4.4](../001-lexical/104-identifiers.md#raw-identifiers)）一律是識別字，因此能在這些位置保留該名稱（`struct S { r#f16: str; }`、`s.r#f16`）。
+在註冊之前，`name` 可以作為一般識別字使用；註冊之後它是關鍵字語彙單元。因此把 `name` 用作宣告或成員的名稱是編譯錯誤。這些位置是 `let name`、`fn name`、`struct name`、`enum name`、`trait name`、`mod name`、`for name in`、`.name`、`::name`、`name:`（欄位 / 引數名稱）以及 `name::`。同樣的規則也適用於 f-string 的 `{..}` 內。原始識別字 `r#name`（[1.4.4](../001-lexical/104-identifiers.md#原始識別字)）一律是識別字，因此能在這些位置保留該名稱（`struct S { r#f16: str; }`、`s.r#f16`）。
 
 ## 6.6.4. 衝突檢查
 
@@ -91,7 +91,7 @@ package_b also registers #[keyword("with")]    → ERROR if both packages are us
 
 ## 6.6.9. 註冊的關鍵字絕不是上下文關鍵字
 
-[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords) 的上下文關鍵字（`type`、`in`、`static` 等）是語言定義的固定集合。註冊的關鍵字絕不是上下文關鍵字。
+[1.5.4](../001-lexical/105-keywords.md#154-上下文關鍵字) 的上下文關鍵字（`type`、`in`、`static` 等）是語言定義的固定集合。註冊的關鍵字絕不是上下文關鍵字。
 
 一旦註冊了 `#[keyword("with")]`，`with` 在編譯單元中的任何地方都被切分為關鍵字。註冊無法讓一個字詞只在某些位置是關鍵字。
 
@@ -136,7 +136,7 @@ with_lock(mutex) { critical(); }     // function + trailing closure
 
 關鍵字註冊在掃描預處理階段處理，先於其他 meta 處理（cfg、元區塊展開等）。
 
-由於這個順序，cfg 可以有條件地套用於關鍵字處理器本身，而關鍵字也可以用在元區塊主體內。元區塊或關鍵字處理器的 `#[cfg]` 以定義它之套件的 cfg 求值（其自身的功能特性，[9.10.4c](../009-tools/910-nabi-frontend.md#9104c-features)）。
+由於這個順序，cfg 可以有條件地套用於關鍵字處理器本身，而關鍵字也可以用在元區塊主體內。元區塊或關鍵字處理器的 `#[cfg]` 以定義它之套件的 cfg 求值（其自身的功能特性，[9.10.4c](../009-tools/910-nabi-frontend.md#9104c-feature)）。
 
 ## 6.6.14. 謹慎使用
 

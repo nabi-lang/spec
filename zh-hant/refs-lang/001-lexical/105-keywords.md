@@ -24,7 +24,7 @@ macro     defer     dyn       move      gen       do
 ```
 
 > [!NOTE]
-> `try?` 與 `try!` 不是另外的關鍵字，而是關鍵字 `try` 與標點 `?` / `!` 組成的語彙單元序列（[標點與運算子語彙單元](110-punctuation-and-operator-tokens.md#dot--question-mark)）。
+> `try?` 與 `try!` 不是另外的關鍵字，而是關鍵字 `try` 與標點 `?` / `!` 組成的語彙單元序列（[標點與運算子語彙單元](110-punctuation-and-operator-tokens.md#點--問號)）。
 
 `self`（小寫）指實例識別字（方法接收者），`Self`（大寫）指目前 `impl` 所針對之型別的名稱。`using` 是引入 RAII 風格資源管理區塊的關鍵字（[`using` 運算式](../003-expressions/317-using-expression.md)）。
 
@@ -48,9 +48,9 @@ macro     defer     dyn       move      gen       do
 |------------------------------------|------------------------------------------------------------------------|------|
 | `type`                             | 在項目開頭，後面接著識別字，再接著 `=` 或 `<` 時（型別別名）            | [2.6](../002-types/206-sum-types.md) |
 | `any`                              | 型別位置（`any`、`any Tr`）                                            | [2.2](../002-types/202-any-slot.md) |
-| `some`                             | 函式的回傳型別或參數型別，或型別別名的右側，位於約束之前（`-> some Tr`、`x: some Tr`、`type X = some Tr;`） | [4.1.13](../004-functions/401-function-declaration.md#4113-opaque-return-types-some-trait)、[4.1.15](../004-functions/401-function-declaration.md#4115-named-opaque-types-type-x--some-trait) |
-| `in`                               | `for pat in` 的 `in`；在運算式中，成員運算子 `in` / `!in`（`∈` / `∉`） | [3.13.3](../003-expressions/313-loop-expressions.md#3133-for-iterator-based-repetition)、[3.2.3](../003-expressions/302-precedence-and-associativity.md#323-precedence-and-associativity-table) |
-| `where`                            | 在函式簽章、`impl` 標頭，或 `struct` / `enum` / `union` / 型別別名標頭之後 | [2.10.4](../002-types/210-generics.md#2104-where-clauses) |
+| `some`                             | 函式的回傳型別或參數型別，或型別別名的右側，位於約束之前（`-> some Tr`、`x: some Tr`、`type X = some Tr;`） | [4.1.13](../004-functions/401-function-declaration.md#4113-不透明回傳型別some-trait)、[4.1.15](../004-functions/401-function-declaration.md#4115-具名不透明型別type-x--some-trait) |
+| `in`                               | `for pat in` 的 `in`；在運算式中，成員運算子 `in` / `!in`（`∈` / `∉`） | [3.13.3](../003-expressions/313-loop-expressions.md#3133-for以迭代器為基礎的重複)、[3.2.3](../003-expressions/302-precedence-and-associativity.md#323-優先順序與結合性表) |
+| `where`                            | 在函式簽章、`impl` 標頭，或 `struct` / `enum` / `union` / 型別別名標頭之後 | [2.10.4](../002-types/210-generics.md#2104-where-子句) |
 | `throws`、`rethrows`               | 在函式簽章的參數 `)` 之後                                              | [4.14](../004-functions/414-throws.md) |
 | `catch`、`finally`                 | 在運算式或區塊之後（後綴子句）                                         | [3.14](../003-expressions/314-error-control-flow.md) |
 | `const`                            | 在項目開頭，包括 `impl` / `trait` 主體中（`const` 項目、`const fn`），以及泛型參數清單中（`<const N: usize>`） | [5.2](../005-modules/502-const.md)、[2.11](../002-types/211-const-generics.md) |
@@ -84,7 +84,7 @@ trait Sub { fn sub(self, rhs: Self) -> Self; }  // in ordinary position: identif
 - `pkg::xxx`：從目前套件的根開始
 - `sup::xxx`：從父模組開始
 
-標準函式庫層級 `std`、`core` 與 `bare`（[0.5 標準函式庫層級](../000-meta/005-standard-libraries-tiers.md)）以及字詞 `nabi` 都不是關鍵字：區域名稱可以取用它們（[5.7.4](../005-modules/507-paths.md#574-std-core-bare-the-standard-library-tiers)）。
+標準函式庫層級 `std`、`core` 與 `bare`（[0.5 標準函式庫層級](../000-meta/005-standard-libraries-tiers.md)）以及字詞 `nabi` 都不是關鍵字：區域名稱可以取用它們（[5.7.4](../005-modules/507-paths.md#574-stdcorebare標準函式庫層級)）。
 
 由於 `pkg::name` 一律被解讀為根，把 `pkg` 或 `sup` 用作模組或型別（`struct`、`enum`、`union`、`trait`、型別別名、`mod`）的名稱是編譯錯誤。它們可以用作變數、函式、欄位與方法的名稱。
 
@@ -106,7 +106,7 @@ struct pkg { }                  // ERROR: cannot be a type name
 - `struct` 字面值與 `struct` 模式中的欄位名稱：`Ev { match: 1 }`、`Ev { match: m } => ...`
 - 具名引數的名稱：`f(type: 1)`。具名引數指稱一個參數，而參數名稱不能是保留關鍵字，因此實際上這裡只會出現上下文關鍵字。
 
-`self` 是例外，即使在這些位置也不能作為識別字。在其他位置，要把關鍵字用作名稱，就把它寫成原始識別字 `r#match`（[1.4.4](104-identifiers.md#raw-identifiers)）。
+`self` 是例外，即使在這些位置也不能作為識別字。在其他位置，要把關鍵字用作名稱，就把它寫成原始識別字 `r#match`（[1.4.4](104-identifiers.md#原始識別字)）。
 
 ```nabi
 struct Token { type: Kind; for: str; }   // OK: field name
@@ -117,18 +117,18 @@ struct S { self: i32; }                   // ERROR: self is the exception
 
 ## 1.5.6. 保留給日後使用的關鍵字
 
-1.5.1 的最後一列 `macro`、`defer`、`dyn`、`move`、`gen` 與 `do`，是尚無任何語法使用的保留關鍵字，唯一的例外是閉包擷取清單中的 `move`（`[move x]`，[4.6.11](../004-functions/406-capture-semantics.md#4611-move-capture-the-move-x-capture-list)）。保留它們，是為了讓之後的版本能在不破壞程式碼的前提下賦予它們語法，也讓從其他語言帶過來的寫法得到一個說明 Nabi 改寫成什麼的錯誤：
+1.5.1 的最後一列 `macro`、`defer`、`dyn`、`move`、`gen` 與 `do`，是尚無任何語法使用的保留關鍵字，唯一的例外是閉包擷取清單中的 `move`（`[move x]`，[4.6.11](../004-functions/406-capture-semantics.md#4611-移動擷取move-x-擷取清單)）。保留它們，是為了讓之後的版本能在不破壞程式碼的前提下賦予它們語法，也讓從其他語言帶過來的寫法得到一個說明 Nabi 改寫成什麼的錯誤：
 
 | 關鍵字  | 保留用途     | Nabi 目前的寫法        |
 |---------|--------------|------------------------|
 | `macro` | 巨集項目     | 元區塊的 `@macro`（[6.8](../006-meta-system/608-meta-blocks.md)） |
 | `defer` | 在作用域結束時執行的陳述式 | `using`（[3.17](../003-expressions/317-using-expression.md)）或 `finally`（[3.14](../003-expressions/314-error-control-flow.md)） |
 | `dyn`   | 無：保留它是為了讓 Rust 的 `dyn Trait` 得到錯誤 | `any Trait`（[2.2](../002-types/202-any-slot.md)、[2.12](../002-types/212-trait-as-type-banned.md)）；`dyn Trait`、`&dyn Trait` 與 `Box<dyn Trait>` 是編譯錯誤，其說明會寫出 `any Trait` |
-| `move`  | 在擷取清單之外，無：保留它是為了讓 Rust 的 `move \|x\| ..` 得到錯誤 | `[move x]` 擷取清單（[4.6.11](../004-functions/406-capture-semantics.md#4611-move-capture-the-move-x-capture-list)）；`move \|..\|` 是說明這一點的編譯錯誤 |
+| `move`  | 在擷取清單之外，無：保留它是為了讓 Rust 的 `move \|x\| ..` 得到錯誤 | `[move x]` 擷取清單（[4.6.11](../004-functions/406-capture-semantics.md#4611-移動擷取move-x-擷取清單)）；`move \|..\|` 是說明這一點的編譯錯誤 |
 | `gen`   | 產生器形式   | `yield fn`、`yield { .. }`、`yield \|\| ..`（[4.11](../004-functions/411-generators.md)） |
 | `do`    | 在主體之後才測試條件的迴圈 | `loop { ..; if !cond { break } }`（[3.13](../003-expressions/313-loop-expressions.md)） |
 
-與每個保留關鍵字一樣，它們在 1.5.5 的名稱位置之外不能作為名稱；拼寫成其中之一的識別字是編譯錯誤，其說明會指出原始識別字（[1.4.4](104-identifiers.md#raw-identifiers)）。
+與每個保留關鍵字一樣，它們在 1.5.5 的名稱位置之外不能作為名稱；拼寫成其中之一的識別字是編譯錯誤，其說明會指出原始識別字（[1.4.4](104-identifiers.md#原始識別字)）。
 
 ```nabi
 fn gen(n: i32) -> i32 { n }     // ERROR: `gen` is a reserved keyword, not a name

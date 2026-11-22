@@ -37,7 +37,7 @@ Nabi 以下列規則連結兩者。
 
 ## 控制結構是運算式
 
-每個控制結構（`if`、`match`、`loop`、`while`、`for`、`try`）也都是運算式；`try` 運算式的值見 [3.14.6](314-error-control-flow.md#3146-value-and-type-of-the-expression)。下面的範例展示控制結構直接產生值。
+每個控制結構（`if`、`match`、`loop`、`while`、`for`、`try`）也都是運算式；`try` 運算式的值見 [3.14.6](314-error-control-flow.md#3146-運算式的值與型別)。下面的範例展示控制結構直接產生值。
 
 ```nabi
 let a = if cond { x } else { y };
@@ -85,7 +85,7 @@ if cond { xs } else { [] }              // xs: List<f64> → result type: List<f
 
 ### 以槽位接收運算式的結果
 
-當變數槽位接收運算式的結果時，槽位的型別遵循[變數宣告](../005-modules/501-variable-declaration.md#517-type-annotations-and-type-inference)的規則。若給出型別，它就成為接收的型別；若省略，槽位的型別由運算式的結果型別推論。
+當變數槽位接收運算式的結果時，槽位的型別遵循[變數宣告](../005-modules/501-variable-declaration.md#517-型別標註與型別推論)的規則。若給出型別，它就成為接收的型別；若省略，槽位的型別由運算式的結果型別推論。
 
 ```nabi
 // no type annotation → slot is inferred from the expression's result type
@@ -133,7 +133,7 @@ let f: i32 = if cond { 1i32 } else { 2.0f64 };         // ERROR: f64 branch does
 <control-or-expr>;       // a statement that discards the expression's result
 ```
 
-以 `}` 結尾的運算式，例如 `if` / `match` / 迴圈 / 區塊，在陳述式位置可以省略 `;`（[1.3.4](../001-lexical/103-statement-terminator.md#134-block-like-expression-statements)）。
+以 `}` 結尾的運算式，例如 `if` / `match` / 迴圈 / 區塊，在陳述式位置可以省略 `;`（[1.3.4](../001-lexical/103-statement-terminator.md#134-類區塊運算式陳述式)）。
 
 區塊中的最後一個運算式是例外。
 
@@ -151,4 +151,4 @@ let f: i32 = if cond { 1i32 } else { 2.0f64 };         // ERROR: f64 branch does
 
 運算式在求值期間可能產生副作用，例如 I/O、變數重新指派或外部呼叫。求值順序由運算子優先順序與函式呼叫的求值順序決定，定義於後續文件。
 
-當副作用在單一運算式內形成相依時，該相依遵循明確的順序：由左至右、深度優先。編譯器不會重新排序。指派會先對其值求值，再對其位置求值（[3.4.7](304-assignment.md#347-evaluation-order)）。
+當副作用在單一運算式內形成相依時，該相依遵循明確的順序：由左至右、深度優先。編譯器不會重新排序。指派會先對其值求值，再對其位置求值（[3.4.7](304-assignment.md#347-求值順序)）。

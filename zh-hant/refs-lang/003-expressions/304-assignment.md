@@ -69,7 +69,7 @@ let x = 1;       // new declaration, 'let' required
 x = 2;           // reassignment, without 'let'
 ```
 
-建立新變數需要 `let`；再次寫入既有變數的槽位則不寫 `let`。對尚未宣告的名稱不帶 `let` 地指派是編譯錯誤。在同一個作用域中對已宣告的名稱寫 `let` 是重新宣告：它建立一個新的繫結，可以有另一個型別，並讓舊的槽位保持原樣（[5.1.4](../005-modules/501-variable-declaration.md#514-redeclaration-in-the-same-scope)）。確切規則定義於[變數宣告](../005-modules/501-variable-declaration.md)。
+建立新變數需要 `let`；再次寫入既有變數的槽位則不寫 `let`。對尚未宣告的名稱不帶 `let` 地指派是編譯錯誤。在同一個作用域中對已宣告的名稱寫 `let` 是重新宣告：它建立一個新的繫結，可以有另一個型別，並讓舊的槽位保持原樣（[5.1.4](../005-modules/501-variable-declaration.md#514-同一作用域中的重新宣告)）。確切規則定義於[變數宣告](../005-modules/501-variable-declaration.md)。
 
 ```nabi
 let n = "42";
@@ -95,7 +95,7 @@ x *= 2;
 arr[i] += 1;
 ```
 
-[標點與運算子語彙單元](../001-lexical/110-punctuation-and-operator-tokens.md)的所有複合指派語彙單元（`+=`、`-=`、`*=`、`**=`、`/=`、`%=`、`%%=`、`&=`、`|=`、`^=`、`<<=`、`>>=`）都遵循相同的模式。複合指派是陳述式，以 `;` 結束（在 `}` 之前可以省略，[1.3.4](../001-lexical/103-statement-terminator.md#134-block-like-expression-statements)）；它沒有值，不能出現在運算式位置（`let y = (x += 1);` 無法剖析）。原地廣播形式 `.=` `.+=` `.-=` `.*=` `./=` `.%=` `.%%=` `.**=` `.&=` `.|=` `.^=` `.<<=` `.>>=` 是同類的陳述式，有其自身的意義（[3.3.7](303-broadcast-operators.md#337-in-place-broadcast)）。
+[標點與運算子語彙單元](../001-lexical/110-punctuation-and-operator-tokens.md)的所有複合指派語彙單元（`+=`、`-=`、`*=`、`**=`、`/=`、`%=`、`%%=`、`&=`、`|=`、`^=`、`<<=`、`>>=`）都遵循相同的模式。複合指派是陳述式，以 `;` 結束（在 `}` 之前可以省略，[1.3.4](../001-lexical/103-statement-terminator.md#134-類區塊運算式陳述式)）；它沒有值，不能出現在運算式位置（`let y = (x += 1);` 無法剖析）。原地廣播形式 `.=` `.+=` `.-=` `.*=` `./=` `.%=` `.%%=` `.**=` `.&=` `.|=` `.^=` `.<<=` `.>>=` 是同類的陳述式，有其自身的意義（[3.3.7](303-broadcast-operators.md#337-原地廣播)）。
 
 ### 去糖與 lvalue 的求值
 
@@ -115,7 +115,7 @@ arr[expensive_index()] += 1;
 
 若 lvalue 是單純的變數或欄位，就原樣參照兩次；若它包含呼叫或計算，該部分會繫結到暫存值並只求值一次。這項保證防止帶有副作用的索引或方法被無意間呼叫兩次。lvalue 與 `rhs` 何者先求值取決於運算元型別（3.4.7）。
 
-lvalue 必須是位置（3.4.1）。`f() += 1` 與 `d.entry(k).or_insert(0) += 1` 是錯誤（E0140）：兩者都會更新暫存值。透過鎖守衛的 `get()` 寫入（`g.get().total += 1`）也是，因為 `get()` 回傳的是複本；說明會指出 `g.update(|v| { v.total += 1; v })`，或是整個值用 `g.set(v)`。要在字典中計數，請以帶預設值的方式索引（[3.6.1](306-indexing-and-slicing.md#361-indexing-arri)）：
+lvalue 必須是位置（3.4.1）。`f() += 1` 與 `d.entry(k).or_insert(0) += 1` 是錯誤（E0140）：兩者都會更新暫存值。透過鎖守衛的 `get()` 寫入（`g.get().total += 1`）也是，因為 `get()` 回傳的是複本；說明會指出 `g.update(|v| { v.total += 1; v })`，或是整個值用 `g.set(v)`。要在字典中計數，請以帶預設值的方式索引（[3.6.1](306-indexing-and-slicing.md#361-索引arri)）：
 
 ```nabi
 counts[w, default: 0] += 1;
@@ -207,7 +207,7 @@ for _ in 0..n {
 | `place op= value`，兩個運算元都是基本型別（整數、浮點數、`bool`、`char`、`str`） | 先 `value`，再 `place` |
 | `place op= value`，其他任何運算元 | 先 `place`，再 `value` |
 | `(p0, p1) = value`（3.4.6） | 先完整的 `value`，再 `p0`，再 `p1` |
-| `place .= value`（[3.3.7](303-broadcast-operators.md#337-in-place-broadcast)） | 先依原始碼順序的 `value` 各運算元，再 `place` |
+| `place .= value`（[3.3.7](303-broadcast-operators.md#337-原地廣播)） | 先依原始碼順序的 `value` 各運算元，再 `place` |
 | `place .op= value` | 先 `place`，再 `value` 的各運算元 |
 
 ```nabi
@@ -217,7 +217,7 @@ ms[f()] += g();         // ms: List<Money> with AddAssign: f(), then g()
 (xs[f()], ys[h()]) = (g(), k());   // g(), k(), then f(), then h()
 ```
 
-其他運算元的複合指派是對該位置呼叫 `OpAssign` 方法（3.4.3），因此它的位置先求值，就像任何方法呼叫中的接收者一樣（[4.2.8](../004-functions/402-parameters.md#428-parameter-evaluation-order)）；`.op=` 把其目標當作 `target .op value` 的第一個運算元讀取。值先求值時，會 panic 或擲回錯誤的值不會對位置的任何部分求值，而改變了位置所讀取之變數的值（透過 `[ref]` 擷取的索引、透過 `ref self` 方法的欄位），其改變會被位置看到：
+其他運算元的複合指派是對該位置呼叫 `OpAssign` 方法（3.4.3），因此它的位置先求值，就像任何方法呼叫中的接收者一樣（[4.2.8](../004-functions/402-parameters.md#428-參數求值順序)）；`.op=` 把其目標當作 `target .op value` 的第一個運算元讀取。值先求值時，會 panic 或擲回錯誤的值不會對位置的任何部分求值，而改變了位置所讀取之變數的值（透過 `[ref]` 擷取的索引、透過 `ref self` 方法的欄位），其改變會被位置看到：
 
 ```nabi
 let i = 0;

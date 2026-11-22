@@ -18,7 +18,7 @@ match expr {
 }
 ```
 
-`match` 運算式由 `match` 關鍵字、受檢值以及 `{ ... }` 主體組成。結構字面值不能出現在受檢值的頂層（[3.10.3](310-if-expression.md#struct-literals-in-condition-position)）。主體包含零或多個以逗號分隔的分支；每個分支由一個模式、`=>` 語彙單元（[標點與運算子語彙單元](../001-lexical/110-punctuation-and-operator-tokens.md)）與一個運算式組成。允許尾隨逗號。
+`match` 運算式由 `match` 關鍵字、受檢值以及 `{ ... }` 主體組成。結構字面值不能出現在受檢值的頂層（[3.10.3](310-if-expression.md#條件位置的結構字面值)）。主體包含零或多個以逗號分隔的分支；每個分支由一個模式、`=>` 語彙單元（[標點與運算子語彙單元](../001-lexical/110-punctuation-and-operator-tokens.md)）與一個運算式組成。允許尾隨逗號。
 
 ## 3.12.2. 分支主體
 

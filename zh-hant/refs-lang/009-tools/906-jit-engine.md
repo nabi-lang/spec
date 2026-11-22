@@ -1,6 +1,6 @@
 # 9.6. JIT 引擎
 
-本節定義 REPL 與 Jupyter 所使用的 JIT 執行引擎。它是[執行引擎與使用者介面](../000-meta/001-execution-modes.md)中定義之 JIT 引擎的實作。儲存格工作階段的規則由 [9.7.0](907-jit-cells.md#970-rules-of-the-cell-session) 定義。
+本節定義 REPL 與 Jupyter 所使用的 JIT 執行引擎。它是[執行引擎與使用者介面](../000-meta/001-execution-modes.md)中定義之 JIT 引擎的實作。儲存格工作階段的規則由 [9.7.0](907-jit-cells.md#970-儲存格工作階段的規則) 定義。
 
 ## 9.6.1. 結構：nabic 與 JIT 主機
 
@@ -14,7 +14,7 @@ nabic (front end)                         JIT host (one per session)
                                              → run the cell entry function once
 ```
 
-- 儲存格是程式碼產生器（[9.2.11](902-aot-pipeline.md#9211-code-generator)）以 `:opt` 所設定之等級產生、由主機對應並連結的目的檔；其 nabi-mir 不會被最佳化，因為之後的儲存格可能重新定義它會內嵌的東西（[9.2.10](902-aot-pipeline.md#9210-optimization-levels)）。REPL 在規格表明支援它的目標上執行（[0.6.5](../000-meta/006-platform-targets.md#065-target-specifications)，`repl`）：`x86_64` 與 `aarch64` 的 Linux（glibc）、macOS 與 Windows。
+- 儲存格是程式碼產生器（[9.2.11](902-aot-pipeline.md#9211-程式碼產生器)）以 `:opt` 所設定之等級產生、由主機對應並連結的目的檔；其 nabi-mir 不會被最佳化，因為之後的儲存格可能重新定義它會內嵌的東西（[9.2.10](902-aot-pipeline.md#9210-最佳化等級)）。REPL 在規格表明支援它的目標上執行（[0.6.5](../000-meta/006-platform-targets.md#065-目標規格)，`repl`）：`x86_64` 與 `aarch64` 的 Linux（glibc）、macOS 與 Windows。
 - 主機把程式碼放進可執行記憶體，對照執行環境、libc 與先前的儲存格解析其重定位，並執行儲存格的進入函式一次。
 - 主機匯出執行環境（`libnabir.a`）的每個符號，儲存格程式碼在主機行程中找到執行環境與 libc 的符號。
 
@@ -27,7 +27,7 @@ nabic (front end)                         JIT host (one per session)
 工作階段使用一個符號表。所有儲存格的定義都累積在那裡。
 
 - 當儲存格重新定義一個已定義的符號時，主機把該定義重新命名為 `<name>.r<cell>`。之後儲存格中的參照連結到最新的名稱。
-- 重新定義從下一個儲存格起生效（[9.7.0](907-jit-cells.md#970-rules-of-the-cell-session) 規則 3）。
+- 重新定義從下一個儲存格起生效（[9.7.0](907-jit-cells.md#970-儲存格工作階段的規則) 規則 3）。
 - 相依於被重新定義之符號的函式由 `nabic` 重新編譯。因此，即使是在重新定義之前編譯的程式碼，當之後的儲存格再次到達它時，也會使用新的定義（呼叫被重新定義之 `f` 的 `g`）。
 - 儲存格程式碼與舊定義在工作階段結束之前都不會被釋放。
 

@@ -50,7 +50,7 @@ let d = p.distance(other);
 同名的方法可能定義在多個地方。編譯器依下列順序尋找候選：
 
 1. 首先是定義在固有 `impl`（[`impl`](../002-types/209-impl.md)）中的方法。
-2. 然後是 trait `impl` 的方法，只限於左側型別所滿足、且在目前模組作用域內的 trait：`core` 的 trait（其中包括 prelude 的 trait：它們是內建型別本身的方法）、以 `use` 匯入的 trait（在模組或外層區塊中）、定義在同一個模組中的 trait，以及型別參數接收者的約束。`std` 或某個套件的 trait 需要 `use`（對 `(0..6).outcomes()` 寫 `use std::random::SampleRange;`），與 Rust 相同。透過型別寫出的關聯函式（`Point::origin()`）看得到這些 trait 以及其他所有標準函式庫的 trait。meta 樣板所寫出的方法名稱，以該樣板所屬模組作用域內的 trait 查找（[6.9.9](../006-meta-system/609-template-tokens.md#names-in-an-expansion)）。
+2. 然後是 trait `impl` 的方法，只限於左側型別所滿足、且在目前模組作用域內的 trait：`core` 的 trait（其中包括 prelude 的 trait：它們是內建型別本身的方法）、以 `use` 匯入的 trait（在模組或外層區塊中）、定義在同一個模組中的 trait，以及型別參數接收者的約束。`std` 或某個套件的 trait 需要 `use`（對 `(0..6).outcomes()` 寫 `use std::random::SampleRange;`），與 Rust 相同。透過型別寫出的關聯函式（`Point::origin()`）看得到這些 trait 以及其他所有標準函式庫的 trait。meta 樣板所寫出的方法名稱，以該樣板所屬模組作用域內的 trait 查找（[6.9.9](../006-meta-system/609-template-tokens.md#展開中的名稱)）。
 
 3. 當兩者都沒有該方法，而接收者的型別有一個不帶參數的方法 `iter()` 時，若 `iter()` 回傳的型別有 `m`，`x.m(args)` 就是 `x.iter().m(args)`。即使 `Ord::min` / `max` 存在（它們接受一個引數），不帶引數的 `x.min()` / `x.max()` 也以相同方式轉發。因此集合型別能回應迭代器方法：`xs.map(f).sum()`（[stdlib 2.7.14](../../refs-standard-libraries/200-core/207-iter.md#2714-collections-answer-iterator-methods)）。
 
@@ -126,9 +126,9 @@ let add = i32::add;                // fn(i32, i32) -> i32
 xs.map(Point::norm);               // fn(Point) -> f64
 ```
 
-- 帶有 `ref self` 或 `ref` 參數的方法不能作為值（[4.7.6](../004-functions/407-ref-keyword.md#476-ref-and-types)）。
+- 帶有 `ref self` 或 `ref` 參數的方法不能作為值（[4.7.6](../004-functions/407-ref-keyword.md#476-ref-與型別)）。
 - 會擲回錯誤的方法給出會擲回錯誤的函式型別（`fn(..) throws (E) -> R`）。
-- 對 `Tr::m`，或 `Self` 尚未決定之泛型型別的方法，函式型別由預期型別決定。沒有預期型別時，由之後的呼叫決定（`let f = Box::get; f(b)`，[2.10.2](../002-types/210-generics.md#type-argument-inference)）；若仍未決定，就是「type annotations needed」錯誤。
+- 對 `Tr::m`，或 `Self` 尚未決定之泛型型別的方法，函式型別由預期型別決定。沒有預期型別時，由之後的呼叫決定（`let f = Box::get; f(b)`，[2.10.2](../002-types/210-generics.md#型別引數推論)）；若仍未決定，就是「type annotations needed」錯誤。
 - 泛型方法的型別引數由 turbofish 或預期的函式型別決定。
 - `#[intrinsic]` 方法也可以作為值。
 

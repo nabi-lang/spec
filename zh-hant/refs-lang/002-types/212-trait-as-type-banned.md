@@ -55,11 +55,11 @@ fn report(e: any Error) -> str { f"{e}" }
 struct ConfigError { msg: str; cause: any Error | none; }
 ```
 
-`any Trait` 槽位只接受實作了 `Trait` 之型別的值（在編譯期檢查），並且可以在其值上呼叫 `Trait` 及其父 trait 的方法。呼叫依執行時標籤分派，成本模型與 [`any` 槽位](202-any-slot.md)相同。確切規則定義於 [2.2.10](202-any-slot.md#2210-constrained-any-any-trait)。
+`any Trait` 槽位只接受實作了 `Trait` 之型別的值（在編譯期檢查），並且可以在其值上呼叫 `Trait` 及其父 trait 的方法。呼叫依執行時標籤分派，成本模型與 [`any` 槽位](202-any-slot.md)相同。確切規則定義於 [2.2.10](202-any-slot.md#2210-受約束的-anyany-trait)。
 
 ### 4. 函式隱藏的回傳型別使用 `some Trait`
 
-函式可以回傳一個具體型別，而其呼叫者只能透過 trait 看到它：`-> some Iterator<Item = i32>`（[4.1.13](../004-functions/401-function-declaration.md#4113-opaque-return-types-some-trait)）；參數也可以接受一個這樣的型別：`x: some Display`（[4.1.14](../004-functions/401-function-declaration.md#4114-some-parameters)）。要把該型別存放在欄位中或在簽章中指稱它，請為它命名：`type Evens = some Iterator<Item = i32>;`（[4.1.15](../004-functions/401-function-declaration.md#4115-named-opaque-types-type-x--some-trait)）。分派和泛型一樣是靜態的：`some Tr` 是一個被隱藏的靜態型別，而 `any Tr` 容納任何具有 `Tr` 之型別的值，並在執行時分派。
+函式可以回傳一個具體型別，而其呼叫者只能透過 trait 看到它：`-> some Iterator<Item = i32>`（[4.1.13](../004-functions/401-function-declaration.md#4113-不透明回傳型別some-trait)）；參數也可以接受一個這樣的型別：`x: some Display`（[4.1.14](../004-functions/401-function-declaration.md#4114-some-參數)）。要把該型別存放在欄位中或在簽章中指稱它，請為它命名：`type Evens = some Iterator<Item = i32>;`（[4.1.15](../004-functions/401-function-declaration.md#4115-具名不透明型別type-x--some-trait)）。分派和泛型一樣是靜態的：`some Tr` 是一個被隱藏的靜態型別，而 `any Tr` 容納任何具有 `Tr` 之型別的值，並在執行時分派。
 
 ```nabi
 pub fn evens(n: i32) -> some Iterator<Item = i32> { (0..n).filter(|x| x % 2 == 0) }

@@ -10,7 +10,7 @@
 3. at the call:             f(ref x)
 ```
 
-在這三個位置中，它都有相同的意義：變更會反映到外部變數。`for ref x in xs` 以相同方式繫結串列或陣列的每個元素：變更會反映到該元素（[3.13.3](../003-expressions/313-loop-expressions.md#for-ref-elements-as-places)）。
+在這三個位置中，它都有相同的意義：變更會反映到外部變數。`for ref x in xs` 以相同方式繫結串列或陣列的每個元素：變更會反映到該元素（[3.13.3](../003-expressions/313-loop-expressions.md#for-ref元素作為位置)）。
 
 ## 4.7.2. 函式參數
 
@@ -32,7 +32,7 @@ fn swap(ref a: i32, ref b: i32) {
 
 - **寫回時機**：寫回不只發生在正常回傳時，也發生在被呼叫者擲回錯誤時。因此在 `throw` 之前所做的變更，呼叫者看得到。
 - **排他性**：呼叫進行期間，不得經由其他路徑存取同一個位置，編譯器會檢查這一點。把同一個位置以 `ref` 傳遞兩次，或在一個引數中以 `ref` 傳遞而在另一個引數中讀取它，是編譯錯誤（E0050）。不同的欄位（`ref p.x`、`ref p.y`）不重疊，是允許的。
-- **位置**：引數必須指稱一個變數或變數的欄位。元素（`inc(ref xs[2])`）是編譯錯誤：`` `ref` argument `n` of `inc` must name a variable or a field of one ``。請把元素複製到變數中，傳遞該變數，再把它存回去。`ref self` 接收者也可以是元素或 `Dict` 項目（[見下文](#meaning-of-ref-self---copy-in--copy-out)）。
+- **位置**：引數必須指稱一個變數或變數的欄位。元素（`inc(ref xs[2])`）是編譯錯誤：`` `ref` argument `n` of `inc` must name a variable or a field of one ``。請把元素複製到變數中，傳遞該變數，再把它存回去。`ref self` 接收者也可以是元素或 `Dict` 項目（[見下文](#ref-self-的意義copy-in--copy-out)）。
 
 ```nabi
 fn bump_then_fail(ref n: i32) throws {
@@ -79,7 +79,7 @@ let inc = [ref count] || { count = count + 1 };
 
 依照[擷取語意](406-capture-semantics.md)中定義的 `ref` 擷取，擷取清單中的 `ref` 變數存放在共享儲存格中（裝箱）。外層作用域與閉包讀寫同一個儲存格，因此閉包可以比變數的作用域存活得更久。
 
-`ref` 參數（包括 `ref self`）以相同方式擷取（`[ref n]`、`[ref self]`）。函式主體與閉包共享該參數的唯一儲存格，因此透過閉包所做的寫入是參數最終值的一部分，並會被寫回呼叫者（[4.7.2](#472-function-parameters)）。閉包在呼叫結束之後所做的寫入不會到達呼叫者。
+`ref` 參數（包括 `ref self`）以相同方式擷取（`[ref n]`、`[ref self]`）。函式主體與閉包共享該參數的唯一儲存格，因此透過閉包所做的寫入是參數最終值的一部分，並會被寫回呼叫者（[4.7.2](#472-函式參數)）。閉包在呼叫結束之後所做的寫入不會到達呼叫者。
 
 ```nabi
 fn bump(ref c: Counter) {
@@ -107,7 +107,7 @@ let c = Counter { count: 0 };
 c.increment();                    // no 'ref': handled automatically for method receivers
 ```
 
-這是方法接收者專用的規則，與一般的 `ref` 參數不同。方法呼叫語法本身就是自動[分派](../000-meta/007-glossary.md#dispatch)接收者的機制，因此額外的標記只會是視覺上的雜訊。
+這是方法接收者專用的規則，與一般的 `ref` 參數不同。方法呼叫語法本身就是自動[分派](../000-meta/007-glossary.md#分派dispatch)接收者的機制，因此額外的標記只會是視覺上的雜訊。
 
 ```nabi
 fn external_inc(ref c: Counter) { ... }
@@ -158,11 +158,11 @@ let r: SomePointerType = ref x;   // ERROR
 
 協程函式（`yield fn`、`async fn`、`async yield fn`）不能有 `ref` 參數；那樣做是編譯錯誤（E0023）。主體在呼叫回傳之後還會繼續執行，因此沒有可以寫回的時間點。
 
-唯一的例外是 `async` 方法上的 `ref self`（[4.12.13](412-async.md#41213-async-on-methods)）：future 持有接收者，寫回在 future 完成時發生。這樣的呼叫要在其所在之處 await（`await r.read_one()`）。
+唯一的例外是 `async` 方法上的 `ref self`（[4.12.13](412-async.md#41213-方法上的-async)）：future 持有接收者，寫回在 future 完成時發生。這樣的呼叫要在其所在之處 await（`await r.read_one()`）。
 
 出於同樣的理由，帶有 `ref` 參數的函式不能用作函式值（`let f = increment;` 是錯誤），閉包也不能有 `ref` 參數。函式型別 `fn(..)` 沒有表達 `ref` 的位置。
 
-若需要一等的參照（例如 [FFI](../000-meta/007-glossary.md#ffi-foreign-function-interface)），請使用[型別運算式](../002-types/201-type-expressions.md)的原始指標型別（`Ptr<T>` 與 `ConstPtr<T>`），它們屬於[標準函式庫層級](../000-meta/005-standard-libraries-tiers.md)的 `unsafe` 領域。
+若需要一等的參照（例如 [FFI](../000-meta/007-glossary.md#ffi外部函式介面)），請使用[型別運算式](../002-types/201-type-expressions.md)的原始指標型別（`Ptr<T>` 與 `ConstPtr<T>`），它們屬於[標準函式庫層級](../000-meta/005-standard-libraries-tiers.md)的 `unsafe` 領域。
 
 ## 4.7.8. 總結：依值傳遞與依 `ref` 傳遞
 

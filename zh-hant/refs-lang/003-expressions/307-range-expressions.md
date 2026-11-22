@@ -55,7 +55,7 @@ a..b..c             // ERROR: range operators are non-associative
 
 ### 呼叫引數中的 `..x`
 
-在呼叫引數位置，`..x` 不是範圍，而是展開（[4.2.6](../004-functions/402-parameters.md#426-spread-args)）。因此 `f(..5)` 是展開 `5` 的呼叫；要傳遞 `RangeTo`，請以括號包起來（`f((..5))`）。`..=x` 不是展開，因此即使在引數位置也是範圍（`f(..=5)` 傳遞 `RangeToInclusive`）。
+在呼叫引數位置，`..x` 不是範圍，而是展開（[4.2.6](../004-functions/402-parameters.md#426-展開args)）。因此 `f(..5)` 是展開 `5` 的呼叫；要傳遞 `RangeTo`，請以括號包起來（`f((..5))`）。`..=x` 不是展開，因此即使在引數位置也是範圍（`f(..=5)` 傳遞 `RangeToInclusive`）。
 
 ## 3.7.4. 用途
 

@@ -1,6 +1,6 @@
 # 7.6. 排程器
 
-Nabi 的排程器是 M:N [工作竊取](../000-meta/007-glossary.md#work-stealing)；本文件定義其結構。
+Nabi 的排程器是 M:N [工作竊取](../000-meta/007-glossary.md#工作竊取work-stealing)；本文件定義其結構。
 
 ## 7.6.1. 統一的工作者模型
 
@@ -13,11 +13,11 @@ worker = {
 }
 ```
 
-工作者不兼任 I/O 驅動程式；每個行程由單一的 reactor 執行緒處理它（[7.7.1](707-io-and-timer.md#771-io-multiplexing)）。STW 回收由啟動該回收的執行緒執行，並行標記則由標記執行緒執行（7.6.10）。
+工作者不兼任 I/O 驅動程式；每個行程由單一的 reactor 執行緒處理它（[7.7.1](707-io-and-timer.md#771-io-多工)）。STW 回收由啟動該回收的執行緒執行，並行標記則由標記執行緒執行（7.6.10）。
 
 ## 7.6.2. 工作竊取結構
 
-每個工作者都有一個區域雙端佇列（無鎖的 Chase-Lev 雙端佇列，[8.5.4 `nabi_deque_*`](../008-abi/805-extern-symbols.md#nabi_deque_---work-stealing-deque)）。
+每個工作者都有一個區域雙端佇列（無鎖的 Chase-Lev 雙端佇列，[8.5.4 `nabi_deque_*`](../008-abi/805-extern-symbols.md#nabi_deque_工作竊取雙端佇列)）。
 
 ```
 Worker:
@@ -66,7 +66,7 @@ Global injector:
 | `task::join([...])`     | 直到全部完成（`List<Task<T>>`，await）。                                 |
 | `task::timeout(d, t)`   | 時間限制。若超過，就在 `try await` 處得到 `TimeoutError`。               |
 | `thread::spawn(f)`      | 建立新的作業系統執行緒（1:1）。                                          |
-| `par::for_each(xs, f)`  | 平行的 for-each（在 join 處[阻塞](../000-meta/007-glossary.md#block)）。 |
+| `par::for_each(xs, f)`  | 平行的 for-each（在 join 處[阻塞](../000-meta/007-glossary.md#區塊block)）。 |
 | `par::scope { ... }`    | 平行的作用域（尾隨閉包）。                                               |
 
 由於這些不是關鍵字，`spawn` 或 `race` 之類的識別字可以在使用者程式碼中自由使用。
@@ -93,7 +93,7 @@ Global injector:
 它以環境變數 `NABIR_THREAD_PER_CORE=1` 切換；`NABIR_WORKERS=<n>` 設定 N（預設：線上的 CPU 數）。
 
 > [!NOTE]
-> 任務被固定在一個工作者上；其任務阻塞的工作者可能在另一個作業系統執行緒上繼續（[7.6.7](#767-automatic-detection-of-blocking-syscalls)），因此對被固定的任務而言，執行緒的身分並不穩定。
+> 任務被固定在一個工作者上；其任務阻塞的工作者可能在另一個作業系統執行緒上繼續（[7.6.7](#767-自動偵測阻塞的系統呼叫)），因此對被固定的任務而言，執行緒的身分並不穩定。
 
 ## 7.6.9. 優先順序 / 公平性
 
@@ -105,7 +105,7 @@ Global injector:
 
 ## 7.6.10. 整合的 GC 工作者角色
 
-STW 回收由透過配置或 `nabi_gc_collect` 啟動它的執行緒執行，其他工作者則在安全點停下等待（[7.4.3](704-barriers-and-roots.md#743-safepoint-polling)）。回收之後，工作者回去執行任務。並行標記由單一的獨立標記執行緒進行（[7.5](705-concurrent-collection.md)）。
+STW 回收由透過配置或 `nabi_gc_collect` 啟動它的執行緒執行，其他工作者則在安全點停下等待（[7.4.3](704-barriers-and-roots.md#743-安全點輪詢)）。回收之後，工作者回去執行任務。並行標記由單一的獨立標記執行緒進行（[7.5](705-concurrent-collection.md)）。
 
 ## 7.6.11. 排程器與協程
 
@@ -115,7 +115,7 @@ STW 回收由透過配置或 `nabi_gc_collect` 啟動它的執行緒執行，其
 
 ## 7.6.12. 產生任務的成本
 
-`task::spawn` 只需配置一個無堆疊協程框架就能完成。框架的大小取決於任務的區域變數，大約 64-256 位元組，並在 [TLAB](../000-meta/007-glossary.md#tlab-thread-local-allocation-buffer) 快速路徑上配置，因此成本接近於零。
+`task::spawn` 只需配置一個無堆疊協程框架就能完成。框架的大小取決於任務的區域變數，大約 64-256 位元組，並在 [TLAB](../000-meta/007-glossary.md#tlab執行緒區域配置緩衝區) 快速路徑上配置，因此成本接近於零。
 
 結果是，即使是數百萬個並行任務，也比作業系統執行緒輕量得多。
 

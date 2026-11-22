@@ -30,7 +30,7 @@ let p: Ptr<u8> | none;     // 64-bit pointer + none
 
 - 酬載中存放 GC 參照的 `enum` 沒有 niche。
 - `bool` 或浮點數純量上的非零 niche（`bool`，或 `#[niche(NAN)]` 浮點數包裝）只會透過單一欄位的包裝傳遞。多欄位的聚合型別會略過這樣的欄位，因此 `(i64, bool) | none` 有標籤，而 `(i64, char) | none` 使用 `char` 的 niche。
-- 當 niche 值為 0（null 指標、`extern "C" fn`、`NonZero`）時，該項的位元不變，因此這樣的 `T | none` 可以原樣作為可為 null 的值跨越 C ABI 傳遞（[5.9.4](../005-modules/509-extern-block.md#nullable-c-function-pointers-extern-c-fn---r--none)）。
+- 當 niche 值為 0（null 指標、`extern "C" fn`、`NonZero`）時，該項的位元不變，因此這樣的 `T | none` 可以原樣作為可為 null 的值跨越 C ABI 傳遞（[5.9.4](../005-modules/509-extern-block.md#可為-null-的-c-函式指標extern-c-fn---r--none)）。
 - 除 `none` 之外有兩項以上的和型別有標籤。
 
 ```nabi

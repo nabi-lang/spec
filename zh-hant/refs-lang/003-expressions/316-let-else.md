@@ -25,7 +25,7 @@ let value = compute() else {          // compute(): T | none
 // here value is a value of type T (if none, control left via the else above)
 ```
 
-與 `if let`（[3.10.5](310-if-expression.md#3105-if-let-combining-with-pattern-matching)）相同，可選值上的單純名稱取得去掉其 `none` 的值，只去掉一層；`let value: T = compute() else { .. }` 仍會在較寬的和型別中測試 `T`。
+與 `if let`（[3.10.5](310-if-expression.md#3105-if-let與模式比對結合)）相同，可選值上的單純名稱取得去掉其 `none` 的值，只去掉一層；`let value: T = compute() else { .. }` 仍會在較寬的和型別中測試 `T`。
 
 求值依下列方式進行。運算式的結果與模式比對；成功時，模式的繫結被引入目前的作用域，求值繼續到下一行。失敗時，對 `else` 主體求值，而由於 `else` 是發散的，控制在那一點離開。
 

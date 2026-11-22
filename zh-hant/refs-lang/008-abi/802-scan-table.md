@@ -1,6 +1,6 @@
 # 8.2. ScanTable 序列化格式
 
-[GC](../000-meta/007-glossary.md#gc-garbage-collector) 的標記階段必須追蹤每個物件的子指標，因此需要說明子指標位於哪些偏移的資料。這份資料稱為 ScanTable；本文件定義其序列化格式。
+[GC](../000-meta/007-glossary.md#gc垃圾回收器) 的標記階段必須追蹤每個物件的子指標，因此需要說明子指標位於哪些偏移的資料。這份資料稱為 ScanTable；本文件定義其序列化格式。
 
 ## 8.2.1. 目的
 
@@ -200,11 +200,11 @@ INTERIOR_REF 指向物件內部的某個位置（而不是其開頭）。
 
 ## 8.2.11. 變更的相容性
 
-`version` 欄位識別格式。格式的變更遵循[概觀](README.md#stability)中的穩定性方針。預先建置的套件只與建置它的 `nabic` 一起使用，因此程式所註冊的表與讀取它們的執行環境一律來自同一個工具鏈。
+`version` 欄位識別格式。格式的變更遵循[概觀](README.md#穩定性)中的穩定性方針。預先建置的套件只與建置它的 `nabic` 一起使用，因此程式所註冊的表與讀取它們的執行環境一律來自同一個工具鏈。
 
 ## 8.2.12. 執行環境保留的型別 id
 
-下列三個型別 id 由執行環境直接定義；編譯器不為它們註冊 ScanTable（[8.1.2](801-object-header-abi.md#812-type_id-offset-0-u32)）。
+下列三個型別 id 由執行環境直接定義；編譯器不為它們註冊 ScanTable（[8.1.2](801-object-header-abi.md#812-type_id偏移-0u32)）。
 
 | type id | 意義              | 掃描                                                    |
 |---------|-------------------|---------------------------------------------------------|
@@ -212,7 +212,7 @@ INTERIOR_REF 指向物件內部的某個位置（而不是其開頭）。
 | `2`     | 以字組追蹤的緩衝區 | 酬載的每個字組都被當作模糊字組（`AMBIGUOUS`）掃描       |
 | `3`     | weak 儲存格（`Weak<T>`） | 一個 `WEAK_REF` 字組（8.2.8）；由 `nabi_gc_weak_new` 建立 |
 
-id `1` 與 `2` 以 `nabi_gc_alloc_slow` 配置，型別 id 為 `1` 或 `2`（[8.5.1](805-extern-symbols.md#851-gc-area)）。標準函式庫的 [`GcBuf<T>`](../../refs-standard-libraries/200-core/209-collections.md#2912-gcbuft---raw-gc-buffer) 建立在這之上：編譯器以 id `1` 配置不含參照之 `T` 的緩衝區，因此無論數值資料多大，回收器都不必花時間在其上（存活的 256 MiB `List<f64>` 不會讓完整回收增加任何可量測的時間；同樣的位元組若是型別 `2` 的緩衝區，每次回收約需 140 ms），而且其中的任何數字都不會讓垃圾保持存活。`T` 容納參照的緩衝區會得到 `T` 的陣列 `ScanTable`（`version` 的位元 15，8.2.3），它只掃描參照槽位。型別 id `2` 只用於執行環境的字組緩衝區。
+id `1` 與 `2` 以 `nabi_gc_alloc_slow` 配置，型別 id 為 `1` 或 `2`（[8.5.1](805-extern-symbols.md#851-gc-區域)）。標準函式庫的 [`GcBuf<T>`](../../refs-standard-libraries/200-core/209-collections.md#2912-gcbuft---raw-gc-buffer) 建立在這之上：編譯器以 id `1` 配置不含參照之 `T` 的緩衝區，因此無論數值資料多大，回收器都不必花時間在其上（存活的 256 MiB `List<f64>` 不會讓完整回收增加任何可量測的時間；同樣的位元組若是型別 `2` 的緩衝區，每次回收約需 140 ms），而且其中的任何數字都不會讓垃圾保持存活。`T` 容納參照的緩衝區會得到 `T` 的陣列 `ScanTable`（`version` 的位元 15，8.2.3），它只掃描參照槽位。型別 id `2` 只用於執行環境的字組緩衝區。
 
 ## 8.2.13. 註冊時機
 
@@ -235,6 +235,6 @@ main(argc, argv):                // compiler-generated, C ABI
   → user entry point (4.16)
 ```
 
-GC 物件配置的慢速路徑是 `nabi_gc_alloc_slow(size, align, type_id)`（[7.2.3](../007-runtime/702-allocation.md#723-slow-path-nabi_gc_alloc_slow)），而編譯器指派的型別 id 從 `0x10000` 開始（[8.1.2](801-object-header-abi.md#812-type_id-offset-0-u32)）。
+GC 物件配置的慢速路徑是 `nabi_gc_alloc_slow(size, align, type_id)`（[7.2.3](../007-runtime/702-allocation.md#723-慢速路徑nabi_gc_alloc_slow)），而編譯器指派的型別 id 從 `0x10000` 開始（[8.1.2](801-object-header-abi.md#812-type_id偏移-0u32)）。
 
 表的位元組在程式中只出現一次：每個套件的 `nabi.register_types` 參照一個以表的內容命名的隱藏定義，連結時只保留一份，即使多個套件以各自的 id 註冊同一種配置也一樣。

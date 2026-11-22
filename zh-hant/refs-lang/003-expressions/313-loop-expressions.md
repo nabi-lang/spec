@@ -15,11 +15,11 @@ label_target ::= "'" identifier
 ```
 
 > [!NOTE]
-> `in` 是上下文關鍵字，只在 `for pat in` 位置是關鍵字（[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)）。
+> `in` 是上下文關鍵字，只在 `for pat in` 位置是關鍵字（[1.5.4](../001-lexical/105-keywords.md#154-上下文關鍵字)）。
 
 `for await` 的意義與用法定義於[串流](../004-functions/413-stream.md)。它從非同步串流逐一接收項目，並為每個項目執行主體。
 
-標籤（`'name:`）的意義定義於 [3.13.4 標籤](#3134-labels-controlling-nested-loops)。帶標籤的**區塊**（`'b: { ... }`）定義於[區塊運算式](309-block-expressions.md)。
+標籤（`'name:`）的意義定義於 [3.13.4 標籤](#3134-標籤控制巢狀迴圈)。帶標籤的**區塊**（`'b: { ... }`）定義於[區塊運算式](309-block-expressions.md)。
 
 ## 3.13.1. `loop`：無限重複
 
@@ -80,7 +80,7 @@ while let v = compute() {        // compute(): T | none; v: T
 while_let ::= "while" "let" pattern (":" type_expr)? "=" expr block
 ```
 
-每次迭代都會對運算式求值，並依與 `if let` 相同的規則比對（[3.10.5](310-if-expression.md#3105-if-let-combining-with-pattern-matching)），因此單純的名稱取得去掉 `none` 的值。比對成功時執行主體；否則迴圈結束。模式的繫結在主體中可見。
+每次迭代都會對運算式求值，並依與 `if let` 相同的規則比對（[3.10.5](310-if-expression.md#3105-if-let與模式比對結合)），因此單純的名稱取得去掉 `none` 的值。比對成功時執行主體；否則迴圈結束。模式的繫結在主體中可見。
 
 [模式](311-patterns.md)的每一種模式形式都可以使用；通常用來比對 `enum` 或和型別的變體。
 
@@ -92,7 +92,7 @@ for pattern in iter_expr {
 }
 ```
 
-`for` 關鍵字之後依序接一個模式、`in`、一個迭代運算式與一個區塊主體。迭代運算式必須是迭代器或可迭代的值。結構字面值不能出現在迭代運算式或 `while` 條件的頂層（[3.10.3](310-if-expression.md#struct-literals-in-condition-position)）。每次迭代時，下一個元素與模式比對，並在主體中繫結。
+`for` 關鍵字之後依序接一個模式、`in`、一個迭代運算式與一個區塊主體。迭代運算式必須是迭代器或可迭代的值。結構字面值不能出現在迭代運算式或 `while` 條件的頂層（[3.10.3](310-if-expression.md#條件位置的結構字面值)）。每次迭代時，下一個元素與模式比對，並在主體中繫結。
 
 ### 迭代的去糖
 
@@ -132,9 +132,9 @@ loop {
 }
 ```
 
-`try for` 的 `try` 只涵蓋迭代：可迭代運算式以及每一次 `next`。它不涵蓋主體；主體中會擲回錯誤的呼叫要以它自己的 `try` 標示，與其他任何地方相同（[3.14.2](314-error-control-flow.md#coverage)）。某一步的錯誤會送往迴圈的 `try` 所指之處：`try for` 送出函式，`try! for` 成為 panic，`try? for` 送到迴圈末端，此時迴圈的值是 `none`。迴圈之後的 `catch` 附加在整個 `try for` 運算式上（[4.14.10](../004-functions/414-throws.md#try-for)）。同樣的規則適用於走訪 `TryStream` 的 `try for await`（[stdlib 2.8.11](../../refs-standard-libraries/200-core/208-stream.md#2811-trystream---fallible-streams)）。
+`try for` 的 `try` 只涵蓋迭代：可迭代運算式以及每一次 `next`。它不涵蓋主體；主體中會擲回錯誤的呼叫要以它自己的 `try` 標示，與其他任何地方相同（[3.14.2](314-error-control-flow.md#涵蓋範圍)）。某一步的錯誤會送往迴圈的 `try` 所指之處：`try for` 送出函式，`try! for` 成為 panic，`try? for` 送到迴圈末端，此時迴圈的值是 `none`。迴圈之後的 `catch` 附加在整個 `try for` 運算式上（[4.14.10](../004-functions/414-throws.md#try-for)）。同樣的規則適用於走訪 `TryStream` 的 `try for await`（[stdlib 2.8.11](../../refs-standard-libraries/200-core/208-stream.md#2811-trystream---fallible-streams)）。
 
-存放在變數或變數欄位中的 `TryIterator` 會原地步進：上面的 `it` 就是那個位置，而不是複本，就像 `for await` 中的串流是原地輪詢的一樣（[4.13.5](../004-functions/413-stream.md#4135-the-for-await-form)）。由 `match` 分支（或 `if let`）在這樣的位置上繫結的也是如此：繫結指稱該位置，而迴圈讓該位置停在它停下之處。
+存放在變數或變數欄位中的 `TryIterator` 會原地步進：上面的 `it` 就是那個位置，而不是複本，就像 `for await` 中的串流是原地輪詢的一樣（[4.13.5](../004-functions/413-stream.md#4135-for-await-形式)）。由 `match` 分支（或 `if let`）在這樣的位置上繫結的也是如此：繫結指稱該位置，而迴圈讓該位置停在它停下之處。
 
 走訪存放在變數中之 `Iterator` 的一般 `for` 步進的是複本：迭代器的 `into_iter` 就是迭代器本身，而上面的 `it` 是一個新的變數。該變數保有自己的位置，因此 `let r = 0..3; for i in r { .. } for i in r { .. }` 會走訪 `r` 兩次。要從迴圈停下之處繼續，請手動步進迭代器（`while let x: T = it.next() { .. }`），它作用於變數本身。
 
@@ -168,7 +168,7 @@ for ref p in ps {
 println(f"{ps[1].x}");                    // 0
 ```
 
-一般的 `for` 繫結每個元素的複本：結構是值（[2.3.8](../002-types/203-struct.md#238-value-semantics)），因此對繫結的欄位寫入不會改變迴圈外的任何東西，而且在沒有任何東西讀取它時是編譯錯誤（E0057）。`for ref x in xs` 則把 `x` 繫結到每個元素本身作為位置。讀取 `x` 就是讀取元素；`x = v`、`x.f = v`、`x.f += v` 以及呼叫 `ref self` 方法（`x.m()`，[4.7](../004-functions/407-ref-keyword.md)）會寫入它。模式是單一名稱。
+一般的 `for` 繫結每個元素的複本：結構是值（[2.3.8](../002-types/203-struct.md#238-值語意)），因此對繫結的欄位寫入不會改變迴圈外的任何東西，而且在沒有任何東西讀取它時是編譯錯誤（E0057）。`for ref x in xs` 則把 `x` 繫結到每個元素本身作為位置。讀取 `x` 就是讀取元素；`x = v`、`x.f = v`、`x.f += v` 以及呼叫 `ref self` 方法（`x.m()`，[4.7](../004-functions/407-ref-keyword.md)）會寫入它。模式是單一名稱。
 
 `xs` 是 `List`、`SliceMut` 或陣列。陣列寫入其存放之處，因此它必須是變數或欄位，而不是暫存值。其他任何可迭代的東西都是編譯錯誤（E0068）：它們的項目不是位置。迴圈等價於：
 

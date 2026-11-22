@@ -46,7 +46,7 @@ fn validate(s: str) -> bool {
 
 [函式宣告](401-function-declaration.md)中定義的回傳型別，必須在主體的每條回傳路徑上一致。回傳路徑包括主體最後一個運算式的型別，以及每個 `return expr;` 中 `expr` 的型別。
 
-宣告的回傳型別是每條路徑的接收型別，與[運算式概觀](../003-expressions/README.md#branch-result-types)的分支結果規則相同：每條路徑都必須與之相容，而當宣告的型別是能接受每一條路徑的和型別時，型別不同的路徑也沒有問題。
+宣告的回傳型別是每條路徑的接收型別，與[運算式概觀](../003-expressions/README.md#分支的結果型別)的分支結果規則相同：每條路徑都必須與之相容，而當宣告的型別是能接受每一條路徑的和型別時，型別不同的路徑也沒有問題。
 
 ```nabi
 fn maybe_int(cond: bool) -> i32 | str {
@@ -57,7 +57,7 @@ fn maybe_int(cond: bool) -> i32 | str {
 
 ## 4.3.4. 省略回傳型別
 
-如[函式宣告](401-function-declaration.md)所示，回傳型別可以省略，此時由主體推論。在 `pub` 或 `pub(pkg)` 函式上，缺少 `->` 則表示 `()`（[4.1.3](401-function-declaration.md#413-omitting-the-return-type)）。
+如[函式宣告](401-function-declaration.md)所示，回傳型別可以省略，此時由主體推論。在 `pub` 或 `pub(pkg)` 函式上，缺少 `->` 則表示 `()`（[4.1.3](401-function-declaration.md#413-省略回傳型別)）。
 
 ```nabi
 fn double(x: i32) {

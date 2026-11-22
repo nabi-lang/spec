@@ -178,7 +178,7 @@ unsafe impl Zeroable for i32 {
 
 ### `unsafe impl`
 
-`unsafe impl` 實作 `unsafe trait`，或手動實作自動標記 trait `Send` / `Sync`。它標示作者保證該 trait 所承諾之事（對 `Send` / `Sync` 而言，即該型別可以安全地跨越執行緒邊界）。對其他任何 trait 使用 `unsafe impl` 是編譯錯誤（[2.9.1](../002-types/209-impl.md#291-two-forms)）。
+`unsafe impl` 實作 `unsafe trait`，或手動實作自動標記 trait `Send` / `Sync`。它標示作者保證該 trait 所承諾之事（對 `Send` / `Sync` 而言，即該型別可以安全地跨越執行緒邊界）。對其他任何 trait 使用 `unsafe impl` 是編譯錯誤（[2.9.1](../002-types/209-impl.md#291-兩種形式)）。
 
 ```nabi
 unsafe impl Send for Handle { }
@@ -188,7 +188,7 @@ unsafe impl Send for Handle { }
 
 `unsafe` 不表示編譯器*放棄*安全性檢查。它表示下列兩項責任轉移給呼叫者：
 
-1. **記憶體安全**：不造成懸置指標、未對齊存取或資料競爭等未定義行為（[4.15.8](#4158-undefined-behavior)）的責任。
+1. **記憶體安全**：不造成懸置指標、未對齊存取或資料競爭等未定義行為（[4.15.8](#4158-未定義行為)）的責任。
 2. **前置條件**：滿足 `unsafe fn` 文件所承諾之使用條件（例如指標指向有效物件、長度在緩衝區之內）的責任。
 
 `unsafe { ... }` 是呼叫者接受這兩項責任的可見訊號，因此在程式碼審查時，危險的區域一眼就能看出。
@@ -237,7 +237,7 @@ Nabi 原樣沿用 Rust 的模型。危險區域的視覺區隔一致地以單一
 
 執行緒：
 
-12. 資料競爭（[7.9.4](../007-runtime/709-memory-model.md#794-data-races)）：透過原始指標或 `GcBuf`、虛假的 `unsafe impl Send` / `Sync`、對其他東西也能存取的值使用 `Mutex::new_unshared`、在 `unsafe` 內略過交接檢查，或在 `env::set_var` 執行期間存取環境的 C 程式碼（[stdlib 3.5](../../refs-standard-libraries/300-std/305-env.md)）。
+12. 資料競爭（[7.9.4](../007-runtime/709-memory-model.md#794-資料競爭)）：透過原始指標或 `GcBuf`、虛假的 `unsafe impl Send` / `Sync`、對其他東西也能存取的值使用 `Mutex::new_unshared`、在 `unsafe` 內略過交接檢查，或在 `env::set_var` 執行期間存取環境的 C 程式碼（[stdlib 3.5](../../refs-standard-libraries/300-std/305-env.md)）。
 
 外部程式碼：
 

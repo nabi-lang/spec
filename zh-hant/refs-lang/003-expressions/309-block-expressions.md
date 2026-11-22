@@ -18,14 +18,14 @@ block_like_expr ::= block | if_expr | match_expr | loop_expr
 tail_expr   ::= expr            // no trailing ";"
 ```
 
-區塊可以宣告 `fn`（[4.10](../004-functions/410-nested-functions.md)）、`const`（[5.2.2](../005-modules/502-const.md#522-permitted-positions)）、`use`、`struct`、`enum`、`union`、`trait`、`impl`、`type` 與 `static` 項目。`mod` 與 `extern` 項目只能在模組層級宣告（[5.4.10](../005-modules/504-modules.md#5410-where-module-declarations-may-appear)、[5.9.8](../005-modules/509-extern-block.md#598-position-of-the-extern-block-itself)）；在區塊中宣告它們是編譯錯誤（E0017）。
+區塊可以宣告 `fn`（[4.10](../004-functions/410-nested-functions.md)）、`const`（[5.2.2](../005-modules/502-const.md#522-允許的位置)）、`use`、`struct`、`enum`、`union`、`trait`、`impl`、`type` 與 `static` 項目。`mod` 與 `extern` 項目只能在模組層級宣告（[5.4.10](../005-modules/504-modules.md#5410-模組宣告可以出現的位置)、[5.9.8](../005-modules/509-extern-block.md#598-extern-區塊本身的位置)）；在區塊中宣告它們是編譯錯誤（E0017）。
 
 在區塊中宣告的項目遵循下列規則：
 
 - **作用域。** 項目的名稱在整個區塊中可見，無論在其宣告之前或之後，也在該區塊中宣告的項目內部可見。在區塊內，它會隱藏在區塊外宣告的同名、同命名空間項目；內層區塊中的 `use` 又會隱藏它。在區塊之外無法指稱它。同一個區塊中同名、同命名空間的兩個項目，或一個項目與一個同名的 `use`，是編譯錯誤（E0026 與 E0032，與模組層級相同）。
 - **它看得到什麼。** 區塊中的項目看得到其模組的項目，以及其區塊和外圍區塊的項目與 `use` 宣告。它不能使用周圍程式碼的區域變數或參數（`let`、函式或閉包參數、模式繫結）或泛型參數；那樣做是編譯錯誤（E0039）。值透過欄位與參數傳給它；型別透過它自己的泛型參數傳給它。區塊中的 glob `use p::*`，在那裡宣告之項目的標頭（欄位型別、簽章、`const` / `static` 初始化式、別名、變體）與其主體中都看得到，優先順序與函式主體中相同：模組自己的項目勝過 glob，內層區塊的 glob 勝過外層的，而泛型參數勝過兩者。
 - **一個項目。** 區塊中的項目無論其區塊執行多少次，都是一個項目：泛型函式中的項目不會對該函式的參數泛型；區塊中的 `static` 是一個槽位，只初始化一次；區塊中的 `const` 只有一個值。
-- **一致性。** 區塊中的 `impl` 與同一模組的模組層級 `impl` 一樣參與一致性與孤兒規則（[2.9.5](../002-types/209-impl.md#295-orphan-rule)）；其方法與 trait 實作在任何地方都成立。它可以為外部型別實作外部 trait。
+- **一致性。** 區塊中的 `impl` 與同一模組的模組層級 `impl` 一樣參與一致性與孤兒規則（[2.9.5](../002-types/209-impl.md#295-孤兒規則)）；其方法與 trait 實作在任何地方都成立。它可以為外部型別實作外部 trait。
 - **可見性。** 區塊中的項目沒有自己的可見性：在其上寫 `pub` 是編譯錯誤（E0016）。在區塊中宣告之型別的欄位與方法，在其模組內遵循一般規則。
 - **名稱。** `type_name`、`Debug` 與偵錯資訊以寫出的名稱指稱區塊中的項目（`S`）；診斷也是如此，而當有另一個項目同名時，會加上宣告它的函式（`f::S`）。
 
@@ -116,9 +116,9 @@ let b = { x; };         // b is unit
 不帶終止符結束的運算式成為區塊的值，而帶有終止符結束的運算式其結果會被捨棄，區塊的值是 unit。這種區分與[陳述式終止符](../001-lexical/103-statement-terminator.md)的規則一致。
 
 - 區塊中間不帶 `;` 的類區塊陳述式必須具有型別 `()`。
-- `}` 之前的最後一個陳述式可以省略其 `;`，意義與寫出相同（[1.3.4](../001-lexical/103-statement-terminator.md#134-block-like-expression-statements)）：`{ x += 1 }` 與 `{ let y = x }` 的值是 unit，與 `{ x += 1; }` 和 `{ let y = x; }` 相同。
+- `}` 之前的最後一個陳述式可以省略其 `;`，意義與寫出相同（[1.3.4](../001-lexical/103-statement-terminator.md#134-類區塊運算式陳述式)）：`{ x += 1 }` 與 `{ let y = x }` 的值是 unit，與 `{ x += 1; }` 和 `{ let y = x; }` 相同。
 - `;;` 是空陳述式。
-- 類區塊運算式之後的成員存取（`.`）與 `?` 會延續運算式（`match v { .. }.len();`）。在陳述式位置，其 `}` 之後的 `(` 或 `[` 會開始一個新的運算式（[1.3.4](../001-lexical/103-statement-terminator.md#134-block-like-expression-statements)）；在較大的運算式內部，例如 `let f = if c { g } else { h }(x);`，它是呼叫或索引。
+- 類區塊運算式之後的成員存取（`.`）與 `?` 會延續運算式（`match v { .. }.len();`）。在陳述式位置，其 `}` 之後的 `(` 或 `[` 會開始一個新的運算式（[1.3.4](../001-lexical/103-statement-terminator.md#134-類區塊運算式陳述式)）；在較大的運算式內部，例如 `let f = if c { g } else { h }(x);`，它是呼叫或索引。
 
 ### 等價形式：最後一個運算式與明確的 `return` / `break`
 
@@ -223,7 +223,7 @@ let result = 'b: {
 };
 ```
 
-標籤語彙單元的形式（`'identifier:`）與 [3.13.4 標籤](313-loop-expressions.md#3134-labels-controlling-nested-loops)中的相同。`break 'name value` 以給出的值離開該帶標籤的區塊。若 `continue 'name` 的 `'name` 指向一個**區塊**標籤，就是編譯錯誤（E0059），因為 `continue` 只適用於迴圈標籤。此外，不帶標籤的 `break` / `continue` 不能以區塊為目標（它們只以最內層的**迴圈**為目標）。
+標籤語彙單元的形式（`'identifier:`）與 [3.13.4 標籤](313-loop-expressions.md#3134-標籤控制巢狀迴圈)中的相同。`break 'name value` 以給出的值離開該帶標籤的區塊。若 `continue 'name` 的 `'name` 指向一個**區塊**標籤，就是編譯錯誤（E0059），因為 `continue` 只適用於迴圈標籤。此外，不帶標籤的 `break` / `continue` 不能以區塊為目標（它們只以最內層的**迴圈**為目標）。
 
 與其為了提前離開而寫一個小的輔助函式，帶標籤的區塊能乾淨地表達帶著值提前離開區塊。
 
@@ -243,8 +243,8 @@ let n: usize = unsafe { strlen(cs.as_ptr()) };
 
 1. 值在其擁有者離開作用域之處被釋放，任何離開方式皆然：正常完成、`return`、`break` / `continue`、`?`、`throw` 以及錯誤傳播。移動到新擁有者（呼叫引數、欄位、通道）的值，改由該擁有者釋放。
 2. 在同一個作用域內，擁有者依宣告的相反順序離開（最後宣告者最先釋放）；內層區塊的擁有者先於外層區塊的離開。
-3. `using` 在其區塊結束時釋放其繫結，最後一個繫結最先（[3.17.4](317-using-expression.md#3174-multiple-resources)）。
+3. `using` 在其區塊結束時釋放其繫結，最後一個繫結最先（[3.17.4](317-using-expression.md#3174-多個資源)）。
 4. 釋放一個值會先執行它自己的 `drop`，然後依宣告的相反順序執行其欄位的 drop glue、依相反順序執行元組元素的 drop glue，以及列舉或和型別目前所容納之酬載的 drop glue。
-5. 重新宣告名稱的 `let`（[5.1.4](../005-modules/501-variable-declaration.md#514-redeclaration-in-the-same-scope)）不釋放任何東西：舊的值在舊繫結本應離開作用域之處被釋放。
+5. 重新宣告名稱的 `let`（[5.1.4](../005-modules/501-variable-declaration.md#514-同一作用域中的重新宣告)）不釋放任何東西：舊的值在舊繫結本應離開作用域之處被釋放。
 6. 關閉可能失敗的值（`io::Close`）絕不會被自動關閉：讓它在開啟狀態下離開其作用域是編譯錯誤，沒有任何擁有者的該型別暫存值也是（E0134）；請以 `using` 繫結它。
 7. panic 會結束行程，不會執行任何 `drop`。

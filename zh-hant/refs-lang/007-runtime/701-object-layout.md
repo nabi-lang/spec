@@ -1,6 +1,6 @@
 # 7.1. 物件配置與記憶體空間
 
-每個由 [GC](../000-meta/007-glossary.md#gc-garbage-collector) 管理的物件都以固定的標頭開始。本文件定義標頭格式，以及物件可能所在的三個記憶體空間。
+每個由 [GC](../000-meta/007-glossary.md#gc垃圾回收器) 管理的物件都以固定的標頭開始。本文件定義標頭格式，以及物件可能所在的三個記憶體空間。
 
 > [!NOTE]
 > 本節僅供參考，但在 [8.1](../008-abi/801-object-header-abi.md) 中固定為 ABI 的 16 位元組標頭除外。記憶體空間描述的是參考執行環境，可能在任何版本中改變。
@@ -34,20 +34,20 @@ offset 16 :  payload ...           // the object's actual fields
 |-------------|-----------------------------------------------------------------------------------------|
 | `mark`      | 在目前的 GC 週期中是否已到達                                                            |
 | `sticky`    | [sticky mark-bit](../000-meta/007-glossary.md#sticky-mark-bit)（世代追蹤）              |
-| `pinned`    | 標示為不可移動，例如供 [FFI](../000-meta/007-glossary.md#ffi-foreign-function-interface) 使用 |
+| `pinned`    | 標示為不可移動，例如供 [FFI](../000-meta/007-glossary.md#ffi外部函式介面) 使用 |
 | `forwarded` | 已經被疏散到新位置（gc_word 是轉發指標）                                                |
-| `large`     | [LOS](../000-meta/007-glossary.md#los-large-object-space)（Large Object Space）物件     |
+| `large`     | [LOS](../000-meta/007-glossary.md#los大型物件空間)（Large Object Space）物件     |
 | ...         | 其他位元由 GC 實作決定                                                                  |
 
 確切的位元配置由 GC 實作決定；表格只列出語意上必需的位元種類。
 
 ### `gc_word`（偏移 8，8 位元組）
 
-物件的總大小（包括標頭）。對於在疏散期間被移動的物件，`forwarded` 位元會被設定，而這個槽位指向新的位置（[8.1.4](../008-abi/801-object-header-abi.md#814-gc_word-offset-8-u64-or-ptr)）。
+物件的總大小（包括標頭）。對於在疏散期間被移動的物件，`forwarded` 位元會被設定，而這個槽位指向新的位置（[8.1.4](../008-abi/801-object-header-abi.md#814-gc_word偏移-8u64-或-ptr)）。
 
 ### `payload`（偏移 16 以上）
 
-存放物件欄位的區域。欄位順序與對齊由編譯器決定；這對 [`enum`](../002-types/204-enum.md) 與 [`union`](../002-types/205-union.md) 也一樣。[`struct`](../002-types/203-struct.md) 值本身不是堆積物件；存放在堆積物件（串列緩衝區、閉包環境、協程框架）中時，它以行內方式配置在這裡（[8.8.3](../008-abi/808-lowering-types.md#883-representation-of-struct)）。
+存放物件欄位的區域。欄位順序與對齊由編譯器決定；這對 [`enum`](../002-types/204-enum.md) 與 [`union`](../002-types/205-union.md) 也一樣。[`struct`](../002-types/203-struct.md) 值本身不是堆積物件；存放在堆積物件（串列緩衝區、閉包環境、協程框架）中時，它以行內方式配置在這裡（[8.8.3](../008-abi/808-lowering-types.md#883-struct-的表示方式)）。
 
 若附加了 `#[repr(C)]` 之類的屬性，就適用對應的表示規則（[內建屬性](../006-meta-system/602-built-in-attributes.md)）。
 
@@ -59,15 +59,15 @@ GC 把每個物件放在下列三個空間之一。字面值與 `const` / `stati
 
 大多數一般物件所在的空間，使用 Immix mark-region 演算法。
 
-它被劃分為 32 KiB 的[區塊](../000-meta/007-glossary.md#block)與 128 B 的行。預設是標記-清除，完整回收可能會把物件移出碎片化的區塊（機會式疏散）。世代以 sticky mark-bit 區分（[7.3](703-gc-algorithm.md)）。
+它被劃分為 32 KiB 的[區塊](../000-meta/007-glossary.md#區塊block)與 128 B 的行。預設是標記-清除，完整回收可能會把物件移出碎片化的區塊（機會式疏散）。世代以 sticky mark-bit 區分（[7.3](703-gc-algorithm.md)）。
 
 ### 2. 大型物件空間（LOS）
 
-8 KiB 以上，或需要大於 8 位元組之對齊的物件，以及機密緩衝區（`nabi_gc_secret_new`，[8.5.1](../008-abi/805-extern-symbols.md#nabi_gc_secret_new--nabi_gc_secret_wipe)），在 LOS 中個別配置，並設定 `gc_flags` 的 `LARGE` 位元。LOS 以標記-清除回收，不會移動物件。老的 LOS 物件有卡片表（[7.4.2](704-barriers-and-roots.md#742-write-barrier-object-remembering)）。機密緩衝區有 `WIPE` 位元（[8.1.3](../008-abi/801-object-header-abi.md#813-gc_flags-offset-4-u32)）：釋放它的清除階段會先以零覆寫其酬載。
+8 KiB 以上，或需要大於 8 位元組之對齊的物件，以及機密緩衝區（`nabi_gc_secret_new`，[8.5.1](../008-abi/805-extern-symbols.md#nabi_gc_secret_new--nabi_gc_secret_wipe)），在 LOS 中個別配置，並設定 `gc_flags` 的 `LARGE` 位元。LOS 以標記-清除回收，不會移動物件。老的 LOS 物件有卡片表（[7.4.2](704-barriers-and-roots.md#742-寫入屏障物件記錄)）。機密緩衝區有 `WIPE` 位元（[8.1.3](../008-abi/801-object-header-abi.md#813-gc_flags偏移-4u32)）：釋放它的清除階段會先以零覆寫其酬載。
 
 ### 3. 釘選的物件（FFI 釘選）
 
-傳給 [`extern` 區塊](../005-modules/509-extern-block.md)之 FFI 函式的 GC 指標，在呼叫結束之前不會被移動，因為該引數位於根中（[7.4.1](704-barriers-and-roots.md#objects-pointed-to-by-roots-are-not-moved)）。若外部程式碼需要在呼叫之後保留該位址，請以 `nabi_gc_pin` 釘選它。釘選的物件設定了 `gc_flags` 的 `PINNED` 位元，並保持在原位。`nabi_gc_unpin` 解除釘選。
+傳給 [`extern` 區塊](../005-modules/509-extern-block.md)之 FFI 函式的 GC 指標，在呼叫結束之前不會被移動，因為該引數位於根中（[7.4.1](704-barriers-and-roots.md#被根指向的物件不會被移動)）。若外部程式碼需要在呼叫之後保留該位址，請以 `nabi_gc_pin` 釘選它。釘選的物件設定了 `gc_flags` 的 `PINNED` 位元，並保持在原位。`nabi_gc_unpin` 解除釘選。
 
 釘選的物件仍會以標記-清除回收，但絕不會被疏散。
 
@@ -109,4 +109,4 @@ nabi_gc_register_type(type_id, scan_table)
 size = 16  (header) + payload_size  (aligned size of the fields)
 ```
 
-配置器把這個總大小存放在每個物件之標頭的 `gc_word` 中，Immix 與 LOS 皆然（[8.1.4](../008-abi/801-object-header-abi.md#814-gc_word-offset-8-u64-or-ptr)），因此回收器從那裡讀取它。
+配置器把這個總大小存放在每個物件之標頭的 `gc_word` 中，Immix 與 LOS 皆然（[8.1.4](../008-abi/801-object-header-abi.md#814-gc_word偏移-8u64-或-ptr)），因此回收器從那裡讀取它。

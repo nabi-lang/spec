@@ -12,14 +12,14 @@ using_stmt     ::= "using" using_binding ("," using_binding)* ";"
 using_binding  ::= pattern "=" expr
 ```
 
-`using_stmt` 是 [3.17.9](#3179-statement-form) 的陳述式形式。
+`using_stmt` 是 [3.17.9](#3179-陳述式形式) 的陳述式形式。
 
 各組成部分的意義：
 
 - `pattern` 可以是[模式](311-patterns.md)中定義的任何不可反駁的模式（識別字、元組、結構解構等）。大多數情況下使用單一識別字。被釋放的是 `expr` 的整個值。
 - `expr` 是建立或取得資源的運算式。其結果型別必須實作 [`Drop`](../../refs-standard-libraries/200-core/213-marker.md) trait。
 - 若取得資源可能失敗，請以 `try` 標示 `expr`（`using f = try fs::open(path) { ... }`）。若取得時引發錯誤，控制在沒有繫結任何資源的情況下離開，因此不會呼叫 `Drop`。詳細語意遵循[錯誤控制流程](314-error-control-flow.md)。
-- 以 `,` 連接的多個繫結構成多個資源；詳細行為定義於 [3.17.4 多個資源](#3174-multiple-resources)。
+- 以 `,` 連接的多個繫結構成多個資源；詳細行為定義於 [3.17.4 多個資源](#3174-多個資源)。
 - `block` 遵循[區塊運算式](309-block-expressions.md)的規則，其最後一個運算式的值就是整個 `using` 運算式的值。
 
 ## 3.17.2. 最簡單的範例
@@ -98,7 +98,7 @@ let content = using f = try fs::open(path) {
 - 主體內經由 `?` 回傳 `none`
 - 主體內的 `throw`，以及以 `try` 標示之呼叫的錯誤傳播
 
-panic 與致命錯誤會立即終止行程，因此不會呼叫 `drop`（[3.14.8](314-error-control-flow.md#3148-panics-and-fatal-errors)）。這是 panic 的一般結果，而非 `using` 特有的行為。
+panic 與致命錯誤會立即終止行程，因此不會呼叫 `drop`（[3.14.8](314-error-control-flow.md#3148-panic-與致命錯誤)）。這是 panic 的一般結果，而非 `using` 特有的行為。
 
 一個值只會被釋放一次（[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)）。`using x = a { .. }` 把 `a` 移入 `x`，因此第二個 `using y = a { .. }`，或在第一個區塊之後使用 `a`，是編譯錯誤（E0133）：請給每個 `using` 它自己建立的值（`using g = m.lock() { .. }`），或在一個 `using` 區塊內完成所有工作。在區塊內關閉的值（`try x.close()`）不會再被釋放。
 

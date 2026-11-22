@@ -1,8 +1,8 @@
 # 8.9. 降階：控制流程與 GC 整合
 
-本節涵蓋 [`if` 運算式](../003-expressions/310-if-expression.md)、[`match`](../003-expressions/312-match-expression.md)、[迴圈](../003-expressions/313-loop-expressions.md)與[錯誤控制流程](../003-expressions/314-error-control-flow.md)的降階規則，也定義發出 [GC](../000-meta/007-glossary.md#gc-garbage-collector) 配置 / 屏障 / 安全點程式碼的規則。
+本節涵蓋 [`if` 運算式](../003-expressions/310-if-expression.md)、[`match`](../003-expressions/312-match-expression.md)、[迴圈](../003-expressions/313-loop-expressions.md)與[錯誤控制流程](../003-expressions/314-error-control-flow.md)的降階規則，也定義發出 [GC](../000-meta/007-glossary.md#gc垃圾回收器) 配置 / 屏障 / 安全點程式碼的規則。
 
-nabi-mir 是一個控制流程圖：帶有區塊引數的基本區塊，每個都以 goto、對 `bool` 的雙向分支、回傳或 `unreachable` 結束。程式碼產生器把每一種發出為跳躍、條件分支、回傳或 trap；區塊引數是在跳躍之前對目標區塊之槽位的存入。在 `-O0` 以上，最佳化器在這個圖上運作（[8.7.3](807-code-generation.md#873-optimization-levels)）。程式碼是虛擬碼（[8.7.1](807-code-generation.md#871-translation-flow)）。
+nabi-mir 是一個控制流程圖：帶有區塊引數的基本區塊，每個都以 goto、對 `bool` 的雙向分支、回傳或 `unreachable` 結束。程式碼產生器把每一種發出為跳躍、條件分支、回傳或 trap；區塊引數是在跳躍之前對目標區塊之槽位的存入。在 `-O0` 以上，最佳化器在這個圖上運作（[8.7.3](807-code-generation.md#873-最佳化等級)）。程式碼是虛擬碼（[8.7.1](807-code-generation.md#871-轉譯流程)）。
 
 ## 8.9.1. `if` 運算式
 
@@ -97,7 +97,7 @@ bb_end(result):
     ...
 ```
 
-元組、`struct`、`enum` 變體（[8.8.6](808-lowering-types.md#886-representation-of-enum)）與和型別成員以相同方式測試其各部分；範圍模式是兩次比較，字串模式是一次 `str` 相等比較（[8.7.6](807-code-generation.md#876-extern-functions-runtime-functions)）。match 是窮盡的，因此其最後一次測試之後的區塊是無法到達的（一個 trap）。
+元組、`struct`、`enum` 變體（[8.8.6](808-lowering-types.md#886-enum-的表示方式)）與和型別成員以相同方式測試其各部分；範圍模式是兩次比較，字串模式是一次 `str` 相等比較（[8.7.6](807-code-generation.md#876-extern-函式執行環境函式)）。match 是窮盡的，因此其最後一次測試之後的區塊是無法到達的（一個 trap）。
 
 不會建立跳躍表：在每個等級，這串鏈都依寫出的樣子編譯，每個被測試的分支一次比較與分支。最佳化器會移除它能從前面分支所證明的事情決定的測試。
 
@@ -151,11 +151,11 @@ for x in xs { body }
 
 ## 8.9.5. `break` / `continue`
 
-`break` 與 `continue` 是跳到迴圈之離開區塊或其回邊區塊的跳躍。標籤（`'outer:`）同樣跳到適當的[區塊](../000-meta/007-glossary.md#block)。
+`break` 與 `continue` 是跳到迴圈之離開區塊或其回邊區塊的跳躍。標籤（`'outer:`）同樣跳到適當的[區塊](../000-meta/007-glossary.md#區塊block)。
 
 ## 8.9.6. `try` / `catch` / `finally`：以值為基礎的分支
 
-[錯誤控制流程](../003-expressions/314-error-control-flow.md)的錯誤透過[呼叫慣例](806-calling-convention.md#865-return-of-throwing-functions-value-based-error-propagation)中定義的 `{ is_err, payload }` 回傳值傳播。因此 `try` 與 `catch` 都被降階為一般的分支。
+[錯誤控制流程](../003-expressions/314-error-control-flow.md)的錯誤透過[呼叫慣例](806-calling-convention.md#865-會擲回錯誤之函式的回傳以值為基礎的錯誤傳播)中定義的 `{ is_err, payload }` 回傳值傳播。因此 `try` 與 `catch` 都被降階為一般的分支。
 
 ```nabi
 let v = try f(x);              // f: fn(X) throws (E) -> T
@@ -277,7 +277,7 @@ bb_slow:                               ; placed out of line
 bb_done:
 ```
 
-`t` 是執行緒的 TLS 基址（[8.7.7](807-code-generation.md#877-tls-access)），`24` 是物件大小（向上取整為 8），`8` 是對齊，`TYPE_ID_ENV` 是 type_id。物件放得下時，快速路徑推進 TLAB 游標，並寫入標頭的 `type_id` 與 `gc_word`（= 大小，[8.1.4](801-object-header-abi.md#814-gc_word-offset-8-u64-or-ptr)）；標頭的位址就是該物件。否則它呼叫 `nabi_gc_alloc_slow`。不會寫入 `gc_flags`：TLAB 記憶體已清零。大型物件大小以上，或對齊超過 8 的物件，直接呼叫 `nabi_gc_alloc_slow`。
+`t` 是執行緒的 TLS 基址（[8.7.7](807-code-generation.md#877-tls-存取)），`24` 是物件大小（向上取整為 8），`8` 是對齊，`TYPE_ID_ENV` 是 type_id。物件放得下時，快速路徑推進 TLAB 游標，並寫入標頭的 `type_id` 與 `gc_word`（= 大小，[8.1.4](801-object-header-abi.md#814-gc_word偏移-8u64-或-ptr)）；標頭的位址就是該物件。否則它呼叫 `nabi_gc_alloc_slow`。不會寫入 `gc_flags`：TLAB 記憶體已清零。大型物件大小以上，或對齊超過 8 的物件，直接呼叫 `nabi_gc_alloc_slow`。
 
 然後在 16 位元組的標頭之後存入各欄位：
 
@@ -287,7 +287,7 @@ store.i32 [env + 16], n
 
 ## 8.9.10. 寫入屏障
 
-[屏障與根追蹤](../007-runtime/704-barriers-and-roots.md#742-write-barrier-object-remembering)中的物件記錄屏障。
+[屏障與根追蹤](../007-runtime/704-barriers-and-roots.md#742-寫入屏障物件記錄)中的物件記錄屏障。
 
 ```nabi
 *p.field = q;       // write a GC pointer into a GC object
@@ -310,7 +310,7 @@ bb_store:
 ```
 
 - 不會讀取被存入之值 `q` 的標頭。`q` 可能是 `any` 槽位的行內整數，或 `str` 的內部指標，因此把它當作標頭讀取是不安全的。
-- 快速路徑是一次載入與一個分支。實際上它一起檢查 `UNLOGGED | CARDED`。若是 `CARDED`（大型的老物件），它不經呼叫地在卡片表（其指標是緊接在標頭之前的字組）中，把被寫入之槽位所跨越的 512 B 卡片（`(slot - p) >> 9` ..= `(slot + len - 1 - p) >> 9`）標記為髒；若是 `UNLOGGED`，它如上所述呼叫 `nabi_gc_wb_slow`。因此屏障使用槽位位址與被存入之值的大小（[7.4.2](../007-runtime/704-barriers-and-roots.md#742-write-barrier-object-remembering)）。
+- 快速路徑是一次載入與一個分支。實際上它一起檢查 `UNLOGGED | CARDED`。若是 `CARDED`（大型的老物件），它不經呼叫地在卡片表（其指標是緊接在標頭之前的字組）中，把被寫入之槽位所跨越的 512 B 卡片（`(slot - p) >> 9` ..= `(slot + len - 1 - p) >> 9`）標記為髒；若是 `UNLOGGED`，它如上所述呼叫 `nabi_gc_wb_slow`。因此屏障使用槽位位址與被存入之值的大小（[7.4.2](../007-runtime/704-barriers-and-roots.md#742-寫入屏障物件記錄)）。
 - `nabi_gc_wb_slow` 不是安全點。在屏障與存入之間不會插入任何回收。
 - 對剛配置之物件的初始化、對 `static` 的存入、原始的 `Ptr<T>` 記憶體，以及非參照的 atomics，不插入屏障。
 
@@ -331,11 +331,11 @@ bb_cont:
     ; ... continue ...
 ```
 
-編譯器在迴圈回邊上，以及在呼叫循環可以不經過迴圈輪詢就重新進入的函式中（遞迴循環的成員、透過指標或從 C 呼叫的函式、匯出的函式）發出這段程式碼：對於不是由直接的 Nabi 呼叫進入的函式，在進入處發出；對於其他函式，在每條路徑的第一個安全點之前發出（[8.4.7](804-safepoint.md#847-safepoint-invariant)）。其他函式不在進入處輪詢：由它們的呼叫者輪詢。
+編譯器在迴圈回邊上，以及在呼叫循環可以不經過迴圈輪詢就重新進入的函式中（遞迴循環的成員、透過指標或從 C 呼叫的函式、匯出的函式）發出這段程式碼：對於不是由直接的 Nabi 呼叫進入的函式，在進入處發出；對於其他函式，在每條路徑的第一個安全點之前發出（[8.4.7](804-safepoint.md#847-安全點不變條件)）。其他函式不在進入處輪詢：由它們的呼叫者輪詢。
 
 ## 8.9.12. 影子堆疊框架
 
-也請參考[屏障與根追蹤](../007-runtime/704-barriers-and-roots.md#741-root-tracking-a-shadow-stack-emitted-directly-by-the-compiler)。編譯器直接發出框架的連上 / 解開，不需要平台的任何協助。
+也請參考[屏障與根追蹤](../007-runtime/704-barriers-and-roots.md#741-根追蹤由編譯器直接發出的影子堆疊)。編譯器直接發出框架的連上 / 解開，不需要平台的任何協助。
 
 以一個有 2 個 GC 參照字組（`x`、`y`，堆疊槽位）的函式為例。框架容納每個槽位的位址，因此變數指派只是對 `x` 的一般存入。
 
@@ -368,7 +368,7 @@ store.ptr [frame + 2p], &desc
 store.ptr [t + 0], &frame
 ```
 
-`t` 是 [8.3.8](803-tls-slots.md#838-form-of-compiler-emission) 中執行緒區域區塊 `nabi_tls` 的位址（[8.7.7](807-code-generation.md#877-tls-access)）；影子堆疊的開頭是它在偏移 0 的槽位。錯誤回傳也是一般的 `return`（[8.9.6](#896-try--catch--finally-value-based-branching)），因此它經過相同的解開。連上也可以比圖示更晚，在每條路徑的第一個安全點之前（[8.4.7](804-safepoint.md#847-safepoint-invariant)）；此時只有已連上之路徑的回傳才會解開。函式只有在容納 GC 參照、而且可能到達安全點時（[8.4.2](804-safepoint.md#842-emission-sites)）才需要框架。對永不回傳之函式（panic）以及既不配置記憶體也不阻塞之執行環境函式（[8.5.2](805-extern-symbols.md#functions-that-are-not-safepoints)）的呼叫不算在內。
+`t` 是 [8.3.8](803-tls-slots.md#838-編譯器發出的形式) 中執行緒區域區塊 `nabi_tls` 的位址（[8.7.7](807-code-generation.md#877-tls-存取)）；影子堆疊的開頭是它在偏移 0 的槽位。錯誤回傳也是一般的 `return`（[8.9.6](#896-try--catch--finally以值為基礎的分支)），因此它經過相同的解開。連上也可以比圖示更晚，在每條路徑的第一個安全點之前（[8.4.7](804-safepoint.md#847-安全點不變條件)）；此時只有已連上之路徑的回傳才會解開。函式只有在容納 GC 參照、而且可能到達安全點時（[8.4.2](804-safepoint.md#842-發出位置)）才需要框架。對永不回傳之函式（panic）以及既不配置記憶體也不阻塞之執行環境函式（[8.5.2](805-extern-symbols.md#不是安全點的函式)）的呼叫不算在內。
 
 ## 8.9.13. 索引
 
@@ -392,7 +392,7 @@ bb_ok:
 
 ## 8.9.14. 總結：熱路徑的樣子
 
-典型的熱路徑，即 [TLAB](../000-meta/007-glossary.md#tlab-thread-local-allocation-buffer) 配置加上欄位寫入，其成本如下：
+典型的熱路徑，即 [TLAB](../000-meta/007-glossary.md#tlab執行緒區域配置緩衝區) 配置加上欄位寫入，其成本如下：
 
 - TLAB 游標檢查：load \* 2 / sub / 比較與分支
 - 游標更新：store（1 道指令）

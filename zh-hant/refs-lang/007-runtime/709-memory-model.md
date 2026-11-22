@@ -40,7 +40,7 @@ Nabi 沒有獨立的記憶體柵欄：每個順序都附加在某個原子操作
 | `RwLock` 讀取解鎖 | 下一次 `write` 取得 |
 | `Condvar::wait` 釋放其鎖 | 視為 `Mutex` 解鎖；其重新上鎖視為 `Mutex` 上鎖 |
 | `Once::call_once` 的 `f` 回傳 | 該 `Once` 的每次 `call_once` 回傳，以及回傳 `true` 的 `is_completed` |
-| 延遲初始化之 `static` 的初始化式完成 | 該 `static` 的每次存取（[5.3.9](../005-modules/503-static.md#539-initializers-compile-time-or-first-use)） |
+| 延遲初始化之 `static` 的初始化式完成 | 該 `static` 的每次存取（[5.3.9](../005-modules/503-static.md#539-初始化式編譯期或第一次使用)） |
 | 在通道上 `send` / `try_send` / `send_async` 一個值 | 接收到該值的 `recv`（[stdlib 2.17](../../refs-standard-libraries/200-core/217-channel.md)） |
 | `thread::spawn` / `Builder::spawn` | 新執行緒的第一步 |
 | 執行緒的最後一步 | 回傳其結果的 `join`（或對其 `JoinHandle` 的 `await`）（[stdlib 3.4](../../refs-standard-libraries/300-std/304-thread.md)） |
@@ -51,15 +51,15 @@ Nabi 沒有獨立的記憶體柵欄：每個順序都附加在某個原子操作
 
 在參考函式庫中，鎖、`Once` 與通道都建立在 `SeqCst` atomics 之上，因此上述順序也屬於 `SeqCst` 全序的一部分。`Atomic<i32>::wait` / `wake` 只會阻塞與喚醒：它們本身不同步任何東西，而 `wait` 所比較的值以該 atomic 自己的順序讀取。
 
-回收器、其寫入屏障（[7.4.2](704-barriers-and-roots.md#742-write-barrier-object-remembering)）以及 stop-the-world 暫停只與回收器同步。它們不為使用者程式碼提供任何 happens-before 關係，即使它們恰好在硬體層面形成了柵欄。
+回收器、其寫入屏障（[7.4.2](704-barriers-and-roots.md#742-寫入屏障物件記錄)）以及 stop-the-world 暫停只與回收器同步。它們不為使用者程式碼提供任何 happens-before 關係，即使它們恰好在硬體層面形成了柵欄。
 
 ## 7.9.4. 資料競爭
 
-當對同一記憶體位置的兩次存取中至少有一次是寫入，而且兩者並非都是原子的時候，它們就**衝突**。當兩個衝突的存取發生在不同的執行緒中，而且兩者都不 happens before 另一者時，程式就有**資料競爭**。資料競爭是未定義行為（[4.15.8](../004-functions/415-unsafe.md#4158-undefined-behavior)）。
+當對同一記憶體位置的兩次存取中至少有一次是寫入，而且兩者並非都是原子的時候，它們就**衝突**。當兩個衝突的存取發生在不同的執行緒中，而且兩者都不 happens before 另一者時，程式就有**資料競爭**。資料競爭是未定義行為（[4.15.8](../004-functions/415-unsafe.md#4158-未定義行為)）。
 
 資料競爭只能透過 `unsafe` 所放行的程式碼發生。安全的 Nabi 沒有資料競爭，理由如下：
 
-- `static` 可以從每個執行緒存取，因此其型別必須是 `Sync`（[5.3.1](../005-modules/503-static.md#531-basic-form)）；`static mut` 只存在於 `extern "C"` 區塊中，存取它需要 `unsafe`。
+- `static` 可以從每個執行緒存取，因此其型別必須是 `Sync`（[5.3.1](../005-modules/503-static.md#531-基本形式)）；`static mut` 只存在於 `extern "C"` 區塊中，存取它需要 `unsafe`。
 - 集合型別（`List`、`Dict`、`StrBuf`……）是 `!Sync`，`Cell<T>`、原始指標與守衛也是（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）。共享的可變狀態只能放在 `Mutex`、`RwLock`、`Atomic` 或通道內跨越執行緒。凍結的集合（`xs.freeze()`，[stdlib 2.9.7b](../../refs-standard-libraries/200-core/209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s---read-only-collections)）是 `Sync`，因為沒有任何東西寫入它：沒有任何可變更的控制代碼能到達其儲存空間。
 - 把值交給另一個擁有者（`Mutex::new`、`send`、`task::spawn`、`[move x]`、執行緒的結果……）會讓新的擁有者得到該值所能到達之每個集合的自己的複本，而之後使用傳送者的值是編譯錯誤（2.13.9）。被產生之閉包的一般擷取必須是 `Send + Sync`。
 - `par` 在執行時檢查兩個項目不會到達同一個不是 `Sync` 的集合，並一次執行一個這樣的項目（[stdlib 2.19.1](../../refs-standard-libraries/200-core/219-par.md#2191-core-api)）。項目只有在其他項目的視圖或切片都不與自己寫入的部分重疊之處，才能透過視圖（`chunks_mut`）寫入同一個串列。
@@ -67,7 +67,7 @@ Nabi 沒有獨立的記憶體柵欄：每個順序都附加在某個原子操作
 使資料競爭成為可能、因而需要作者小心的東西：
 
 - 透過 `Ptr<T>`、`ManyPtr<T>`、`CPtr<T>` 與 `GcBuf<T>` 的讀取與寫入（[stdlib 1.1](../../refs-standard-libraries/100-bare/101-ptr.md)、[stdlib 1.3](../../refs-standard-libraries/100-bare/103-mem.md)）；
-- 在其共享實際上並未受保護的型別上的 `unsafe impl Send` 或 `unsafe impl Sync`（[4.15.4](../004-functions/415-unsafe.md#4154-in-traits)）；
+- 在其共享實際上並未受保護的型別上的 `unsafe impl Send` 或 `unsafe impl Sync`（[4.15.4](../004-functions/415-unsafe.md#4154-在-trait-中)）；
 - 對其他東西仍然能到達的值使用 `Mutex::new_unshared`（[stdlib 2.16.3](../../refs-standard-libraries/200-core/216-sync.md#2163-mutext---exclusive-lock)）；
 - 在 `unsafe` 內略過的交接檢查（2.13.9）；
 - `extern static mut` 以及透過 FFI 存取的外部程式碼（[5.9](../005-modules/509-extern-block.md)），包括在 `env::set_var` 執行期間呼叫 `getenv` / `setenv` 的 C 程式碼（[stdlib 3.5](../../refs-standard-libraries/300-std/305-env.md)）。

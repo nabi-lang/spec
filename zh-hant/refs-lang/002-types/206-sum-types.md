@@ -42,7 +42,7 @@ let y: i32 | f32 = 3.14f32;     // tag is at the f32 position
 ### 值遞迴與大小限制
 
 - 以值的方式包含自身的遞迴型別（即使經由結構、列舉、元組、和型別、陣列或泛型實例）在宣告處就是錯誤。遞迴請使用 GC 參照型別（`List<T>` 等）。
-- Nabi 的實作限制（由實作定義，[0.4.4](../000-meta/004-language-vs-standard-libraries.md#044-implementation-limits)）：超過 65536 個攤平後純量槽位或 4 GiB 的值型別是錯誤。
+- Nabi 的實作限制（由實作定義，[0.4.4](../000-meta/004-language-vs-standard-libraries.md#044-實作限制)）：超過 65536 個攤平後純量槽位或 4 GiB 的值型別是錯誤。
 
 確切的放置方式由實作決定，但保證一件事：以零填滿的 `T | none` 儲存空間（`GcBuf<T | none>` 與集合型別緩衝區的元素、新配置之 GC 物件的欄位）讀出來是 `none`。
 
@@ -95,7 +95,7 @@ let y: i32 | f32 = 3.14f32;     // tag is at the f32 position
 - 非泛型的型別別名是寫出的型別，因此一律攤平。在 `type Opt = i32 | none; type Flat = Opt | none;` 之下，`Flat` 是 `i32 | none`。
 - 泛型別名的參數是泛型項，遵循上述規則（見下文的「撰寫巢狀型別」）。
 
-**撰寫巢狀型別。** 可選型別以後綴 `?` 撰寫（[2.1.5a](201-type-expressions.md#215a-optional-types-t)）。`T?` 與 `Maybe<T>` 相同，因此其運算元是一個泛型項，適用相同的分層規則。其他巢狀形式（`(E | i32) | E` 等）以泛型別名或 `Self::X` 撰寫。
+**撰寫巢狀型別。** 可選型別以後綴 `?` 撰寫（[2.1.5a](201-type-expressions.md#215a-可選型別t)）。`T?` 與 `Maybe<T>` 相同，因此其運算元是一個泛型項，適用相同的分層規則。其他巢狀形式（`(E | i32) | E` 等）以泛型別名或 `Self::X` 撰寫。
 
 ```nabi
 type Maybe<T> = T | none;
@@ -138,7 +138,7 @@ match r {
 }
 ```
 
-**關聯型別。** 在 trait 及其所有 impl 內，單獨的名稱 `X` 與 `Self::X` 都表示關聯型別（[2.8.3](208-trait.md#283-associated-types)）。關聯型別是泛型項，因此適用相同的規則。當 `Item` 含有 `none` 時，`fn next(ref self) -> Self::Item?` 會形成巢狀，因此產生 `i32 | none` 元素的使用者迭代器，也會把存放的 `none` 當作元素迭代。
+**關聯型別。** 在 trait 及其所有 impl 內，單獨的名稱 `X` 與 `Self::X` 都表示關聯型別（[2.8.3](208-trait.md#283-關聯型別)）。關聯型別是泛型項，因此適用相同的規則。當 `Item` 含有 `none` 時，`fn next(ref self) -> Self::Item?` 會形成巢狀，因此產生 `i32 | none` 元素的使用者迭代器，也會把存放的 `none` 當作元素迭代。
 
 `none` 的情況（巢狀可選型別）見 2.6.5 的範例。
 
@@ -148,7 +148,7 @@ match r {
 
 - `none` 一律在最後。
 - 其餘各項依結構鍵排序：基本型別依其名稱，結構或列舉依其完整路徑，泛型實例依 `path<arg keys>`。巢狀的和型別會被攤平（見上文的正規化），因此和型別絕不會是和型別的一項；泛型引數內的和型別以其依標準順序排列的各項為鍵（`List<A | B>` 的鍵是 `List<key(A)|key(B)>`）。由「泛型和型別的分層」保留下來的層是單一項，其鍵是 `(` + 依標準順序以 `|` 連接的各項之鍵 + `)`。這個順序與寫出的順序無關。
-- 這個順序（以及標籤）絕不取決於建置內部的型別編號，因此預先建置的函式庫與其使用者的看法一致（[9.4.8](../009-tools/904-nabihir-bytecode.md#948-rules-for-separate-compilation)）。
+- 這個順序（以及標籤）絕不取決於建置內部的型別編號，因此預先建置的函式庫與其使用者的看法一致（[9.4.8](../009-tools/904-nabihir-bytecode.md#948-分開編譯的規則)）。
 
 標準順序固定的是表示方式（標籤）；它不為值排序。只有在除 `none` 之外最多只有一項的和型別中，值才有順序（[stdlib 2.5.7](../../refs-standard-libraries/200-core/205-cmp.md#257-implementation-matrix)）：
 
@@ -266,7 +266,7 @@ match v {
 
 ## 2.6.9. 與型別別名結合
 
-較長的和型別可以用 `type` 取別名（`type Num = i32 | f64;`）。循環的型別別名（即使經由泛型引數）是錯誤。型別別名的 `where` 放在被取別名的型別之後（`type A<T> = B<T> where T: X;`）。省略的引數取其參數的預設值，因此所有參數都有預設值的別名可以不帶引數撰寫：在 `type Vel<V = f64> = Q<V, 1, -1>;` 之下，`Vel` 是 `Vel<f64>`。診斷以程式碼為泛型型別所寫的別名指稱它（`expects Vel, found Len`，而不是 `Q<f64, 1, -1>`）；正在建置之套件所寫的別名，優先於相依套件所寫的別名。別名的 `where` 在每次使用該別名時都會檢查。當某次使用的引數指稱型別參數時，由使用處作用域內的約束決定，與泛型主體相同（[2.10.9](210-generics.md#2109-body-checking)）：外層函式、`impl` 或 trait 的參數約束與 `where` 子句，以及 trait 的父 trait 與關聯型別約束。在 `type W<T> = S<T> where T: Num;` 之下，`fn get<T: Num>(x: W<T>)` 與 `impl<T: Num> W<T> { .. }` 是有效的；`fn get<T>(x: W<T>)` 即使從未被呼叫也是錯誤。宣告中的型別也一樣：`struct`、`enum` 或 `union` 的欄位、trait `impl` 的 trait 引數與關聯型別，以及 trait 方法的簽章，當別名的 `where` 不滿足時都會被拒絕，即使沒有任何東西使用它們；說明會指出應加上約束的泛型（``add `T: Num` to `F`'s generics``）。`any Tr` 的別名（`type Shown = any Display;`）也是這樣的別名：它代表該動態槽位。`type X = some Tr;` 不是別名，而是具名的不透明型別，即由其模組的函式固定的一個靜態型別（[4.1.15](../004-functions/401-function-declaration.md#4115-named-opaque-types-type-x--some-trait)）。`type` 是上下文關鍵字，只有在項目開頭且後面接著識別字與 `=` 或 `<` 時才是關鍵字（[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)）。確切的別名語法定義於型別別名規格。
+較長的和型別可以用 `type` 取別名（`type Num = i32 | f64;`）。循環的型別別名（即使經由泛型引數）是錯誤。型別別名的 `where` 放在被取別名的型別之後（`type A<T> = B<T> where T: X;`）。省略的引數取其參數的預設值，因此所有參數都有預設值的別名可以不帶引數撰寫：在 `type Vel<V = f64> = Q<V, 1, -1>;` 之下，`Vel` 是 `Vel<f64>`。診斷以程式碼為泛型型別所寫的別名指稱它（`expects Vel, found Len`，而不是 `Q<f64, 1, -1>`）；正在建置之套件所寫的別名，優先於相依套件所寫的別名。別名的 `where` 在每次使用該別名時都會檢查。當某次使用的引數指稱型別參數時，由使用處作用域內的約束決定，與泛型主體相同（[2.10.9](210-generics.md#2109-主體檢查)）：外層函式、`impl` 或 trait 的參數約束與 `where` 子句，以及 trait 的父 trait 與關聯型別約束。在 `type W<T> = S<T> where T: Num;` 之下，`fn get<T: Num>(x: W<T>)` 與 `impl<T: Num> W<T> { .. }` 是有效的；`fn get<T>(x: W<T>)` 即使從未被呼叫也是錯誤。宣告中的型別也一樣：`struct`、`enum` 或 `union` 的欄位、trait `impl` 的 trait 引數與關聯型別，以及 trait 方法的簽章，當別名的 `where` 不滿足時都會被拒絕，即使沒有任何東西使用它們；說明會指出應加上約束的泛型（``add `T: Num` to `F`'s generics``）。`any Tr` 的別名（`type Shown = any Display;`）也是這樣的別名：它代表該動態槽位。`type X = some Tr;` 不是別名，而是具名的不透明型別，即由其模組的函式固定的一個靜態型別（[4.1.15](../004-functions/401-function-declaration.md#4115-具名不透明型別type-x--some-trait)）。`type` 是上下文關鍵字，只有在項目開頭且後面接著識別字與 `=` 或 `<` 時才是關鍵字（[1.5.4](../001-lexical/105-keywords.md#154-上下文關鍵字)）。確切的別名語法定義於型別別名規格。
 
 ```nabi
 type Number = i32 | i64 | f32 | f64;

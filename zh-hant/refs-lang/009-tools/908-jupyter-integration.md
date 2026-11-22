@@ -6,7 +6,7 @@
 
 Jupyter 以另一個行程執行 Nabi 核心，並經由以 ZeroMQ 為基礎的 Jupyter 線路協定通訊。核心宣告的 `protocol_version` 為 `"5.3"`（`jupyter_client` 所期望的值；可搭配 5.3 以上的用戶端運作）。在這種形式下，所有作業系統資源，即檔案、網路與外部行程，都可以使用。
 
-核心在與終端機 REPL **相同的儲存格工作階段**上執行，並遵循 [9.7.0](907-jit-cells.md#970-rules-of-the-cell-session) 的規則：每個儲存格恰好執行一次，繫結與項目延續到之後的儲存格，失敗的儲存格不會在繫結上留下痕跡。核心的引擎與 REPL 是同一個 [JIT 工作階段](906-jit-engine.md)：頂層的 `await` 與 `it` 的運作方式與那裡相同（[9.7.1](907-jit-cells.md#971-kinds-of-cell)、[9.7.7](907-jit-cells.md#977-visualization--output)）。
+核心在與終端機 REPL **相同的儲存格工作階段**上執行，並遵循 [9.7.0](907-jit-cells.md#970-儲存格工作階段的規則) 的規則：每個儲存格恰好執行一次，繫結與項目延續到之後的儲存格，失敗的儲存格不會在繫結上留下痕跡。核心的引擎與 REPL 是同一個 [JIT 工作階段](906-jit-engine.md)：頂層的 `await` 與 `it` 的運作方式與那裡相同（[9.7.1](907-jit-cells.md#971-儲存格的種類)、[9.7.7](907-jit-cells.md#977-視覺化--輸出)）。
 
 ### 輸入
 
@@ -16,7 +16,7 @@ Jupyter 以另一個行程執行 Nabi 核心，並經由以 ZeroMQ 為基礎的 
 
 筆記本儲存格依終端機 REPL 拆分輸入的相同規則拆成多個 REPL 儲存格，並依序執行。與 IPython 一樣，**只有最後一個值**會作為結果顯示。若筆記本儲存格較後面的部分失敗，較前面部分（先前的 REPL 儲存格）的效果仍會保留。
 
-REPL 儲存格在執行時位置（`<repl cell N>`，[9.7.5](907-jit-cells.md#locations)）中的編號取自執行計數：只是一個 REPL 儲存格的筆記本儲存格是 `N`，拆成多個的則把它們編號為 `N.1`、`N.2` 等。不推進計數的請求（`silent`，或 `store_history: false`）把其 REPL 儲存格接在目前計數下最後一個編號之後編號。
+REPL 儲存格在執行時位置（`<repl cell N>`，[9.7.5](907-jit-cells.md#位置)）中的編號取自執行計數：只是一個 REPL 儲存格的筆記本儲存格是 `N`，拆成多個的則把它們編號為 `N.1`、`N.2` 等。不推進計數的請求（`silent`，或 `store_history: false`）把其 REPL 儲存格接在目前計數下最後一個編號之後編號。
 
 ## 9.8.2. 本機原生核心：運作
 
@@ -28,7 +28,7 @@ nabi jupyter --connection-file <path>        # resolves dependencies; also accep
 
 核心從連線檔讀取 ZMQ 連接埠與金鑰，然後在其五個通訊端上繫結並監聽。五個都接受連線之後，它在開始擷取輸出之前，把一行 `nabi jupyter: ready` 寫到其 stderr。只支援 `tcp` 傳輸（不支援 `ipc`），也不使用 CURVE 加密。訊息以連線檔的金鑰進行 HMAC 簽章。
 
-核心與 `nabi repl .` 一樣（[9.7.10](907-jit-cells.md#9710-loading-a-program-repl-path)），載入它所啟動之處的套件（目前目錄，或其上方最近一個含有 `src/main.nabi` 或 `src/lib.nabi` 的目錄）：函式庫套件是一個相依套件，並以 `use <name>::*;` 作為第一個儲存格；程式套件則會被載入並執行。這在開始擷取輸出之後發生；它印出的東西會與第一個執行之儲存格的輸出一起傳送。在套件之外，工作階段以空的狀態開始。
+核心與 `nabi repl .` 一樣（[9.7.10](907-jit-cells.md#9710-載入程式repl-path)），載入它所啟動之處的套件（目前目錄，或其上方最近一個含有 `src/main.nabi` 或 `src/lib.nabi` 的目錄）：函式庫套件是一個相依套件，並以 `use <name>::*;` 作為第一個儲存格；程式套件則會被載入並執行。這在開始擷取輸出之後發生；它印出的東西會與第一個執行之儲存格的輸出一起傳送。在套件之外，工作階段以空的狀態開始。
 
 ### 通訊端頻道
 
@@ -61,7 +61,7 @@ nabi jupyter --connection-file <path>        # resolves dependencies; also accep
 
 | 請求                   | 回覆                                                                                   |
 |------------------------|----------------------------------------------------------------------------------------|
-| `kernel_info_request`  | `language_info`，其 name 為 `nabi`、mimetype 為 `text/x-nabi`、file_extension 為 `.nabi`、codemirror_mode 與 pygments_lexer 為 `rust`（在前端認識 Nabi 之前用於語法標示）；`help_links` 指向文件（`https://docs.nabi-lang.org/latest/`）與本 REPL 章節；`banner` 為 REPL 的工具鏈行（[9.7.8](907-jit-cells.md#line-editing)）；`protocol_version` 為 `"5.3"` |
+| `kernel_info_request`  | `language_info`，其 name 為 `nabi`、mimetype 為 `text/x-nabi`、file_extension 為 `.nabi`、codemirror_mode 與 pygments_lexer 為 `rust`（在前端認識 Nabi 之前用於語法標示）；`help_links` 指向文件（`https://docs.nabi-lang.org/latest/`）與本 REPL 章節；`banner` 為 REPL 的工具鏈行（[9.7.8](907-jit-cells.md#行編輯)）；`protocol_version` 為 `"5.3"` |
 | `execute_request`      | 見下文的「執行」                                                                       |
 | `is_complete_request`  | 依 REPL 的延續規則決定的 `complete` / `incomplete`；`indent` 是每個仍未關閉的括號四個空白 |
 | `complete_request`     | REPL 的補全候選項（9.8.5）                                                             |
@@ -118,7 +118,7 @@ kernelspec 是下列目錄之下的 `kernels/nabi/kernel.json`。以 `--env <nam
 
 ### 中斷
 
-由於 `interrupt_mode` 是 `"message"`，中斷以 control 通訊端上的 `interrupt_request` 到達。執行中的儲存格會被終止，工作階段從該儲存格之前的狀態繼續（與失敗的儲存格相同，[9.7.0](907-jit-cells.md#970-rules-of-the-cell-session)）。等待 `input_reply` 的儲存格也會結束。仍在編譯中的儲存格無法被中斷。
+由於 `interrupt_mode` 是 `"message"`，中斷以 control 通訊端上的 `interrupt_request` 到達。執行中的儲存格會被終止，工作階段從該儲存格之前的狀態繼續（與失敗的儲存格相同，[9.7.0](907-jit-cells.md#970-儲存格工作階段的規則)）。等待 `input_reply` 的儲存格也會結束。仍在編譯中的儲存格無法被中斷。
 
 ### 關閉（重新啟動核心）
 
@@ -126,7 +126,7 @@ kernelspec 是下列目錄之下的 `kernels/nabi/kernel.json`。以 `--env <nam
 
 ## 9.8.5. 程式碼補全
 
-`complete_request` 把游標前的片段與終端機 REPL 之 Tab 補全的候選項比對（[9.7.8](907-jit-cells.md#line-editing)）：工作階段的繫結與項目、core 函式庫的名稱、工作階段之 `use` 項目所匯入的名稱，以及關鍵字；`.` 之後的成員與 `::` 之後的項目。它以 `{ matches, cursor_start, cursor_end }` 回覆。
+`complete_request` 把游標前的片段與終端機 REPL 之 Tab 補全的候選項比對（[9.7.8](907-jit-cells.md#行編輯)）：工作階段的繫結與項目、core 函式庫的名稱、工作階段之 `use` 項目所匯入的名稱，以及關鍵字；`.` 之後的成員與 `::` 之後的項目。它以 `{ matches, cursor_start, cursor_end }` 回覆。
 
 ## 9.8.6. inspect_request：說明
 
@@ -134,7 +134,7 @@ kernelspec 是下列目錄之下的 `kernels/nabi/kernel.json`。以 `--env <nam
 
 ## 9.8.7. REPL 與 Jupyter 之間的程式碼共用
 
-在 REPL 中寫的程式碼可以原封不動地移到 Jupyter 儲存格，反之亦然，因為兩者遵循相同的儲存格工作階段與相同的語意（[9.7.0](907-jit-cells.md#970-rules-of-the-cell-session)）。
+在 REPL 中寫的程式碼可以原封不動地移到 Jupyter 儲存格，反之亦然，因為兩者遵循相同的儲存格工作階段與相同的語意（[9.7.0](907-jit-cells.md#970-儲存格工作階段的規則)）。
 
 ### 差異
 

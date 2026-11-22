@@ -40,7 +40,7 @@ let z: f64 = x as f64;        // 256.0
 
 - 任何型別轉成它自己（無作用）。
 - 整數型別、浮點數型別、`bool`、`char` 與 `c_char` 之中任兩者之間。有兩項限制。目標為 `bool`：只有 `bool` 能強制轉型為 `bool`。目標為 `char`：只允許 `u8 as char`（以及 `char as char`），因為較寬的值可能是代理碼位或超過 `U+10FFFF`。其他整數、浮點數、`bool` 與 `c_char` → `char` 的強制轉型是型別錯誤，訊息為 ``only `u8` can be cast as `char`, not `u32`; use `char::from_u32(n)` (`char | none`) for a wider value``。
-- 沒有酬載的 `enum` 轉成整數型別，得到其標籤或值（[2.4.2](204-enum.md#casting-to-an-integer)）。
+- 沒有酬載的 `enum` 轉成整數型別，得到其標籤或值（[2.4.2](204-enum.md#強制轉型為整數)）。
 - 轉成或轉出任意精度的 std 型別 `int` / `float`。轉成它們會執行無損的 `From` impl，因此沒有該 impl 的配對（`f64 as int`）是錯誤；從它們轉出會執行目標的 `WrappingFrom` impl。
 
 從浮點數型別轉成整數型別時，`as` 向零截斷並飽和：超出目標範圍的值得到最接近的端點（`1e10 as i32` 是 `i32::MAX`，`-1.5 as u8` 是 `0`），NaN 得到 `0`，在每個最佳化等級都是如此。`as` 結果的完整表格見 [stdlib 2.11.6](../../refs-standard-libraries/200-core/211-conversion.md#2116-as-t---bit-reinterpretation--numeric-cast)。
@@ -104,7 +104,7 @@ let m: i32 | none = try? big.try_into::<i32>();
 
 ## 2.14.6. 依上下文的自動轉換
 
-無後綴的數值字面值不會被轉換；其型別由預期型別決定。`let x: f64 = 1` 中的 `1` 從一開始就是 `f64`。確切規則定義於[數值字面值](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)。
+無後綴的數值字面值不會被轉換；其型別由預期型別決定。`let x: f64 = 1` 中的 `1` 從一開始就是 `f64`。確切規則定義於[數值字面值](../001-lexical/106-numeric-literals.md#163-無後綴的字面值)。
 
 相對地，執行時變數的自動轉換是不允許的。必須一律寫出上述三種形式之一。唯一的例外是視圖而非轉換：在預期 `SliceMut<T>` 之處的 `List<T>`，會以整個串列的可寫視圖傳遞，而在那裡的 `xs[a:b]` 則以該範圍的視圖傳遞（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt---writable-view)）。不會複製任何東西。
 
@@ -119,4 +119,4 @@ let b: i32 = try! a.try_into::<i32>();     // OK: panics on failure
 
 ## 2.14.7. 轉換 trait 的位置
 
-`From<U>` / `Into` 與 `TryFrom<U>` / `TryInto` 定義於 `core::convert`（[標準函式庫層級](../000-meta/005-standard-libraries-tiers.md)）。哪些 trait 為哪些型別配對實作的完整矩陣，定義於標準函式庫規格。`as` 沒有 trait；其配對是 [2.14.2](#2142-as-casts) 中的固定集合。
+`From<U>` / `Into` 與 `TryFrom<U>` / `TryInto` 定義於 `core::convert`（[標準函式庫層級](../000-meta/005-standard-libraries-tiers.md)）。哪些 trait 為哪些型別配對實作的完整矩陣，定義於標準函式庫規格。`as` 沒有 trait；其配對是 [2.14.2](#2142-as-強制轉型) 中的固定集合。

@@ -1,10 +1,10 @@
 # 9.4. NABIHIR 格式
 
-本節定義預先建置之函式庫套件的介面檔 `<name>.nabihir`。[NABIHIR](../000-meta/007-glossary.md#nabihir-nabi-hir-bytecode) 檔案位於該套件的 `lib<name>.a`（[套件封存檔](903-package-archive.md)）旁邊，不是封存檔的成員。
+本節定義預先建置之函式庫套件的介面檔 `<name>.nabihir`。[NABIHIR](../000-meta/007-glossary.md#nabihirnabi-hir-位元組碼) 檔案位於該套件的 `lib<name>.a`（[套件封存檔](903-package-archive.md)）旁邊，不是封存檔的成員。
 
 ## 9.4.1. 動機
 
-[AOT 建置管線](902-aot-pipeline.md)中的單態化依呼叫處的具體型別進行[特化](../000-meta/007-glossary.md#specialize)。因此當另一個套件呼叫某個套件的[泛型](../000-meta/007-glossary.md#generic) `fn` 時，特化必須在該呼叫處進行。只有[具體 fn](../000-meta/007-glossary.md#concrete-fn--generic-fn) 的目的碼是不夠的，所以另外提供一個介面供下游讀取。
+[AOT 建置管線](902-aot-pipeline.md)中的單態化依呼叫處的具體型別進行[特化](../000-meta/007-glossary.md#特化specialize)。因此當另一個套件呼叫某個套件的[泛型](../000-meta/007-glossary.md#泛型generic) `fn` 時，特化必須在該呼叫處進行。只有[具體 fn](../000-meta/007-glossary.md#具體函式--泛型函式concrete-fn--generic-fn) 的目的碼是不夠的，所以另外提供一個介面供下游讀取。
 
 單態化的輸入是 AST。因此 NABIHIR 的主體是**去除過的套件原始碼**，由下游的剖析器讀取。
 
@@ -79,7 +79,7 @@ PrefixVarInt 是 LEB128 的一種變體。第一個位元組開頭的 1 位元�
 | 欄位             | 意義                                                                              |
 |------------------|-----------------------------------------------------------------------------------|
 | name             | 套件的掛載名稱。它出現在符號中，因此必須等於 `--extern <name>=`                   |
-| hash             | 套件雜湊（[0.3.3](../000-meta/003-source-units.md#033-package-identifier)）。用於符號修飾的值。對標準函式庫套件 `nabi` 而言，它是一個 `pkg=hash;...` 清單，每個層級一個項目 |
+| hash             | 套件雜湊（[0.3.3](../000-meta/003-source-units.md#033-套件識別碼)）。用於符號修飾的值。對標準函式庫套件 `nabi` 而言，它是一個 `pkg=hash;...` 清單，每個層級一個項目 |
 | source dir       | 建置時容納套件原始碼的目錄。主體中檔案路徑的基準；下游讀取主體，不讀取磁碟       |
 | gc type offset / count | 這個套件的 GC 型別 id 範圍 `[offset, offset + count)`（9.4.8）               |
 | features         | 建置套件時所使用的 `feature` cfg 值。下游以建置的其他 cfg 與這些 feature 剖析主體 |
@@ -122,14 +122,14 @@ PrefixVarInt 是 LEB128 的一種變體。第一個位元組開頭的 1 位元�
 - **`any` 標籤。** `any` 槽位的標籤是型別名稱的 31 位元雜湊，因此分開建置的套件對同一個型別使用相同的標籤。
 - **`any` 種子。** 為了讓程式知道函式庫放進 `any` 的型別，函式庫會在主體結尾附加一個使用那些型別的小型 Nabi 函式。程式的封閉世界 `any` 分派器也包括這些型別。
 - **分派器符號。** `any` 分派器是符號 `nabi.any.<hash>`，在函式庫中定義為 weak，在程式中定義為 strong。在連結時，程式的定義勝出。
-- **和型別成員順序。** 和型別的各項依結構鍵排序，而不是依內部型別編號排序（[2.6.4](../002-types/206-sum-types.md#canonical-order)），因此各套件的標籤一致。
+- **和型別成員順序。** 和型別的各項依結構鍵排序，而不是依內部型別編號排序（[2.6.4](../002-types/206-sum-types.md#標準順序)），因此各套件的標籤一致。
 - **GC 型別 id。** 每個套件都有自己的 GC 型別 id 範圍（9.4.6）。同一個程式中兩個套件的範圍重疊是錯誤。
 - **方法符號。** 相依套件的方法以穩定的路徑 `<module>::<type>.<method>[__by_<trait>]` 修飾（[9.5](905-symbol-mangling.md)）。
 - **呼叫摘要。** 下游建置的程式碼取決於它所呼叫之函式的呼叫摘要（9.4.7）。增量建置的 codegen 單元以其位於其他單元與套件中之被呼叫者的摘要作為鍵，因此摘要改變之重新建置的相依套件，只會重新編譯呼叫了已改變之函式的單元。
 
 ## 9.4.9. 讀取與拒絕
 
-`--extern name=<name>.nabihir` 或 `--extern name=lib<name>.a` 都會找到另一個檔案（[9.2.3](902-aot-pipeline.md#923-dependency-resolution)）。下游把主體當作原始碼覆蓋層剖析以取得宣告，把被去除的函式宣告為預先建置的符號，就地單態化泛型，然後連結封存檔。
+`--extern name=<name>.nabihir` 或 `--extern name=lib<name>.a` 都會找到另一個檔案（[9.2.3](902-aot-pipeline.md#923-相依套件解析)）。下游把主體當作原始碼覆蓋層剖析以取得宣告，把被去除的函式宣告為預先建置的符號，就地單態化泛型，然後連結封存檔。
 
 若下列任何一項不同，NABIHIR 會以「重新建置」錯誤被拒絕。
 
@@ -139,10 +139,10 @@ PrefixVarInt 是 LEB128 的一種變體。第一個位元組開頭的 1 位元�
 
 ## 9.4.10. 檢視 NABIHIR
 
-`nabi inspect --dump <file>` 印出 NABIHIR 的版本、產生者、meta（包括 `features:`）、介面檔案的路徑與文字、摘要，以及呼叫摘要（`--- calls`：每個函式一行，包括其名稱與已設定的事實）（[9.9.2](909-debug-tools.md#992-nabihir-inspection)）。`nabi inspect`（[9.9.14](909-debug-tools.md#9914-package-inspection)）把摘要與封存檔一起顯示。
+`nabi inspect --dump <file>` 印出 NABIHIR 的版本、產生者、meta（包括 `features:`）、介面檔案的路徑與文字、摘要，以及呼叫摘要（`--- calls`：每個函式一行，包括其名稱與已設定的事實）（[9.9.2](909-debug-tools.md#992-檢視-nabihir)）。`nabi inspect`（[9.9.14](909-debug-tools.md#9914-檢視套件)）把摘要與封存檔一起顯示。
 
 ## 9.4.11. 穩定性
 
 只會讀取由同一個 `nabic` 產生的 NABIHIR（9.4.9）。格式改變時，`version` 會遞增，而不同的版本需要重新建置。適用[概觀](../008-abi/README.md)的穩定性方針。
 
-標準函式庫不以 NABIHIR 散布（[9.3.6](903-package-archive.md#936-standard-library)）。
+標準函式庫不以 NABIHIR 散布（[9.3.6](903-package-archive.md#936-標準函式庫)）。

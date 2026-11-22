@@ -45,7 +45,7 @@ let d = p.distance(q);                         // instance.method() call
 let n = p.norm();
 ```
 
-在這種形式中，第一個參數是 `self`。`self` 表示實例的值（對 `struct` 而言是一份複本，[2.3.8](../002-types/203-struct.md#238-value-semantics)），主體以 `self.field` 存取欄位。它以 `instance.method(args)` 呼叫。
+在這種形式中，第一個參數是 `self`。`self` 表示實例的值（對 `struct` 而言是一份複本，[2.3.8](../002-types/203-struct.md#238-值語意)），主體以 `self.field` 存取欄位。它以 `instance.method(args)` 呼叫。
 
 ### 實例方法：`ref self`
 
@@ -111,9 +111,9 @@ let c = Counter { count: 0 };
 c.increment();                                 // no explicit 'ref'
 ```
 
-這是 [`ref` 關鍵字](407-ref-keyword.md)中一般函式呼叫規則（必須明確寫出 `ref`）的例外。理由是：方法呼叫語法 `x.method()` 本身就是接收者的[分派](../000-meta/007-glossary.md#dispatch)機制，而且無論接收者是 `self` 還是 `ref self`，呼叫形式都相同。額外明確寫出的 `ref` 只會是視覺上的雜訊。
+這是 [`ref` 關鍵字](407-ref-keyword.md)中一般函式呼叫規則（必須明確寫出 `ref`）的例外。理由是：方法呼叫語法 `x.method()` 本身就是接收者的[分派](../000-meta/007-glossary.md#分派dispatch)機制，而且無論接收者是 `self` 還是 `ref self`，呼叫形式都相同。額外明確寫出的 `ref` 只會是視覺上的雜訊。
 
-這與 Rust、C# 和 Swift 的方法呼叫慣例一致。不過，以路徑呼叫同一個方法時，接收者是一般的引數，因此要寫 `ref`（`Counter::increment(ref c)`，[4.7.3](407-ref-keyword.md#473-explicit-at-the-call-c-style)）。
+這與 Rust、C# 和 Swift 的方法呼叫慣例一致。不過，以路徑呼叫同一個方法時，接收者是一般的引數，因此要寫 `ref`（`Counter::increment(ref c)`，[4.7.3](407-ref-keyword.md#473-呼叫時明確寫出c-風格)）。
 
 ## 4.9.6. 自由函式與方法的呼叫形式
 
@@ -131,7 +131,7 @@ c.increment();                                 // no explicit 'ref'
 
 1. 固有 `impl` 的方法優先於 trait 方法。
 2. 在 trait 方法中，目前套件定義的或明確 `use` 的 trait 優先於 `core` 的 trait，後者在任何地方都在方法作用域內。目前套件是寫出該呼叫的實際套件。除非經過 `use`，相依套件的 trait 不會優先於 core 的 trait。
-3. 若仍有多個候選，就是歧義錯誤，診斷會建議寫成 `Trait::method(x)`。同一個 trait 在型別參數上不同的多個 impl（`Call<f64>`、`Call<Array<f64, N>>`）不算衝突：由引數選出 impl（[3.1.3](../003-expressions/301-operator-dispatch.md#313-dispatch-without-a-vtable)）。
+3. 若仍有多個候選，就是歧義錯誤，診斷會建議寫成 `Trait::method(x)`。同一個 trait 在型別參數上不同的多個 impl（`Call<f64>`、`Call<Array<f64, N>>`）不算衝突：由引數選出 impl（[3.1.3](../003-expressions/301-operator-dispatch.md#313-不經-vtable-的分派)）。
 
 ```nabi
 use pkg::geom::Union;              // user trait: union method

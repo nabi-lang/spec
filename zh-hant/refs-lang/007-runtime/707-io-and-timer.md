@@ -32,7 +32,7 @@ I/O 等待依下列方式進行：
 5. Some worker takes that task and retries the read.
 ```
 
-這個流程與 `async` `fn` 中的 `await` 結合（見[非同步](../004-functions/412-async.md)）。註冊是邊緣觸發的，因此每次等待都會重新啟用。標準函式庫的就緒 future 在停駐之後會再檢查一次 fd，以免錯過期間經過的邊緣。被喚醒的任務可能發現 fd 尚未就緒，因此呼叫者會重試該操作。那些 future（`task::readable` / `task::writable`）是 `#[internal]`（[stdlib 2.18](../../refs-standard-libraries/200-core/218-task.md)）：手寫的 future 透過 `nabi_io_register` 等待 fd（[8.5.5](../008-abi/805-extern-symbols.md#855-io--timer-area)）。
+這個流程與 `async` `fn` 中的 `await` 結合（見[非同步](../004-functions/412-async.md)）。註冊是邊緣觸發的，因此每次等待都會重新啟用。標準函式庫的就緒 future 在停駐之後會再檢查一次 fd，以免錯過期間經過的邊緣。被喚醒的任務可能發現 fd 尚未就緒，因此呼叫者會重試該操作。那些 future（`task::readable` / `task::writable`）是 `#[internal]`（[stdlib 2.18](../../refs-standard-libraries/200-core/218-task.md)）：手寫的 future 透過 `nabi_io_register` 等待 fd（[8.5.5](../008-abi/805-extern-symbols.md#855-io--計時器區域)）。
 
 阻塞的呼叫（`TcpStream::read` 等）不使用這條路徑；它們會阻塞呼叫它們的作業系統執行緒。暫停任務的 I/O 由標準函式庫的 `*_async` 方法提供（[stdlib 3.2.0](../../refs-standard-libraries/300-std/302-net.md#320-common-rules)）。
 
@@ -49,7 +49,7 @@ trait IODriver {
 }
 ```
 
-這個介面是概念上的；確切的簽章由執行環境的實作決定。驅動程式不持有任何 waker。要喚醒的任務透過由 fd 與方向（讀 / 寫）決定的停駐鍵，在 `core::task` 的停駐表中找到。執行環境符號見 [8.5.5](../008-abi/805-extern-symbols.md#855-io--timer-area)。
+這個介面是概念上的；確切的簽章由執行環境的實作決定。驅動程式不持有任何 waker。要喚醒的任務透過由 fd 與方向（讀 / 寫）決定的停駐鍵，在 `core::task` 的停駐表中找到。執行環境符號見 [8.5.5](../008-abi/805-extern-symbols.md#855-io--計時器區域)。
 
 ## 7.7.4. 計時器結構
 
@@ -104,7 +104,7 @@ loop {
 
 預設情況下，N 固定為 CPU 核心數。
 
-啟用時（`NABIR_DYNAMIC_WORKERS=1`），過度閒置的工作者會停駐，而推入的工作會先喚醒其他工作者；當每個作用中的工作者都忙碌時，它會被重新啟用。在每種模式下，阻塞在呼叫中的工作者都會被替換（[7.6.7](706-scheduler.md#767-automatic-detection-of-blocking-syscalls)）。
+啟用時（`NABIR_DYNAMIC_WORKERS=1`），過度閒置的工作者會停駐，而推入的工作會先喚醒其他工作者；當每個作用中的工作者都忙碌時，它會被重新啟用。在每種模式下，阻塞在呼叫中的工作者都會被替換（[7.6.7](706-scheduler.md#767-自動偵測阻塞的系統呼叫)）。
 
 ## 7.7.9. 取消
 

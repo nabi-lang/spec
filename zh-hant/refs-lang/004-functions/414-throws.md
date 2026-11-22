@@ -30,7 +30,7 @@ fn name(args) throws (A | B | C) -> R           // typed: sum type of errors
 fn name(f: fn(T) throws -> U) rethrows -> R     // throws only when the function argument throws
 ```
 
-`throws` 與 `rethrows` 是上下文關鍵字，只在參數括號 `)` 之後才是關鍵字（[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)），並放在回傳型別箭頭之前。`throws` 之後可選的括號給出可能擲回之錯誤的型別。
+`throws` 與 `rethrows` 是上下文關鍵字，只在參數括號 `)` 之後才是關鍵字（[1.5.4](../001-lexical/105-keywords.md#154-上下文關鍵字)），並放在回傳型別箭頭之前。`throws` 之後可選的括號給出可能擲回之錯誤的型別。
 
 ## 4.14.2. 不擲回錯誤的函式
 
@@ -46,7 +46,7 @@ fn bad() -> i32 {
 }
 ```
 
-這條規則強制簽章說明函式是否可能擲回錯誤，從而阻止錯誤默默傳播。進入點是唯一的例外：沒有回傳型別的明確 `fn main()` 不需宣告就能擲回錯誤（[4.16.4](416-entry-point.md#4164-exit-codes-and-unhandled-exceptions)）。
+這條規則強制簽章說明函式是否可能擲回錯誤，從而阻止錯誤默默傳播。進入點是唯一的例外：沒有回傳型別的明確 `fn main()` 不需宣告就能擲回錯誤（[4.16.4](416-entry-point.md#4164-結束碼與未處理的例外)）。
 
 ## 4.14.3. 未定型的 `throws`
 
@@ -103,7 +103,7 @@ fn load_config(path: str) throws (ConfigError) -> Config {
 
 ## 4.14.6. 呼叫者的義務
 
-呼叫 `throws` 函式的運算式必須位於被 `try` 涵蓋的運算式內。不帶 `try` 地呼叫會擲回錯誤的函式是編譯錯誤。`try` 涵蓋其右側的整個運算式，因此 `try a(b())` 涵蓋 `a` 與 `b` 兩個呼叫，`try { a(); b(); }` 涵蓋區塊中的所有呼叫（[3.14.2](../003-expressions/314-error-control-flow.md#3142-try-marking-call-sites)）。
+呼叫 `throws` 函式的運算式必須位於被 `try` 涵蓋的運算式內。不帶 `try` 地呼叫會擲回錯誤的函式是編譯錯誤。`try` 涵蓋其右側的整個運算式，因此 `try a(b())` 涵蓋 `a` 與 `b` 兩個呼叫，`try { a(); b(); }` 涵蓋區塊中的所有呼叫（[3.14.2](../003-expressions/314-error-control-flow.md#3142-try標示呼叫處)）。
 
 以 `try` 標示之呼叫的錯誤由最近的 `catch` 處理；未被處理的錯誤傳播到外層函式，而外層函式的 `throws` 必須接受該錯誤型別（4.14.5）。
 
@@ -191,7 +191,7 @@ async fn fetch_data() throws (NetworkError) -> Data { ... }
 
 有人可能會問：呼叫這個函式，是否會得到容納 `Data | NetworkError` 的 Future？
 
-答案是 **`TryAsyncFuture<Data, NetworkError>`**（[4.1.11](401-function-declaration.md#result-types-of-coroutine-functions)）。錯誤不會混入結果型別；它在 `await` 處經由錯誤通道交付。因此 `await` 的一方要以 `try` 標示它。`TryAsyncFuture` 不實作一般的 `Future` trait。
+答案是 **`TryAsyncFuture<Data, NetworkError>`**（[4.1.11](401-function-declaration.md#協程函式的結果型別)）。錯誤不會混入結果型別；它在 `await` 處經由錯誤通道交付。因此 `await` 的一方要以 `try` 標示它。`TryAsyncFuture` 不實作一般的 `Future` trait。
 
 ```nabi
 let f = fetch_data();              // f: future::TryAsyncFuture<Data, NetworkError>
@@ -206,7 +206,7 @@ let d = try await f catch e: NetworkError {
 
 ### `try for`
 
-走訪 `TryIterator`（會擲回錯誤之產生器的 `TryGenIter`、`io::Bytes`……）的 `for` 在每次 `next` 時都會擲回錯誤，因此寫成 `try for`。`try` 只涵蓋迭代：可迭代運算式與每一次 `next`。主體不被涵蓋；那裡會擲回錯誤的呼叫以它自己的 `try` 標示（[3.13.3](../003-expressions/313-loop-expressions.md#3133-for-iterator-based-repetition)）。走訪 `TryStream` 的 `for await` 以相同方式運作。
+走訪 `TryIterator`（會擲回錯誤之產生器的 `TryGenIter`、`io::Bytes`……）的 `for` 在每次 `next` 時都會擲回錯誤，因此寫成 `try for`。`try` 只涵蓋迭代：可迭代運算式與每一次 `next`。主體不被涵蓋；那裡會擲回錯誤的呼叫以它自己的 `try` 標示（[3.13.3](../003-expressions/313-loop-expressions.md#3133-for以迭代器為基礎的重複)）。走訪 `TryStream` 的 `for await` 以相同方式運作。
 
 ```nabi
 fn total(path: str) throws (IoError | ParseError) -> i64 {
@@ -223,7 +223,7 @@ for line in lines("a.txt") { ... }          // ERROR (E0062): `next` can throw; 
 | 形式 | 某一步發生錯誤時 |
 |---|---|
 | `try for` | 傳播到最近的 `catch`，否則離開函式 |
-| `try! for` | panic（[3.14.3](../003-expressions/314-error-control-flow.md#3143-try-and-try)） |
+| `try! for` | panic（[3.14.3](../003-expressions/314-error-control-flow.md#3143-try-與-try)） |
 | `try? for` | 結束迴圈；`for` 運算式為 `none`（否則為 `()`） |
 | `try for .. catch e: E { .. }` | `catch` 附加在整個 `try for` 運算式上 |
 
@@ -243,13 +243,13 @@ impl Database {
 
 實作 trait 的 impl 方法，其 `throws` 必須與 trait 方法的 `throws` 相同。若 impl 加入 `throws` 或放寬錯誤型別，就是編譯錯誤（E0074）。不寫 `throws` 的 impl 方法取用 trait 方法的 `throws`，其錯誤型別所指稱的就是在 trait 處所指稱的：`impl Display for P { fn fmt(self, ref f: Formatter) { try f.write_str(..); } }` 擲回 `FmtError`。
 
-運算子 trait 方法（`Add::add` 等）宣告時不帶 `throws`，因此運算子不會擲回錯誤。可能失敗的運算以具名方法提供，或回傳 `Result`（[stdlib 2.3](../../refs-standard-libraries/200-core/203-ops.md)）。使用者運算子也是如此：在宣告了 `throws` 的方法上使用 `#[infix]` / `#[prefix]` / `#[postfix]` 是錯誤（[6.7.3](../006-meta-system/607-operator-magic.md#673-connection-mechanism)）。
+運算子 trait 方法（`Add::add` 等）宣告時不帶 `throws`，因此運算子不會擲回錯誤。可能失敗的運算以具名方法提供，或回傳 `Result`（[stdlib 2.3](../../refs-standard-libraries/200-core/203-ops.md)）。使用者運算子也是如此：在宣告了 `throws` 的方法上使用 `#[infix]` / `#[prefix]` / `#[postfix]` 是錯誤（[6.7.3](../006-meta-system/607-operator-magic.md#673-連接機制)）。
 
 ## 4.14.12. 以值為基礎的實作模型
 
 會擲回錯誤的函式以值的形式回傳其結果。回傳值是一個成功旗標與一個酬載的組合，酬載容納成功值或錯誤值。錯誤通道由簽章區分，因此成功型別與錯誤型別可以是同一個型別。呼叫處的 `try` 檢查旗標並分支；發生錯誤時，它前往最近的 `catch`，或把錯誤作為外層函式的錯誤結果回傳。
 
-在這個模型中，沒有錯誤之路徑的成本是一次分支，而進入 `try` 或 `catch` 不需要任何成本。不使用堆疊展開，也不使用執行時的錯誤交付函式。確切的回傳值配置定義於 [8.6.5](../008-abi/806-calling-convention.md#865-return-of-throwing-functions-value-based-error-propagation)，降階定義於 [8.9.6](../008-abi/809-lowering-control.md#896-try--catch--finally-value-based-branching)。
+在這個模型中，沒有錯誤之路徑的成本是一次分支，而進入 `try` 或 `catch` 不需要任何成本。不使用堆疊展開，也不使用執行時的錯誤交付函式。確切的回傳值配置定義於 [8.6.5](../008-abi/806-calling-convention.md#865-會擲回錯誤之函式的回傳以值為基礎的錯誤傳播)，降階定義於 [8.9.6](../008-abi/809-lowering-control.md#896-try--catch--finally以值為基礎的分支)。
 
 ## 4.14.13. panic 與致命錯誤
 
@@ -261,6 +261,6 @@ thread '<name>' panicked at <path>:<line>:<col>:
 ```
 
 - `<name>` 是執行緒名稱：主執行緒為 `main`，未命名的執行緒為 `<unnamed>`。
-- 發生在 C 所呼叫之函式之下的 panic，會在報告之後中止行程而不是結束，或把該函式的 `#[on_panic]` 值回傳給 C（[5.9.12](../005-modules/509-extern-block.md#5912-responsibility-for-ffi-safety)）。以 `std::panic::set_hook` 設定的掛鉤在每種情況下都會在報告之後執行（[stdlib 3.12](../../refs-standard-libraries/300-std/312-panic.md)）。
-- 位置是失敗的運算式。在 [`#[track_caller]`](../006-meta-system/602-built-in-attributes.md#6212-track_caller-passing-the-call-site) 函式的鏈之內，它是該鏈之外的第一個呼叫位置。
-- 環境中有 `NABI_BACKTRACE=1` 時，其後接著 `stack backtrace:`：發生 panic 之執行緒呼叫堆疊上的函式，從最內層開始，每行一個，以 Nabi 路徑表示（`   0: geom::distance`）。頂端的標準函式庫 panic 函式會被省略，最後一行 `note:` 說明如何看到它們。`NABI_BACKTRACE=full` 列出每個框架及其回傳位址（`   0: 0x000000010000a4f0 - geom::distance`），直到第一個不是 Nabi 程式碼的框架（`<unknown>`）為止。未設定、為空或為 `0`：沒有回溯。[9.9.6](../009-tools/909-debug-tools.md#panic-backtraces) 說明它如何產生以及在哪裡可用。
+- 發生在 C 所呼叫之函式之下的 panic，會在報告之後中止行程而不是結束，或把該函式的 `#[on_panic]` 值回傳給 C（[5.9.12](../005-modules/509-extern-block.md#5912-ffi-安全的責任)）。以 `std::panic::set_hook` 設定的掛鉤在每種情況下都會在報告之後執行（[stdlib 3.12](../../refs-standard-libraries/300-std/312-panic.md)）。
+- 位置是失敗的運算式。在 [`#[track_caller]`](../006-meta-system/602-built-in-attributes.md#6212-track_caller-傳遞呼叫處) 函式的鏈之內，它是該鏈之外的第一個呼叫位置。
+- 環境中有 `NABI_BACKTRACE=1` 時，其後接著 `stack backtrace:`：發生 panic 之執行緒呼叫堆疊上的函式，從最內層開始，每行一個，以 Nabi 路徑表示（`   0: geom::distance`）。頂端的標準函式庫 panic 函式會被省略，最後一行 `note:` 說明如何看到它們。`NABI_BACKTRACE=full` 列出每個框架及其回傳位址（`   0: 0x000000010000a4f0 - geom::distance`），直到第一個不是 Nabi 程式碼的框架（`<unknown>`）為止。未設定、為空或為 `0`：沒有回溯。[9.9.6](../009-tools/909-debug-tools.md#panic-回溯) 說明它如何產生以及在哪裡可用。

@@ -1,6 +1,6 @@
 # 8.8. 降階：資料型別與運算式
 
-本節定義 Nabi 的值、型別與運算式在 `nabic` 產生的程式碼中如何表示。配置以 Nabi 型別寫出：`(A, B)` 是位於其自然偏移的一對欄位，`[T; n]` 是陣列，`ptr` 是指標寬度的位址，`p` 是以位元組計的指標寬度。程式碼是虛擬碼（[8.7.1](807-code-generation.md#871-translation-flow)）。
+本節定義 Nabi 的值、型別與運算式在 `nabic` 產生的程式碼中如何表示。配置以 Nabi 型別寫出：`(A, B)` 是位於其自然偏移的一對欄位，`[T; n]` 是陣列，`ptr` 是指標寬度的位址，`p` 是以位元組計的指標寬度。程式碼是虛擬碼（[8.7.1](807-code-generation.md#871-轉譯流程)）。
 
 ## 8.8.1. 基本的整數 / 浮點數
 
@@ -16,7 +16,7 @@
 | `char`            | 4 位元組（Unicode 純量值）                                              |
 | `c_char`          | 一個位元組                                                              |
 
-`str` 是以值傳遞的不可變組合 `(ptr, usize)`（一個指標與位元組長度）。字面值指向永不消失的常數；在執行時建立的字串指向某個 GC 物件（型別 id `1`，[8.2.12](802-scan-table.md#8212-runtime-reserved-type-ids)）的酬載。
+`str` 是以值傳遞的不可變組合 `(ptr, usize)`（一個指標與位元組長度）。字面值指向永不消失的常數；在執行時建立的字串指向某個 GC 物件（型別 id `1`，[8.2.12](802-scan-table.md#8212-執行環境保留的型別-id)）的酬載。
 
 - `s[a:b]` 是 `(ptr + a, b - a)`，並共用原本的位元組（O(1)）。
 - `ptr` 可以指向 GC 物件的任何位元組（包括結尾的 NUL），並讓整個物件保持存活。GC 把它當作內部指標處理，疏散會保留偏移地改寫它。
@@ -32,17 +32,17 @@ a / b       ->  div.s32 a, b            ; after the checks for b == 0 and MIN / 
 a < b       ->  lt.s32 a, b             ; lt.u32 for unsigned, lt.f64 (ordered) for floats
 ```
 
-受檢的運算在結果放不下時分支到其 panic（`-C overflow-checks`，[9.1.2](../009-tools/901-nabic-cli.md#nabic-build-aot-build)）；最佳化建置會移除它能證明不會失敗的檢查（[8.7.3](807-code-generation.md#873-optimization-levels)）。使用者定義的 trait 實作在泛型單態化之後是函式呼叫。
+受檢的運算在結果放不下時分支到其 panic（`-C overflow-checks`，[9.1.2](../009-tools/901-nabic-cli.md#nabic-buildaot-建置)）；最佳化建置會移除它能證明不會失敗的檢查（[8.7.3](807-code-generation.md#873-最佳化等級)）。使用者定義的 trait 實作在泛型單態化之後是函式呼叫。
 
 ## 8.8.3. `struct` 的表示方式
 
-`struct` 是值型別（[2.3.8](../002-types/203-struct.md#238-value-semantics)），沒有物件標頭。
+`struct` 是值型別（[2.3.8](../002-types/203-struct.md#238-值語意)），沒有物件標頭。
 
 ```nabi
 struct Point { x: f64; y: f64; }
 ```
 
-其表示方式就是以 [2.3.6](../002-types/203-struct.md#236-memory-layout) 之配置排列的各欄位，包括 `#[repr]` 的對齊與偏移。
+其表示方式就是以 [2.3.6](../002-types/203-struct.md#236-記憶體配置) 之配置排列的各欄位，包括 `#[repr]` 的對齊與偏移。
 
 ```
 (f64, f64)        ; x at 0, y at 8; size 16, align 8
@@ -119,7 +119,7 @@ store.i32 [v + 0], 0        ; tag: Ok
 store.i32 [v + 8], 42       ; the payload in its own type
 ```
 
-從較短變體之酬載建立的 union 值，在該酬載之後的位元組中容納零，因此從它複製出的根字組是 null 或參照，絕不會是殘留的堆疊內容（[8.9.12](809-lowering-control.md#8912-shadow-stack-frame)）。
+從較短變體之酬載建立的 union 值，在該酬載之後的位元組中容納零，因此從它複製出的根字組是 null 或參照，絕不會是殘留的堆疊內容（[8.9.12](809-lowering-control.md#8912-影子堆疊框架)）。
 
 ### 比對變體
 
@@ -247,7 +247,7 @@ fn(i32, i32) -> i32
 (ptr, ptr)        ; code, env
 ```
 
-`code` 以 `env` 作為第一個引數，然後是宣告的引數，沒有 TLS 位址（[8.6.11](806-calling-convention.md#8611-function-pointer-abi)）。作為值使用的具名函式有 null 的 `env`，以及指向捨棄它之 thunk 的程式碼指標。只有 C 函式型別（`extern "C" fn(..)`）是單純的程式碼指標。
+`code` 以 `env` 作為第一個引數，然後是宣告的引數，沒有 TLS 位址（[8.6.11](806-calling-convention.md#8611-函式指標的-abi)）。作為值使用的具名函式有 null 的 `env`，以及指向捨棄它之 thunk 的程式碼指標。只有 C 函式型別（`extern "C" fn(..)`）是單純的程式碼指標。
 
 ## 8.8.12. 閉包的表示方式
 
@@ -288,7 +288,7 @@ c2 = add.i32 c, 1
 store.i32 [counter], c2
 ```
 
-在 `-O0`，每個值都留在其槽位中。在 `-O0` 以上，從未被取址、從未被整體複製、也沒有向偵錯工具描述的區域變數，可以改為存在暫存器中，而最佳化器會把已知的值轉送給它的讀取（[8.7.3](807-code-generation.md#873-optimization-levels)）。容納 GC 參照的區域變數一律保有其槽位：影子堆疊框架容納該槽位的位址（8.9.12）。
+在 `-O0`，每個值都留在其槽位中。在 `-O0` 以上，從未被取址、從未被整體複製、也沒有向偵錯工具描述的區域變數，可以改為存在暫存器中，而最佳化器會把已知的值轉送給它的讀取（[8.7.3](807-code-generation.md#873-最佳化等級)）。容納 GC 參照的區域變數一律保有其槽位：影子堆疊框架容納該槽位的位址（8.9.12）。
 
 ## 8.8.14. 字面值的去糖
 

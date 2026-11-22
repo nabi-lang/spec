@@ -26,19 +26,19 @@ type_arg_list   ::= type_expr ("," type_expr)* ","?
 | `::`                 | 套件：某個層級或該套件的某個相依套件，越過任何區域名稱   |
 | 一般識別字           | 目前可見的名稱（子模組、`use` 的名稱）                   |
 
-`pkg` 與可見性關鍵字 `pub(pkg)` 同源，而 `sup` 是可見性 `pub(sub)` 的**鏡像**方向（sub 表示後代，sup 表示祖先）。兩者都只在後面緊接著 `::` 時才是路徑根；在其他位置它們是一般名稱（[1.5.4 上下文關鍵字](../001-lexical/105-keywords.md)）。層級名稱 `std`、`core` 與 `bare` 是一般識別字（[5.7.4](#574-std-core-bare-the-standard-library-tiers)）。
+`pkg` 與可見性關鍵字 `pub(pkg)` 同源，而 `sup` 是可見性 `pub(sub)` 的**鏡像**方向（sub 表示後代，sup 表示祖先）。兩者都只在後面緊接著 `::` 時才是路徑根；在其他位置它們是一般名稱（[1.5.4 上下文關鍵字](../001-lexical/105-keywords.md)）。層級名稱 `std`、`core` 與 `bare` 是一般識別字（[5.7.4](#574-stdcorebare標準函式庫層級)）。
 
 `self::` 不是路徑的起點。同一個模組的子項與項目可以用一般識別字存取（`child::item`）。
 
-名稱解析不會隱含地搜尋祖先模組（例外：`extern` 函式，[5.9.4](509-extern-block.md#name-space-of-extern-functions)）。一般識別字只在目前模組的項目、子模組，以及以 `use` 匯入的名稱（包括隱含的 `use core::prelude::*`）中查找。父模組或更上層模組的項目必須以 `sup::` 指稱，或以 `use` 匯入。
+名稱解析不會隱含地搜尋祖先模組（例外：`extern` 函式，[5.9.4](509-extern-block.md#extern-函式的命名空間)）。一般識別字只在目前模組的項目、子模組，以及以 `use` 匯入的名稱（包括隱含的 `use core::prelude::*`）中查找。父模組或更上層模組的項目必須以 `sup::` 指稱，或以 `use` 匯入。
 
 查找順序如下；第一個相符者勝出。
 
-1. 目前模組的項目與子模組，以及套件自身相依套件的名稱（[5.7.14](#5714-paths-between-packages)；兩者皆是的名稱是錯誤）
+1. 目前模組的項目與子模組，以及套件自身相依套件的名稱（[5.7.14](#5714-套件之間的路徑)；兩者皆是的名稱是錯誤）
 2. 標準函式庫層級（`std::fs`），除非目前模組的具名 `use` 取用了該名稱
 3. 目前模組的 `use`。具名匯入優先於 glob（`*`、`**`）。
 4. 隱含的 `use core::prelude::*`（標準函式庫自身的模組：`use core::**`）
-5. 對於在預期列舉型別之位置的單獨名稱，該列舉的變體（[2.4.8](../002-types/204-enum.md#248-bare-variants-from-the-expected-type)）
+5. 對於在預期列舉型別之位置的單獨名稱，該列舉的變體（[2.4.8](../002-types/204-enum.md#248-依預期型別使用不帶路徑的變體)）
 
 函式無論是否為泛型，都共用單一的值命名空間。因此無論種類為何，最近的宣告勝出（目前模組中非泛型的 `max` 會隱藏 core 中泛型的 `max`）。
 
@@ -90,7 +90,7 @@ std::fs::File
 | `core::*` | 基礎 / 常用的 trait                  |
 | `std::*`  | 作業系統整合 / I/O 等                |
 
-這三個套件隨工具鏈一起提供，由編譯器自動建置與連結（[0.5.4](../000-meta/005-standard-libraries-tiers.md#054-distribution-form-and-linking-mechanism)）；它們不是使用者套件的相依套件，也不需要 `--extern`。其他任何套件都不得命名為 `std`、`core` 或 `bare`（[9.10.3](../009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)）。
+這三個套件隨工具鏈一起提供，由編譯器自動建置與連結（[0.5.4](../000-meta/005-standard-libraries-tiers.md#054-散布形式與連結機制)）；它們不是使用者套件的相依套件，也不需要 `--extern`。其他任何套件都不得命名為 `std`、`core` 或 `bare`（[9.10.3](../009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)）。
 
 除此之外，層級的名稱是一般名稱。模組、項目或相依套件別名可以叫做 `std`、`core` 或 `bare`；在宣告或匯入它的模組中，該名稱就是區域的那一個，就像任何遮蔽另一個名稱的名稱一樣。開頭的 `::` 一律指稱工具鏈的函式庫（或某個相依套件）：`::std::fs::File` 越過區域的 `std` 到達該層級。
 
@@ -214,7 +214,7 @@ use parser::Token;
 let t = parser::lex(src);
 ```
 
-- 相依套件的名稱是頂層路徑。名稱是 `nabi.nabion` 中 `deps` 的鍵，並把 `-` 換成 `_`（`nabi-syntax` → `nabi_syntax::..`），建置工具以 `nabic --extern name=..` 註冊它（[9.2.3](../009-tools/902-aot-pipeline.md#923-dependency-resolution)、[9.10.3](../009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)）。不需要像 Rust 的 `extern crate` 那樣另外宣告。
+- 相依套件的名稱是頂層路徑。名稱是 `nabi.nabion` 中 `deps` 的鍵，並把 `-` 換成 `_`（`nabi-syntax` → `nabi_syntax::..`），建置工具以 `nabic --extern name=..` 註冊它（[9.2.3](../009-tools/902-aot-pipeline.md#923-相依套件解析)、[9.10.3](../009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)）。不需要像 Rust 的 `extern crate` 那樣另外宣告。
 - 套件只看得到它所相依的套件，名稱就是它自己的 `deps` 給它們的名稱。建置中其他套件的相依套件不在作用域內：以 `"csvio": Dep::..(package: "csv")` 相依於 `csv` 的套件寫的是 `csvio::..`，而在那裡 `csv::..` 是它自己的模組 `csv`，否則是錯誤，其說明會提示把 `csv` 加入該套件的 `deps`。
 - 同時是套件相依套件與目前模組子模組的名稱有歧義：以它開頭的路徑是錯誤，錯誤訊息會指出兩者。其說明會指出應寫的形式：相依套件寫 `::name::..`，模組寫 `pkg::..::name::..`，或在 `nabi.nabion` 中為相依套件換一個名稱（以 `package:` 指名該套件的鍵）。
 - 相依套件內的 `pkg::` 是該相依套件自己的根。

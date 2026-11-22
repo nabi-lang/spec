@@ -13,7 +13,7 @@ where_pred      ::= type_expr ":" type_bounds
 ```
 
 > [!NOTE]
-> `where` 是上下文關鍵字，只在函式簽章、`impl` 標頭，或 `struct` / `enum` / `union` / 型別別名標頭之後才是關鍵字（[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)）。
+> `where` 是上下文關鍵字，只在函式簽章、`impl` 標頭，或 `struct` / `enum` / `union` / 型別別名標頭之後才是關鍵字（[1.5.4](../001-lexical/105-keywords.md#154-上下文關鍵字)）。
 
 ## 2.10.1. 參數宣告的位置
 
@@ -64,9 +64,9 @@ takes_strs(empty());                // T = str, from the parameter type List<str
 - **確定型別的使用**：把值傳到型別已固定之位置的使用：函式 / 方法引數、指派、有標註的 `let`、結構欄位、`return`、主體的值。運算子會依其另一個運算元確定開放字面值運算元的型別（`c += x`）；除此之外，運算子、f-string 的洞、模式與欄位讀取都不會確定型別。
 - **空的建構式**：`[]`、`Dict::new()`、`Set::new()`、`channel()`、`Mutex::new([])` 的型別引數以相同方式確定，也可以透過 `d[k] = v` 以及元組 `let`（`let (tx, rx) = channel(); tx.send(1)`）確定。
 - **相互確定**：多個開放的 `let` 可以相互確定（`let a = List::new(); let b = List::new(); a.push(b); b.push(1);` → `b: List<i32>`、`a: List<List<i32>>`）。
-- **字面值的預設型別**：`i64` / `f64` 會讓位給之後同類（整數 / 實數）的具體使用。在 `ys.push(1); sum_i32(ys)` 中，`ys` 是 `List<i32>`。由 `let` 本身繫結的字面值（`let c = 0`）也同樣是開放的（[1.6.3](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)）。
-- **衝突**：兩個不同的使用不會形成和型別；那是錯誤（`xs.push(none); xs.push(1)`，與 [5.1.7](../005-modules/501-variable-declaration.md#517-type-annotations-and-type-inference) 的分支規則相同）。單獨的 `let v = none;` 仍然是錯誤。
-- 沒有上下文的閉包參數（[4.5.2](../004-functions/405-closure.md)）與方法路徑值（[3.5.3](../003-expressions/305-member-access-and-method-call.md#method-path-values)），同樣由之後的呼叫確定（`let f = |x| x * 2; f(4)`、`let f = Box::get; f(b)`）。
+- **字面值的預設型別**：`i64` / `f64` 會讓位給之後同類（整數 / 實數）的具體使用。在 `ys.push(1); sum_i32(ys)` 中，`ys` 是 `List<i32>`。由 `let` 本身繫結的字面值（`let c = 0`）也同樣是開放的（[1.6.3](../001-lexical/106-numeric-literals.md#163-無後綴的字面值)）。
+- **衝突**：兩個不同的使用不會形成和型別；那是錯誤（`xs.push(none); xs.push(1)`，與 [5.1.7](../005-modules/501-variable-declaration.md#517-型別標註與型別推論) 的分支規則相同）。單獨的 `let v = none;` 仍然是錯誤。
+- 沒有上下文的閉包參數（[4.5.2](../004-functions/405-closure.md)）與方法路徑值（[3.5.3](../003-expressions/305-member-access-and-method-call.md#方法路徑值)），同樣由之後的呼叫確定（`let f = |x| x * 2; f(4)`、`let f = Box::get; f(b)`）。
 
 診斷：
 
@@ -146,7 +146,7 @@ fn unzip2<I: Iterator<Item = (A, B)>, A, B>(it: I) -> (List<A>, List<B>) { ... }
 unzip2([(1, "a"), (2, "b")].iter());   // A = i32, B = str
 ```
 
-型別別名的 `where` 子句（[2.6.9](206-sum-types.md#269-combining-with-type-aliases)）在別名的每次使用處都成立；型別參數透過該使用處作用域內的約束滿足它。
+型別別名的 `where` 子句（[2.6.9](206-sum-types.md#269-與型別別名結合)）在別名的每次使用處都成立；型別參數透過該使用處作用域內的約束滿足它。
 
 ## 2.10.5. 預設值
 
@@ -161,7 +161,7 @@ trait Add<Rhs = Self> {
 
 沒有預設值的參數不能接在有預設值的參數之後；預設值必須位於尾端。
 
-在型別位置，不寫出有預設值之引數的泛型型別就是預設實例（`x: Vec3` 是 `x: Vec3<f32>`）。在運算式路徑中（`Vec3::new(..)`、`Vec3 { .. }`、`Vec3::X`、`zero()`），省略的引數和其他引數一樣推論：從引數、預期型別與之後的使用；只有在沒有其他東西確定它時才套用其預設值，而填入它的無後綴字面值會把該預設值當作自己的預設型別（[1.6.3](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)）。透過這樣的路徑讀取的關聯項目，從預期型別取得其實例，否則從定義它的唯一 impl，否則取預設值：`let v: DVec3 = Vec3::X` 讀取 `Vec3<f64>` 的 `X`；`let v = Vec3::X` 讀取 `Vec3<f32>` 的。函式中不是數字型別的預設值（`C = List<Self::Item>`）在呼叫處取用。
+在型別位置，不寫出有預設值之引數的泛型型別就是預設實例（`x: Vec3` 是 `x: Vec3<f32>`）。在運算式路徑中（`Vec3::new(..)`、`Vec3 { .. }`、`Vec3::X`、`zero()`），省略的引數和其他引數一樣推論：從引數、預期型別與之後的使用；只有在沒有其他東西確定它時才套用其預設值，而填入它的無後綴字面值會把該預設值當作自己的預設型別（[1.6.3](../001-lexical/106-numeric-literals.md#163-無後綴的字面值)）。透過這樣的路徑讀取的關聯項目，從預期型別取得其實例，否則從定義它的唯一 impl，否則取預設值：`let v: DVec3 = Vec3::X` 讀取 `Vec3<f64>` 的 `X`；`let v = Vec3::X` 讀取 `Vec3<f32>` 的。函式中不是數字型別的預設值（`C = List<Self::Item>`）在呼叫處取用。
 
 ```nabi
 struct Vec3<T = f32> { x: T; y: T; z: T; }
@@ -211,7 +211,7 @@ let c = id("hello");         // id<str> is generated
 
 ### 單態化快取模型
 
-[AOT](../000-meta/007-glossary.md#aot-ahead-of-time) 建置收集呼叫處，並一次全部[特化](../000-meta/007-glossary.md#specialize)。在 [JIT](../000-meta/007-glossary.md#jit-just-in-time) 模式中，一組型別在第一次呼叫時特化，並快取結果。兩種模式共用同一套特化機制，它是[執行引擎與使用者介面](../000-meta/001-execution-modes.md)之共通管線的一部分。
+[AOT](../000-meta/007-glossary.md#aot預先編譯) 建置收集呼叫處，並一次全部[特化](../000-meta/007-glossary.md#特化specialize)。在 [JIT](../000-meta/007-glossary.md#jit即時編譯) 模式中，一組型別在第一次呼叫時特化，並快取結果。兩種模式共用同一套特化機制，它是[執行引擎與使用者介面](../000-meta/001-execution-modes.md)之共通管線的一部分。
 
 ## 2.10.7. 與漸進式型別結合
 
@@ -221,7 +221,7 @@ let c = id("hello");         // id<str> is generated
 fn compute(x, y) { ... }
 ```
 
-這段程式碼被轉成隱含的泛型 `fn compute<T, U>(x: T, y: U)`。不會合成任何約束（[4.2.2](../004-functions/402-parameters.md#422-omitting-the-type)）：每個實例都在其呼叫處單態化，其主體也在那裡檢查，而錯誤也會指向該呼叫。
+這段程式碼被轉成隱含的泛型 `fn compute<T, U>(x: T, y: U)`。不會合成任何約束（[4.2.2](../004-functions/402-parameters.md#422-省略型別)）：每個實例都在其呼叫處單態化，其主體也在那裡檢查，而錯誤也會指向該呼叫。
 
 若在參數上寫出明確的 `any`，它就不會被單態化，而是成為執行時的動態槽位。這個差異是漸進式模式的核心。
 
@@ -255,9 +255,9 @@ fn double<T: ops::Add<T, Output = T>>(x: T) -> T {
 由於這條規則，泛型主體的檢查與呼叫處無關，因此無論呼叫傳入什麼具體型別，主體都保證能編譯。這條規則擴充如下。
 
 - trait 預設方法的主體是泛型主體：`Self` 是不透明的並受該 trait 約束，trait 參數也是不透明的。
-- 每個型別（無論是否受約束）都支援移動、`Reflect`（[6.10.1](../006-meta-system/610-reflection.md#6101-reflect---automatically-implemented-trait)）、存入 `any`、與 `none` 組成和型別，以及 `is`。
-- 帶有任何隱含參數的函式（[4.2.2](../004-functions/402-parameters.md#422-omitting-the-type)）整個豁免。
-- const 參數在其值未知的情況下檢查；當型別的 const 運算式作為值相等時，型別就相等（[2.11.5](211-const-generics.md#2115-arithmetic-in-const-expressions)）。
+- 每個型別（無論是否受約束）都支援移動、`Reflect`（[6.10.1](../006-meta-system/610-reflection.md#6101-reflect自動實作的-trait)）、存入 `any`、與 `none` 組成和型別，以及 `is`。
+- 帶有任何隱含參數的函式（[4.2.2](../004-functions/402-parameters.md#422-省略型別)）整個豁免。
+- const 參數在其值未知的情況下檢查；當型別的 const 運算式作為值相等時，型別就相等（[2.11.5](211-const-generics.md#2115-const-運算式中的算術)）。
 - 非參數型別上的 `where` 子句在主體中被假設成立。
 - 主體檢查失敗之主體的實例，不會再增加自己的錯誤。
 - 對型別涉及型別參數之值的型別測試（`is`、型別模式），被當作可反駁的來檢查，並依實例決定。
@@ -275,24 +275,24 @@ trait 作為型別是使用 vtable 分派的執行時多型，Nabi 在[型別系
 
 Nabi 在泛型實例之間沒有子型別關係：每個型別參數都是不變的。`List<i64>` 不是 `List<i64 | none>`，`Box<Cat>` 不是 `Box<any>`，`fn(i64 | none)` 也不是 `fn(i64)`，即使 `i64` 值能放進 `i64 | none` 槽位。放寬為和型別（[2.6.4](206-sum-types.md)）與放寬為 `any`（[2.2](202-any-slot.md)）適用於整個值，那是編譯器能包裝它之處；它絕不會深入泛型型別內部，因為 `List<i64>` 與 `List<i64 | none>` 以不同的配置存放其元素，並在其所有控制代碼之間共用一個緩衝區。要得到較寬的型別，請在建立值之處寫出它（`let xs: List<i64 | none> = [1, 2]`），或把元素複製到較寬型別的新集合中（`let ys: List<i64 | none> = []; for x in xs { ys.push(x) }`）。
 
-唯一的放寬是在函式約束上：`fn(..) -> R + Send` 值可以放進 `fn(..) -> R` 槽位（[4.4.9](../004-functions/404-function-type.md#449-subtyping-between-function-types-none)）。
+唯一的放寬是在函式約束上：`fn(..) -> R + Send` 值可以放進 `fn(..) -> R` 槽位（[4.4.9](../004-functions/404-function-type.md#449-函式型別之間的子型別關係無)）。
 
 ## 2.10.12. 推論與預設值一覽
 
 型別推論侷限於函式主體；簽章一律寫出。各條規則與其相關的結構放在一起；這份清單把它們收集起來。
 
-- **泛型引數**來自呼叫的引數型別與預期型別（2.10.2，「型別引數推論」）；`const` 引數也一樣（[2.11.6](211-const-generics.md#2116-parameter-inference)）。沒有任何東西確定時，以 `::<..>` 寫出；省略是錯誤。
-- **不帶標註的 `let`** 從其初始化式取得型別，而初始化式留下的開放部分由其作用域內之後的使用確定（2.10.2；[5.1.7](../005-modules/501-variable-declaration.md#517-type-annotations-and-type-inference)）。兩個不一致的使用是錯誤；它們不會形成和型別。
-- **和型別**以集合的方式比對：以 `T | none` 比對 `i32 | str | none` 得到 `T = i32 | str`（[2.6.4](206-sum-types.md#264-set-semantics)）。分支結果不會被放寬為新的和型別；分支型別不同是錯誤，除非預期型別是和型別，或每個分支型別都是某個分支之和型別的成員。
-- **字面值預設值**：沒有預期型別的整數字面值是 `i64`，浮點數字面值是 `f64`（[1.6.3](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)），除非它填入一個有宣告預設值的參數；之後同類（整數、實數）的使用會取代預設值（2.10.2）。
-- **型別參數的預設值**（`Rhs = Self`，2.10.5）只在參數沒有寫出且沒有任何東西推論它時才適用；填入該參數的字面值把該預設值當作自己的預設型別（[1.6.3](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)），因此順序是：寫出的引數，然後是預期型別與使用，然後是參數的預設值，然後是 `i64` / `f64`。
+- **泛型引數**來自呼叫的引數型別與預期型別（2.10.2，「型別引數推論」）；`const` 引數也一樣（[2.11.6](211-const-generics.md#2116-參數推論)）。沒有任何東西確定時，以 `::<..>` 寫出；省略是錯誤。
+- **不帶標註的 `let`** 從其初始化式取得型別，而初始化式留下的開放部分由其作用域內之後的使用確定（2.10.2；[5.1.7](../005-modules/501-variable-declaration.md#517-型別標註與型別推論)）。兩個不一致的使用是錯誤；它們不會形成和型別。
+- **和型別**以集合的方式比對：以 `T | none` 比對 `i32 | str | none` 得到 `T = i32 | str`（[2.6.4](206-sum-types.md#264-集合語意)）。分支結果不會被放寬為新的和型別；分支型別不同是錯誤，除非預期型別是和型別，或每個分支型別都是某個分支之和型別的成員。
+- **字面值預設值**：沒有預期型別的整數字面值是 `i64`，浮點數字面值是 `f64`（[1.6.3](../001-lexical/106-numeric-literals.md#163-無後綴的字面值)），除非它填入一個有宣告預設值的參數；之後同類（整數、實數）的使用會取代預設值（2.10.2）。
+- **型別參數的預設值**（`Rhs = Self`，2.10.5）只在參數沒有寫出且沒有任何東西推論它時才適用；填入該參數的字面值把該預設值當作自己的預設型別（[1.6.3](../001-lexical/106-numeric-literals.md#163-無後綴的字面值)），因此順序是：寫出的引數，然後是預期型別與使用，然後是參數的預設值，然後是 `i64` / `f64`。
 - 沒有參數型別的**閉包**從預期的 `fn` 型別取得參數型別，否則從之後的呼叫（[4.5.2](../004-functions/405-closure.md)）。
 
 沒有其他東西有預設值：不會退回到 `any`、`()` 或和型別。
 
 ## 2.10.13. 對型別參數的型別測試
 
-`T is X`（其中 `T` 指稱作用域內的型別參數，或是 trait 預設方法或 impl 中的 `Self`）測試的是型別本身，不涉及任何值。它在每個實例中都是一個常數 `bool`：當該實例之 `T` 的每個值都通過 `v is X` 時為真。對單一型別 `X` 而言，這表示 `T` 就是 `X`；對和型別 `X` 而言，表示 `T` 是 `X` 的成員或其子和型別（[2.6.4](206-sum-types.md#264-set-semantics)）。`T = any` 只通過 `T is any`。
+`T is X`（其中 `T` 指稱作用域內的型別參數，或是 trait 預設方法或 impl 中的 `Self`）測試的是型別本身，不涉及任何值。它在每個實例中都是一個常數 `bool`：當該實例之 `T` 的每個值都通過 `v is X` 時為真。對單一型別 `X` 而言，這表示 `T` 就是 `X`；對和型別 `X` 而言，表示 `T` 是 `X` 的成員或其子和型別（[2.6.4](206-sum-types.md#264-集合語意)）。`T = any` 只通過 `T is any`。
 
 ```nabi
 fn sum<T: num::Num + Clone>(xs: List<T>) -> T {

@@ -69,7 +69,7 @@ xs[-4];                // panic: index -4 out of bounds for length 3
 - 以鍵索引的型別（`Dict`）不受影響。負的鍵就只是一個鍵。
 - 轉換使用 `core::index::index_from_end(i: isize, len: usize) -> usize`。
 
-讀取時先對目標求值，再對索引求值；目標只求值一次。指派則先對值求值，再對目標與索引求值（[3.4.7](304-assignment.md#347-evaluation-order)）。
+讀取時先對目標求值，再對索引求值；目標只求值一次。指派則先對值求值，再對目標與索引求值（[3.4.7](304-assignment.md#347-求值順序)）。
 
 ### 邊界檢查與失敗
 

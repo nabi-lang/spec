@@ -1,8 +1,8 @@
 # 8.5. Extern "C" 符號
 
-定義 `libnabir.a` 所公開之[符號](../000-meta/007-glossary.md#extern-c-symbol)的簽章。編譯器產生的程式碼與標準函式庫會呼叫這些符號。
+定義 `libnabir.a` 所公開之[符號](../000-meta/007-glossary.md#extern-c-符號)的簽章。編譯器產生的程式碼與標準函式庫會呼叫這些符號。
 
-在 Nabi 一方，它們以執行環境 ABI `extern "nabi"` 宣告（[5.9.2](../005-modules/509-extern-block.md#592-abi-specifiers)），工具鏈的套件把它們宣告為私有項目（大多數在 `core::rt`）。在下列區塊中，`fn` 值是 `NabiFn`（8.5.0a），其他所有值都與 C ABI 相同。`str` 是 `struct { const uint8_t *ptr; size_t len; }`；接受或回傳 `str` 的執行環境函式，與 `NabiFn` 一樣遵循平台 C ABI 對 16 位元組結構的規則（[8.6.3](806-calling-convention.md#863-struct-arguments--return-small-struct-rule)）：在 ABI 允許之處以值放在暫存器中傳遞，絕不拆分到暫存器與堆疊之間，在 Windows x64 與 wasm32 上則以參照傳遞。程式可以自己宣告執行環境符號（`extern "nabi"` / `extern "C"`）；其宣告必須與工具鏈自己對該符號的宣告相同，不同的宣告是錯誤。下列清單給出 C ABI 的形狀；當工具鏈以 GC 型別宣告某個參數（`GcBuf<T>`，例如 `nabi_gc_pin`、`nabi_gc_secret_new` 與 waker 引數），而清單顯示為 `Ptr<u8>` / `usize` 時，應寫的是該 GC 型別。
+在 Nabi 一方，它們以執行環境 ABI `extern "nabi"` 宣告（[5.9.2](../005-modules/509-extern-block.md#592-abi-指定符)），工具鏈的套件把它們宣告為私有項目（大多數在 `core::rt`）。在下列區塊中，`fn` 值是 `NabiFn`（8.5.0a），其他所有值都與 C ABI 相同。`str` 是 `struct { const uint8_t *ptr; size_t len; }`；接受或回傳 `str` 的執行環境函式，與 `NabiFn` 一樣遵循平台 C ABI 對 16 位元組結構的規則（[8.6.3](806-calling-convention.md#863-struct-引數--回傳小-struct-規則)）：在 ABI 允許之處以值放在暫存器中傳遞，絕不拆分到暫存器與堆疊之間，在 Windows x64 與 wasm32 上則以參照傳遞。程式可以自己宣告執行環境符號（`extern "nabi"` / `extern "C"`）；其宣告必須與工具鏈自己對該符號的宣告相同，不同的宣告是錯誤。下列清單給出 C ABI 的形狀；當工具鏈以 GC 型別宣告某個參數（`GcBuf<T>`，例如 `nabi_gc_pin`、`nabi_gc_secret_new` 與 waker 引數），而清單顯示為 `Ptr<u8>` / `usize` 時，應寫的是該 GC 型別。
 
 > [!IMPORTANT]
 > 每個符號都以 `nabi_` 前綴開頭，以避免與外部函式庫及使用者程式碼的符號衝突。
@@ -24,7 +24,7 @@
 
 ## 8.5.0a. `NabiFn`：函式值的 C ABI 形式
 
-把 Nabi 函式值 `{code, env}`（[4.4](../004-functions/404-function-type.md#representation-of-function-values)）傳給執行環境符號時所使用的 C 表示方式。
+把 Nabi 函式值 `{code, env}`（[4.4](../004-functions/404-function-type.md#函式值的表示方式)）傳給執行環境符號時所使用的 C 表示方式。
 
 ```c
 typedef struct {
@@ -39,7 +39,7 @@ typedef struct {
 
 ### `nabi_gc_alloc_slow`
 
-[記憶體配置](../007-runtime/702-allocation.md)中 [TLAB](../000-meta/007-glossary.md#tlab-thread-local-allocation-buffer) 的慢速路徑。**Thread-safety：`thread-safe`**。
+[記憶體配置](../007-runtime/702-allocation.md)中 [TLAB](../000-meta/007-glossary.md#tlab執行緒區域配置緩衝區) 的慢速路徑。**Thread-safety：`thread-safe`**。
 
 ```
 extern "nabi" {
@@ -79,7 +79,7 @@ extern "nabi" {
 }
 ```
 
-引數 `obj` 是指向包含被修改槽位之物件的指標，`slot` 是該槽位的位址，`len` 是即將存入那裡之值的位元組大小；沒有回傳值。效果：把 obj 加入記憶集，記錄滿了時清出。在並行標記期間，它還會記錄該物件所持有的參照，對大型物件而言則是 `slot..slot + len` 所跨越之卡片中的參照（[7.5.3](../007-runtime/705-concurrent-collection.md#753-satb-barrier)）。
+引數 `obj` 是指向包含被修改槽位之物件的指標，`slot` 是該槽位的位址，`len` 是即將存入那裡之值的位元組大小；沒有回傳值。效果：把 obj 加入記憶集，記錄滿了時清出。在並行標記期間，它還會記錄該物件所持有的參照，對大型物件而言則是 `slot..slot + len` 所跨越之卡片中的參照（[7.5.3](../007-runtime/705-concurrent-collection.md#753-satb-屏障)）。
 
 ### `nabi_gc_register_type` / `nabi_gc_register_types`
 
@@ -92,11 +92,11 @@ extern "nabi" {
 }
 ```
 
-在行程啟動時、進入多執行緒之前呼叫，因此不需要同步。`nabi_gc_register_types` 以一次呼叫把 `n` 個表註冊在連續的 id 之下（[8.2.13](802-scan-table.md#8213-registration-time)）。
+在行程啟動時、進入多執行緒之前呼叫，因此不需要同步。`nabi_gc_register_types` 以一次呼叫把 `n` 個表註冊在連續的 id 之下（[8.2.13](802-scan-table.md#8213-註冊時機)）。
 
 ### `nabi_gc_pin` / `nabi_gc_unpin`
 
-釘選 [FFI](../000-meta/007-glossary.md#ffi-foreign-function-interface) 物件（見[物件配置與記憶體空間](../007-runtime/701-object-layout.md)與 [`extern` 區塊（FFI 宣告）](../005-modules/509-extern-block.md)）。**Thread-safety：`thread-safe`**。
+釘選 [FFI](../000-meta/007-glossary.md#ffi外部函式介面) 物件（見[物件配置與記憶體空間](../007-runtime/701-object-layout.md)與 [`extern` 區塊（FFI 宣告）](../005-modules/509-extern-block.md)）。**Thread-safety：`thread-safe`**。
 
 ```
 extern "nabi" {
@@ -105,11 +105,11 @@ extern "nabi" {
 }
 ```
 
-傳給 `extern "C"` 函式（`str` 引數）或阻塞之執行環境呼叫的 GC 指標，即使不釘選也不會被移動，因為該引數在呼叫結束之前都留在根中（[7.4.1](../007-runtime/704-barriers-and-roots.md#objects-pointed-to-by-roots-are-not-moved)）。指向沒有任何引數為其建立根之物件內部的指標（串列的緩衝區）在整個呼叫期間都需要釘選，因為在任何 C 呼叫期間都可能進行回收；C 在呼叫之後保留的任何指標也是如此（[stdlib 1.6.5](../../refs-standard-libraries/100-bare/106-gc-pin.md#165-when-a-pin-is-needed)）。釘選會在物件上設定 `PINNED`，使它不被疏散並保持存活；解除釘選則釋放它。
+傳給 `extern "C"` 函式（`str` 引數）或阻塞之執行環境呼叫的 GC 指標，即使不釘選也不會被移動，因為該引數在呼叫結束之前都留在根中（[7.4.1](../007-runtime/704-barriers-and-roots.md#被根指向的物件不會被移動)）。指向沒有任何引數為其建立根之物件內部的指標（串列的緩衝區）在整個呼叫期間都需要釘選，因為在任何 C 呼叫期間都可能進行回收；C 在呼叫之後保留的任何指標也是如此（[stdlib 1.6.5](../../refs-standard-libraries/100-bare/106-gc-pin.md#165-when-a-pin-is-needed)）。釘選會在物件上設定 `PINNED`，使它不被疏散並保持存活；解除釘選則釋放它。
 
 ### `nabi_gc_collect`
 
-明確的 [GC](../000-meta/007-glossary.md#gc-garbage-collector) 觸發，很少使用。**Thread-safety：`thread-safe`**。
+明確的 [GC](../000-meta/007-glossary.md#gc垃圾回收器) 觸發，很少使用。**Thread-safety：`thread-safe`**。
 
 ```
 extern "nabi" {
@@ -130,7 +130,7 @@ extern "nabi" {
 }
 ```
 
-`nabi_gc_secret_new` 配置一個型別 id 為 1（沒有參照）、設定了 `WIPE` 的 LOS 物件（[8.1.3](801-object-header-abi.md#813-gc_flags-offset-4-u32)）。其清零的酬載容納向上取整為 8 的倍數的 `len` 位元組。它可能會先進行回收，而超過 `isize::MAX` 的請求是致命錯誤「allocation too large」。`nabi_gc_secret_wipe` 以 volatile 存入覆寫整個酬載，其後接一道編譯器柵欄；它既不配置記憶體也不阻塞，因此不是安全點（[8.4](804-safepoint.md)）。回收器在釋放該物件之前也會以相同方式覆寫其酬載。
+`nabi_gc_secret_new` 配置一個型別 id 為 1（沒有參照）、設定了 `WIPE` 的 LOS 物件（[8.1.3](801-object-header-abi.md#813-gc_flags偏移-4u32)）。其清零的酬載容納向上取整為 8 的倍數的 `len` 位元組。它可能會先進行回收，而超過 `isize::MAX` 的請求是致命錯誤「allocation too large」。`nabi_gc_secret_wipe` 以 volatile 存入覆寫整個酬載，其後接一道編譯器柵欄；它既不配置記憶體也不阻塞，因此不是安全點（[8.4](804-safepoint.md)）。回收器在釋放該物件之前也會以相同方式覆寫其酬載。
 
 ## 8.5.2. 執行環境區域
 
@@ -144,9 +144,9 @@ extern "nabi" {
 }
 ```
 
-在行程啟動之後、`main()` 之前立即呼叫。效果：把呼叫它的執行緒設定為主 mutator（其 TLS 區塊、堆疊保護與 GC 狀態）。執行器的工作者池是由 `core::task` 在第一次使用時啟動的 Nabi 程式碼，而 I/O 輪詢器在第一次註冊時才延遲建立。編譯器產生的 C ABI `main` 在這個呼叫之後立即呼叫 `nabi.register_types`（[8.2.13](802-scan-table.md#8213-registration-time)）。
+在行程啟動之後、`main()` 之前立即呼叫。效果：把呼叫它的執行緒設定為主 mutator（其 TLS 區塊、堆疊保護與 GC 狀態）。執行器的工作者池是由 `core::task` 在第一次使用時啟動的 Nabi 程式碼，而 I/O 輪詢器在第一次註冊時才延遲建立。編譯器產生的 C ABI `main` 在這個呼叫之後立即呼叫 `nabi.register_types`（[8.2.13](802-scan-table.md#8213-註冊時機)）。
 
-執行環境還匯出執行緒區域的區塊 `nabi_tls`（[8.3.8](803-tls-slots.md#838-form-of-compiler-emission)）。
+執行環境還匯出執行緒區域的區塊 `nabi_tls`（[8.3.8](803-tls-slots.md#838-編譯器發出的形式)）。
 
 ### `nabi_runtime_shutdown`
 
@@ -170,7 +170,7 @@ extern "nabi" {
 }
 ```
 
-[`std::process::exit`](../../refs-standard-libraries/300-std/306-process.md) 呼叫這個符號。`finally` 與 `Drop` 不會執行（[4.16.4](../004-functions/416-entry-point.md#4164-exit-codes-and-unhandled-exceptions)）。
+[`std::process::exit`](../../refs-standard-libraries/300-std/306-process.md) 呼叫這個符號。`finally` 與 `Drop` 不會執行（[4.16.4](../004-functions/416-entry-point.md#4164-結束碼與未處理的例外)）。
 
 ### 字串輔助函式
 
@@ -187,7 +187,7 @@ extern "nabi" {
 }
 ```
 
-在 Nabi 一方，`nabi_str_slice` 宣告為只帶前三個參數的 `#[track_caller]`（[6.2.12](../006-meta-system/602-built-in-attributes.md#6212-track_caller-passing-the-call-site)）；編譯器把呼叫者的位置 `at` 作為第四個 C 引數傳入。
+在 Nabi 一方，`nabi_str_slice` 宣告為只帶前三個參數的 `#[track_caller]`（[6.2.12](../006-meta-system/602-built-in-attributes.md#6212-track_caller-傳遞呼叫處)）；編譯器把呼叫者的位置 `at` 作為第四個 C 引數傳入。
 
 ### `nabi_runtime_yield`
 
@@ -201,7 +201,7 @@ extern "nabi" {
 
 ### `nabi_enter_native` / `nabi_leave_native`
 
-原生包圍的慢速路徑（[8.4.10](804-safepoint.md#8410-native-calls)）。**Thread-safety：`caller-thread-only`**。
+原生包圍的慢速路徑（[8.4.10](804-safepoint.md#8410-原生呼叫)）。**Thread-safety：`caller-thread-only`**。
 
 ```
 extern "nabi" {
@@ -223,11 +223,11 @@ extern "nabi" {
 }
 ```
 
-由外部程式碼呼叫的進入點，在回傳之前都計入該執行緒的外部進入次數。在該次數不為零時發生的 panic 不會結束行程：在報告與 panic 掛鉤之後，若最內層的 `#[on_panic]` 進入點就是最近的外部進入點，它就回到那裡（`nabi_catch_push`），否則寫出 `` panic in a function C called: aborting (`#[on_panic(return = v)]` on the `extern "C" fn` returns `v` to C instead) `` 並中止行程，結束狀態為 134（[5.9.12](../005-modules/509-extern-block.md#5912-responsibility-for-ffi-safety)）。
+由外部程式碼呼叫的進入點，在回傳之前都計入該執行緒的外部進入次數。在該次數不為零時發生的 panic 不會結束行程：在報告與 panic 掛鉤之後，若最內層的 `#[on_panic]` 進入點就是最近的外部進入點，它就回到那裡（`nabi_catch_push`），否則寫出 `` panic in a function C called: aborting (`#[on_panic(return = v)]` on the `extern "C" fn` returns `v` to C instead) `` 並中止行程，結束狀態為 134（[5.9.12](../005-modules/509-extern-block.md#5912-ffi-安全的責任)）。
 
 ### `nabi_catch_push` / `nabi_catch_pop`
 
-`#[on_panic]` 進入點的恢復紀錄（[5.9.10](../005-modules/509-extern-block.md#on_panic---a-value-for-c-instead-of-an-abort)）。**Thread-safety：`caller-thread-only`**。
+`#[on_panic]` 進入點的恢復紀錄（[5.9.10](../005-modules/509-extern-block.md#on_panic給-c-一個值而不是中止)）。**Thread-safety：`caller-thread-only`**。
 
 ```
 extern "nabi" {
@@ -252,7 +252,7 @@ extern "nabi" {
 
 ### `nabi_nosp_enter` / `nabi_nosp_leave`
 
-對 `#[no_safepoint]` 執行環境函式之呼叫的檢查包圍（[8.4.10](804-safepoint.md#8410-native-calls)）。只有偵錯版 nabic 會發出它。**Thread-safety：`caller-thread-only`**。
+對 `#[no_safepoint]` 執行環境函式之呼叫的檢查包圍（[8.4.10](804-safepoint.md#8410-原生呼叫)）。只有偵錯版 nabic 會發出它。**Thread-safety：`caller-thread-only`**。
 
 ```
 extern "nabi" {
@@ -282,11 +282,11 @@ extern "nabi" {
 
 ### 不是安全點的函式
 
-在 Nabi 一方，它們宣告在標示了 `#[no_safepoint]` 的 `extern "nabi"` 區塊中（[5.9.2](../005-modules/509-extern-block.md#592-abi-specifiers)）。
+在 Nabi 一方，它們宣告在標示了 `#[no_safepoint]` 的 `extern "nabi"` 區塊中（[5.9.2](../005-modules/509-extern-block.md#592-abi-指定符)）。
 
-下列執行環境函式保證絕不配置記憶體、絕不阻塞，因此對它們的呼叫不是安全點（[8.4.2](804-safepoint.md#842-emission-sites)、[8.9.12](809-lowering-control.md#8912-shadow-stack-frame)）：`nabi_str_len`、`nabi_str_byte`、`nabi_str_cmp`、`nabi_str_eq`、`nabi_str_eq_at`、`nabi_str_find_near`、`nabi_str_rfind_near`、`nabi_str_char_count`、`nabi_str_bytes_buf`、`nabi_buf_copy`、`nabi_char_*` 屬性與大小寫函式、`nabi_fmt_len`、`nabi_f64_*`、`nabi_f32_*`。
+下列執行環境函式保證絕不配置記憶體、絕不阻塞，因此對它們的呼叫不是安全點（[8.4.2](804-safepoint.md#842-發出位置)、[8.9.12](809-lowering-control.md#8912-影子堆疊框架)）：`nabi_str_len`、`nabi_str_byte`、`nabi_str_cmp`、`nabi_str_eq`、`nabi_str_eq_at`、`nabi_str_find_near`、`nabi_str_rfind_near`、`nabi_str_char_count`、`nabi_str_bytes_buf`、`nabi_buf_copy`、`nabi_char_*` 屬性與大小寫函式、`nabi_fmt_len`、`nabi_f64_*`、`nabi_f32_*`。
 
-對其中之一的呼叫會阻擋其他每個執行緒的回收直到它回傳，因此其工作保持簡短。對長的輸入（64 KiB 以上），標準函式庫改為呼叫宣告在 `#[no_safepoint]` 區塊之外的停駐版本（[8.4.10](804-safepoint.md#8410-native-calls)）：`nabi_str_find_parked` / `nabi_str_rfind_parked`（搜尋在其前 64 KiB 之後的其餘部分，前 64 KiB 由 `nabi_str_find_near` / `nabi_str_rfind_near` 就地檢查）、`nabi_str_char_count_parked`、`nabi_str_grapheme_count_parked`、`nabi_buf_utf8_error_parked`、`nabi_buf_copy_parked`、`nabi_buf_put_str_parked`。
+對其中之一的呼叫會阻擋其他每個執行緒的回收直到它回傳，因此其工作保持簡短。對長的輸入（64 KiB 以上），標準函式庫改為呼叫宣告在 `#[no_safepoint]` 區塊之外的停駐版本（[8.4.10](804-safepoint.md#8410-原生呼叫)）：`nabi_str_find_parked` / `nabi_str_rfind_parked`（搜尋在其前 64 KiB 之後的其餘部分，前 64 KiB 由 `nabi_str_find_near` / `nabi_str_rfind_near` 就地檢查）、`nabi_str_char_count_parked`、`nabi_str_grapheme_count_parked`、`nabi_buf_utf8_error_parked`、`nabi_buf_copy_parked`、`nabi_buf_put_str_parked`。
 
 ## 8.5.3. 協程區域
 
@@ -325,7 +325,7 @@ extern "nabi" {
 
 ### `nabi_task_worker_*` / `nabi_time_now_ns`
 
-在 TLS 槽位 `nabi_tls_task_worker`（[8.3.1](803-tls-slots.md#831-tls-slot-structure)）中儲存與取回目前執行緒之執行器工作者（[stdlib 2.18](../../refs-standard-libraries/200-core/218-task.md)）的函式，外加一個時鐘。**Thread-safety：`caller-thread-only`**（`nabi_time_now_ns` 是 `thread-safe`）。
+在 TLS 槽位 `nabi_tls_task_worker`（[8.3.1](803-tls-slots.md#831-tls-槽位結構)）中儲存與取回目前執行緒之執行器工作者（[stdlib 2.18](../../refs-standard-libraries/200-core/218-task.md)）的函式，外加一個時鐘。**Thread-safety：`caller-thread-only`**（`nabi_time_now_ns` 是 `thread-safe`）。
 
 ```
 extern "nabi" {
@@ -370,7 +370,7 @@ extern "nabi" {
 }
 ```
 
-`nabi_task_key` 把位址當作鍵使用，因此它在該物件上設定 `NOMOVE`（[8.1.3](801-object-header-abi.md#813-gc_flags-offset-4-u32)）。該物件之後絕不會被移動。只在一次呼叫內使用的同一性比較使用 `buf_same`（[stdlib 2.9](../../refs-standard-libraries/200-core/209-collections.md)），它不會釘選任何東西。
+`nabi_task_key` 把位址當作鍵使用，因此它在該物件上設定 `NOMOVE`（[8.1.3](801-object-header-abi.md#813-gc_flags偏移-4u32)）。該物件之後絕不會被移動。只在一次呼叫內使用的同一性比較使用 `buf_same`（[stdlib 2.9](../../refs-standard-libraries/200-core/209-collections.md)），它不會釘選任何東西。
 
 ### `nabi_sync_wait` / `nabi_sync_wake`
 
@@ -417,7 +417,7 @@ extern "nabi" {
 }
 ```
 
-`state` 是該 `static` 的狀態位元組（0 新的，1 進行中，2 就緒）。若另一個執行緒正在初始化，`nabi_static_init_begin` 會等到它完成，期間該執行緒就 GC 而言被視為已停止。`at` / `at_len` 是讀取該 static 之程式碼的 `path:line:col`；讀取自身 static 的初始化式會在那裡 panic（[4.14.13](../004-functions/414-throws.md#41413-panics-and-fatal-errors)）。
+`state` 是該 `static` 的狀態位元組（0 新的，1 進行中，2 就緒）。若另一個執行緒正在初始化，`nabi_static_init_begin` 會等到它完成，期間該執行緒就 GC 而言被視為已停止。`at` / `at_len` 是讀取該 static 之程式碼的 `path:line:col`；讀取自身 static 的初始化式會在那裡 panic（[4.14.13](../004-functions/414-throws.md#41413-panic-與致命錯誤)）。
 
 ### `nabi_gc_add_root`
 
@@ -468,7 +468,7 @@ extern "nabi" {
 
 ### `nabi_deque_*`：工作竊取雙端佇列
 
-任務排程器的無鎖 Chase-Lev 雙端佇列（[7.6.2](../007-runtime/706-scheduler.md#762-work-stealing-structure)）。雙端佇列及其環形緩衝區是由 GC 追蹤的 GC 物件，因此只存在於雙端佇列中的元素會保持存活。**Thread-safety：**`push` / `pop` 只能由擁有它的執行緒呼叫；`steal` 與 `len` 可以從任何執行緒呼叫。
+任務排程器的無鎖 Chase-Lev 雙端佇列（[7.6.2](../007-runtime/706-scheduler.md#762-工作竊取結構)）。雙端佇列及其環形緩衝區是由 GC 追蹤的 GC 物件，因此只存在於雙端佇列中的元素會保持存活。**Thread-safety：**`push` / `pop` 只能由擁有它的執行緒呼叫；`steal` 與 `len` 可以從任何執行緒呼叫。
 
 ```
 extern "nabi" {
@@ -536,11 +536,11 @@ nabi_net_splice        nabi_net_getopt
 
 ## 8.5.6. 錯誤傳播（沒有符號）
 
-[錯誤控制流程](../003-expressions/314-error-control-flow.md)的 `throw` / `try` / `catch` 沒有執行環境符號。會擲回錯誤的函式把錯誤作為其回傳值的一部分回傳（[8.6.5](806-calling-convention.md#865-return-of-throwing-functions-value-based-error-propagation)），呼叫處檢查該值並分支（[8.9.6](809-lowering-control.md#896-try--catch--finally-value-based-branching)）。因此沒有用來擲回錯誤或取得目前錯誤的執行環境呼叫，也沒有用於錯誤處理的 TLS 槽位或 jmp_buf。
+[錯誤控制流程](../003-expressions/314-error-control-flow.md)的 `throw` / `try` / `catch` 沒有執行環境符號。會擲回錯誤的函式把錯誤作為其回傳值的一部分回傳（[8.6.5](806-calling-convention.md#865-會擲回錯誤之函式的回傳以值為基礎的錯誤傳播)），呼叫處檢查該值並分支（[8.9.6](809-lowering-control.md#896-try--catch--finally以值為基礎的分支)）。因此沒有用來擲回錯誤或取得目前錯誤的執行環境呼叫，也沒有用於錯誤處理的 TLS 槽位或 jmp_buf。
 
 ## 8.5.7. 診斷區域
 
-下列結束碼（`101` 等）在 `wasm32-wasip2` 上以單純的失敗到達主機（[4.16.4](../004-functions/416-entry-point.md#4164-exit-codes-and-unhandled-exceptions)）。
+下列結束碼（`101` 等）在 `wasm32-wasip2` 上以單純的失敗到達主機（[4.16.4](../004-functions/416-entry-point.md#4164-結束碼與未處理的例外)）。
 
 ### `nabi_panic`
 
@@ -577,9 +577,9 @@ extern "nabi" {
 }
 ```
 
-其宣告是 `#[track_caller]`（[6.2.12](../006-meta-system/602-built-in-attributes.md#6212-track_caller-passing-the-call-site)），因此該符號以隱藏的尾端 `str` 引數（`"path:line:col"`）接受呼叫者的位置：`nabi_panic_at(msg, at)`。
+其宣告是 `#[track_caller]`（[6.2.12](../006-meta-system/602-built-in-attributes.md#6212-track_caller-傳遞呼叫處)），因此該符號以隱藏的尾端 `str` 引數（`"path:line:col"`）接受呼叫者的位置：`nabi_panic_at(msg, at)`。
 
-以 [4.14.13](../004-functions/414-throws.md#41413-panics-and-fatal-errors) 的格式印出，並以結束碼 `101` 結束。core 的 `panic` 以及編譯器產生的 panic（邊界檢查、溢位、除以零等）呼叫這個符號。
+以 [4.14.13](../004-functions/414-throws.md#41413-panic-與致命錯誤) 的格式印出，並以結束碼 `101` 結束。core 的 `panic` 以及編譯器產生的 panic（邊界檢查、溢位、除以零等）呼叫這個符號。
 
 ### `nabi_uncaught_error` / `nabi_uncaught_error_at`
 
@@ -590,7 +590,7 @@ extern "nabi" {
 }
 ```
 
-處理傳播出進入點的錯誤（[4.16.4](../004-functions/416-entry-point.md#4164-exit-codes-and-unhandled-exceptions)）。其宣告位於 core。
+處理傳播出進入點的錯誤（[4.16.4](../004-functions/416-entry-point.md#4164-結束碼與未處理的例外)）。其宣告位於 core。
 
 ### `nabi_oom`
 
@@ -613,7 +613,7 @@ thread '<name>' has overflowed its stack
 fatal runtime error: stack overflow, aborting
 ```
 
-`<name>` 是以 `thread::Builder::name` 給出的執行緒名稱（也設為作業系統的執行緒名稱，[7. 執行環境](../007-runtime/README.md#runtime-error-stack-overflow)）。這涵蓋主執行緒（`nabi_runtime_init`）、`nabi_thread_spawn` 執行緒（包括執行器工作者以及很深的 `await` 鏈），以及呼叫了 `nabi_thread_init` 的 C 執行緒。執行環境把每個執行緒堆疊下方的保護範圍記錄在 TLS 槽位 `nabi_tls_stack_guard`（[8.3.1](803-tls-slots.md#831-tls-slot-structure)）中，並安裝替代的訊號堆疊（`sigaltstack`）。只有在該範圍內的 SIGSEGV / SIGBUS 會被回報為堆疊溢位；其他錯誤交給執行環境安裝其處理函式之前所設定的動作（預設動作，除非以共用函式庫載入 Nabi 的主機行程設定了一個）。在 wasm 上，模組無法捕捉這個 trap；由主機回報它（隨附的 JS 主機會印出上述訊息）。
+`<name>` 是以 `thread::Builder::name` 給出的執行緒名稱（也設為作業系統的執行緒名稱，[7. 執行環境](../007-runtime/README.md#執行時錯誤堆疊溢位)）。這涵蓋主執行緒（`nabi_runtime_init`）、`nabi_thread_spawn` 執行緒（包括執行器工作者以及很深的 `await` 鏈），以及呼叫了 `nabi_thread_init` 的 C 執行緒。執行環境把每個執行緒堆疊下方的保護範圍記錄在 TLS 槽位 `nabi_tls_stack_guard`（[8.3.1](803-tls-slots.md#831-tls-槽位結構)）中，並安裝替代的訊號堆疊（`sigaltstack`）。只有在該範圍內的 SIGSEGV / SIGBUS 會被回報為堆疊溢位；其他錯誤交給執行環境安裝其處理函式之前所設定的動作（預設動作，除非以共用函式庫載入 Nabi 的主機行程設定了一個）。在 wasm 上，模組無法捕捉這個 trap；由主機回報它（隨附的 JS 主機會印出上述訊息）。
 
 ## 8.5.8. 符號命名慣例
 
@@ -634,7 +634,7 @@ fatal runtime error: stack overflow, aborting
 
 ## 8.5.9. 函式簽章的相容性
 
-每個函式簽章都是 [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) 的一部分。變更方針如下：
+每個函式簽章都是 [ABI](../000-meta/007-glossary.md#abi應用程式二進位介面) 的一部分。變更方針如下：
 
 - 1.0 之前：每個 0.x.0 版本都可能有破壞性變更；0.x.y 版本只做相容的變更。
 - 從 1.0 起的次版本：只允許相容的變更；新增引數以函式包裝處理。
@@ -667,7 +667,7 @@ bb_cont:
     ; ... continue
 ```
 
-這個範例展示結合快速路徑與慢速路徑之發出程式碼的結構（虛擬碼；快速路徑的標頭存入見 [8.9.9](809-lowering-control.md#899-gc-alloc-fast--slow-path)）。
+這個範例展示結合快速路徑與慢速路徑之發出程式碼的結構（虛擬碼；快速路徑的標頭存入見 [8.9.9](809-lowering-control.md#899-gc-配置快速--慢速路徑)）。
 
 ## 8.5.12. 輔助符號（附錄，非規範性）
 
@@ -744,4 +744,4 @@ extern "nabi" {
 
 - 使用者程式碼不得依賴這些符號。它們的簽章可能在沒有通知的情況下改變或被移除。標準函式庫與執行環境一起提供，並呼叫其中一些（`nabi_free`、`nabi_gc_weak_new`、`nabi_gc_weak_get`、`nabi_gc_pinned`、`nabi_panic_set_hook`，以及 `nabi_handle_*`、`nabi_errno_*`、`nabi_last_error_*`、`nabi_session_*` 與 `nabi_lock_*` 函式）。
 - 它們共用 `nabi_` 前綴，但不包含在 8.5.8 的區域表中。為了避免名稱衝突，規格中具規範性的符號不會重用這些名稱。
-- `nabi_panic` 不屬於這個附錄。[8.5.7](#857-diagnostic-area) 中的簽章 `nabi_panic(msg: ConstPtr<u8>, msg_len: usize)` 具權威性，匯出不同簽章的實作不符合規範。
+- `nabi_panic` 不屬於這個附錄。[8.5.7](#857-診斷區域) 中的簽章 `nabi_panic(msg: ConstPtr<u8>, msg_len: usize)` 具權威性，匯出不同簽章的實作不符合規範。

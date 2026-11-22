@@ -59,16 +59,16 @@ impl ops::Add for Point {
 
 這種形式是 `impl Trait for Type { ... }`。主體包含 [`trait`](208-trait.md) 所要求之方法的主體，以及關聯型別的具體定義。trait 提供了預設方法的項目可以從主體中省略，此時使用預設主體。trait 宣告了但沒有預設值的關聯型別或常數必須定義；省略它是錯誤（E0072），其說明會寫出要加入的那一行，若 impl 的簽章中提到了該型別，就使用簽章所給的型別（`type Item = i32;`）。
 
-impl 方法必須：與 trait 宣告有相同的參數數量；除接收者以外的每個參數有相同的 `ref`；有相同的 `unsafe`（[4.15.4](../004-functions/415-unsafe.md#4154-in-traits)）；在它寫出型別的每個參數上使用宣告的型別（經過下述替換；未寫型別的參數取該型別，[4.1](../004-functions/401-function-declaration.md)）；並且恰好在宣告有回傳值時回傳一個值，其型別是把 `Self`、trait 的參數及其關聯型別替換為 impl 的對應項後的宣告型別（沒有更窄或共變的回傳）；否則就是 impl 處的錯誤，錯誤訊息會顯示該宣告。impl 方法的 `throws` 必須與 trait 方法的 `throws` 相同；沒有 `throws` 的 impl 方法取用 trait 方法的 `throws`。impl 不能加入 `throws`，也不能放寬錯誤型別（[4.14.11](../004-functions/414-throws.md#41411-throws-on-methods)）。
+impl 方法必須：與 trait 宣告有相同的參數數量；除接收者以外的每個參數有相同的 `ref`；有相同的 `unsafe`（[4.15.4](../004-functions/415-unsafe.md#4154-在-trait-中)）；在它寫出型別的每個參數上使用宣告的型別（經過下述替換；未寫型別的參數取該型別，[4.1](../004-functions/401-function-declaration.md)）；並且恰好在宣告有回傳值時回傳一個值，其型別是把 `Self`、trait 的參數及其關聯型別替換為 impl 的對應項後的宣告型別（沒有更窄或共變的回傳）；否則就是 impl 處的錯誤，錯誤訊息會顯示該宣告。impl 方法的 `throws` 必須與 trait 方法的 `throws` 相同；沒有 `throws` 的 impl 方法取用 trait 方法的 `throws`。impl 不能加入 `throws`，也不能放寬錯誤型別（[4.14.11](../004-functions/414-throws.md#41411-方法上的-throws)）。
 
 `Send` / `Sync` 是自動的標記 trait，有兩種手動宣告方式（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）。
 
-- 選入：`unsafe impl Send for X {}`。`unsafe impl` 只能用於 `Send` / `Sync` 以及 `unsafe trait`（[4.15.4](../004-functions/415-unsafe.md#4154-in-traits)），而手動實作這些 trait 時必須使用它。
+- 選入：`unsafe impl Send for X {}`。`unsafe impl` 只能用於 `Send` / `Sync` 以及 `unsafe trait`（[4.15.4](../004-functions/415-unsafe.md#4154-在-trait-中)），而手動實作這些 trait 時必須使用它。
 - 選出：`impl !Send for X {}`、`impl<T> !Send for Cell<T> {}`。它阻止自動實作，主體必須為空。`!` 只能與 `Send` / `Sync` 一起使用。
 
 ### `impl` 中的常數
 
-`impl` 區塊內的 `const N: T = v;` 是該型別的關聯常數。從外部讀作 `Type::N`，在 `impl` 內讀作 `Self::N`。trait 宣告的關聯常數（[2.8.3a](208-trait.md#283a-associated-constants)）在 trait `impl` 中取得其值。
+`impl` 區塊內的 `const N: T = v;` 是該型別的關聯常數。從外部讀作 `Type::N`，在 `impl` 內讀作 `Self::N`。trait 宣告的關聯常數（[2.8.3a](208-trait.md#283a-關聯常數)）在 trait `impl` 中取得其值。
 
 ```nabi
 impl Circle {
@@ -171,7 +171,7 @@ impl Add<List<Matrix>> for i32 { ... }   // ERROR: `List<Matrix>` is `core`'s ty
 
 ### 一致性
 
-一組（trait, 型別）只有一個 `impl`，而且沒有特化。針對某一型別的快速路徑，以型別測試的方式放在泛型 `impl` 中：`if Self is f32 { .. }`（[2.10.13](210-generics.md#21013-type-tests-on-type-parameters)）。
+一組（trait, 型別）只有一個 `impl`，而且沒有特化。針對某一型別的快速路徑，以型別測試的方式放在泛型 `impl` 中：`if Self is f32 { .. }`（[2.10.13](210-generics.md#21013-對型別參數的型別測試)）。
 
 - 泛型 `impl` 針對每個使用它的型別單態化。
 - 具體 `impl` 只有在該具體型別滿足泛型 `impl` 的約束時，才與泛型 `impl` 重疊。
@@ -211,8 +211,8 @@ trait `impl` 的方法跟隨 trait 的可見性，不能另外標記。
 
 ## 2.9.7. 固有 `impl` 與 trait `impl` 之間的方法衝突
 
-若同一個方法名稱同時存在於固有 `impl` 與 trait `impl` 中，呼叫處必須無歧義地選擇。確切的解析規則定義於[方法](../004-functions/409-method.md#name-conflicts-between-traits)。
+若同一個方法名稱同時存在於固有 `impl` 與 trait `impl` 中，呼叫處必須無歧義地選擇。確切的解析規則定義於[方法](../004-functions/409-method.md#trait-之間的名稱衝突)。
 
 ## 2.9.8. 不得重複定義同一個方法
 
-為同一個型別定義兩個同名的方法是編譯錯誤，無論是在一個 `impl` 區塊中，還是在多個固有 `impl` 區塊中（[2.9.3](#293-multiple-impl-blocks-for-one-type)），或是在一個 trait `impl` 中（沒有多載）。來自不同 trait 的同名方法是允許的（[2.9.7](#297-method-conflicts-between-inherent-and-trait-impls)）。
+為同一個型別定義兩個同名的方法是編譯錯誤，無論是在一個 `impl` 區塊中，還是在多個固有 `impl` 區塊中（[2.9.3](#293-一個型別的多個-impl-區塊)），或是在一個 trait `impl` 中（沒有多載）。來自不同 trait 的同名方法是允許的（[2.9.7](#297-固有-impl-與-trait-impl-之間的方法衝突)）。

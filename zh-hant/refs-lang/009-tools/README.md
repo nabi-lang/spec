@@ -1,6 +1,6 @@
 # 9. 執行 / 工具概觀
 
-本部分規定 Nabi 編譯器 `nabic`、前端 `nabi`，以及執行環境（REPL / Jupyter 核心）。它涵蓋[執行引擎與使用者介面](../000-meta/001-execution-modes.md)中定義的兩個引擎（[JIT](../000-meta/007-glossary.md#jit-just-in-time) / [AOT](../000-meta/007-glossary.md#aot-ahead-of-time)）與三種使用者介面（REPL / Jupyter / 直接執行 AOT 產出）如何實作。
+本部分規定 Nabi 編譯器 `nabic`、前端 `nabi`，以及執行環境（REPL / Jupyter 核心）。它涵蓋[執行引擎與使用者介面](../000-meta/001-execution-modes.md)中定義的兩個引擎（[JIT](../000-meta/007-glossary.md#jit即時編譯) / [AOT](../000-meta/007-glossary.md#aot預先編譯)）與三種使用者介面（REPL / Jupyter / 直接執行 AOT 產出）如何實作。
 
 ## 目錄
 
@@ -105,16 +105,16 @@ foo/target/debug/
 └── ...
 ```
 
-各設定檔的配置定義於 [9.2.15](902-aot-pipeline.md#9215-output)，[封存檔](../000-meta/007-glossary.md#archive)格式定義於[套件封存檔](903-package-archive.md)。
+各設定檔的配置定義於 [9.2.15](902-aot-pipeline.md#9215-輸出)，[封存檔](../000-meta/007-glossary.md#封存檔archive)格式定義於[套件封存檔](903-package-archive.md)。
 
 ## NABIHIR：泛型函式的可攜 IR
 
-泛型函式必須在呼叫處[單態化](../000-meta/007-glossary.md#monomorphization)，因此只有二進位程式碼是不夠的。所以函式庫旁邊會放一個介面檔 NABIHIR。NABIHIR 容納去除了具體函式主體的套件原始碼（因為單態化以 AST 作為輸入）。
+泛型函式必須在呼叫處[單態化](../000-meta/007-glossary.md#單態化monomorphization)，因此只有二進位程式碼是不夠的。所以函式庫旁邊會放一個介面檔 NABIHIR。NABIHIR 容納去除了具體函式主體的套件原始碼（因為單態化以 AST 作為輸入）。
 
 詳細格式定義於 [NABIHIR 格式](904-nabihir-bytecode.md)。
 
 ## 唯一的相依：`libnabir.a`
 
-執行檔連結使用者套件的 `libfoo.a`、執行環境 `libnabir.a`，以及它所觸及的標準函式庫函式，這些函式隨它一起從原始碼編譯，或取自工具鏈的函式快取（[9.3.6](903-package-archive.md#936-standard-library)）。除了作業系統的外部函式庫之外，沒有其他相依。
+執行檔連結使用者套件的 `libfoo.a`、執行環境 `libnabir.a`，以及它所觸及的標準函式庫函式，這些函式隨它一起從原始碼編譯，或取自工具鏈的函式快取（[9.3.6](903-package-archive.md#936-標準函式庫)）。除了作業系統的外部函式庫之外，沒有其他相依。
 
 詳細的建置流程定義於 [AOT 建置管線](902-aot-pipeline.md)。

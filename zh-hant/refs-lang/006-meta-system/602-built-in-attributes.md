@@ -68,9 +68,9 @@ enum Status { ... }
 
 | 引數                        | 意義                                                                                                 |
 |-----------------------------|------------------------------------------------------------------------------------------------------|
-| `C`                         | C [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) 配置：宣告順序、自然對齊。與預設的 `struct` 配置相同 |
+| `C`                         | C [ABI](../000-meta/007-glossary.md#abi應用程式二進位介面) 配置：宣告順序、自然對齊。與預設的 `struct` 配置相同 |
 | `transparent`               | 恰好一個欄位，且沒有其他 `repr` 引數。與該欄位表示相同，並以它的方式跨越 C ABI |
-| `packed`                    | 忽略對齊而緊密封裝（僅限 [FFI](../000-meta/007-glossary.md#ffi-foreign-function-interface)）。不能容納 GC 參照；與 `align(N)` 互斥 |
+| `packed`                    | 忽略對齊而緊密封裝（僅限 [FFI](../000-meta/007-glossary.md#ffi外部函式介面)）。不能容納 GC 參照；與 `align(N)` 互斥 |
 | `align(N)`                  | 強制最小對齊為 N 位元組                                                                              |
 | `u8` 到 `u64` / `i8` 到 `i64` | `enum` 的標籤型別。32 位元以外的寬度只用於無欄位的列舉；帶資料的列舉接受 `i32` / `u32` |
 
@@ -157,11 +157,11 @@ fn downloads() { }
 ```
 
 - `#[should_panic]` 只在測試 panic 時通過；`#[should_panic(expected = "text")]` 還要求 panic 的輸出包含 `text`。回傳了或以未捕捉之錯誤結束的測試會失敗。
-- `#[ignore]`（或 `#[ignore = "reason"]`）讓測試不在一般執行中執行；它會被回報為已忽略，並附上理由。`nabi test --ignored` 只執行這類測試，`--include-ignored` 也會執行它們（[9.10.1](../009-tools/910-nabi-frontend.md#9101-subcommands-and-global-options)）。
+- `#[ignore]`（或 `#[ignore = "reason"]`）讓測試不在一般執行中執行；它會被回報為已忽略，並附上理由。`nabi test --ignored` 只執行這類測試，`--include-ignored` 也會執行它們（[9.10.1](../009-tools/910-nabi-frontend.md#9101-子指令與全域選項)）。
 
 在沒有 `#[test]` 的函式上使用其中任一者是錯誤，錯誤訊息會提示加上 `#[test]`；其他任何引數形式都是錯誤，錯誤訊息會顯示這兩種形式。
 
-`#[bench]` 標示基準測試函式，並與 `#[test]` 一樣隱含 `#[cfg(test)]`。`nabic bench` 收集它們並建置測試框架，`nabi bench` 執行它（[9.1.2](../009-tools/901-nabic-cli.md#nabic-bench-benchmarks)）。無論其自身與外層模組的可見性為何，基準測試函式都會被執行；`#[bench]` 不會為其他程式碼改變可見性。
+`#[bench]` 標示基準測試函式，並與 `#[test]` 一樣隱含 `#[cfg(test)]`。`nabic bench` 收集它們並建置測試框架，`nabi bench` 執行它（[9.1.2](../009-tools/901-nabic-cli.md#nabic-bench效能測試)）。無論其自身與外層模組的可見性為何，基準測試函式都會被執行；`#[bench]` 不會為其他程式碼改變可見性。
 
 ## 6.2.6. `#[cold]` 很少被呼叫的函式
 
@@ -196,7 +196,7 @@ impl Config {
 - 結構、列舉、聯集、型別別名與 trait，在型別中或作為路徑開頭被指名時（`Old::new`）；
 - 常數與 static。
 
-只有正在建置之套件中的使用會發出警告（[6.2.9](#629-allow--deny--warn-lint-control)）。型別自己的 `impl` 不會因該型別而發出警告，結構自己的方法也不會因其欄位而發出警告。型別以其完整路徑辨識，或以沒有其他型別共用的最後一個片段辨識。這個屬性在任何項目上都被接受；在其他項目（變體、impl、模組）上它沒有效果。
+只有正在建置之套件中的使用會發出警告（[6.2.9](#629-allow--deny--warn-lint-控制)）。型別自己的 `impl` 不會因該型別而發出警告，結構自己的方法也不會因其欄位而發出警告。型別以其完整路徑辨識，或以沒有其他型別共用的最後一個片段辨識。這個屬性在任何項目上都被接受；在其他項目（變體、impl、模組）上它沒有效果。
 
 `since` 僅供參考：任何版本的棄用都屬於 `deprecated` 與 `warnings`。語言伺服器會把該使用標記為已棄用，因此編輯器會以刪除線顯示它。
 
@@ -207,7 +207,7 @@ impl Config {
 fn add(x: i32, y: i32) -> i32 { x + y }
 ```
 
-[語彙結構](../001-lexical/102-lexical-structure.md#doc-comments)中的 `///` 文件註解就是這個屬性。
+[語彙結構](../001-lexical/102-lexical-structure.md#文件註解)中的 `///` 文件註解就是這個屬性。
 
 ```nabi
 /// This function ...
@@ -228,7 +228,7 @@ fn f() { ... }
 pub const fn spread_misfit<V>(d: Dict<str, V>, key: str, why: str) { .. }
 ```
 
-`#[doc(hidden)]` 讓公開的項目不出現在 API 文件（`nabi doc`）與語言伺服器的自動完成中。它用於只是為了讓編譯器產生的程式碼能呼叫才設為 `pub` 的項目；該項目仍然是公開的，編譯與解析照舊。用在模組上時，它隱藏其中的一切。它可以與項目的文件註解並存，後者仍用於滑鼠懸停提示。其他任何 `#[doc(..)]` 形式都是錯誤：請寫 `#[doc = ".."]` 或 `#[doc(hidden)]`。工具鏈的套件之間共用、但使用者不得呼叫的項目是 `#[internal]`（[6.2.16](#6216-internal-shared-by-the-toolchains-packages)），而不是 `#[doc(hidden)]`。
+`#[doc(hidden)]` 讓公開的項目不出現在 API 文件（`nabi doc`）與語言伺服器的自動完成中。它用於只是為了讓編譯器產生的程式碼能呼叫才設為 `pub` 的項目；該項目仍然是公開的，編譯與解析照舊。用在模組上時，它隱藏其中的一切。它可以與項目的文件註解並存，後者仍用於滑鼠懸停提示。其他任何 `#[doc(..)]` 形式都是錯誤：請寫 `#[doc = ".."]` 或 `#[doc(hidden)]`。工具鏈的套件之間共用、但使用者不得呼叫的項目是 `#[internal]`（[6.2.16](#6216-internal-由工具鏈的套件共用)），而不是 `#[doc(hidden)]`。
 
 ## 6.2.9. `#[allow(...)]` / `#[deny(...)]` / `#[warn(...)]` lint 控制
 
@@ -240,7 +240,7 @@ fn _placeholder() { }
 fn strict_zone() { ... }
 ```
 
-這些屬性在其所附加之項目的範圍內改變 lint 診斷的等級。lint 在每個編譯套件的指令中執行：`nabic build`、`test`、`bench`、`emit` 與 `check`（[9.1.2](../009-tools/901-nabic-cli.md#912-core-subcommands)）、`nabi run`、`nabi lint`（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-lint-linter)）、REPL 以及語言伺服器（`doc` 除外）。它們檢查正在建置的套件，而不檢查其相依套件。`warn` lint 會被印出，不會讓建置失敗；`deny` lint 是錯誤，建置以結束碼 1 失敗。`allow` 忽略該診斷，`warn` 以警告發出它，`deny` 以錯誤發出它。`#![allow(..)]` 之類的內部形式適用於外層模組（位於檔案開頭時為整個檔案）。引數是 lint 名稱或群組名稱。項目的 `#[allow]` 也涵蓋其變體、欄位與方法。
+這些屬性在其所附加之項目的範圍內改變 lint 診斷的等級。lint 在每個編譯套件的指令中執行：`nabic build`、`test`、`bench`、`emit` 與 `check`（[9.1.2](../009-tools/901-nabic-cli.md#912-核心子指令)）、`nabi run`、`nabi lint`（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-lintlinter)）、REPL 以及語言伺服器（`doc` 除外）。它們檢查正在建置的套件，而不檢查其相依套件。`warn` lint 會被印出，不會讓建置失敗；`deny` lint 是錯誤，建置以結束碼 1 失敗。`allow` 忽略該診斷，`warn` 以警告發出它，`deny` 以錯誤發出它。`#![allow(..)]` 之類的內部形式適用於外層模組（位於檔案開頭時為整個檔案）。引數是 lint 名稱或群組名稱。項目的 `#[allow]` 也涵蓋其變體、欄位與方法。
 
 等級依下列順序決定，後者覆寫前者：每個 lint 的預設等級 < `nabi.nabion` 的 `lints` 欄位（經過其 `lints_from` 鏈之後）（[9.10.3](../009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)）< 命令列的 `-A` / `-W` / `-D` < 原始碼中的屬性（最內層者勝出）。`lints` 被視為放在命令列旗標之前，因此寫在它之後的命令列旗標會覆寫它。lint 診斷的錯誤碼是 `E0131`。
 
@@ -252,8 +252,8 @@ fn strict_zone() { ... }
 | `unused_imports`         | 0.1.0   | 模組從未使用其名稱的 `use`                                          |
 | `dead_code`              | 0.1.0   | 沒有任何人呼叫的非 `pub` 函式                                       |
 | `unreachable_code`       | 0.1.0   | 位於 `return` / `break` / `continue` / `throw` / `panic` 之後的陳述式 |
-| `unused_must_use`        | 0.1.0   | 捨棄 `#[must_use]` 函式的結果，或 `#[must_use]` 型別的值（[6.2.11](#6211-unused-results-unused_result-discardable-must_use)） |
-| `unused_result`          | 0.1.0   | 值不是 `()`、`none` 或 `Never` 的運算式陳述式，除非它呼叫 `#[discardable]` 函式；要刻意捨棄值，請寫 `_ = expr;`（[6.2.11](#6211-unused-results-unused_result-discardable-must_use)） |
+| `unused_must_use`        | 0.1.0   | 捨棄 `#[must_use]` 函式的結果，或 `#[must_use]` 型別的值（[6.2.11](#6211-未使用的結果unused_resultdiscardablemust_use)） |
+| `unused_result`          | 0.1.0   | 值不是 `()`、`none` 或 `Never` 的運算式陳述式，除非它呼叫 `#[discardable]` 函式；要刻意捨棄值，請寫 `_ = expr;`（[6.2.11](#6211-未使用的結果unused_resultdiscardablemust_use)） |
 | `unused_doc_comments`    | 0.1.0   | 位於不會被撰寫文件之處（陳述式、match 分支、結構字面值或元組欄位、運算式）的文件註解；一般註解請用 `//` |
 | `ignored_error`          | 0.1.0   | 默默捨棄錯誤的 `try? f();` 陳述式；`let _ = try? f();` 標示刻意盡力而為的呼叫，不會被回報 |
 | `nan_comparison`         | 0.1.0   | 與 NaN 比較（一律為 false；`!=` 一律為 true）；請用 `.is_nan()`（deny） |
@@ -261,8 +261,8 @@ fn strict_zone() { ... }
 | `self_assignment`        | 0.1.0   | `x = x;`（deny）                                                    |
 | `while_true`             | 0.1.0   | 以 `while true` 取代 `loop`                                         |
 | `closed_type_switch`     | 0.1.0   | 後備路徑會 panic 的 `if T is ..` 鏈：封閉的型別集合適合用 trait     |
-| `deprecated`             | 0.1.0   | 使用 `#[deprecated]` 的函式、方法、欄位、型別、常數或 static（[6.2.7](#627-deprecated-discouraged-use-marker)） |
-| `deprecated_safe`        | 0.1.0   | 在 `unsafe` 之外呼叫 `#[deprecated_safe]` 函式，或使用這種 static（[6.2.14](#6214-deprecated_safe-safe-today-unsafe-later)） |
+| `deprecated`             | 0.1.0   | 使用 `#[deprecated]` 的函式、方法、欄位、型別、常數或 static（[6.2.7](#627-deprecated-不建議使用的標記)） |
+| `deprecated_safe`        | 0.1.0   | 在 `unsafe` 之外呼叫 `#[deprecated_safe]` 函式，或使用這種 static（[6.2.14](#6214-deprecated_safe-現在安全之後-unsafe)） |
 | `redundant_cast`         | 0.1.0   | `x` 已經是 `T` 時的 `x as T`                                        |
 | `redundant_clone`        | 0.1.0   | 對基本型別的值呼叫 `.clone()`                                       |
 | `non_snake_case`         | 0.1.0   | 不是 snake_case 的函式、區域變數、參數或模組名稱                    |
@@ -271,13 +271,13 @@ fn strict_zone() { ... }
 | `sup_path`               | 0.1.0   | 在行內 `mod name { }` 之外的 `sup::` 路徑或 `pub(sub)`；請寫從套件根開始的路徑（`pkg::a::b`，附註會指出它）或 `pub(pkg)`（[5.7](../005-modules/507-paths.md)） |
 | `local_use`              | 0.1.0   | 函式主體內的 `use`；請把它移到檔案頂端，與其他 `use` 項目放在一起（[5.5.8](../005-modules/505-use.md)） |
 | `confusable_idents`      | 0.1.0   | 彼此相似的識別字（[1.4](../001-lexical/104-identifiers.md)）        |
-| `hidden_chars`           | 0.1.0   | 直接寫在字串、字元字面值或註解中的不可見或未指派字元；請把它寫成 `\u{..}` 跳脫序列（[1.1.2](../001-lexical/101-source-files.md#112-character-encoding)） |
+| `hidden_chars`           | 0.1.0   | 直接寫在字串、字元字面值或註解中的不可見或未指派字元；請把它寫成 `\u{..}` 跳脫序列（[1.1.2](../001-lexical/101-source-files.md#112-字元編碼)） |
 | `missing_f_prefix`       | 0.1.0   | 含有 `{name}` 的一般字串字面值，而 `name` 是作用域內的區域變數：缺少 `f` 前綴 |
 | `literal_spread_mismatch` | 0.1.0   | 展開到固定參數卻無法填滿它們的 `List` 或 Dict 字面值：長度不同，或鍵沒有指稱剩下的參數（[4.2](../004-functions/402-parameters.md)）；該呼叫在執行時會 panic |
 | `assoc_type_shadowing`   | 0.1.0   | 與外部型別同名的關聯型別，它在其 trait 或 `impl` 內隱藏該外部型別（2.8.3） |
-| `plain_module_doc`       | 0.1.0   | 函式庫的根檔案，或公開模組（其路徑上每個模組都是 `pub`）的檔案，沒有 `//!` 文件卻以 `//` 行開頭：它們讀起來像模組的文件，但並不是（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-doc-documentation-generation)）；說明會顯示應寫的 `//!` 行 |
+| `plain_module_doc`       | 0.1.0   | 函式庫的根檔案，或公開模組（其路徑上每個模組都是 `pub`）的檔案，沒有 `//!` 文件卻以 `//` 行開頭：它們讀起來像模組的文件，但並不是（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-doc產生文件)）；說明會顯示應寫的 `//!` 行 |
 | `missing_docs`           | 0.1.0   | 沒有 `///` 文件註解的 `pub` 項目、固有 impl 的 `pub` 方法、`pub` trait 的方法或行內 `pub mod`；`#[doc(hidden)]` 算作已撰寫文件，trait impl 的方法不受檢查（allow） |
-| `resize_while_iterating` | 0.1.0   | 走訪 `List` 的 `for x in xs`，其主體改變 `xs` 的長度（`push`、`remove`……），而同一區塊中其後沒有 `break`、`return` 或 `throw`：迴圈會看到新的長度（[3.13.3](../003-expressions/313-loop-expressions.md#3133-for-iterator-based-repetition)） |
+| `resize_while_iterating` | 0.1.0   | 走訪 `List` 的 `for x in xs`，其主體改變 `xs` 的長度（`push`、`remove`……），而同一區塊中其後沒有 `break`、`return` 或 `throw`：迴圈會看到新的長度（[3.13.3](../003-expressions/313-loop-expressions.md#3133-for以迭代器為基礎的重複)） |
 
 | 群組                | 包含                                                                                         |
 |---------------------|----------------------------------------------------------------------------------------------|
@@ -294,9 +294,9 @@ fn strict_zone() { ... }
 
 `nabi lint --list` 印出各 lint 及其預設等級與加入它的版本，然後印出各群組。
 
-有些發現附帶能解決它的修改（`while true` -> `loop`、刪除未使用的 `use`）；編輯器把它當作快速修正提供，而 `nabi fix`（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-fix-apply-fixes)）會在整個套件中套用它們。
+有些發現附帶能解決它的修改（`while true` -> `loop`、刪除未使用的 `use`）；編輯器把它當作快速修正提供，而 `nabi fix`（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-fix套用修正)）會在整個套件中套用它們。
 
-`nabic check --check-library`（[9.1.2](../009-tools/901-nabic-cli.md#nabic-check-diagnostics)）與 `nabi lint --check-library`（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-lint-linter)）也會以標準函式庫的等級對其自身的程式碼執行 lint：每個預設等級，外加 `missing_docs` 為 `deny`：標準函式庫的每個公開項目都有文件註解（[stdlib 0.5.14](../../refs-standard-libraries/000-meta/005-notation.md#0514-docs-and-attributes)）。
+`nabic check --check-library`（[9.1.2](../009-tools/901-nabic-cli.md#nabic-check診斷)）與 `nabi lint --check-library`（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-lintlinter)）也會以標準函式庫的等級對其自身的程式碼執行 lint：每個預設等級，外加 `missing_docs` 為 `deny`：標準函式庫的每個公開項目都有文件註解（[stdlib 0.5.14](../../refs-standard-libraries/000-meta/005-notation.md#0514-docs-and-attributes)）。
 
 ## 6.2.10. `#[non_exhaustive]` 退出外部的窮盡性
 
@@ -325,8 +325,8 @@ let ClientOptions { retries, .. } = p;          // `..` required in another pack
 在 `struct` 上，它標示一個其套件可能新增欄位的紀錄：
 
 - 從外部套件對它進行的結構模式以 `..` 結尾（`let`、`match`、`if let`）；沒有 `..` 是錯誤，錯誤訊息會顯示加上 `..` 的模式。定義它的套件可以列出每個欄位。
-- 結構第一個版本之後新增的每個欄位都有預設值（[2.3.3](../002-types/203-struct.md#233-field-default-values)），因此省略它的字面值可以繼續編譯。編譯器看不到結構的歷史；這條規則是作者的責任，之後的 semver 檢查會強制它。
-- 與 Rust 不同，其他套件中的結構字面值與 `..base` 展開（[2.3.4](../002-types/203-struct.md#234-field-spread)）仍是允許的：字面值省略有預設值的欄位並指名其餘欄位。沒有合理預設值的欄位在每個字面值中都是必要的。
+- 結構第一個版本之後新增的每個欄位都有預設值（[2.3.3](../002-types/203-struct.md#233-欄位預設值)），因此省略它的字面值可以繼續編譯。編譯器看不到結構的歷史；這條規則是作者的責任，之後的 semver 檢查會強制它。
+- 與 Rust 不同，其他套件中的結構字面值與 `..base` 展開（[2.3.4](../002-types/203-struct.md#234-欄位展開)）仍是允許的：字面值省略有預設值的欄位並指名其餘欄位。沒有合理預設值的欄位在每個字面值中都是必要的。
 
 ## 6.2.11. 未使用的結果：`unused_result`、`#[discardable]`、`#[must_use]`
 
@@ -358,11 +358,11 @@ fn expect_positive(n: i32) -> i32 {
 }
 ```
 
-- 函式以一個隱藏的尾端 `str` 引數接收呼叫處。其中的 panic 會回報該位置（[4.14.13](../004-functions/414-throws.md#41413-panics-and-fatal-errors)）。
+- 函式以一個隱藏的尾端 `str` 引數接收呼叫處。其中的 panic 會回報該位置（[4.14.13](../004-functions/414-throws.md#41413-panic-與致命錯誤)）。
 - 當受追蹤的函式呼叫另一個受追蹤的函式時，它會傳遞它所收到的位置。
 - 受追蹤函式的函式值回報建立該值的位置。
 - 在 `async fn` 上，只有呼叫受追蹤，協程主體不受追蹤。
-- 在 `extern`（執行環境）宣告上，符號會多接受一個位置引數（[8.5.7](../008-abi/805-extern-symbols.md#857-diagnostic-area)）。
+- 在 `extern`（執行環境）宣告上，符號會多接受一個位置引數（[8.5.7](../008-abi/805-extern-symbols.md#857-診斷區域)）。
 - 它不能附加在 `main`、`extern "C" fn` 或 `#[export_name]` 函式上。
 
 對無效輸入會 panic 的標準函式庫函式（`panic`、`unreachable`、`assert*`、索引、切片、`unwrap`、`List::insert` / `remove` 等）都是 `#[track_caller]`。
@@ -379,24 +379,24 @@ fn expect_positive(n: i32) -> i32 {
 
 | 屬性                           | 位置                          | 意義 |
 |--------------------------------|-------------------------------|---------|
-| `#[path("file.nabi")]`          | `mod name;`                   | 從該檔案而不是 `name.nabi` 載入模組（[5.4.6](../005-modules/504-modules.md#546-custom-paths-path)） |
+| `#[path("file.nabi")]`          | `mod name;`                   | 從該檔案而不是 `name.nabi` 載入模組（[5.4.6](../005-modules/504-modules.md#546-自訂路徑path)） |
 | `#![no_implicit_nabi]`          | 檔案（內部）                  | 為該檔案關閉隱含的 `use core::prelude::*;`（[stdlib 0.2.6](../../refs-standard-libraries/000-meta/002-import.md#026-opting-out---no_implicit_nabi)） |
-| `#[export_name("sym")]`        | `extern "C"` / `extern "system"` fn | 以未修飾的符號 `sym` 匯出函式（在 wasm32 上是同名的 wasm 匯出）；是無法到達函式消除的根（[9.5.8](../009-tools/905-symbol-mangling.md)）。在一般函式上是錯誤（[5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-definitions-exposed-externally)） |
-| `#[export]`                    | `extern "C"` / `extern "system"` fn | 以函式自己的名稱進行的 `#[export_name]`（[5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-definitions-exposed-externally)） |
-| `#[on_panic(return = v)]`、`#[on_panic]` | `extern "C"` / `extern "system"` fn | 函式中的 panic 會被回報，然後函式回傳 `v`（整數、浮點數或 `bool` 字面值，null 指標為 `0`；沒有結果時不回傳任何東西），而不是中止行程（[5.9.10](../005-modules/509-extern-block.md#on_panic---a-value-for-c-instead-of-an-abort)） |
+| `#[export_name("sym")]`        | `extern "C"` / `extern "system"` fn | 以未修飾的符號 `sym` 匯出函式（在 wasm32 上是同名的 wasm 匯出）；是無法到達函式消除的根（[9.5.8](../009-tools/905-symbol-mangling.md)）。在一般函式上是錯誤（[5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-定義對外公開)） |
+| `#[export]`                    | `extern "C"` / `extern "system"` fn | 以函式自己的名稱進行的 `#[export_name]`（[5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-定義對外公開)） |
+| `#[on_panic(return = v)]`、`#[on_panic]` | `extern "C"` / `extern "system"` fn | 函式中的 panic 會被回報，然後函式回傳 `v`（整數、浮點數或 `bool` 字面值，null 指標為 `0`；沒有結果時不回傳任何東西），而不是中止行程（[5.9.10](../005-modules/509-extern-block.md#on_panic給-c-一個值而不是中止)） |
 | `#[errno]`                     | `extern "C"` / `extern "system"` 區塊或宣告 | 每次呼叫在回傳之後立即儲存 errno（在 Windows 上還有 `GetLastError`），供 `bare::ffi::errno()` 使用（[stdlib 1.7.11](../../refs-standard-libraries/100-bare/107-ffi.md#1711-errno---errno-and-getlasterror)）；在 `extern "nabi"` 區塊與函式上是錯誤 |
 | `#[leaf]`                      | `extern "C"` / `extern "system"` 區塊或宣告 | 呼叫略過其周圍的停駐：成本較低，但函式既不得阻塞也不得回呼（[stdlib 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf---short-calls)）；在 `extern "nabi"` 區塊上是錯誤 |
 | `#[no_mangle]`                 | 函式                          | 讓函式免於命名與未使用函式的 lint。它不改變符號；那要用 `#[export_name]` |
 | `#[wit::export]`               | 函式、`pub struct`            | 實作 WIT 匯出：函式或資源（[stdlib 1.8](../../refs-standard-libraries/100-bare/108-wit.md)） |
-| `#[niche(..)]`                 | newtype 結構                  | 宣告該型別永不容納的值，用作 `T \| none` 的 niche（[2.7.4](../002-types/207-niche-optimization.md#274-opt-in-niches-niche)） |
+| `#[niche(..)]`                 | newtype 結構                  | 宣告該型別永不容納的值，用作 `T \| none` 的 niche（[2.7.4](../002-types/207-niche-optimization.md#274-選用的-nicheniche)） |
 | `#[display("text")]`          | `struct`、`enum`、列舉變體    | 以寫出 `f"text"` 實作 `Display`（[stdlib 2.10.14](../../refs-standard-libraries/200-core/210-fmt.md#21014-derive-policy-summary)） |
 | `#[intrinsic("nabi.OP.TYPE")]`  | 僅限標準函式庫                | 把函式或方法繫結到編譯器運算；在使用者程式碼中是錯誤（[stdlib 0.3](../../refs-standard-libraries/000-meta/003-intrinsics.md)） |
-| `#[no_safepoint]`              | `extern "nabi"` 區塊           | 工具鏈內部：區塊的函式既不配置記憶體也不阻塞，因此對它們的呼叫不是安全點；在其他區塊上是錯誤（[5.9.2](../005-modules/509-extern-block.md#592-abi-specifiers)） |
-| `#[sealed]`                    | `trait`                       | 只有定義它的套件能實作該 trait（[6.2.15](#6215-sealed-impls-only-in-the-defining-package)） |
-| `#[internal]`                  | 函式、方法、`const`、`static`、欄位 | 只由 `bare`、`core` 與 `std` 共用（[6.2.16](#6216-internal-shared-by-the-toolchains-packages)） |
-| `#[runtime_attribute(name)]`   | `struct`                      | 宣告執行時屬性 `#[name(..)]`，保留在 `Inspect` 描述中（[6.10.8](610-reflection.md#6108-runtime-attributes)） |
-| `#[inspect(skip)]`             | 欄位                          | 讓該欄位不出現在其型別的 `Inspect` 描述中（[6.10.7](610-reflection.md#6107-typeinfo---the-types-description)） |
-| `#[renamed_from("old")]`       | 欄位                          | 在其描述中記錄該欄位先前的名稱（[6.10.8](610-reflection.md#6108-runtime-attributes)） |
+| `#[no_safepoint]`              | `extern "nabi"` 區塊           | 工具鏈內部：區塊的函式既不配置記憶體也不阻塞，因此對它們的呼叫不是安全點；在其他區塊上是錯誤（[5.9.2](../005-modules/509-extern-block.md#592-abi-指定符)） |
+| `#[sealed]`                    | `trait`                       | 只有定義它的套件能實作該 trait（[6.2.15](#6215-sealed-只在定義套件中實作)） |
+| `#[internal]`                  | 函式、方法、`const`、`static`、欄位 | 只由 `bare`、`core` 與 `std` 共用（[6.2.16](#6216-internal-由工具鏈的套件共用)） |
+| `#[runtime_attribute(name)]`   | `struct`                      | 宣告執行時屬性 `#[name(..)]`，保留在 `Inspect` 描述中（[6.10.8](610-reflection.md#6108-執行時屬性)） |
+| `#[inspect(skip)]`             | 欄位                          | 讓該欄位不出現在其型別的 `Inspect` 描述中（[6.10.7](610-reflection.md#6107-typeinfo型別的描述)） |
+| `#[renamed_from("old")]`       | 欄位                          | 在其描述中記錄該欄位先前的名稱（[6.10.8](610-reflection.md#6108-執行時屬性)） |
 | `#[available(macos = "13.0")]` | 函式、方法、`extern "objc"` 區塊的方法 | 該 API 需要的 macOS 版本：除非部署目標或外圍的 `if objc::available(macos: "13.0")` 涵蓋它，否則呼叫是錯誤（[stdlib 1.10.13](../../refs-standard-libraries/100-bare/110-objc.md#11013-availability-and-the-deployment-target)） |
 | `#[objc::class(..)]`、`#[objc::protocol(..)]`、`#[objc::category(..)]`、`#[selector("..")]`、`#[returns_retained]`、`#[returns_not_retained]` | `extern "objc"` 區塊及其方法 | Objective-C 類別及其方法（[stdlib 1.10.2](../../refs-standard-libraries/100-bare/110-objc.md#1102-extern-objc-blocks)） |
 
@@ -423,7 +423,7 @@ trait 上的 `#[sealed]` 表示只有定義該 trait 的套件能實作它。在
 
 當函式庫依賴於知道實作它的每一個型別時，就把 trait 設為 sealed：出於健全性（原子運算只為那些型別存在），或因為其他 impl 會被忽略。標準函式庫把 `AtomicPrimitive` 設為 sealed（[stdlib 2.16](../../refs-standard-libraries/200-core/216-sync.md)）。
 
-工具鏈的每個層級都是自己的套件（[5.6.4](../005-modules/506-visibility.md#564-pubpkg-within-the-package)）：`core` 設為 sealed 的 trait，其 impl 在 `core` 中。`#[sealed]` 不接受引數；用在 trait 以外的任何東西上都是錯誤。
+工具鏈的每個層級都是自己的套件（[5.6.4](../005-modules/506-visibility.md#564-pubpkg在套件內)）：`core` 設為 sealed 的 trait，其 impl 在 `core` 中。`#[sealed]` 不接受引數；用在 trait 以外的任何東西上都是錯誤。
 
 ## 6.2.16. `#[internal]` 由工具鏈的套件共用
 
@@ -438,7 +438,7 @@ pub fn wake_io(fd: i32) { .. }
 - 從其他任何套件的使用（呼叫、函式值、讀取）是錯誤：「internal to the Nabi toolchain」。該項目仍會被解析，因此錯誤訊息會指出它。
 - `#[internal("..")]` 指出應改寫成什麼，錯誤訊息會顯示它（`Int::from_literal` 指出 `s.parse::<Int>()`）。沒有附註時，錯誤訊息會說明該項目只供編譯器使用。
 - 它不會出現在 API 文件（`nabi doc`）、語言伺服器的自動完成與懸停清單，以及「did you mean」建議中，與 `#[doc(hidden)]` 項目相同。
-- 它不是新的可見性等級（[5.6.1](../005-modules/506-visibility.md#561-four-levels)）：該項目是 `pub`，而這項檢查與可見性分開。
+- 它不是新的可見性等級（[5.6.1](../005-modules/506-visibility.md#561-四個等級)）：該項目是 `pub`，而這項檢查與可見性分開。
 - 只有工具鏈的套件可以寫它。用在其他任何套件的項目上是錯誤；要讓項目留在套件內，請把它設為 `pub(pkg)`。
 
 帶有它的項目列於 [stdlib 0.4.4](../../refs-standard-libraries/000-meta/004-lang-slot-table.md)。只在一個層級內使用的項目是 `pub(pkg)`，而編譯器從降階後的程式碼呼叫的函式是透過 lang 槽位存取的，因此兩者都不需要 `#[internal]`。

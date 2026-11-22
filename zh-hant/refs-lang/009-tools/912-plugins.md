@@ -33,9 +33,9 @@ Package {
 - 外掛套件有 `src/lib.nabi` 而沒有 `src/main.nabi`（`` a plugin is loaded by a program, so move main.nabi to a package of its own that loads this one with `std::plugin::load` ``）。對它執行 `nabi run` 是錯誤。
 - 預設情況下，相依套件從主機取得：外掛對照它編譯，其 static 是主機的，描述子把它列在 `needs` 之下。`bundle: true` 則把相依套件連結進外掛：其 static 是外掛自己的，並列在 `provides` 之下。在不是外掛之套件的相依套件上使用 `bundle` 是錯誤。
 - 程式的相依套件 `Dep::path("../physics", plugin: true)` 會作為外掛建置到程式的目標目錄中（因此位於程式旁邊，使用程式的設定檔與目標），且不會被連結進來；程式以 `plugin::load(plugin::beside("physics"))` 載入它。在同一個相依套件上同時使用 `plugin: true` 與 `bundle: true` 是錯誤。
-- 外掛所觸及的標準函式庫程式碼會被編譯進其中（與程式一樣只編譯觸及的部分，[9.3.6](903-package-archive.md#936-standard-library)）；其 static 是主機的。重複的程式碼無害，因為一個行程的每個模組都由同一個工具鏈建置（9.12.6）。
+- 外掛所觸及的標準函式庫程式碼會被編譯進其中（與程式一樣只編譯觸及的部分，[9.3.6](903-package-archive.md#936-標準函式庫)）；其 static 是主機的。重複的程式碼無害，因為一個行程的每個模組都由同一個工具鏈建置（9.12.6）。
 - 外掛的泛型實例被編譯進需要它們的模組：`List<Orc>` 位於定義 `Orc` 的外掛中。泛型程式碼沒有自己的 static，因此其各份複本可以互換。
-- 對外掛與主機，codegen 單元（[9.2.16](902-aot-pipeline.md#9216-incremental-build)）是關閉的：它們的描述子容納真正的套件雜湊。
+- 對外掛與主機，codegen 單元（[9.2.16](902-aot-pipeline.md#9216-增量建置)）是關閉的：它們的描述子容納真正的套件雜湊。
 
 ## 9.12.3. 同一性
 

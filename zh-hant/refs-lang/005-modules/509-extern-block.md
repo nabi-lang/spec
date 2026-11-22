@@ -1,6 +1,6 @@
-# 5.9. `extern` 區塊（[FFI](../000-meta/007-glossary.md#ffi-foreign-function-interface) 宣告）
+# 5.9. `extern` 區塊（[FFI](../000-meta/007-glossary.md#ffi外部函式介面) 宣告）
 
-`extern` 關鍵字（上下文關鍵字，只在項目開頭是關鍵字，[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)）與 [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) 指定符（`"C"` 等）結合，定義外部函式與全域變數的宣告區塊。它用於與外部函式庫、系統呼叫及其他語言介接。
+`extern` 關鍵字（上下文關鍵字，只在項目開頭是關鍵字，[1.5.4](../001-lexical/105-keywords.md#154-上下文關鍵字)）與 [ABI](../000-meta/007-glossary.md#abi應用程式二進位介面) 指定符（`"C"` 等）結合，定義外部函式與全域變數的宣告區塊。它用於與外部函式庫、系統呼叫及其他語言介接。
 
 ```
 extern_block    ::= "extern" string_lit "{" extern_item* "}"
@@ -39,14 +39,14 @@ extern "C" {
 | `"nabi"`    | 執行環境（`nabir`）的 ABI。見下文。                                               |
 | `"objc"`   | Apple 目標上的 Objective-C 類別及其方法（[stdlib 1.10](../../refs-standard-libraries/100-bare/110-objc.md)）；`ffi::objc::import { "AppKit/AppKit.h" }` 從 SDK 的標頭檔寫出這些區塊（[stdlib 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-headers-ffiobjcimport)）。 |
 
-在 `"system"` 與 `"C"` 相同的目標上（除 32 位元 x86 Windows 之外的每個支援目標），`"system"` 就是 `"C"`。在 32 位元 x86 Windows 上它是 stdcall（[5.9.10](#5910-extern-fn-definitions-exposed-externally)）。
+在 `"system"` 與 `"C"` 相同的目標上（除 32 位元 x86 Windows 之外的每個支援目標），`"system"` 就是 `"C"`。在 32 位元 x86 Windows 上它是 stdcall（[5.9.10](#5910-extern-fn-定義對外公開)）。
 
 `extern "nabi"` 是工具鏈所宣告之執行環境函式的 ABI；這些宣告是工具鏈套件的私有項目（大部分位於 `core::rt`；`bare` 宣告它自己使用的那些）。在 `extern "nabi"` 區塊上的 `#[no_safepoint]` 宣告其函式既不配置記憶體也不阻塞；對它們的呼叫不是安全點。它是工具鏈內部的屬性，用在 `extern "C"` 區塊上是錯誤。
 
 | 值                              | 在 `extern "nabi"` 下的傳遞方式            |
 |---------------------------------|------------------------------------------|
 | `str`                           | 兩個字組 `(ptr, len)`                    |
-| `fn` 值                         | `{code, env}`（[8.5.0a](../008-abi/805-extern-symbols.md#850a-nabifn---c-abi-form-of-function-values)） |
+| `fn` 值                         | `{code, env}`（[8.5.0a](../008-abi/805-extern-symbols.md#850a-nabifn函式值的-c-abi-形式)） |
 | `extern "C" fn(..)` 參數        | 沒有 env 的 C 函式指標                   |
 | 其他任何東西                    | 原樣的值（與 C ABI 相同）                |
 
@@ -54,7 +54,7 @@ extern "C" {
 > `"Rust"` 等其他語言的 ABI 通常不穩定，不是 `extern` 的目標。與其他語言介接，只能透過雙方都同意的穩定 ABI（通常是 `"C"`）。
 
 > [!NOTE]
-> Nabi 以回傳值傳播錯誤，不使用堆疊展開（[8.6.5](../008-abi/806-calling-convention.md#865-return-of-throwing-functions-value-based-error-propagation)）。因此來自外部語言的例外或展開穿越 Nabi 框架是未定義行為；外部函式必須在呼叫邊界內處理例外。
+> Nabi 以回傳值傳播錯誤，不使用堆疊展開（[8.6.5](../008-abi/806-calling-convention.md#865-會擲回錯誤之函式的回傳以值為基礎的錯誤傳播)）。因此來自外部語言的例外或展開穿越 Nabi 框架是未定義行為；外部函式必須在呼叫邊界內處理例外。
 
 不帶 ABI 的單純 `extern { ... }` 是編譯錯誤；必須指定 ABI。
 
@@ -97,14 +97,14 @@ extern "C" {
 - C 的具名型別，即這些基本型別的別名，大小與目標的 C 編譯器所定的相同：`c_int`、`c_uint`、`c_long`、`c_ulong`、`c_size_t`、`c_wchar` 以及 `bare::ffi::types` 的其餘部分，全都在 prelude 中（[stdlib 1.7.9](../../refs-standard-libraries/100-bare/107-ffi.md#179-c-types---c_int-c_long-c_void)）。`c_long` 在 Windows 與 32 位元目標上是 32 位元，因此 C 的 `long` 要宣告為 `c_long`，而不是 `i64`。`c_void` 代表指標背後的 `void`（`CPtr<c_void>`）。
 - 基本浮點數：`f32`、`f64`。
 - `bool`（C 的 `bool`）與 `c_char`（1 位元組）。
-- `f16` / `bf16`：C 的 `_Float16` / `__bf16`，在其 C 具有它們的目標上（[8.6.3](../008-abi/806-calling-convention.md#863-struct-arguments--return-small-struct-rule)）。
-- 8 或 16 位元組的 `Simd<T, N>`，作為參數或結果：目標中該大小的 C 向量（`float32x4_t`、`__m128`），在 AAPCS64 與 x86-64 上（[8.6.3](../008-abi/806-calling-convention.md#863-struct-arguments--return-small-struct-rule)）。
+- `f16` / `bf16`：C 的 `_Float16` / `__bf16`，在其 C 具有它們的目標上（[8.6.3](../008-abi/806-calling-convention.md#863-struct-引數--回傳小-struct-規則)）。
+- 8 或 16 位元組的 `Simd<T, N>`，作為參數或結果：目標中該大小的 C 向量（`float32x4_t`、`__m128`），在 AAPCS64 與 x86-64 上（[8.6.3](../008-abi/806-calling-convention.md#863-struct-引數--回傳小-struct-規則)）。
 - 指標：`Ptr<T>`、`ConstPtr<T>`、`CPtr<T>`（`bare::ptr`，[標準函式庫層級](../000-meta/005-standard-libraries-tiers.md)中最低的一層）。
 - 欄位都是 FFI 型別（包括由它們組成的固定長度陣列）的 `struct` 與 `union` 型別。預設配置就已經是 C 的配置；`#[repr(packed)]` 與 `#[repr(align(N))]` 像在 C 中那樣改變它。
 - 帶有整數 `#[repr]`（`#[repr(i32)]`）的無欄位列舉：C 的 `enum`。
 - 函式指標：`extern "C" fn(...) -> ...`（見下文的「C 函式指標型別」）。
 - 函式型別的參數：`extern "C"` 宣告中的 `fn(..) -> R` 參數與 `extern "C" fn(..) -> R` 相同。引數必須指稱一個函式；閉包是錯誤（`` `each` is a C function: a `fn` argument must name a function (a C callback has no room for a closure's captures) ``），其說明會指出其狀態放在哪裡：`` a C callback cannot capture: keep the state in `Handle::new(..)` (`bare::ffi`), pass `h.as_ptr()` as the `void*` argument, and read it back in an `extern "C" fn` with `Handle::<T>::from_ptr(p).get()` ``（[stdlib 1.7.10](../../refs-standard-libraries/100-bare/107-ffi.md#1710-handlet---nabi-values-c-holds)）。
-- 可為 null 的指標：`Ptr<T> | none`、`ConstPtr<T> | none`、`extern "C" fn(..) -> R | none`（帶有 null niche 的指標，[2.7.2](../002-types/207-niche-optimization.md#272-automatic-niches)），以及任何 `#[niche(0)]` 結構 `| none`（`NonZero<i32> | none` 是一個 `int`）；`none` 就是 null。
+- 可為 null 的指標：`Ptr<T> | none`、`ConstPtr<T> | none`、`extern "C" fn(..) -> R | none`（帶有 null niche 的指標，[2.7.2](../002-types/207-niche-optimization.md#272-自動-niche)），以及任何 `#[niche(0)]` 結構 `| none`（`NonZero<i32> | none` 是一個 `int`）；`none` 就是 null。
 - 作為 `extern "C"` 宣告之參數的 `str`：依下列規則轉換。
 - 作為結果的 `()` 與 `!`。
 
@@ -155,7 +155,7 @@ c_fn_type ::= "unsafe"? "extern" ("\"C\"" | "\"system\"") "fn" "(" (type_expr ("
 
 #### 可為 null 的 C 函式指標：`extern "C" fn(..) -> R | none`
 
-只由一個 C 函式指標型別與 `none` 組成（任何順序，沒有其他成員）的和型別使用 null niche（[2.7.2](../002-types/207-niche-optimization.md#272-automatic-niches)）。
+只由一個 C 函式指標型別與 `none` 組成（任何順序，沒有其他成員）的和型別使用 null niche（[2.7.2](../002-types/207-niche-optimization.md#272-自動-niche)）。
 
 - 它與指標一樣大，而 `none` 就是 null。
 - 它與 C 可為 null 的函式指標具有相同的 ABI。它可以原樣用在 extern 參數 / 回傳、與 C 交換的結構欄位，以及 extern `static` 中。
@@ -173,7 +173,7 @@ let g: extern "C" fn(ConstPtr<u8>, ConstPtr<u8>) -> i32 = cmp_i32;          // E
 
 ### extern 函式的命名空間
 
-在 `extern` 區塊中宣告的函式構成單一的全域命名空間，可以從任何模組以不帶前綴的名稱呼叫。這與在連結時位於單一全域空間的 C 符號相呼應。它是一般項目「不會隱含地搜尋祖先模組」規則（[5.7.1](507-paths.md#571-starting-identifier-of-a-path)）的例外，只適用於 extern 函式。以不同簽章兩次宣告同名的 extern 函式是編譯錯誤。工具鏈在 `core::rt` 中的執行環境宣告也算在內：重新宣告 `nabi_*` 執行環境函式的使用者 `extern` 必須與其簽章相符。
+在 `extern` 區塊中宣告的函式構成單一的全域命名空間，可以從任何模組以不帶前綴的名稱呼叫。這與在連結時位於單一全域空間的 C 符號相呼應。它是一般項目「不會隱含地搜尋祖先模組」規則（[5.7.1](507-paths.md#571-路徑的起始識別字)）的例外，只適用於 extern 函式。以不同簽章兩次宣告同名的 extern 函式是編譯錯誤。工具鏈在 `core::rt` 中的執行環境宣告也算在內：重新宣告 `nabi_*` 執行環境函式的使用者 `extern` 必須與其簽章相符。
 
 ## 5.9.5. `Ptr<T>` / `ConstPtr<T>`
 
@@ -247,7 +247,7 @@ extern "C" {
 }
 ```
 
-在 extern 區塊上的 `#[link("x")]` 或 `#[link(name = "x", kind = "static" | "dylib")]` 會把 `-lx` 傳給連結器。函式庫的搜尋路徑是 `-L <dir>` 目錄，然後是 `LIBRARY_PATH`。在 Apple 目標上，`kind = "static"` 以路徑連結在那裡找到的 `lib<name>.a`，而 `#[link(name = "Foundation", kind = "framework")]` 連結框架 `Foundation.framework`，在 `-F <dir>` 目錄中搜尋，然後是 SDK 的 `System/Library/Frameworks`；在其他目標上，框架是連結錯誤。nabic 的 `-l` 與原生套件的 `links` 以相同方式加入函式庫，`nabi.nabion` 的 `Dep::system` / `Dep::framework` 函式庫也是（[9.10.4b](../009-tools/910-nabi-frontend.md#9104b-native-packages)）。在 wasm32 上，`#[link(wasm_import_module = "m")]` 從核心模組 `m` 匯入該區塊的函式，而函式上的 `#[link_name = "sym"]` 設定其連結的符號或匯入名稱（[6.2.3](../006-meta-system/602-built-in-attributes.md#623-link-naming-an-external-library)）。沒有 `#[link]` 時，符號在連結時透過系統預設（`libc` 等）或其他機制解析，例如套件自己的 C 原始碼的目的檔，內建的 C 編譯器會編譯它們並與套件一起連結（[9.13.8](../009-tools/913-c-compiler.md#9138-c-sources-of-a-package)）；它們的函式和其他函式一樣在 `extern "C"` 區塊中宣告。`#[link]` 的行為定義於[內建屬性](../006-meta-system/602-built-in-attributes.md)。
+在 extern 區塊上的 `#[link("x")]` 或 `#[link(name = "x", kind = "static" | "dylib")]` 會把 `-lx` 傳給連結器。函式庫的搜尋路徑是 `-L <dir>` 目錄，然後是 `LIBRARY_PATH`。在 Apple 目標上，`kind = "static"` 以路徑連結在那裡找到的 `lib<name>.a`，而 `#[link(name = "Foundation", kind = "framework")]` 連結框架 `Foundation.framework`，在 `-F <dir>` 目錄中搜尋，然後是 SDK 的 `System/Library/Frameworks`；在其他目標上，框架是連結錯誤。nabic 的 `-l` 與原生套件的 `links` 以相同方式加入函式庫，`nabi.nabion` 的 `Dep::system` / `Dep::framework` 函式庫也是（[9.10.4b](../009-tools/910-nabi-frontend.md#9104b-原生套件)）。在 wasm32 上，`#[link(wasm_import_module = "m")]` 從核心模組 `m` 匯入該區塊的函式，而函式上的 `#[link_name = "sym"]` 設定其連結的符號或匯入名稱（[6.2.3](../006-meta-system/602-built-in-attributes.md#623-link-指名外部函式庫)）。沒有 `#[link]` 時，符號在連結時透過系統預設（`libc` 等）或其他機制解析，例如套件自己的 C 原始碼的目的檔，內建的 C 編譯器會編譯它們並與套件一起連結（[9.13.8](../009-tools/913-c-compiler.md#9138-套件的-c-原始碼)）；它們的函式和其他函式一樣在 `extern "C"` 區塊中宣告。`#[link]` 的行為定義於[內建屬性](../006-meta-system/602-built-in-attributes.md)。
 
 ## 5.9.10. `extern fn` 定義（對外公開）
 
@@ -301,7 +301,7 @@ extern "C" fn notify(x: i32) { .. }
 
 會穿越 C 的框架離開 C 所呼叫之函式的 panic 會中止行程（5.9.12）。在 `extern "C"` 或 `extern "system"` fn 定義上的 `#[on_panic(return = v)]` 則改為恢復：panic 照常回報，panic 掛鉤也會執行（[stdlib 3.12](../../refs-standard-libraries/300-std/312-panic.md)），然後該函式把 `v` 回傳給其呼叫者，無論是 C 還是 Nabi。`v` 是結果型別的字面值：整數、浮點數、`true` / `false`，或對指標結果而言的 `0`（null 指標）。沒有結果的函式只寫 `#[on_panic]`。恢復的函式是 panic 之下最近的 C 進入點：當 C 在更深處再次呼叫回 Nabi 時，由那個內層的進入點決定。
 
-panic 與該函式之間的框架會被略過。它們的 `Drop` 不會執行，因此它們本應釋放的東西會洩漏，而在被略過的框架中鎖住的 `Mutex` 會保持鎖住：下一次對它的 `lock` 會永遠等待。在持有鎖時可能失敗的函式，應回傳錯誤值而不是 panic。恢復是以 `setjmp` / `longjmp` 實現的（[8.5.12](../008-abi/805-extern-symbols.md#8512-auxiliary-symbols-appendix-non-normative)）；wasm32 與沒有作業系統的目標沒有它，在那裡 panic 會像沒有該屬性時一樣中止。
+panic 與該函式之間的框架會被略過。它們的 `Drop` 不會執行，因此它們本應釋放的東西會洩漏，而在被略過的框架中鎖住的 `Mutex` 會保持鎖住：下一次對它的 `lock` 會永遠等待。在持有鎖時可能失敗的函式，應回傳錯誤值而不是 panic。恢復是以 `setjmp` / `longjmp` 實現的（[8.5.12](../008-abi/805-extern-symbols.md#8512-輔助符號附錄非規範性)）；wasm32 與沒有作業系統的目標沒有它，在那裡 panic 會像沒有該屬性時一樣中止。
 
 每一種誤用都是錯誤，錯誤訊息會說明應寫什麼：
 
@@ -335,7 +335,7 @@ panic 與該函式之間的框架會被略過。它們的 `Drop` 不會執行，
 
 ### C 框架之下的 panic
 
-panic 不得穿越 C 的框架離開 C 所呼叫的函式：C 對它一無所知，而 `exit` 會在損壞的狀態上執行主機的處理函式（`atexit`、直譯器的關閉流程）。因此在外部程式碼所呼叫之 `extern "C"` 或 `extern "system"` fn 中，或在其下的 Nabi 程式碼中發生的 panic，會印出其報告（[4.14.13](../004-functions/414-throws.md#41413-panics-and-fatal-errors)），然後印出這一行
+panic 不得穿越 C 的框架離開 C 所呼叫的函式：C 對它一無所知，而 `exit` 會在損壞的狀態上執行主機的處理函式（`atexit`、直譯器的關閉流程）。因此在外部程式碼所呼叫之 `extern "C"` 或 `extern "system"` fn 中，或在其下的 Nabi 程式碼中發生的 panic，會印出其報告（[4.14.13](../004-functions/414-throws.md#41413-panic-與致命錯誤)），然後印出這一行
 
 ```text
 panic in a function C called: aborting (`#[on_panic(return = v)]` on the `extern "C" fn` returns `v` to C instead)

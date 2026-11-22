@@ -1,6 +1,6 @@
 # 5.2. `const`
 
-`const` 關鍵字（上下文關鍵字，只在項目開頭是關鍵字，[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)）宣告在編譯期決定的值。文法如下：
+`const` 關鍵字（上下文關鍵字，只在項目開頭是關鍵字，[1.5.4](../001-lexical/105-keywords.md#154-上下文關鍵字)）宣告在編譯期決定的值。文法如下：
 
 ```
 const_decl      ::= "const" identifier ":" type_expr "=" const_expr ";"
@@ -45,7 +45,7 @@ trait Numbers {
 }
 ```
 
-函式主體中的 `const` 是其區塊的項目（[3.9.1](../003-expressions/309-block-expressions.md#391-form)）：在整個區塊及其中宣告的項目內可見。它不讀取周圍程式碼的任何區域變數或參數；錯誤訊息會提示改寫成 `let`（`let half = n / 2;`）。它可以讀取其所在之泛型函式或 `impl` 的 const 參數，以及其型別參數的關聯常數與 `T::size()`：此時它在每個實例中各有一個值（5.2.7）。
+函式主體中的 `const` 是其區塊的項目（[3.9.1](../003-expressions/309-block-expressions.md#391-形式)）：在整個區塊及其中宣告的項目內可見。它不讀取周圍程式碼的任何區域變數或參數；錯誤訊息會提示改寫成 `let`（`let half = n / 2;`）。它可以讀取其所在之泛型函式或 `impl` 的 const 參數，以及其型別參數的關聯常數與 `T::size()`：此時它在每個實例中各有一個值（5.2.7）。
 
 ```nabi
 fn mid<const N: usize>(xs: [i32; N]) -> i32 {
@@ -73,11 +73,11 @@ fn f() {
 let p = &X;                       // ERROR (E0012): Nabi has no `&` borrows
 ```
 
-Nabi 沒有 `&` 運算子，因此沒有任何運算式會取得 `const` 的位址。用於 [FFI](../000-meta/007-glossary.md#ffi-foreign-function-interface) 的原始指標由[型別運算式](../002-types/201-type-expressions.md)中的指標型別定義。
+Nabi 沒有 `&` 運算子，因此沒有任何運算式會取得 `const` 的位址。用於 [FFI](../000-meta/007-glossary.md#ffi外部函式介面) 的原始指標由[型別運算式](../002-types/201-type-expressions.md)中的指標型別定義。
 
 ## 5.2.4. 常數運算式與求值器
 
-`const` 項目、陣列長度、const 泛型引數、`struct` 欄位預設值、`static` 初始化式，以及接收常數引數的 `const fn` 字面值處理器（[6.5.8](../006-meta-system/605-literal-magic.md#658-const-compatibility-of-literal-handlers)），全都使用同一個編譯期求值器。
+`const` 項目、陣列長度、const 泛型引數、`struct` 欄位預設值、`static` 初始化式，以及接收常數引數的 `const fn` 字面值處理器（[6.5.8](../006-meta-system/605-literal-magic.md#658-字面值處理器的-const-相容性)），全都使用同一個編譯期求值器。
 
 能求值的東西：
 
@@ -166,7 +166,7 @@ fn chunk<const N: usize>(xs: [i32; N]) -> usize {
 ```
 
 - 它讀取的東西與函式主體 `const` 相同：常數、`const fn` 呼叫、周圍程式碼的 const 參數，以及其型別參數的關聯常數與 `T::size()` / `T::align()`。`let` 變數是錯誤，其說明會拿掉 `const`。
-- 在泛型函式中，它在實例的引數已知之後，對每個實例求值一次。泛型主體在其定義處的檢查（[2.10.9](../002-types/210-generics.md#2109-body-checking)）會對區塊做型別檢查，但不求值它。
+- 在泛型函式中，它在實例的引數已知之後，對每個實例求值一次。泛型主體在其定義處的檢查（[2.10.9](../002-types/210-generics.md#2109-主體檢查)）會對區塊做型別檢查，但不求值它。
 - 對它求值時發生 panic 或 `assert` 失敗，是在建立該實例之呼叫處的編譯錯誤，錯誤訊息會指出該實例（`` const block failed in `chunk::<0>`: chunk needs at least one element ``），並以該 `assert` 作為次要位置。`nabi check` 也會回報它：它和 `nabi build` 一樣，會實例化程式所到達的東西。
 - 通過的區塊在執行時沒有任何成本；其值和任何 `const` 一樣被嵌入。
 - 求值器知道一般型別（數字、`bool`、`char`、`str`、`()` 或由它們組成的陣列）的 `T::size()`；對其他型別則是錯誤，其訊息會提示使用 const 參數或 `List`。

@@ -1,9 +1,9 @@
 # 2.2. `any` 槽位
 
-`any` 是表示可以容納任何型別之值的變數槽位的型別名稱（它是上下文關鍵字，只在型別位置是關鍵字，[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)；宣告名為 `any` 的型別是錯誤）。它是 Nabi 漸進式型別的核心概念。
+`any` 是表示可以容納任何型別之值的變數槽位的型別名稱（它是上下文關鍵字，只在型別位置是關鍵字，[1.5.4](../001-lexical/105-keywords.md#154-上下文關鍵字)；宣告名為 `any` 的型別是錯誤）。它是 Nabi 漸進式型別的核心概念。
 
 > [!IMPORTANT]
-> `any` 槽位只存在於寫了 `any` 之處。省略型別標註的變數，會成為由其初始化式型別推論出的靜態槽位（[5.1.7](../005-modules/501-variable-declaration.md#517-type-annotations-and-type-inference)）。Nabi 的漸進式型別由一行規則決定：「預設為靜態，只有寫了 `any` 之處才是動態。」
+> `any` 槽位只存在於寫了 `any` 之處。省略型別標註的變數，會成為由其初始化式型別推論出的靜態槽位（[5.1.7](../005-modules/501-variable-declaration.md#517-型別標註與型別推論)）。Nabi 的漸進式型別由一行規則決定：「預設為靜態，只有寫了 `any` 之處才是動態。」
 
 ## 2.2.1. 與靜態槽位的對比
 
@@ -80,13 +80,13 @@ s = "hello";        // ERROR
 
 ## 2.2.5. 檢查槽位目前的型別
 
-`any` 槽位中之值目前的型別可以用後綴運算子 `is` 檢查。`e is T` 的結果是 `bool`，其優先順序與 `as` 相同（[3.2.3](../003-expressions/302-precedence-and-associativity.md#323-precedence-and-associativity-table)）。
+`any` 槽位中之值目前的型別可以用後綴運算子 `is` 檢查。`e is T` 的結果是 `bool`，其優先順序與 `as` 相同（[3.2.3](../003-expressions/302-precedence-and-associativity.md#323-優先順序與結合性表)）。
 
 ```nabi
 if v is i32 { ... }
 ```
 
-這個檢查是一次執行時標籤比較。在 `any` 上，當存放的值是 `A` 或 `B`，以及存放的是整個和型別 `A | B` 的值時，`is (A | B)` 與模式 `x: A | B` 都會匹配。繫結會被重新標記為和型別 `A | B`。若運算元的靜態型別既不是 `any` 也不是和型別，型別檢查 `e is T` 是一個編譯期常數。沒有被先前的使用確定型別的無後綴字面值，在那裡是其預設型別（[1.6.3](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)）：在 `let v = 3;` 之後，`v is i64` 是 `true`。目標為和型別時，它測試的是成員關係：對於普通型別 `A` 的值，`e is (A | B)` 是 `true`。
+這個檢查是一次執行時標籤比較。在 `any` 上，當存放的值是 `A` 或 `B`，以及存放的是整個和型別 `A | B` 的值時，`is (A | B)` 與模式 `x: A | B` 都會匹配。繫結會被重新標記為和型別 `A | B`。若運算元的靜態型別既不是 `any` 也不是和型別，型別檢查 `e is T` 是一個編譯期常數。沒有被先前的使用確定型別的無後綴字面值，在那裡是其預設型別（[1.6.3](../001-lexical/106-numeric-literals.md#163-無後綴的字面值)）：在 `let v = 3;` 之後，`v is i64` 是 `true`。目標為和型別時，它測試的是成員關係：對於普通型別 `A` 的值，`e is (A | B)` 是 `true`。
 
 對於靜態型別為 `enum` 的值，`e is Enum::Variant` 檢查變體。它是一次執行時的變體比較，對該變體而言無論酬載為何都是 `true`。它不會收窄型別；需要酬載時，請使用 `match` 或 `if let`。
 
@@ -115,7 +115,7 @@ if v is i32 {
 - 除此之外，在 `||` 或 `!` 之下、在 `else` 區塊中，或在欄位路徑上（`p.x is T`）都不會收窄。
 - 變體檢查 `x is Enum::Variant`（2.2.5）不會收窄。
 - 當運算元的靜態型別是所檢查和型別的普通成員 `A` 時，`x is (A | B)` 不會收窄；`x` 保持型別 `A`。
-- 當 `x` 被 `[ref x]` 擷取時（[4.6.2](../004-functions/406-capture-semantics.md#462-reference-capture-the-ref-x-capture-list)），收窄作用域內每次讀取 `x` 都會再次檢查共享的儲存格；若某個閉包存入了不是 `T` 的值，該次讀取會 panic。
+- 當 `x` 被 `[ref x]` 擷取時（[4.6.2](../004-functions/406-capture-semantics.md#462-參照擷取ref-x-擷取清單)），收窄作用域內每次讀取 `x` 都會再次檢查共享的儲存格；若某個閉包存入了不是 `T` 的值，該次讀取會 panic。
 - 在收窄作用域內，`x` 的型別是 `T`。對 `x`（或其欄位 / 元素）的指派會被轉換回去並寫入原本的槽位；作為 `ref` 引數傳遞的 `x`（或其欄位）的最終值，在呼叫回傳時也是如此。指派一個屬於宣告型別但不是 `T` 的值，會在該作用域的其餘部分結束收窄：`x` 重新具有其宣告型別，並繼續一般的流程定型。指派宣告型別之外的值仍然是型別錯誤。
 
 ```nabi
@@ -147,7 +147,7 @@ let s = "hi";           // s: the string type chosen by the literal handler
 let n2: any = 42i32;    // dynamic slot only when written explicitly
 ```
 
-`let` 遵循區域型別推論。初始化式的型別成為槽位的型別，之後的重新指派都對照它檢查。無法從初始化式決定型別時的規則定義於 [5.1.7](../005-modules/501-variable-declaration.md#517-type-annotations-and-type-inference)。
+`let` 遵循區域型別推論。初始化式的型別成為槽位的型別，之後的重新指派都對照它檢查。無法從初始化式決定型別時的規則定義於 [5.1.7](../005-modules/501-variable-declaration.md#517-型別標註與型別推論)。
 
 ### 沒有型別標註的函式參數
 
@@ -182,7 +182,7 @@ struct Cell { tag: i32; payload: any; }   // OK
 
 ## 2.2.8. 槽位種類由宣告固定
 
-變數的槽位是動態還是靜態，光看宣告語法就能知道。寫出 `: any` 構成動態槽位；其他任何寫法（明確的或推論的型別）構成靜態槽位。一旦固定，槽位的種類絕不會改變。重新宣告該名稱的 `let` 會建立一個具有自己種類的新槽位（[5.1.4](../005-modules/501-variable-declaration.md#514-redeclaration-in-the-same-scope)）；舊的槽位保持其種類。
+變數的槽位是動態還是靜態，光看宣告語法就能知道。寫出 `: any` 構成動態槽位；其他任何寫法（明確的或推論的型別）構成靜態槽位。一旦固定，槽位的種類絕不會改變。重新宣告該名稱的 `let` 會建立一個具有自己種類的新槽位（[5.1.4](../005-modules/501-variable-declaration.md#514-同一作用域中的重新宣告)）；舊的槽位保持其種類。
 
 ```nabi
 let x = 1;              // static slot (inferred from initializer)
