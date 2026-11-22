@@ -1,0 +1,237 @@
+# 6.5. `#[literal(...)]` 魔法
+
+`#[literal(...)]` 屬性把使用者撰寫的語法模式註冊為一種字面值，並分派到函式庫的處理器。
+
+## 6.5.1. 動機
+
+除了從[數值字面值](../001-lexical/106-numeric-literals.md)到[布林值與哨兵值字面值](../001-lexical/109-other-literals.md)的語彙字面值（數字、字串、字元、布林值）之外，Nabi 在標準函式庫中註冊集合、範圍與切片等複合字面值。
+
+```
+[1, 2, 3]                 → List<T> instance (compiler: fixed array if the expected type is [T; N])
+{"a": 1, "b": 2}          → Dict<K, V>
+{1, 2, 3}                 → Set<T>
+(1, "hi", true)            → Tuple (compiler)
+0..5                       → Range<T>
+0..=5                      → RangeInclusive<T>
+1:3                        → Slice<T> (compiler)
+2i                         → Complex<f64>
+```
+
+`(compiler)` 標記表示由編譯器直接建立、不經處理器的字面值。固定長度陣列、元組，以及索引內的切片 `a[i:j]` 是語言固有的，不能被註冊（6.5.7、6.5.9）。
+
+這些字面值的語法由[標點與運算子語彙單元](../001-lexical/110-punctuation-and-operator-tokens.md)中的語彙單元與[型別運算式](../002-types/201-type-expressions.md)中的形式組成，但要建構哪個函式庫型別由函式庫決定。
+
+`#[literal]` 魔法把這個決定附加到 trait 或函式上。
+
+數值字面值的型別由語言而不是這個魔法決定（[1.6.2](../001-lexical/106-numeric-literals.md#162-type-suffixes)、[1.6.3](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)）。對數字而言，`#[literal]` 只處理語言沒有定義的後綴。標準函式庫註冊了其中一個，`i`（`2i` 是虛數 `Complex<f64>`，[stdlib 2.1.11](../../refs-standard-libraries/200-core/201-numbers.md#2111-numeric-traits-float-ordering-ranges-complex-numbers)），其優先度為 -1，好讓套件自己的 `i` 處理器勝出（6.5.5）。
+
+## 6.5.2. 形式
+
+模式以**語彙單元的形式直接寫**在屬性括號內，而不是寫成字串。引號只用來包住模式中的單一字面語彙單元。
+
+```
+literal_attr    ::= "#" "[" "literal" "(" pattern ("," "priority" "=" "-"? int_lit)? ")" "]"
+pattern         ::= pat_elem+
+pat_elem        ::= pat_atom pat_rep?
+pat_atom        ::= string_lit                          // a single literal token
+                  | "expr" | "number" | "string" | "ident"  // captures
+                  | "{" pattern "}" | "(" pattern ")"     // groups
+pat_rep         ::= ("%" string_lit)? ("*" | "+")
+                  | "?"
+```
+
+```nabi
+#[literal("[" {expr} % "," * "]")]
+fn list_literal<T>(items: ...T) -> List<T> { ... }
+
+#[literal("{" {expr ":" expr} % "," * "}")]
+fn dict_literal<K: Hash, V>(pairs: ...(K, V)) -> Dict<K, V> { ... }
+
+#[literal("{" {expr} % "," + "}")]
+fn set_literal<T: Hash>(items: ...T) -> Set<T> { ... }
+
+#[literal(expr ".." expr)]
+fn range_literal<T>(start: T, end: T) -> Range<T> { ... }
+
+#[literal(expr "..=" expr)]
+fn range_inclusive_literal<T>(start: T, end: T) -> RangeInclusive<T> { ... }
+
+#[literal(number "i", priority = -1)]
+fn imaginary_literal(n: f64) -> Complex<f64> { ... }      // core::num
+
+#[literal("m" "[" {{expr} % "," +} % ";" + "]", priority = 2)]
+fn matrix_literal<const C: usize>(rows: ...[f64; C]) -> Matrix { ... }   // [f64; C] per row
+```
+
+前六個是標準函式庫的；最後一個展示了擁有自己 `Matrix` 型別的套件可以註冊什麼（標準函式庫沒有這個）。
+
+基本形式是 `#[literal(pattern)]`，其後可選地接 `, priority = N`（可以為負，預設為 0）（6.5.5）。處理器是一個函式，而符合該模式的字面值會變成對該函式的呼叫。
+
+註冊的範圍：標準函式庫中的註冊在每個套件中都可見。其他任何套件中的註冊適用於該套件自己的原始碼，而當其處理器是 `pub` 時，也適用於直接相依於它之每個套件的原始碼，就像運算子對應會到達其 trait 可見之處一樣（[6.7.8](607-operator-magic.md#678-visibility-of-mappings)）：相依於一個匯出 `#[literal(number "m")] pub fn meters(..)` 的 `units` 套件，會讓 `9.81m` 表示 `units::meters(9.81)`，不需要 `use`。不是 `pub` 的處理器留在其套件內，而一個套件的註冊絕不會到達相依於其相依者的套件。套件之間的衝突遵循 6.5.5（相依套件的 `i` 優於標準函式庫優先度 -1 的那一個；兩個相依套件以相同優先度註冊同一個後綴，會讓其使用有歧義）。編譯器在剖析之前收集註冊，因此無論在哪裡註冊，它們都會適用。處理器就像從它自己的模組被呼叫一樣（[6.9.9](609-template-tokens.md#names-in-an-expansion)），因此它可以有任何可見性：標準函式庫的處理器（`list_literal`、`set_literal`、`dict_literal` 以及六個 `range_*_literal`）是 `pub(pkg)`，在 `core` 之外指名其中之一是錯誤。
+
+## 6.5.3. 語法模式的格式
+
+語法模式構成一個小型的查詢語言。
+
+| 語彙單元   | 意義                                                       |
+|------------|------------------------------------------------------------|
+| `"string"` | 字面語彙單元（標點或關鍵字）。原樣比對                     |
+| `expr`     | 任何運算式                                                 |
+| `number`   | 數值字面值                                                 |
+| `string`   | 字串字面值                                                 |
+| `ident`    | 識別字                                                     |
+| `{ ... }`  | 分組                                                       |
+| `( ... )`  | 分組（與 `{ }` 相同）                                      |
+| `% ","`    | 分隔符（逗號等）。後面必須接 `*` / `+`                     |
+| `+`        | 一次以上的重複                                             |
+| `*`        | 零次以上的重複                                             |
+| `?`        | 可選（零或一次）                                           |
+
+範例的分解如下。
+
+```
+"[" {expr} % "," * "]"
+ │   │      │       │
+ │   │      │       └── close token
+ │   │      └── zero or more
+ │   ├── separated by comma
+ │   └── expr group
+ └── open token
+```
+
+> open token 是開頭的語彙單元，close token 是結尾的語彙單元，expr group 是 `expr` 的分組，「separated by comma」表示以逗號分隔，「zero or more」表示零次以上的重複。
+
+這個模式比對每一個以逗號分隔的清單：`[]`、`[1]`、`[1, 2]`、`[1, 2, 3]` 等。帶分隔符的重複允許一個尾隨的分隔符（`[1, 2,]`）。
+
+引號的內容必須是單一語彙單元。像 `"ab cd"` 這樣的多個語彙單元是錯誤；請分別為每個語彙單元加上引號。
+
+## 6.5.4. 比對與分派
+
+當 `[1, 2, 3]` 出現在原始碼中時，依下列步驟處理。
+
+1. 剖析器在已註冊的 `#[literal]` 模式中尋找相符的模式。
+2. 相符時，被比對到的子運算式作為引數傳給處理器函式。
+3. 處理器函式建構並回傳該值。
+
+```nabi
+[1, 2, 3]
+   ↓
+list_literal(1, 2, 3)          // items: Slice<i64>
+   ↓
+List<i64> instance
+```
+
+無論呼叫的是哪個處理器，字面值都是基本運算式：等級 14 的後綴形式（成員存取、方法呼叫、索引、`?`、後綴運算子）接在它之後，就像接在 `"ab".len()` 之後一樣，因此 `date"2024-01-01".days()` 對處理器的值呼叫 `days`，而 `m[1, 2; 3, 4][0]` 對矩陣進行索引。
+
+擷取依順序成為處理器的引數。
+
+| 模式部分                           | 引數                                                                                |
+|------------------------------------|-------------------------------------------------------------------------------------|
+| 單一擷取（`expr` 等）              | 一個值                                                                              |
+| `?` 分組內的擷取                   | 每個擷取一個值或 `none`                                                             |
+| `*` / `+` 重複                     | 元素放在一個引數中。每個元素是一個值，若有多個擷取則是元組，若重複巢狀則是陣列      |
+| 位於可變參數 `...T` 位置的重複     | 元素成為可變引數（[4.2.5](../004-functions/402-parameters.md#425-variadic-t)）    |
+
+編譯器會檢查處理器簽章與擷取的數量及重複位置是否相符。
+
+## 6.5.5. 多個處理器（歧義）
+
+當多個模式比對同一個輸入時，首先**最長匹配**勝出（在使用者模式之間）。若比對長度相同，或同一個模式有多個處理器，就依序適用下列規則。
+
+1. 選擇回傳型別等於接收槽位型別的處理器。若接收槽位是 `Set<T>`，優先選擇 set 處理器。
+2. 在剩下的處理器中，選擇 `priority` 最高的那一個。
+3. 若仍剩下兩個以上，就是歧義錯誤。
+
+槽位型別也決定所選處理器的型別參數。在 `let s: Set<i64> = {1, 2};` 中，`set_literal` 的 `T` 是 `i64`。
+
+以相同的 `priority` 與相同的回傳型別兩次註冊同一個模式，無法以上述規則解決，因此它在註冊處而不是使用處就是錯誤。
+
+## 6.5.6. Dict 與 Set 的歧義
+
+```
+{ "a": 1 }              // Dict (matches the `:` pattern)
+{ 1, 2 }                 // Set (values only)
+{ 1, }                   // Set (single element, trailing comma)
+{ 1 }                    // always a block
+{ stmt; stmt; expr }    // block ([block expression](../003-expressions/309-block-expressions.md))
+```
+
+由於 `{ ... }` 也用作[區塊運算式](../003-expressions/309-block-expressions.md)，下列規則區分它們。
+
+- 若有陳述式，例如 `{ expr ; ... }`，它就是[區塊](../000-meta/007-glossary.md#block)。
+- 若有 `:`，例如 `{ expr : expr , ... }`，它就是 Dict。
+- 若至少有一個逗號，例如 `{ expr , ... }`，它就是 Set。單一元素的 Set 寫成 `{ expr , }`。
+- `{ expr }` 一律是區塊，無論接收槽位的型別為何。
+
+set 模式 `"{" {expr} % "," + "}"` 在文字上也比對 `{e}`，但依上述規則 `{e}` 是區塊，不會交給處理器。單一元素的 set 是 `{e,}`。
+
+剖析器依內容決定。為了可讀性，不引入 `s{1, 2}` 之類的 set 明確前綴。
+
+## 6.5.7. 使用者定義的字面值
+
+雖然罕見，使用者可以註冊自己的字面值。
+
+```nabi
+struct Coord { x: f64; y: f64; }
+
+#[literal("(" expr "," expr ")" "@")]
+fn coord_literal(x: f64, y: f64) -> Coord { Coord { x, y } }
+
+let p = (3.14, 2.71)@;        // → coord_literal(3.14, 2.71) → Coord
+```
+
+可以註冊三種模式。
+
+| 模式                                                         | 處理方式                                                                   |
+|--------------------------------------------------------------|----------------------------------------------------------------------------|
+| 內建形狀（`[..]`、`{k: v}`、`{a, b}`、六種範圍形式）         | 剖析器依語言規則剖析，並呼叫為該形狀註冊的處理器                           |
+| `number "suffix"`                                            | 語言所沒有的數值後綴（`2i`，[1.6.2](../001-lexical/106-numeric-literals.md#162-type-suffixes)） |
+| 以帶引號的語彙單元開頭的其他任何模式                         | 在每個運算式開頭先於內建語法嘗試；最長匹配                                 |
+
+後綴是黏在數字上的名稱，與語言自己的後綴相同（`2i`、`5kg`）。`%` 是餘數運算子，因此 `95%` 絕不是字面值，而 `number "%"` 是錯誤：百分比以具名的後綴撰寫，`#[literal(number "pct")]` 與 `95pct`。
+
+由一個帶引號的名稱後接 `string` 組成的模式，`#[literal("date" string)]`，是字串前綴：`date"2024-01-15"` 是以該字串呼叫其處理器。
+
+數字後綴與字串前綴都是名稱，在數字與字串形式中都一樣：每個都以識別字開頭字元開頭，且只含識別字字元（[1.4.1](../001-lexical/104-identifiers.md#141-format)），第一個字元之後也可以含數字（`x2`）。附綴是符號的註冊，例如 `number "+"`、`number "°"`、`number "$"`、`number "⊛"`、`"$" string` 或 `"€" string`，在該屬性處是錯誤，錯誤訊息會提示使用名稱（`pct`、`deg`、`usd`、`eur`）。數字後綴不得以 `e` 或 `E`（`2e3` 是指數）或 `_`（數字分隔符）開頭，而字串前綴不得是語言自己的字串前綴 `r`、`b`、`f` 或 `br`。
+
+作用域內沒有任何處理器接受的後綴，在該後綴處是錯誤；黏在字串上而沒有任何 `"name" string` 處理器接受的名稱（`dat"2024-01-15"`）也是。當作用域內註冊的某個後綴或前綴與它相近時（大小寫不同，或約三分之一的字元不同），錯誤訊息會指出那一個，``did you mean `10hz`?``，並附帶寫出它的修正。在編譯期拒絕其引數的處理器（`date"2024-13-01"`）在該字面值處回報。
+
+使用者模式必須以帶引號的語彙單元開頭。只有內建的範圍形狀（`expr ".." expr` 等）可以以擷取開頭。下列是錯誤：
+
+- 註冊元組形狀 `"(" expr "," {expr} % "," * ")"`。元組是語言固有的。
+- 註冊語言的數值後綴（`i32`、`f64` 等）。
+
+以識別字語彙單元開頭的模式（`"m" "["`）會先於同名變數的索引（`m[i]`）被嘗試，因此它會隱藏該名稱。
+
+## 6.5.8. 字面值處理器的 `const` 相容性
+
+```nabi
+#[literal("[" {expr} % "," * "]")]
+const fn list_literal<T>(items: ...T) -> List<T> { ... }
+```
+
+- 若 `const fn` 處理器的所有引數都是常數，它會在編譯期求值（[5.2.4](../005-modules/502-const.md#524-constant-expressions-and-the-evaluator)）。其中的 panic 或 `throw` 是在該字面值位置的編譯錯誤。超過步數或呼叫深度限制（[0.4.4](../000-meta/004-language-vs-standard-libraries.md#044-implementation-limits)）的求值則不是錯誤：該呼叫留到程式執行時才執行（`[List::from_fn(1000000, f)]`）。
+- 若結果使用堆積（`List` 等），它只在編譯期檢查，在執行時建構（[5.2.5](../005-modules/502-const.md#525-const-fn-functions-evaluable-at-compile-time)）。
+- 若任何引數是執行時的值，它就是一般的呼叫。
+- 不是 `const fn` 的處理器在執行時被呼叫。
+
+## 6.5.9. 切片
+
+索引內的 `a[i:j]` / `a[i:j:k]` 不是字面值，而是語言的切片語法，不能以 `#[literal]` 註冊。其意義與 trait 對應由[索引與切片](../003-expressions/306-indexing-and-slicing.md)定義。
+
+## 6.5.10. 何時求值
+
+`#[literal]` 的對應在編譯期依下列順序進行。
+
+1. 剖析器切分輸入。
+2. 在輸入的每個運算式位置，嘗試已註冊的模式。
+3. 找到相符的模式時，在該運算式位置放上處理器呼叫。
+4. 之後的階段，即名稱解析與型別檢查，再處理其結果。
+
+因此 `[1, 2, 3]` 會變成哪個函式呼叫，在編譯期就無歧義地決定了。
+
+## 6.5.11. 魔法與標準函式庫
+
+`#[literal]` 幾乎只由標準函式庫使用；Nabi 的集合字面值是其主要的註冊。
+
+使用者可以在自己的函式庫中註冊字面值，但必須謹慎選擇模式，以免與基本語彙單元衝突。
