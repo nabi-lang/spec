@@ -57,7 +57,7 @@ The specification exists in two language editions:
 - **简体中文** ([`zh-hans/`](../zh-hans/README.md)) - Simplified Chinese.
 - **繁體中文** ([`zh-hant/`](../zh-hant/README.md)) - Traditional Chinese, as used in Taiwan.
 
-Both editions use the same file layout and section numbering (`3.11.4`), so a section number names the same rule in either. If the two editions disagree, the English text is the reference, and the discrepancy is a bug to be fixed in both.
+All editions use the same file layout and section numbering (`3.11.4`), so a section number names the same rule in each. If an edition disagrees with the English text, the English text is the reference, and the discrepancy is a bug to be fixed in the other edition.
 
 ## Reading order
 
@@ -105,7 +105,7 @@ The terms below are used consistently across the English edition (the Korean edi
 | raw pointer; collection; iterator | 원시 포인터; 컬렉션; 반복자 |
 | evaluation order; incremental build | 평가 순서; 증분 빌드 |
 
-Names that are already English stay as they are in both editions: NABION, `nabi.nabion`, `nabi.lock`, `nabic`, `nabi`, `nabicc`, `nabils`, `nabir`, NABIHIR, HIR, MIR, LIR, AOT, JIT, GC, Immix, LOS, TLAB, shadow stack, `scan_table`, niche optimization, sticky mark-bit, work-stealing, ABI, FFI, toolchain, sysroot.
+Names that are already English stay as they are in every edition: NABION, `nabi.nabion`, `nabi.lock`, `nabic`, `nabi`, `nabicc`, `nabils`, `nabir`, NABIHIR, HIR, MIR, LIR, AOT, JIT, GC, Immix, LOS, TLAB, shadow stack, `scan_table`, niche optimization, sticky mark-bit, work-stealing, ABI, FFI, toolchain, sysroot.
 
 ## License
 

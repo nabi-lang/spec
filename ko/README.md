@@ -57,7 +57,7 @@ Nabi는 저자가 직접 쓰고 싶은 코드 한 가지에서 출발한 언어�
 - **简体中文**([`zh-hans/`](../zh-hans/README.md)): 중국어 간체
 - **繁體中文**([`zh-hant/`](../zh-hant/README.md)): 중국어 번체(타이완)
 
-두 판은 파일 구성과 절 번호(`3.11.4`)가 같습니다. 그래서 같은 절 번호는 어느 판에서나 같은 규칙을 가리킵니다. 두 판이 어긋나면 영어 본문이 기준이고, 그 차이는 양쪽에서 고쳐야 할 버그입니다.
+모든 판은 파일 구성과 절 번호(`3.11.4`)가 같습니다. 그래서 같은 절 번호는 어느 판에서나 같은 규칙을 가리킵니다. 어떤 판이 영어 본문과 어긋나면 영어 본문이 기준이고, 그 차이는 그 판에서 고쳐야 할 버그입니다.
 
 ## 읽는 순서
 
@@ -105,7 +105,7 @@ Nabi는 저자가 직접 쓰고 싶은 코드 한 가지에서 출발한 언어�
 | raw pointer; collection; iterator | 원시 포인터, 컬렉션, 반복자 |
 | evaluation order; incremental build | 평가 순서, 증분 빌드 |
 
-이미 영어인 이름은 두 판 모두 그대로 씁니다. NABION, `nabi.nabion`, `nabi.lock`, `nabic`, `nabi`, `nabicc`, `nabils`, `nabir`, NABIHIR, HIR, MIR, LIR, AOT, JIT, GC, Immix, LOS, TLAB, shadow stack, `scan_table`, niche optimization, sticky mark-bit, work-stealing, ABI, FFI, toolchain, sysroot.
+이미 영어인 이름은 모든 판에서 그대로 씁니다. NABION, `nabi.nabion`, `nabi.lock`, `nabic`, `nabi`, `nabicc`, `nabils`, `nabir`, NABIHIR, HIR, MIR, LIR, AOT, JIT, GC, Immix, LOS, TLAB, shadow stack, `scan_table`, niche optimization, sticky mark-bit, work-stealing, ABI, FFI, toolchain, sysroot.
 
 ## 라이선스
 
