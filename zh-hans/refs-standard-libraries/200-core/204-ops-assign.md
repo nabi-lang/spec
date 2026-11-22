@@ -266,7 +266,7 @@ Nabi **不**把 `Add` 作为 `AddAssign` 的超 trait（supertrait）。这两�
 
 ## 2.4.10. 相关：广播有没有 `*Assign`
 
-广播词法单元没有 `*Assign` trait。就地广播是语言语法：`y .= v` 以及 `y .+= v`、`.-=`、`.*=`、`./=`、`.%=`、`.%%=`、`.**=`、`.&=`、`.|=`、`.^=`、`.<<=`、`.>>=` 逐元素写入 `List`、定长数组或 `Broadcastable` 目标，与右侧的表达式融合，且不分配内存（[refs-lang 3.3.7](../../refs-lang/003-expressions/303-broadcast-operators.md#337-in-place-broadcast)）。比较运算以及 `.&&`、`.||`、`.??` 通过 `.=` 实现（`ok .= ok .&& xs .> 0`）。
+广播词法单元没有 `*Assign` trait。就地广播是语言语法：`y .= v` 以及 `y .+= v`、`.-=`、`.*=`、`./=`、`.%=`、`.%%=`、`.**=`、`.&=`、`.|=`、`.^=`、`.<<=`、`.>>=` 逐元素写入 `List`、定长数组或 `Broadcastable` 目标，与右侧的表达式融合，且不分配内存（[refs-lang 3.3.7](../../refs-lang/003-expressions/303-broadcast-operators.md#337-原地广播)）。比较运算以及 `.&&`、`.||`、`.??` 通过 `.=` 实现（`ok .= ok .&& xs .> 0`）。
 
 ```nabi
 xs .+= ys;                // xs[i] = xs[i] + ys[i]; lengths must match

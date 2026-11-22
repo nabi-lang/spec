@@ -91,7 +91,7 @@ impl<T, E> Result<T, E> {
 
 ### `Result` 没有 `?`
 
-[refs-lang 3.14.10](../../refs-lang/003-expressions/314-error-control-flow.md#31410-the--operator---early-return-of-none) 的后缀 `?` 只用于 `T | none`。对 `Result` 值使用 `?` 时，编译器给出如下诊断。
+[refs-lang 3.14.10](../../refs-lang/003-expressions/314-error-control-flow.md#31410--运算符提前返回-none) 的后缀 `?` 只用于 `T | none`。对 `Result` 值使用 `?` 时，编译器给出如下诊断。
 
 ```nabi
 fn load(r: Result<Config, IoError>) -> Result<Config, IoError> {
@@ -223,7 +223,7 @@ struct OutOfMemoryError;       // Fatal: cannot be caught
 struct InternalError;          // Fatal: compiler-internal bug
 ```
 
-它们也都有 `message()`（`"stack overflow"` 等）。致命错误不是 `throws` 错误，不能用 `catch` 捕获。它与 panic 一样，向 stderr 打印消息，并以退出码 `101` 结束进程（[refs-lang 3.14.8](../../refs-lang/003-expressions/314-error-control-flow.md#3148-panics-and-fatal-errors)）。
+它们也都有 `message()`（`"stack overflow"` 等）。致命错误不是 `throws` 错误，不能用 `catch` 捕获。它与 panic 一样，向 stderr 打印消息，并以退出码 `101` 结束进程（[refs-lang 3.14.8](../../refs-lang/003-expressions/314-error-control-flow.md#3148-panic-与致命错误)）。
 
 ## 2.14.5. `panic_fn` / `oom_fn` / `unreachable_fn`：编译器钩子
 
@@ -264,7 +264,7 @@ mod panic {                         // core::panic
 
 ### OOM 处理
 
-GC 分配失败时，按如下方式处理 OOM。运行时无法按名称调用 Nabi 函数，所以它直接调用运行时符号 `nabi_oom`，而不是 `oom()`（[refs-lang 8.5.7](../../refs-lang/008-abi/805-extern-symbols.md#857-diagnostic-area)）。
+GC 分配失败时，按如下方式处理 OOM。运行时无法按名称调用 Nabi 函数，所以它直接调用运行时符号 `nabi_oom`，而不是 `oom()`（[refs-lang 8.5.7](../../refs-lang/008-abi/805-extern-symbols.md#857-诊断区域)）。
 
 ```
 nabi_gc_alloc_slow:

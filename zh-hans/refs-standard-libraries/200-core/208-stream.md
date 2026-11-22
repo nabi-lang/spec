@@ -87,7 +87,7 @@ async yield fn ticks(interval: Duration) -> Instant {
 }
 ```
 
-`-> Instant` 是元素类型，调用的结果是 `AsyncStream<Instant>`（实现 `Stream<Item = Instant>`）（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#result-types-of-coroutine-functions)）。编译器把这个函数变换为状态机（[refs-lang 7.8](../../refs-lang/007-runtime/708-coroutine.md)）。每个 `yield` 都是一个**挂起点**，每个 `await` 也是。
+`-> Instant` 是元素类型，调用的结果是 `AsyncStream<Instant>`（实现 `Stream<Item = Instant>`）（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#协程函数的结果类型)）。编译器把这个函数变换为状态机（[refs-lang 7.8](../../refs-lang/007-runtime/708-coroutine.md)）。每个 `yield` 都是一个**挂起点**，每个 `await` 也是。
 
 语法的权威定义是 [refs-lang 4.13 stream（`async yield`）](../../refs-lang/004-functions/413-stream.md)。
 
@@ -182,7 +182,7 @@ fn select<S1: Stream, S2: Stream>(a: S1, b: S2) -> Select<S1, S2>;  // Stream<It
 
 ## 2.8.8a. `AsyncStream<T>` / `TryAsyncStream<T, E>`：异步流的值
 
-它们是 `async yield fn` 调用和 `async yield { .. }` 块的值（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#result-types-of-coroutine-functions)）。
+它们是 `async yield fn` 调用和 `async yield { .. }` 块的值（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#协程函数的结果类型)）。
 
 ```nabi
 struct AsyncStream<T> { /* private */ }
@@ -247,7 +247,7 @@ fn from_results<S: Stream<Item = Result<T, E>>, T, E>(s: S) -> FromResults<S, T,
 
 2.7.13 的规则同样适用：适配器的函数可以抛出 `Error`，只有 `map_err` 会改变它，`collect` 在第一个错误处停止并抛出该错误，`results()` 在出错后继续轮询。异步方法与 `Stream::collect` 一样接收 `self`。`TryStream` 不在 prelude 中（`Stream` 也不在）；写 `stream::TryStream`。
 
-`try for await x in s { .. }` 逐步遍历 `TryStream`；`try` 覆盖流表达式和每次 `poll_next`，不覆盖循环体（[refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for-iterator-based-repetition)）。
+`try for await x in s { .. }` 逐步遍历 `TryStream`；`try` 覆盖流表达式和每次 `poll_next`，不覆盖循环体（[refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for基于迭代器的重复)）。
 
 ```nabi
 async fn sizes(urls: List<str>) throws (HttpError) -> List<usize> {

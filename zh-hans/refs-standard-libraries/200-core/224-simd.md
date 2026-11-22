@@ -32,7 +32,7 @@ pub struct Mask<T, const N: usize> { /* private: [T; N] */ }
 - `SimdElement` 由 `i8`、`i16`、`i32`、`i64`、`u8`、`u16`、`u32`、`u64`、`f32` 和 `f64` 实现。它的方法（`lane_add`、`lane_mask` 等）是编写向量类型所用的通道操作。
 - `Simd<T, N>` 是值类型，与 `[T; N]` 一样在赋值时复制，通道按顺序排列：通道 0 在前。任何 `N` 都可以，包括 `0`；当 `N * size_of::<T>()` 是 16 字节（使用 AVX2 时为 32 字节）的倍数时使用向量指令。
 - `Mask<T, N>` 是 `Simd<T, N>` 的掩码：每个通道要么置位（所有位为 1），要么清零。它带有向量的通道类型，所以 `Mask<f32, 4>` 与 `f32x4` 搭配。
-- 在 `extern "C"` 签名中，8 或 16 字节的 `Simd<T, N>` 在 AAPCS64 和 x86-64 上是目标上该大小的 C 向量（`float32x4_t`、`__m128`、`__attribute__((vector_size(16)))`），与 C 一样通过向量寄存器传递（[refs-lang 8.6.3](../../refs-lang/008-abi/806-calling-convention.md#863-struct-arguments--return-small-struct-rule)）。其他大小、其他目标、按值传递的结构体中的 `Simd` 以及 `Mask` 都是编译错误，错误信息会提示改为传递指向各通道的指针。在内存中，`Simd` 按其通道对齐，而不是像 C 的向量那样按 16 字节对齐。
+- 在 `extern "C"` 签名中，8 或 16 字节的 `Simd<T, N>` 在 AAPCS64 和 x86-64 上是目标上该大小的 C 向量（`float32x4_t`、`__m128`、`__attribute__((vector_size(16)))`），与 C 一样通过向量寄存器传递（[refs-lang 8.6.3](../../refs-lang/008-abi/806-calling-convention.md#863-struct-实参--返回小-struct-规则)）。其他大小、其他目标、按值传递的结构体中的 `Simd` 以及 `Mask` 都是编译错误，错误信息会提示改为传递指向各通道的指针。在内存中，`Simd` 按其通道对齐，而不是像 C 的向量那样按 16 字节对齐。
 - 别名为常见形状命名：`f32x2`、`f32x4`、`f32x8`、`f32x16`、`f64x2`、`f64x4`、`f64x8`、`i8x16`、`i8x32`、`i16x8`、`i16x16`、`i32x4`、`i32x8`、`i64x2`、`i64x4`、`u8x16`、`u8x32`、`u16x8`、`u16x16`、`u32x4`、`u32x8`、`u64x2`、`u64x4`（`f32x4` 即 `Simd<f32, 4>`）。
 
 `Simd` 和 `Mask` 实现了 `PartialEq`（每个通道都相等；NaN 通道不等于任何值）和 `Debug`（通道以数组形式显示：`[1.0, 2.0, 3.0, 4.0]`，掩码显示为 `[true, false, ..]`），`Simd` 还实现了 `Default`（每个通道为零）和 `Index<usize>`（`v[i]`，超过最后一个通道时触发 panic）。

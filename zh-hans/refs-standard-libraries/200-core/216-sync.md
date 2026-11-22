@@ -87,7 +87,7 @@ enum UpdateOrdering { Relaxed, Acquire, Release, AcqRel, SeqCst }    // swap, fe
 | `AcqRel`  | 读-改-写操作的双向同步                          |
 | `SeqCst`  | 全局顺序一致性（默认，安全）                    |
 
-这些排序的含义与 C++20 相同；它们所属的内存模型（happens-before、哪些库操作会同步、数据竞争）见 [refs-lang 7.9](../../refs-lang/007-runtime/709-memory-model.md)。默认值是安全的 `SeqCst`。加载不能 release，存储不能 acquire：`a.store(x, Acquire)` 是编译错误（`StoreOrdering` 没有 `Acquire`；存储接受 `Relaxed`、`Release` 或 `SeqCst`）。compare-exchange 的失败排序是一种加载排序。变体不带前缀书写：由参数的类型选择枚举（[refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-bare-variants-from-the-expected-type)）。这三个类型不在 prelude 中，它们的名称也不与比较用的 `cmp::Ordering` 冲突。排序实参必须是编译期常量。弱排序应当谨慎使用，只用在性能关键的地方。
+这些排序的含义与 C++20 相同；它们所属的内存模型（happens-before、哪些库操作会同步、数据竞争）见 [refs-lang 7.9](../../refs-lang/007-runtime/709-memory-model.md)。默认值是安全的 `SeqCst`。加载不能 release，存储不能 acquire：`a.store(x, Acquire)` 是编译错误（`StoreOrdering` 没有 `Acquire`；存储接受 `Relaxed`、`Release` 或 `SeqCst`）。compare-exchange 的失败排序是一种加载排序。变体不带前缀书写：由参数的类型选择枚举（[refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-由期望类型确定的裸变体)）。这三个类型不在 prelude 中，它们的名称也不与比较用的 `cmp::Ordering` 冲突。排序实参必须是编译期常量。弱排序应当谨慎使用，只用在性能关键的地方。
 
 ### 示例
 
@@ -120,7 +120,7 @@ fn store_max(cell: Atomic<i64>, x: i64) {
 }
 ```
 
-元素类型必须是 `AtomicPrimitive`：`List<T>` 这样的集合不能放进 `Atomic`。这个 trait 是密封的（[refs-lang 6.2.15](../../refs-lang/006-meta-system/602-built-in-attributes.md#6215-sealed-impls-only-in-the-defining-package)）：上面列出的类型就是它的全部实现，在其他包中写 `impl AtomicPrimitive` 是错误。共享的集合放进 `Mutex<T>`（2.16.3）。
+元素类型必须是 `AtomicPrimitive`：`List<T>` 这样的集合不能放进 `Atomic`。这个 trait 是密封的（[refs-lang 6.2.15](../../refs-lang/006-meta-system/602-built-in-attributes.md#6215-sealed-只在定义它的包中实现)）：上面列出的类型就是它的全部实现，在其他包中写 `impl AtomicPrimitive` 是错误。共享的集合放进 `Mutex<T>`（2.16.3）。
 
 ## 2.16.3. `Mutex<T>`：互斥锁
 

@@ -62,7 +62,7 @@ mod hkdf {                                          // crypto::hkdf (RFC 5869)
 }
 ```
 
-`HashAlgorithm` 列出参与带密钥 API 和签名 API 的每一个哈希函数：`Digest`、`Hmac`、`hkdf`、ECDSA 和 RSA（PKCS #1 v1.5 和 PSS，包括 MGF1）都接受其中每个变体。它是 `#[non_exhaustive]`（[refs-lang 6.2.10](../../refs-lang/006-meta-system/602-built-in-attributes.md#6210-non_exhaustive-opting-out-of-external-exhaustiveness)）：在 `core` 之外对它 `match` 需要 `_` 分支，后续版本可以增加函数。对于 SHA-3 函数，HMAC 的块长是海绵结构的速率（rate）。`Sha3_256`、`Sha3_512`、`Shake128` 和 `Shake256` 是低层形式：每个都在编译时固定为一个函数（SHAKE 没有 `HashAlgorithm` 变体，因为其输出长度由调用方决定）；`Sha3_256::digest(x)` 与 `HashAlgorithm::Sha3_256.digest(x)` 计算的是同一个函数。
+`HashAlgorithm` 列出参与带密钥 API 和签名 API 的每一个哈希函数：`Digest`、`Hmac`、`hkdf`、ECDSA 和 RSA（PKCS #1 v1.5 和 PSS，包括 MGF1）都接受其中每个变体。它是 `#[non_exhaustive]`（[refs-lang 6.2.10](../../refs-lang/006-meta-system/602-built-in-attributes.md#6210-non_exhaustive-退出外部穷尽性)）：在 `core` 之外对它 `match` 需要 `_` 分支，后续版本可以增加函数。对于 SHA-3 函数，HMAC 的块长是海绵结构的速率（rate）。`Sha3_256`、`Sha3_512`、`Shake128` 和 `Shake256` 是低层形式：每个都在编译时固定为一个函数（SHAKE 没有 `HashAlgorithm` 变体，因为其输出长度由调用方决定）；`Sha3_256::digest(x)` 与 `HashAlgorithm::Sha3_256.digest(x)` 计算的是同一个函数。
 
 `Digest`、`Hmac` 以及 SHA-3 / SHAKE 状态都是值：副本独立地继续计算（例如在中途读取的握手记录哈希）。连续的 `squeeze` 调用延续同一条输出流；在第一次 `squeeze` 之后调用 `update` 会触发 panic。`Hmac::verify` 以常数时间比较完整长度的标签。`hkdf::extract` 在盐为空时使用 `output_len` 个零字节；`hkdf::expand` 在 `len > 255 * output_len` 时抛出 `ValueError`。
 
@@ -202,7 +202,7 @@ ECDSA 签名密钥是大端标量 `1 <= d < n`，长度不超过曲线的大小�
 - 解析（DER、PEM、密钥文件）以及对公开数据的验证是可变时间的；
 - 这是由随附工具链编译出的实现所具有的性质，不是语言给出的保证：以同样风格编写的用户代码不在保证范围内。
 
-**内存中的密钥材料。** 机密字节存放在*机密存储*中：这是收集器在大对象空间（[refs-lang 7.1.2](../../refs-lang/007-runtime/701-object-layout.md#712-memory-spaces)）中分配的缓冲区，从不移动或复制，并在释放内存之前用零覆盖。`Secret`（2.21）是它的公开形式。
+**内存中的密钥材料。** 机密字节存放在*机密存储*中：这是收集器在大对象空间（[refs-lang 7.1.2](../../refs-lang/007-runtime/701-object-layout.md#712-内存空间)）中分配的缓冲区，从不移动或复制，并在释放内存之前用零覆盖。`Secret`（2.21）是它的公开形式。
 
 - `Secret` 的字节在堆中只存在于一个位置；交接给另一个线程（2.13.9）会在机密存储中生成第二个 `Secret`，按同样的规则擦除。这些字节会在 `wipe` 时、在 `using` 绑定释放该 `Secret` 时（直接释放或通过 drop glue），以及最迟在释放该缓冲区的那次回收时被零覆盖。清零使用优化器不得删除的存储操作。
 - 算法只在机密存储或局部变量中保存依赖于密钥的状态，从不放在普通堆对象中。这些状态包括 AES 轮密钥、GHASH 密钥和 ChaCha20 密钥（`Aead`），HMAC 和 HKDF（填充后的密钥、链值、输出块），X25519 私钥以及 X25519 和 ML-KEM 的共享密钥，ML-KEM 解封装密钥及其机密多项式、种子和消息，Ed25519 的种子、扩展密钥和 nonce 哈希，ECDSA 标量，以及 RSA 的素数、CRT 指数和 `q^-1`。结果为密钥材料的函数返回 `Secret`。机密存储中的临时值会在函数返回之前擦除，除非函数抛出错误；这时由回收来擦除。
@@ -211,7 +211,7 @@ ECDSA 签名密钥是大端标量 `1 <= d < n`，长度不超过曲线的大小�
 这一保证有一些界限，实现会说明而不隐瞒：
 
 - **寄存器和栈。** 局部变量存放在寄存器和线程的栈上，不会被清除。这包括定长数组以及 `Digest`、`Hmac`、SHA-3 和密码状态等结构体值，以及 X25519、Ed25519 和 ECDSA 的域元素和标量。编译器产生的溢出（spill）也不会被清除；栈槽只在栈被复用时才被覆盖。没有清除它们的代码生成；Rust 的 `zeroize`、Go 的 `crypto/subtle` 辅助函数和 libsodium 的 `sodium_memzero` 同样只能触及交给它们的内存，触及不到编译器产生的副本。
-- **普通对象。** 存储在堆对象中的值存在于该对象中：收集器可能在疏散（evacuation）期间复制它，并且不清除就释放它。这包括 `List` 元素、由 GC 持有的结构体字段、闭包环境，以及跨越挂起点的 `async` / 生成器帧（[refs-lang 7.8.2](../../refs-lang/007-runtime/708-coroutine.md#782-coroutine-frame)）。把 `Secret` 的字节复制出来（`as_bytes().to_list()`、`str`、格式化）会产生普通副本。
+- **普通对象。** 存储在堆对象中的值存在于该对象中：收集器可能在疏散（evacuation）期间复制它，并且不清除就释放它。这包括 `List` 元素、由 GC 持有的结构体字段、闭包环境，以及跨越挂起点的 `async` / 生成器帧（[refs-lang 7.8.2](../../refs-lang/007-runtime/708-coroutine.md#782-协程帧)）。把 `Secret` 的字节复制出来（`as_bytes().to_list()`、`str`、格式化）会产生普通副本。
 - **普通输入和输出。** 不在保证范围内的有：以 `List<u8>` 或 `str` 传入的密钥、明文和密文、`Hmac` 标签、`Digest` 输出，以及解码后的密钥文件（PEM / DER 解码会先生成普通列表，然后 `PrivateKey` 才复制密钥）。
 - **签名。** ECDSA 和 RSA 签名不在保证范围内：RFC 6979 状态和 `bignum` 的 limb 是普通列表，RSA 操作在普通列表上计算（`rsa::PrivateKey` 把其素数、CRT 指数和 `q^-1` 保存在机密存储中，并为每次操作重建模数）。
 - **未锁定在内存中。** 机密存储没有锁定（`mlock` / `VirtualLock`）。它可能被写入交换区或休眠文件，并出现在核心转储和进程快照中。锁定以页为单位，受每进程限制（RLIMIT_MEMLOCK），也以页为单位解除，所以需要一个自己的页粒度分配器。

@@ -194,7 +194,7 @@ Duration::ns(-20);       // "-20ns"
 
 ### 时长运算策略
 
-`Duration` / `SystemTime` / `Instant` / `BootTime` 上的运算（包括 `duration_since` 和 `from_unix`）在溢出检查开启时溢出会触发 panic，关闭时则饱和（`-C overflow-checks`，[refs-lang 9.1.2](../../refs-lang/009-tools/901-nabic-cli.md#nabic-build-aot-build)）。`f64` 形式（`Duration::secs_f64`、`f64 * Duration`）遵循同样的规则：非有限值或超出范围的结果在检查开启时触发 panic，关闭时饱和（NaN 变为零）。除以零始终触发 panic。`Duration` 的 `checked_*` / `saturating_*` 变体用于显式选择行为。
+`Duration` / `SystemTime` / `Instant` / `BootTime` 上的运算（包括 `duration_since` 和 `from_unix`）在溢出检查开启时溢出会触发 panic，关闭时则饱和（`-C overflow-checks`，[refs-lang 9.1.2](../../refs-lang/009-tools/901-nabic-cli.md#nabic-buildaot-构建)）。`f64` 形式（`Duration::secs_f64`、`f64 * Duration`）遵循同样的规则：非有限值或超出范围的结果在检查开启时触发 panic，关闭时饱和（NaN 变为零）。除以零始终触发 panic。`Duration` 的 `checked_*` / `saturating_*` 变体用于显式选择行为。
 
 ```nabi
 impl Duration {

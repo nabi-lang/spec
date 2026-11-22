@@ -172,7 +172,7 @@ let m = 2 .* a;          //→ [2, 4, 6]
 let t = a ./ 2;          //→ [0, 1, 1]    (i32 truncate)
 ```
 
-这里由单独的实现（`DotAdd<T> for List<T>`，以及用于标量在左形式的 `DotAdd<List<T>> for T`）处理标量一侧。`Slice<T>` 也有同样的一对实现；定长数组 `[T; N]` 没有标量在左的实现。库容器以同样方式为自己的类型获得标量在左的形式：孤儿规则允许在定义 `Matrix` 的包中写 `impl DotMul<Matrix> for f64`，因为本地类型 `Matrix` 出现在任何类型参数之前（[2.9.5](../../refs-lang/002-types/209-impl.md#295-orphan-rule)），所以 `2.0 .* m` 和 `m .* 2.0` 都可用。
+这里由单独的实现（`DotAdd<T> for List<T>`，以及用于标量在左形式的 `DotAdd<List<T>> for T`）处理标量一侧。`Slice<T>` 也有同样的一对实现；定长数组 `[T; N]` 没有标量在左的实现。库容器以同样方式为自己的类型获得标量在左的形式：孤儿规则允许在定义 `Matrix` 的包中写 `impl DotMul<Matrix> for f64`，因为本地类型 `Matrix` 出现在任何类型参数之前（[2.9.5](../../refs-lang/002-types/209-impl.md#295-孤儿规则)），所以 `2.0 .* m` 和 `m .* 2.0` 都可用。
 
 ### 比较点运算：返回 `Container<bool>`
 
@@ -265,7 +265,7 @@ let m = f64::max.(a, b);             //→ [10.0, 20.0, 30.0]
 let result = f64::sin.(a) .+ f64::cos.(b) .* 2.0;
 ```
 
-朴素的降级需要 3 次临时 List 分配和 3 个循环。对于 `List`、`Slice`、数组以及任何 `Broadcastable` 类型，Nabi 保证只有一个循环，且没有中间集合（确切条件见 [3.3.4](../../refs-lang/003-expressions/303-broadcast-operators.md#334-automatic-loop-fusion)）。就地形式（`y .= ..`、`y .+= ..`，[3.3.7](../../refs-lang/003-expressions/303-broadcast-operators.md#337-in-place-broadcast)）直接写入目标，完全不分配。
+朴素的降级需要 3 次临时 List 分配和 3 个循环。对于 `List`、`Slice`、数组以及任何 `Broadcastable` 类型，Nabi 保证只有一个循环，且没有中间集合（确切条件见 [3.3.4](../../refs-lang/003-expressions/303-broadcast-operators.md#334-自动循环融合)）。就地形式（`y .= ..`、`y .+= ..`，[3.3.7](../../refs-lang/003-expressions/303-broadcast-operators.md#337-原地广播)）直接写入目标，完全不分配。
 
 ```nabi
 // conceptually equivalent to this single elementwise call
@@ -338,7 +338,7 @@ let t = s .* 2.0 .+ k;      // one loop; a Signal
 
 `T | none` 的点运算含义是可选值传播：只要任一侧是 `none`，结果就是 `none`。它在运算符层面处理，没有库实现：整棵点表达式树的操作数按源代码顺序各求值一次；然后逐个检查每个 `T | none` 操作数，第一个 `none` 使整棵树的值为 `none`，而不运行这棵树。否则树在 `T` 值上运行，按 2.6.6 所述融合或通过点 trait 运行，因此不会以 `none` 调用任何点 trait。值的类型是树的类型 `| none`。
 
-core 的 n 维 `Array<T, N>`（[2.9.14](209-collections.md#2914-arrayt-const-n-usizen-维数组)）实现了每个点 trait：数组与同秩数组、数组与标量、标量与数组，均按 2.6.8 的规则。库的数值容器（`Tensor<T>`、数据框的列）直接实现同样的 trait，包括标量在左的情况：孤儿规则允许在定义 `Tensor` 的包中写 `impl DotMul<Tensor> for f64`（[refs-lang 2.9.5](../../refs-lang/002-types/209-impl.md#295-orphan-rule)）。作用于此类类型的点表达式逐个运算符地调用 trait，除非该类型是 `Broadcastable`（2.6.6）；`Array` 是，所以它的点表达式会融合，而它的 trait 实现用于满足约束和按名调用。
+core 的 n 维 `Array<T, N>`（[2.9.14](209-collections.md#2914-arrayt-const-n-usizen-维数组)）实现了每个点 trait：数组与同秩数组、数组与标量、标量与数组，均按 2.6.8 的规则。库的数值容器（`Tensor<T>`、数据框的列）直接实现同样的 trait，包括标量在左的情况：孤儿规则允许在定义 `Tensor` 的包中写 `impl DotMul<Tensor> for f64`（[refs-lang 2.9.5](../../refs-lang/002-types/209-impl.md#295-孤儿规则)）。作用于此类类型的点表达式逐个运算符地调用 trait，除非该类型是 `Broadcastable`（2.6.6）；`Array` 是，所以它的点表达式会融合，而它的 trait 实现用于满足约束和按名调用。
 
 ## 2.6.8. NumPy 风格的广播规则
 

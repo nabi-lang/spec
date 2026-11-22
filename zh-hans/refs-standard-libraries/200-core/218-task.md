@@ -92,9 +92,9 @@ await task::yield_now();
 let n = await task::spawn_blocking(|| heavy_checksum(path));
 ```
 
-`f` 与创建它的代码共享其普通捕获，所以这些捕获必须是 `Send + Sync`（[refs-lang 4.6.9](../../refs-lang/004-functions/406-capture-semantics.md#469-additional-constraints-in-parallel-and-concurrent-contexts)）。只有阻塞工作需要的值（一个集合、一个 `Command`）以下面两种形式之一交给它：
+`f` 与创建它的代码共享其普通捕获，所以这些捕获必须是 `Send + Sync`（[refs-lang 4.6.9](../../refs-lang/004-functions/406-capture-semantics.md#469-并行与并发上下文中的附加约束)）。只有阻塞工作需要的值（一个集合、一个 `Command`）以下面两种形式之一交给它：
 
-- 在 `f` 的捕获列表中写 `[move x]`，把 `x` 移动到闭包中（[refs-lang 4.6.11](../../refs-lang/004-functions/406-capture-semantics.md#4611-move-capture-the-move-x-capture-list)）。
+- 在 `f` 的捕获列表中写 `[move x]`，把 `x` 移动到闭包中（[refs-lang 4.6.11](../../refs-lang/004-functions/406-capture-semantics.md#4611-移动捕获move-x-捕获列表)）。
 - `spawn_blocking_with_arg(arg, f)` 像通道发送那样交出 `arg`，并在线程池线程上调用 `f(arg)`：该线程得到 `arg` 所能到达的每个集合的副本，之后再使用 `arg` 是编译错误（[2.13.9](213-marker.md#2139-send--sync线程边界标记)）。`arg` 只需要 `Send`。
 
 无论哪种方式，启动方的代码都不能再使用该值。拥有被移动捕获的闭包也会一并交出：在 `spawn_blocking(f)` 之后再次调用它是编译错误。
@@ -202,7 +202,7 @@ impl<T> Future for Task<T> {              // `await t`: suspend until completion
 
 一个进程有一个执行器。它在首次使用时启动，由与 CPU 数量（`cpu_count()`）相同数目的工作线程、一条阻塞通道（blocking lane）和一个 I/O 驱动组成。`block_on` 把调用线程作为客座工作线程接入该执行器，并把 `f` 运行到完成。`block_on` 返回时仍在运行的任务会继续运行。`block_on` 要等固定在其线程上的 `spawn_local` 任务也完成后才返回；这些任务无法转移到其他线程。`par::*` 和 `spawn_blocking` 使用同一个执行器。
 
-用 `spawn` 创建的任务可以在任何工作线程上运行，所以它必须是 `Future + Send`，其结果也必须是 `Send`。来自 `spawn_local` 的任务固定在创建它的工作线程上。它固定在工作线程上，而不是操作系统线程上：工作线程可能在另一个操作系统线程上继续运行（[refs-lang 7.6.7](../../refs-lang/007-runtime/706-scheduler.md#767-automatic-detection-of-blocking-syscalls)），所以 `spawn_local` 任务不应依赖由哪个操作系统线程运行它，也不应依赖该线程的线程局部状态。（参考运行时从不转交带有存活 `spawn_local` 任务的工作线程。）在 `block_on` 线程轮询但并不拥有的任务（它在等待时取来的 `spawn` 任务）中调用 `spawn_local`，会改为固定到线程池的某个工作线程，所以 `block_on` 只等待它自己任务的局部任务。同一次这样的轮询启动的所有局部任务都交给同一个线程池工作线程，并且只在该次轮询结束后才开始，与在本该运行它们的工作线程上一样。
+用 `spawn` 创建的任务可以在任何工作线程上运行，所以它必须是 `Future + Send`，其结果也必须是 `Send`。来自 `spawn_local` 的任务固定在创建它的工作线程上。它固定在工作线程上，而不是操作系统线程上：工作线程可能在另一个操作系统线程上继续运行（[refs-lang 7.6.7](../../refs-lang/007-runtime/706-scheduler.md#767-自动检测阻塞系统调用)），所以 `spawn_local` 任务不应依赖由哪个操作系统线程运行它，也不应依赖该线程的线程局部状态。（参考运行时从不转交带有存活 `spawn_local` 任务的工作线程。）在 `block_on` 线程轮询但并不拥有的任务（它在等待时取来的 `spawn` 任务）中调用 `spawn_local`，会改为固定到线程池的某个工作线程，所以 `block_on` 只等待它自己任务的局部任务。同一次这样的轮询启动的所有局部任务都交给同一个线程池工作线程，并且只在该次轮询结束后才开始，与在本该运行它们的工作线程上一样。
 
 调度器的骨架如下。
 
@@ -217,11 +217,11 @@ Worker 0 ─┐      Worker 1 ─┐    ...    Worker N-1 ─┐
            └─ Parked Worker Stack   ──────┘
 ```
 
-该结构的关键性质：本地队列是无锁的 Chase-Lev 双端队列，拥有它的工作线程和窃取者都先取最旧的任务（因此不断重新唤醒自己的任务不会让其他任务饿死，[refs-lang 7.6.2](../../refs-lang/007-runtime/706-scheduler.md#762-work-stealing-structure)）。忙碌的工作线程每处理 32 个任务就处理一次到期的定时器。I/O 驱动方面，每个进程有一个反应器（reactor）线程以边沿触发方式等待 epoll / kqueue（io_uring / IOCP 是后续工作，[refs-lang 7.7](../../refs-lang/007-runtime/707-io-and-timer.md)）；定时器结构由实现定义（二叉堆或时间轮，[refs-lang 7.7.4](../../refs-lang/007-runtime/707-io-and-timer.md#774-timer-structure)）。
+该结构的关键性质：本地队列是无锁的 Chase-Lev 双端队列，拥有它的工作线程和窃取者都先取最旧的任务（因此不断重新唤醒自己的任务不会让其他任务饿死，[refs-lang 7.6.2](../../refs-lang/007-runtime/706-scheduler.md#762-工作窃取结构)）。忙碌的工作线程每处理 32 个任务就处理一次到期的定时器。I/O 驱动方面，每个进程有一个反应器（reactor）线程以边沿触发方式等待 epoll / kqueue（io_uring / IOCP 是后续工作，[refs-lang 7.7](../../refs-lang/007-runtime/707-io-and-timer.md)）；定时器结构由实现定义（二叉堆或时间轮，[refs-lang 7.7.4](../../refs-lang/007-runtime/707-io-and-timer.md#774-定时器结构)）。
 
 标准库的权威范围仅限于 API 签名；算法本体属于运行时和标准库实现，不在规范之内。
 
-执行器自身的类型和函数（`TaskRef`、`Pool`、`Worker`、`wake_task`、`cancel_requested`、`unwinding`、`park`、`unpark`）在 `core` 中是 `pub(pkg)`：其他包不会用到这些名称。`await` 调用的钩子（`cancel_point`、`cancel_left`、`cleanup_running`、`cleanup_done`）也是 `pub(pkg)`；降级后的代码通过它们的 lang 槽访问它们（[0.4.4](../000-meta/004-lang-slot-table.md)）。`readable` / `writable`（套接字 `*_async` 方法所等待的就绪 future，[refs-lang 7.7.2](../../refs-lang/007-runtime/707-io-and-timer.md#772-io-wait-pattern)）、`wake_io`（在关闭或 shutdown 之后唤醒某个描述符的读写等待者）以及 `host_enter` / `host_leave` / `host_run`（WebAssembly 组件的事件循环入口）是 `#[internal]`：由 `std` 调用，其他包使用它们是错误（[0.4](../000-meta/004-lang-slot-table.md)）。在 `host_enter` 之外调用 `host_leave` 会触发 panic 并说明原因。
+执行器自身的类型和函数（`TaskRef`、`Pool`、`Worker`、`wake_task`、`cancel_requested`、`unwinding`、`park`、`unpark`）在 `core` 中是 `pub(pkg)`：其他包不会用到这些名称。`await` 调用的钩子（`cancel_point`、`cancel_left`、`cleanup_running`、`cleanup_done`）也是 `pub(pkg)`；降级后的代码通过它们的 lang 槽访问它们（[0.4.4](../000-meta/004-lang-slot-table.md)）。`readable` / `writable`（套接字 `*_async` 方法所等待的就绪 future，[refs-lang 7.7.2](../../refs-lang/007-runtime/707-io-and-timer.md#772-io-等待模式)）、`wake_io`（在关闭或 shutdown 之后唤醒某个描述符的读写等待者）以及 `host_enter` / `host_leave` / `host_run`（WebAssembly 组件的事件循环入口）是 `#[internal]`：由 `std` 调用，其他包使用它们是错误（[0.4](../000-meta/004-lang-slot-table.md)）。在 `host_enter` 之外调用 `host_leave` 会触发 panic 并说明原因。
 
 ## 2.18.4. 协作式取消：`Task::cancel`
 
@@ -233,7 +233,7 @@ let t = task::spawn(async { long_running() });
 t.cancel();              // cooperative signal; the task ends at a cancellation point
 ```
 
-`cancel()` 只是**请求**取消。规则如下（[refs-lang 7.7.9](../../refs-lang/007-runtime/707-io-and-timer.md#779-cancellation)）：
+`cancel()` 只是**请求**取消。规则如下（[refs-lang 7.7.9](../../refs-lang/007-runtime/707-io-and-timer.md#779-取消)）：
 
 - 每个 `await` 都是取消点。已取消的任务在下一个 `await` 处如同执行 `return` 一样离开函数体，并按由内到外的顺序运行途经的 `finally` 和 `using` 清理。
 - 这些清理中的 `await` 不是取消点：它会完成，任务会一直被轮询直到清理结束。永不结束的清理会让已取消的任务一直存活；用 `task::timeout` 加以限制。
@@ -243,7 +243,7 @@ t.cancel();              // cooperative signal; the task ends at a cancellation 
 - 任务结束时，它的所有唤醒注册（I/O 就绪、定时器、停驻的等待）都会释放。
 - 在第一次轮询之前被取消的任务永远不会运行：函数体的任何部分都不运行，任务没有结果地结束。
 - 如果在等待 `spawn_blocking` 或基于它的 `fs::*_async` 时被取消，已经开始的工作会在后台运行到完成。写入等副作用确实会发生。在任务再次轮询之前完成的结果由那次轮询保留，见下文。
-- 如果在某次轮询中被等待的 future 交出了一个值（一条消息、一个锁守卫），该轮询会保留这个值。取消检查看的是“被等待的协程是否因取消而离开”；值保留下来，任务在下一个 `await` 处离开（[refs-lang 7.7.9](../../refs-lang/007-runtime/707-io-and-timer.md#779-cancellation)）。
+- 如果在某次轮询中被等待的 future 交出了一个值（一条消息、一个锁守卫），该轮询会保留这个值。取消检查看的是“被等待的协程是否因取消而离开”；值保留下来，任务在下一个 `await` 处离开（[refs-lang 7.7.9](../../refs-lang/007-runtime/707-io-and-timer.md#779-取消)）。
 - 经过最后一个取消点之后才被取消的任务会正常完成并有结果。`await t` / `join` 返回该结果。
 - `CancellationError` 由等待一个没有结果就结束的任务的一方收到。用 `try await t.join()` 等待这样的任务会抛出 `CancellationError`；用 `await t` 等待会触发 panic。
 

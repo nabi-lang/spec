@@ -10,7 +10,7 @@ core     (foundation, safe, all targets; uses bare internally)
 std   (target-dep; uses foundation + bare)
 ```
 
-每个层级各自是一个路径根：`bare::..`、`core::..`、`std::..`（[refs-lang 5.7.4](../../refs-lang/005-modules/507-paths.md#574-std-core-bare-the-standard-library-tiers)）。
+每个层级各自是一个路径根：`bare::..`、`core::..`、`std::..`（[refs-lang 5.7.4](../../refs-lang/005-modules/507-paths.md#574-stdcorebare标准库层级)）。
 
 分成三层的理由很明确。可能破坏内存安全的原始操作，限制在狭小的范围内才更容易审计；必须在每个平台上表现一致的核心抽象，只有不与依赖操作系统的代码混在一起，才能保证可移植性。可用性因平台而异的功能，必须在签名和导入处暴露这一事实，让用户能一致地处理 wasm 构建和原生构建。三个层级各自负责其中一项要求。
 
@@ -68,7 +68,7 @@ prelude 是 `core` 唯一指称 `std` 项的地方：在相应目标上，`core:
 
 ## 0.1.3. 构建单元
 
-三个层级各自作为独立的构建单元（独立的归档文件）处理，并且可以按编译缓存。链接顺序是 `std` → `core` → `bare` → 运行时，用户包位于最上层。编译器在首次使用时把它们构建到缓存中并自动链接，所以用户不需要把它们加入依赖声明（见 [0.5.4 分发形式与链接机制](../../refs-lang/000-meta/005-standard-libraries-tiers.md#054-distribution-form-and-linking-mechanism)）。
+三个层级各自作为独立的构建单元（独立的归档文件）处理，并且可以按编译缓存。链接顺序是 `std` → `core` → `bare` → 运行时，用户包位于最上层。编译器在首次使用时把它们构建到缓存中并自动链接，所以用户不需要把它们加入依赖声明（见 [0.5.4 分发形式与链接机制](../../refs-lang/000-meta/005-standard-libraries-tiers.md#054-分发形式与链接机制)）。
 
 ## 0.1.4. 目标可用性
 
@@ -78,7 +78,7 @@ prelude 是 `core` 唯一指称 `std` 项的地方：在相应目标上，`core:
 
 三个层级的稳定性策略也不同。`bare` API 不稳定，与编译器和运行时一同演进，因此建议用户代码固定版本。基础层级（`core`）API 以 SemVer 稳定性为目标，不兼容的变更要等到破坏性版本（1.0 之前为 `0.x.0`）。`std` API 的变动程度与其各目标可用性的差异相当，但签名本身保持稳定。
 
-在一个版本系列内，项不会被移除，也不会发生不兼容的变更。被取代的项继续可用，并标记为 `#[deprecated(since = "..", note = "..")]`（[6.2.7](../../refs-lang/006-meta-system/602-built-in-attributes.md#627-deprecated-discouraged-use-marker)），note 指出应改用什么。必须变为 `unsafe` 的安全函数标记为 `#[deprecated_safe]`（[6.2.14](../../refs-lang/006-meta-system/602-built-in-attributes.md#6214-deprecated_safe-safe-today-unsafe-later)）。下一个破坏性版本会移除该项，或把它改为 `unsafe`。
+在一个版本系列内，项不会被移除，也不会发生不兼容的变更。被取代的项继续可用，并标记为 `#[deprecated(since = "..", note = "..")]`（[6.2.7](../../refs-lang/006-meta-system/602-built-in-attributes.md#627-deprecated-不推荐使用的标记)），note 指出应改用什么。必须变为 `unsafe` 的安全函数标记为 `#[deprecated_safe]`（[6.2.14](../../refs-lang/006-meta-system/602-built-in-attributes.md#6214-deprecated_safe-现在安全以后-unsafe)）。下一个破坏性版本会移除该项，或把它改为 `unsafe`。
 
 ## 0.1.6. 每个项只有一条路径
 

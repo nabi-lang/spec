@@ -163,7 +163,7 @@ trait 槽指明把用户编写的语法脱糖为标准库 trait 调用时，编�
 
 ### 层级共享的项：`#[internal]`
 
-有几个 `pub` 项不是由编译器调用，而是由工具链的另一个层级调用：`std` 使用 `core` 中的这些项，`core` 使用 `bare` 中的这些项。它们标记为 `#[internal]`（[refs-lang 6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-shared-by-the-toolchains-packages)）：`bare`、`core` 和 `std` 可以使用它们，其他任何包都会得到错误“internal to the Nabi toolchain”，文档和语言服务器也会略去它们。
+有几个 `pub` 项不是由编译器调用，而是由工具链的另一个层级调用：`std` 使用 `core` 中的这些项，`core` 使用 `bare` 中的这些项。它们标记为 `#[internal]`（[refs-lang 6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-由工具链的各个包共用)）：`bare`、`core` 和 `std` 可以使用它们，其他任何包都会得到错误“internal to the Nabi toolchain”，文档和语言服务器也会略去它们。
 
 | 项                                     | 使用者                                                    | 参见 |
 |----------------------------------------|-----------------------------------------------------------|------|
@@ -184,7 +184,7 @@ trait 槽指明把用户编写的语法脱糖为标准库 trait 调用时，编�
 
 ## 0.4.5. 方法槽（1 个）
 
-方法槽用于用户不写调用、由编译器自动调用的方法。只有一个：`using` 绑定被释放时的处置。`?` 运算符由编译器针对 `T | none` 直接展开（[refs-lang 3.14.10](../../refs-lang/003-expressions/314-error-control-flow.md#31410-the--operator---early-return-of-none)），所以它没有方法槽。克隆值（`Clone::clone`）从不会被自动调用（[2.13.2](../200-core/213-marker.md#2132-clone深复制)），所以它注册为 trait 槽 `clone_trait`，而不是方法槽。
+方法槽用于用户不写调用、由编译器自动调用的方法。只有一个：`using` 绑定被释放时的处置。`?` 运算符由编译器针对 `T | none` 直接展开（[refs-lang 3.14.10](../../refs-lang/003-expressions/314-error-control-flow.md#31410--运算符提前返回-none)），所以它没有方法槽。克隆值（`Clone::clone`）从不会被自动调用（[2.13.2](../200-core/213-marker.md#2132-clone深复制)），所以它注册为 trait 槽 `clone_trait`，而不是方法槽。
 
 | 槽名          | 含义                                 | 标准库方法                      | 参见 |
 |---------------|--------------------------------------|---------------------------------|------|

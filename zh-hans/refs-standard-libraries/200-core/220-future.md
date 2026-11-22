@@ -80,7 +80,7 @@ let v = loop {
 
 ## 2.20.4. `async fn` / `async { }` / `async || { }`
 
-三种形式都返回 **`AsyncFuture<T>`**（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#result-types-of-coroutine-functions)）。
+三种形式都返回 **`AsyncFuture<T>`**（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#协程函数的结果类型)）。
 
 ```nabi
 // (a) named function
@@ -121,7 +121,7 @@ impl<F: Future> IntoFuture for F {               // Task<T>: Future<Output = T> 
 impl<T: Send> IntoFuture for JoinHandle<T> { type Output = T; type IntoFuture = Task<T>; ... }
 ```
 
-`JoinHandle<T>` 的实现在阻塞线程池中 join 该线程（`task::spawn_blocking`，[2.18](218-task.md)），所以只有正在等待的任务会等待。只要该类型不实现 `Future`，这个实现就是合法的，从而不会与通用实现重叠（[refs-lang 2.9.5](../../refs-lang/002-types/209-impl.md#coherence)）。
+`JoinHandle<T>` 的实现在阻塞线程池中 join 该线程（`task::spawn_blocking`，[2.18](218-task.md)），所以只有正在等待的任务会等待。只要该类型不实现 `Future`，这个实现就是合法的，从而不会与通用实现重叠（[refs-lang 2.9.5](../../refs-lang/002-types/209-impl.md#一致性)）。
 
 `await expr` 先调用 `IntoFuture::into_future(expr)`，然后对结果反复调用 `Future::poll`（2.20.3）。这与 [2.8 stream](208-stream.md) 中 `for await` 处理 `IntoStream` 的方式相同。
 
@@ -197,7 +197,7 @@ for await t in ticks(Duration::ms(100)) {
 
 ## 2.20.8a. `AsyncFuture<T>` / `TryAsyncFuture<T, E>`：异步函数的值
 
-它们是 `async fn` 调用和 `async { .. }` 块的值（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#result-types-of-coroutine-functions)）。
+它们是 `async fn` 调用和 `async { .. }` 块的值（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#协程函数的结果类型)）。
 
 ```nabi
 struct AsyncFuture<T> { /* private */ }

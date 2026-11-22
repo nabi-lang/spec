@@ -519,7 +519,7 @@ trait ExactSizeIterator: Iterator {
 
 ## 2.7.10a. `GenIter<T>` / `TryGenIter<T, E>`：生成器的值
 
-它们是 `yield fn` 调用和 `yield { .. }` 块的值（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#result-types-of-coroutine-functions)）。
+它们是 `yield fn` 调用和 `yield { .. }` 块的值（[refs-lang 4.1.11](../../refs-lang/004-functions/401-function-declaration.md#协程函数的结果类型)）。
 
 ```nabi
 struct GenIter<T> { /* private */ }
@@ -617,11 +617,11 @@ trait TryIterator {
 `TryIterator` 在 prelude 中（[0.2](../000-meta/002-import.md)）。它是一个单独的 trait，而不是 `Iterator` 上的错误参数：一个值要么是这个，要么是那个。
 
 - **抛出错误之后。** 抛出错误后的 `next` 做什么，由各类型在文档中选择。类型可以继续给出下一项（`io::Bytes`），也可以结束，此后一直给出 `none`（`TryGenIter`）。
-- **适配器函数抛出 `Error`。** 传给 `map`、`filter`、`fold` 等的函数可以抛出迭代器自身的 `Error`；不抛出错误的函数也适用（[refs-lang 4.14.8](../../refs-lang/004-functions/414-throws.md#4148-throws-in-function-types)）。抛出其他类型的函数在调用处是类型错误：先用 `.map_err(..)` 转换，或在函数内用 `catch` 处理错误。`map_err` 是改变 `Error` 的唯一方式：`.map_err(|e| -> IoError | ParseError { e })` 扩大它，`.map_err(|e| -> any Error { e })` 擦除它。
+- **适配器函数抛出 `Error`。** 传给 `map`、`filter`、`fold` 等的函数可以抛出迭代器自身的 `Error`；不抛出错误的函数也适用（[refs-lang 4.14.8](../../refs-lang/004-functions/414-throws.md#4148-函数类型中的-throws)）。抛出其他类型的函数在调用处是类型错误：先用 `.map_err(..)` 转换，或在函数内用 `catch` 处理错误。`map_err` 是改变 `Error` 的唯一方式：`.map_err(|e| -> IoError | ParseError { e })` 扩大它，`.map_err(|e| -> any Error { e })` 擦除它。
 - **没有 `try_fold` / `try_for_each`。** `fold` 和 `for_each` 已经接受会抛出错误的函数。`Iterator::try_fold` / `try_for_each`（2.7.1）仍然保留：它们为不抛出错误的迭代器加上抛出。
 - **`collect`** 构建任何 `FromIterator` 集合类型（2.7.5）；没有单独的 trait。它在第一个错误处停止并抛出该错误。
 - **命名。** 适配器类型带 `Try` 前缀，与 `Map`、`Filter` 等一起位于 `core::iter`；`MapErr` 和 `Results` 只存在于这里。
-- **`for`。** `TryIterator` 用 `try for x in it { .. }` 步进（[refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for-iterator-based-repetition)）。`try` 覆盖可迭代对象和每次 `next`，而不覆盖循环体。对 `TryIterator` 使用普通的 `for` 是编译错误，错误会提示改用 `try for` 或 `.results()`。
+- **`for`。** `TryIterator` 用 `try for x in it { .. }` 步进（[refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for基于迭代器的重复)）。`try` 覆盖可迭代对象和每次 `next`，而不覆盖循环体。对 `TryIterator` 使用普通的 `for` 是编译错误，错误会提示改用 `try for` 或 `.results()`。
 
 ### 转换
 

@@ -10,7 +10,7 @@ use core::prelude::*;
 
 `core::prelude` 是一个由 `pub use` 重新导出组成的普通模块（[refs-lang 5.8](../../refs-lang/005-modules/508-re-export.md)）。它的列表在下文（0.2.3）中固定，并且是规范性的：只有本文档列出的名称才在 prelude 中。
 
-prelude 不包含枚举变体。单独的变体名根据该位置所期望的类型来解析（[refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-bare-variants-from-the-expected-type)）：`let o: Ordering = Less;`、`x.load(SeqCst)`、`return Ok(v);`。
+prelude 不包含枚举变体。单独的变体名根据该位置所期望的类型来解析（[refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-由期望类型确定的裸变体)）：`let o: Ordering = Less;`、`x.load(SeqCst)`、`return Ok(v);`。
 
 ## 0.2.1. 核心设计决策
 
@@ -68,7 +68,7 @@ use foo::**;             // recursive glob (foo + all submodules)
 | 转换 | `From` `Into` `TryFrom` `TryInto` `FromStr` |
 | 反射 | `Inspect`（也包括它的 derive，[refs-lang 6.8.11](../../refs-lang/006-meta-system/608-meta-blocks.md)） |
 
-运算符 trait 不在 prelude 中：写 `ops::Add`，或者 `use core::ops::Add;`。运算符本身不需要名称，在任何地方都可用（[refs-lang 6.7.8](../../refs-lang/006-meta-system/607-operator-magic.md#678-visibility-of-mappings)），每个 `core` trait 的方法也是如此（[refs-lang 3.5](../../refs-lang/003-expressions/305-member-access-and-method-call.md)）。
+运算符 trait 不在 prelude 中：写 `ops::Add`，或者 `use core::ops::Add;`。运算符本身不需要名称，在任何地方都可用（[refs-lang 6.7.8](../../refs-lang/006-meta-system/607-operator-magic.md#678-映射的可见性)），每个 `core` trait 的方法也是如此（[refs-lang 3.5](../../refs-lang/003-expressions/305-member-access-and-method-call.md)）。
 
 **操作系统扩展 trait。** 在具备它们的目标上，prelude 还会指称 `PermissionsExt`、`CommandExt` 和 `ExitStatusExt`（unix），以及 `ChildExt` 和 `TcpStreamExt`（linux），所以在这些目标上使用它们的方法不需要 `use`（[3.10.1](../300-std/310-os.md#3101-prelude-中的扩展-trait)）。它们不计入上面的数目。
 
@@ -76,7 +76,7 @@ use foo::**;             // recursive glob (foo + all submodules)
 
 `print` `println` `eprint` `eprintln` `dbg` `display` `panic` `assert` `assert_eq` `assert_ne` `unreachable` `channel` `channel_bounded`
 
-**变体。** 无。见 [refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-bare-variants-from-the-expected-type)。
+**变体。** 无。见 [refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-由期望类型确定的裸变体)。
 
 ```nabi
 // user code
@@ -107,7 +107,7 @@ let h = encoding::hex::encode("nabi");
 
 ## 0.2.4. 名称冲突策略
 
-隐式导入的优先级最低：查找时先看模块自身的项和它的 `use`（[refs-lang 5.7.1](../../refs-lang/005-modules/507-paths.md#571-starting-identifier-of-a-path)）。与 prelude 名称同名的用户项会在该模块中遮蔽它，而 core 的项仍然可以通过路径访问。
+隐式导入的优先级最低：查找时先看模块自身的项和它的 `use`（[refs-lang 5.7.1](../../refs-lang/005-modules/507-paths.md#571-路径的起始标识符)）。与 prelude 名称同名的用户项会在该模块中遮蔽它，而 core 的项仍然可以通过路径访问。
 
 ```nabi
 struct List<T> { ... }                  // OK: shadows the prelude's List here
@@ -148,7 +148,7 @@ use std::time::SystemTime;
 use core::prelude::*;   // the same import, written out
 ```
 
-字面量由编译器定义，仍然可用；运算符和 core trait 的方法也同样可用（[refs-lang 6.7.8](../../refs-lang/006-meta-system/607-operator-magic.md#678-visibility-of-mappings)）；失去的只是单独的名称。
+字面量由编译器定义，仍然可用；运算符和 core trait 的方法也同样可用（[refs-lang 6.7.8](../../refs-lang/006-meta-system/607-operator-magic.md#678-映射的可见性)）；失去的只是单独的名称。
 
 它适用于教学或演示代码，可以一眼看出每个项来自哪里。
 

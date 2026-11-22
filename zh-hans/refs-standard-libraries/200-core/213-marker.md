@@ -107,7 +107,7 @@ trait Copy: Clone {
 }
 ```
 
-在 Nabi 中，每个值都按值复制。对于集合类型和 GC 对象，复制的是句柄，指向同一个对象；原始值、`str`（不可变的 `(ptr, len)`）、结构体、枚举和元组复制的是其本身（[refs-lang 2.3.8](../../refs-lang/002-types/203-struct.md#238-value-semantics)）。因此 `Copy` **只是一个标记**，不改变赋值或传参的含义。`Copy` 只用于泛型约束（`T: Copy`），用来选出“位复制即为独立副本”的类型。
+在 Nabi 中，每个值都按值复制。对于集合类型和 GC 对象，复制的是句柄，指向同一个对象；原始值、`str`（不可变的 `(ptr, len)`）、结构体、枚举和元组复制的是其本身（[refs-lang 2.3.8](../../refs-lang/002-types/203-struct.md#238-值语义)）。因此 `Copy` **只是一个标记**，不改变赋值或传参的含义。`Copy` 只用于泛型约束（`T: Copy`），用来选出“位复制即为独立副本”的类型。
 
 ### 实现策略
 
@@ -173,7 +173,7 @@ let copy = other.clone(); // a second sender with its own owner
 
 ### 调用时机
 
-编译器在值的所有者离开作用域处释放它，覆盖每一种退出方式（正常完成、`return`、`break`、错误传播）；任务完成或被取消时，也会释放其 `async` 块捕获的内容。`using` 在其块结束时释放它的值（[refs-lang 3.17 `using`](../../refs-lang/003-expressions/317-using-expression.md)）。已经移走的值由新的所有者释放，而不在此处释放。重新声明所有者名称的 `let`（[refs-lang 5.1.4](../../refs-lang/005-modules/501-variable-declaration.md#514-redeclaration-in-the-same-scope)）既不移动也不释放旧值：旧值在旧绑定离开作用域处释放，必须关闭的值要在重新声明之前关闭或移走。
+编译器在值的所有者离开作用域处释放它，覆盖每一种退出方式（正常完成、`return`、`break`、错误传播）；任务完成或被取消时，也会释放其 `async` 块捕获的内容。`using` 在其块结束时释放它的值（[refs-lang 3.17 `using`](../../refs-lang/003-expressions/317-using-expression.md)）。已经移走的值由新的所有者释放，而不在此处释放。重新声明所有者名称的 `let`（[refs-lang 5.1.4](../../refs-lang/005-modules/501-variable-declaration.md#514-在同一作用域中重新声明)）既不移动也不释放旧值：旧值在旧绑定离开作用域处释放，必须关闭的值要在重新声明之前关闭或移走。
 
 关闭可能失败的类型实现 `io::Close`（`fn close(self) throws (IoError)`）：`File`、基于它的 `BufWriter` 或 `LineWriter`，以及任何持有它的结构体。编译器不会替你关闭这样的值，因为关闭的错误会丢失：用 `try x.close()` 关闭它，或者用 `using` 绑定它。在某条路径上未关闭就离开其作用域是编译错误；只为一次借用它的调用而创建的临时值也是如此（`(try File::open(p)).read_to_str()`、`io::BufReader::new(try File::open(p)).lines()`）：调用之后没有任何东西拥有它，因此也没有任何东西会关闭它（E0134）；请用 `using` 绑定它（`using f = try File::open(p) { try f.read_to_str() }`）。带着错误离开的路径会释放它（此时关闭自身的错误被丢弃）。`try?` 会丢弃它捕获的错误，所以对一个错误可能持有这种值的调用使用 `try?`（`SendError<File>` 会交回未发送的值）是编译错误：用 `try .. catch` 捕获错误，取出值并关闭它。失败的 `try!` 会 panic，所以它持有的错误无需关闭。持有这种值的和类型或枚举按成员关闭：看到该成员的 `match` 分支负责关闭它，只看到编译器会自行释放的成员（`Sender`）的分支则无需关闭。模式把和类型收窄到的成员（`if let x: Pair = p`、`match` 分支、`let .. else`）会像结构体一样逐部分追踪：关闭 `x.a` 后 `x.b` 仍未关闭，而再次关闭 `x.a` 或之后整体使用 `p` 都是错误。
 
@@ -343,26 +343,26 @@ trait Sync { }      // safe to read from multiple threads through shared referen
 - 原始数字类型、`bool`、`char`、`c_char`、`str` 和 `none` 是 `Send + Sync`。
 - `struct`、`enum`、`union`、元组、数组或和类型在所有字段（分量）都是 `Send` 时为 `Send`，都是 `Sync` 时为 `Sync`。泛型容器的 `Send` 按同一规则跟随 `T`。
 - 集合类型（`List`、`Dict`、`Set`、`StrBuf`、`Deque`、`BinaryHeap`、`Slice`、`SliceMut`）是 `Send` 和 `!Sync`：它们共享一个可变句柄。在线程之间，它们可以冻结后只读共享（`FrozenList`、`FrozenDict`、`FrozenSet`，元素为 `Send + Sync` 时它们也是，[2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s只读集合类型)），可以通过交给 `par` 的 `chunks_mut` 视图分成互不相交的部分写入（[2.19.1](219-par.md#2191-核心-api)），也可以通过 `Mutex` / `RwLock` / 通道共享。
-- 交出一个值（`Mutex::new(xs)`、`RwLock::new(xs)`、`tx.send(xs)` / `try_send` / `send_async`、`task::spawn_blocking_with_arg(xs, f)`、闭包的 `[move xs]` 捕获、`xs.freeze()`）之后，发送方的句柄不能再用：新的所有者得到一份副本（见下文的运行时复制），发送方不得使用已交出的内容。从守卫中取出的句柄（`get`）、交给守卫的句柄（`set`）或 `update` 的闭包触及的句柄，在守卫的 `using` 块结束后仍指向受保护的对象。之后在任何路径上使用这样的值都是编译错误（交出的值为 `E0105`，从守卫中取出的值为 `E0106`；[refs-lang 9.9.4](../../refs-lang/009-tools/909-debug-tools.md#994-diagnostics--error-messages)）。编译器会通过以下途径追踪该值：
+- 交出一个值（`Mutex::new(xs)`、`RwLock::new(xs)`、`tx.send(xs)` / `try_send` / `send_async`、`task::spawn_blocking_with_arg(xs, f)`、闭包的 `[move xs]` 捕获、`xs.freeze()`）之后，发送方的句柄不能再用：新的所有者得到一份副本（见下文的运行时复制），发送方不得使用已交出的内容。从守卫中取出的句柄（`get`）、交给守卫的句柄（`set`）或 `update` 的闭包触及的句柄，在守卫的 `using` 块结束后仍指向受保护的对象。之后在任何路径上使用这样的值都是编译错误（交出的值为 `E0105`，从守卫中取出的值为 `E0106`；[refs-lang 9.9.4](../../refs-lang/009-tools/909-debug-tools.md#994-诊断--错误消息)）。编译器会通过以下途径追踪该值：
   - 复制（`let ys = xs`、结构体字段或元组元素、字段赋值）；
   - 传递它的字段（`Mutex::new(s.items)`）；
   - 持有它的对象（`all.push(xs)`、捕获它的闭包），双向追踪：交出 `xs` 也会使 `all` 不能再用；
   - 集合的元素。存入集合的内容和从集合读出的内容（`xs[i]`、`get`、迭代、它的切片）是同一个值，所以交出其中任何一方都会使另一方不能再用（`let x = xs[0]; tx.send(xs); x.len()`、`tx.send(xs[0]); xs[1].len()`）。元素已被交出的集合上只允许 `len`、`is_empty`、`capacity`、`clear`、`truncate`、`reserve`、`shrink_to_fit`、`push` 和 `insert`（以及 `Deque` 的 `push_back` / `push_front`）；`clear` 会清空集合，于是它又可以完全使用。从另一个集合复制而来的集合（`extend`、`+=`、`collect`、`par::filter`）与源集合共享元素。用 `pop` 或 `remove` 取出的元素（`List`、`Deque`、`Dict`、`BinaryHeap`）已经离开集合：交出它之后集合仍可使用，除非集合可能两次持有该对象：一个值存了两次，两个存入的值共享一个对象，或者在循环中把一个集合的元素存入另一个集合（元素不按位置区分）；
   - 交出某个内容的直接调用的实参：通过两个实参传入同一个对象，而被调用者通过其中一个交出它、又通过另一个使用它（`f(tx, a, a)`；`h.go(tx, h.items)`，其中 `go` 使用 `self.items`；一个从中 pop 并发送的列表再加上它的一个元素），是编译错误。同一集合的两个元素视为不同的值（`f(tx, rows[0], rows[1])` 被接受）；
   - `ref` 参数。当被调用者交出它的一部分，然后在每条交出它的路径上都给那一部分赋予新值时（`tx.send(self.buf)` 之后 `self.buf = []`），调用者的变量会得到新值并保持可用；指向旧值的其他句柄则不会。按值传递的参数是副本：给它的字段赋新值不会影响调用者，调用者持有的仍是已交出的内容；
-  - 调用。交出某个参数、返回它或它的一部分、把它存入另一个参数的对象或 `ref` 参数、把它捕获进所返回的闭包，或者返回守卫参数所持有内容的函数，对其调用者而言也做了同样的事，跨越预构建的库也是如此（[refs-lang 9.4.7](../../refs-lang/009-tools/904-nabihir-bytecode.md#947-body)）。
+  - 调用。交出某个参数、返回它或它的一部分、把它存入另一个参数的对象或 `ref` 参数、把它捕获进所返回的闭包，或者返回守卫参数所持有内容的函数，对其调用者而言也做了同样的事，跨越预构建的库也是如此（[refs-lang 9.4.7](../../refs-lang/009-tools/904-nabihir-bytecode.md#947-主体)）。
 
   通过函数值的调用被视为可能到达所有以该参数类型作为值使用的函数。条件只在其测试的是编译器在每条路径上都已知的值时才被追踪：由常量设置或复制得来的 `bool`、和类型或枚举的变体（`let sent = false; if c { tx.send(xs); sent = true; } if !sent { xs.len() }`），以及调用以何种方式结束。只在无错误返回时，或返回 `none` / `false` 以外的值时才交出参数的函数，在其调用者对应另一种结果的 `catch`、`try?`、`??`、`else` 或 `if` 路径上不交出该参数；对 `async fn` 的 `try await` 的 `catch` 也是如此。其他条件不追踪：在某条路径上交出的值，在该路径与其他路径汇合处即视为已不存在。
 
-  要继续使用某个值，可以交出它的 `clone()`（独立的值），或者先给变量或字段赋一个新值（对结构体副本，只对那个字段）；`set` 会释放先前 `get` 返回的内容。对 `Sync` 值的使用、读取值的标签（`x is none`、`match x`）以及 `unsafe` 内部的使用（[refs-lang 4.15.2](../../refs-lang/004-functions/415-unsafe.md#4152-unsafe------block-expression)）不受此限制。被启动的闭包的普通捕获无需检查：闭包与创建它的代码共享这些捕获，所以它们必须是 `Send + Sync`。`[move x]` 捕获把 `x` 交给闭包（[refs-lang 4.6.11](../../refs-lang/004-functions/406-capture-semantics.md#4611-move-capture-the-move-x-capture-list)），只需要 `Send`。把拥有非 `Sync` 内容的闭包（或未标记 `Sync`、可能拥有这种内容的 `fn(..) + Send` 值）传给类型为 `fn(..) + Send` 而不带 `Sync` 的参数，就是交出它，因为被调用者可能在另一个线程上运行它（`thread::spawn`、`task::spawn_blocking`、`par::join`、`par::Scope::spawn`、`par::TryScope::spawn` 等）；之后无论它以何种方式传递（在一次调用中出现两次、经过返回其实参的函数、从列表或元组中取出），使用它都是编译错误（`E0133`）。`async [move ..]` 闭包和它的调用所生成的 future 是同一个所有者：交出其中一个会把其他的一起带走（[refs-lang 4.6.11](../../refs-lang/004-functions/406-capture-semantics.md#4611-move-capture-the-move-x-capture-list)）。`task::spawn` 交出它的 future：任务的帧得到 future 所捕获内容的副本，而对启动者来说，future 及其捕获的内容都已不存在，与发送之后相同（[2.18.1](218-task.md#2181-核心-api)）。
+  要继续使用某个值，可以交出它的 `clone()`（独立的值），或者先给变量或字段赋一个新值（对结构体副本，只对那个字段）；`set` 会释放先前 `get` 返回的内容。对 `Sync` 值的使用、读取值的标签（`x is none`、`match x`）以及 `unsafe` 内部的使用（[refs-lang 4.15.2](../../refs-lang/004-functions/415-unsafe.md#4152-unsafe---块表达式)）不受此限制。被启动的闭包的普通捕获无需检查：闭包与创建它的代码共享这些捕获，所以它们必须是 `Send + Sync`。`[move x]` 捕获把 `x` 交给闭包（[refs-lang 4.6.11](../../refs-lang/004-functions/406-capture-semantics.md#4611-移动捕获move-x-捕获列表)），只需要 `Send`。把拥有非 `Sync` 内容的闭包（或未标记 `Sync`、可能拥有这种内容的 `fn(..) + Send` 值）传给类型为 `fn(..) + Send` 而不带 `Sync` 的参数，就是交出它，因为被调用者可能在另一个线程上运行它（`thread::spawn`、`task::spawn_blocking`、`par::join`、`par::Scope::spawn`、`par::TryScope::spawn` 等）；之后无论它以何种方式传递（在一次调用中出现两次、经过返回其实参的函数、从列表或元组中取出），使用它都是编译错误（`E0133`）。`async [move ..]` 闭包和它的调用所生成的 future 是同一个所有者：交出其中一个会把其他的一起带走（[refs-lang 4.6.11](../../refs-lang/004-functions/406-capture-semantics.md#4611-移动捕获move-x-捕获列表)）。`task::spawn` 交出它的 future：任务的帧得到 future 所捕获内容的副本，而对启动者来说，future 及其捕获的内容都已不存在，与发送之后相同（[2.18.1](218-task.md#2181-核心-api)）。
 
   以下也是编译错误：交出从 `Sync` 对象中读出、而自身不是 `Sync` 的值（用户的 `unsafe impl Sync` 类型的字段），其他代码不经交接就能触及它（请改为交出 `clone()`）；`thread::local` 的值，它被借给 `with` 闭包（3.4.4）；通道的 `recv`、任务的结果或锁的守卫所给出的值归接收方所有，不受此规则约束；在守卫仍持有时（直到 `set` 给锁赋予新值）交出守卫的 `get` 返回的内容，或者把它传给会保留它的被调用者（要保留的副本是 `get_clone()`）；在 `using` 块内部返回或抛出它，在那里 yield 它（生成器中的 `yield g.get()`），让它成为块自身的值（`let x = using g = m.lock() { g.get() }`、`f(using g = m.lock() { g.get() })`），无论以何种形式把它带出（循环的 `break` 值、带标签的块、`if` / `match` 分支、`catch`、闭包的结果），或者把它交给在块内创建、在块之后运行的协程（`async fn` 的 future、生成器：`fut = grow(g.get()[0])`）：块结束时会在使用该值之前释放锁。守卫只在其 `using` 块内有效：守卫的副本（推入集合、被闭包捕获、被被调用者存储、被第二个 `using` 绑定、被协程持有：`async fn` 或生成器的实参、`async` 块的捕获）在该块结束后被使用是编译错误；守卫是 `!Sync`（[2.16.3](216-sync.md#2163-mutext互斥锁)）。`par::for_each`、`par::map` 和 `par::filter` 把每个项交给一个工作线程，所以两个项不得触及同一个非 `Sync` 集合。每次调用都会在运行时检查这一点（[2.19.1](219-par.md#2191-核心-api)）：如果两个项触及同一个集合，这些项会在调用线程上逐个运行，并且每个调用点警告一次。切片只读，所以只要没有哪个项持有列表本身，各项就可以通过列表的切片共享它；可写视图（`SliceMut`）在没有其他项的视图与某个项所写的部分重叠时也可以共享它。
 
   这些规则之外的情况：`unsafe` 内部的代码；通过函数值或闭包的调用，它会跳过上面的实参检查；以及多次 yield 同一个对象的生成器，其结果被收集进一个集合，然后集合的元素被逐个交出。这样的集合不会被视为两次持有该对象。
 
   在运行时，每次交接还会复制，所以在上述规则遗漏的途径上（以及 `unsafe` 内部的代码中），交出的值按值触及的任何集合都不会在发送方和新所有者之间共享（例外列在下文）。`Mutex::new`、`RwLock::new`、守卫的 `set` 和 `update`、`send` / `try_send` / `send_async`、`task::spawn_blocking_with_arg` 的值、`[move x]` 捕获（在闭包创建时），以及任务、线程或 `par` 作用域作业的结果（和 `try_scope` 的错误），都会给新所有者一份该值触及的每个集合的副本：经由结构体、元组、数组、枚举和和类型的各部分，以及集合的元素，深度不限，使用工作列表而不是每层一个栈帧。被多次触及的集合只复制一次，所以副本保留了值的共享关系和环。被复制的有 `List`、`Dict`、`Deque`、`StrBuf`、`Slice` 以及建立在它们之上的集合，还有 `GcPtr`（[1.6.3](../100-bare/106-gc-pin.md)）。协程 future（`AsyncFuture`、`TryAsyncFuture`）得到自己的帧，其中持有在同一次复制中生成的、其捕获内容的副本；已经开始或已经完成的 future，或者其帧（或所捕获 future 的帧）带有 `[ref x]` 捕获的 future，不能被交出，交接会 panic（[2.18.1](218-task.md#2181-核心-api)）。`Task` 不会被复制，但一旦被交出，对它的每次 `await` 都会得到结果的一份独立副本（[2.18.2](218-task.md#2182-taskt-类型)）。列表及其缓冲区的每个视图继续共享同一个复制后的缓冲区；`str` 字节的视图只复制这些字节（它们不会改变）。`update` 保留守卫已持有的内容：只复制闭包带进来的内容。发送方的句柄保持原样：上述规则遗漏的句柄所指的对象不会被其他线程使用。抛出错误的发送会带回一个相等的值（调用者的值或其副本）。复制所花的时间和内存与复制的内容成正比；一段普通值（没有 GC 引用）只需一次内存复制。工具链内部的 `core::marker::hand_over(x)` 返回同样的副本。`xs.freeze()` 不复制：冻结后的集合接管存储并让 `xs` 变空，有视图的列表则给出一份副本（[2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s只读集合类型)）。保持共享的有：`Sync` 部分（包括冻结后的集合）、具有 `unsafe impl Send` 的类型的值（它们自己管理共享：任务、文件、套接字），以及生成器和流（不是 `Send`：它们永远不会被交出）。`Mutex::new_unshared`（2.16.3）不复制。从守卫中取出的句柄（`get`、`update` 闭包的实参）在运行时不复制：上述规则会追踪它以及守卫本身，追踪它们经由每一次复制、`return`、`yield`、块的值以及块内创建的协程帧离开 `using` 块的情况。
-- 以下类型被排除：`Cell<T>`、裸指针（`Ptr<T>`、`ConstPtr<T>`、`CPtr<T>`）、裸 `any` 以及约束中缺少 `Send` / `Sync` 的 `any Tr`（只有当约束同时含有 `Send` 和 `Sync` 时，`any Tr` 才是 `Send`：`any` 的各副本共享它的盒子，就像闭包的普通捕获被共享一样，所以跨线程的 `any` 中不能放集合）、不带约束的函数类型，以及带 `[ref]` 捕获的闭包（[refs-lang 4.6.9](../../refs-lang/004-functions/406-capture-semantics.md#469-additional-constraints-in-parallel-and-concurrent-contexts)）。其他例外在各类型的章节中规定。
-- 只有写出约束时，函数类型才具有这些 trait，例如 `fn(..) -> R + Send`（[refs-lang 4.4](../../refs-lang/004-functions/404-function-type.md#send--sync-bounds)）。只有 `+ Send` 并不会使它成为 `Sync`：它背后的闭包可能拥有一个非 `Sync` 的 `[move x]` 捕获。被多个线程调用的函数值（`static`、`par::*` 闭包）是 `+ Send + Sync`。
+- 以下类型被排除：`Cell<T>`、裸指针（`Ptr<T>`、`ConstPtr<T>`、`CPtr<T>`）、裸 `any` 以及约束中缺少 `Send` / `Sync` 的 `any Tr`（只有当约束同时含有 `Send` 和 `Sync` 时，`any Tr` 才是 `Send`：`any` 的各副本共享它的盒子，就像闭包的普通捕获被共享一样，所以跨线程的 `any` 中不能放集合）、不带约束的函数类型，以及带 `[ref]` 捕获的闭包（[refs-lang 4.6.9](../../refs-lang/004-functions/406-capture-semantics.md#469-并行与并发上下文中的附加约束)）。其他例外在各类型的章节中规定。
+- 只有写出约束时，函数类型才具有这些 trait，例如 `fn(..) -> R + Send`（[refs-lang 4.4](../../refs-lang/004-functions/404-function-type.md#send--sync-约束)）。只有 `+ Send` 并不会使它成为 `Sync`：它背后的闭包可能拥有一个非 `Sync` 的 `[move x]` 捕获。被多个线程调用的函数值（`static`、`par::*` 闭包）是 `+ Send + Sync`。
 
 自动实现不正确的类型直接声明。内部持有裸指针但以线程安全方式包装它的类型，用 `unsafe impl` 显式加入（安全性由作者负责）；按结构会自动实现但并非线程安全的类型，用 `impl !Send` 显式退出。`Cell<T>` 的排除就是这样声明的。
 
@@ -433,11 +433,11 @@ trait Default {
 | `List`、`Dict`、`Set` 等集合类型     | 空集合             |
 | `T \| none`                          | `none`             |
 
-`Default` 可以派生；它用每个字段声明的默认值构建值（[refs-lang 2.3.3](../../refs-lang/002-types/203-struct.md#233-field-default-values)），没有默认值的字段则用字段类型的 `default()`：`#[derive(Default)] struct Cfg { host: str = "localhost"; port: i32; }` 得到 `Cfg { host: "localhost", port: 0 }`。
+`Default` 可以派生；它用每个字段声明的默认值构建值（[refs-lang 2.3.3](../../refs-lang/002-types/203-struct.md#233-字段默认值)），没有默认值的字段则用字段类型的 `default()`：`#[derive(Default)] struct Cfg { host: str = "localhost"; port: i32; }` 得到 `Cfg { host: "localhost", port: 0 }`。
 
 ## 2.13.11. 可派生的 trait
 
-`#[derive(...)]`（[refs-lang 6.2.1](../../refs-lang/006-meta-system/602-built-in-attributes.md#621-derive-automatic-trait-implementation)）能生成的内置 trait 只有以下这些：
+`#[derive(...)]`（[refs-lang 6.2.1](../../refs-lang/006-meta-system/602-built-in-attributes.md#621-derive-自动实现-trait)）能生成的内置 trait 只有以下这些：
 
 | Trait         | 生成的实现                                    | 要求                                   |
 |---------------|-----------------------------------------------|----------------------------------------|

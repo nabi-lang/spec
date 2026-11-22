@@ -158,7 +158,7 @@ pub fn from_value<T: FromNabion>(v: Value) throws (NabionError) -> T;
 - `Value` 上的 `Display`、`Debug`、`==` 和 `hash` 从不触发 panic。`Display` 不做检查地写出规范形式（NaN 显示为 `nan`）；`Debug` 把它写成一行。
 - 标准实现：所有整数类型、`f32` / `f64`、`int` / `float`、`bool` / `char` / `str`、`Value`、`T | none`、`List`、`Set`、`Dict`、1 ~ 6 个元素的元组、`[T; N]`。
 
-`@derive` 为 `#[derive(Nabion)]` 生成的代码调用 `Fields`、`struct_args`、`variant_of`、`variant_args`、`unknown_variant` 和 `from_value_at`。它们是 `pub(pkg)` 的：模板写出的名称在模板所在的模块中检查（[refs-lang 6.9.9](../../refs-lang/006-meta-system/609-template-tokens.md#names-in-an-expansion)），所以 derive 在任何包中都能工作，而在 `std` 之外直接使用它们是错误。读取器和写入器是标准库私有的。
+`@derive` 为 `#[derive(Nabion)]` 生成的代码调用 `Fields`、`struct_args`、`variant_of`、`variant_args`、`unknown_variant` 和 `from_value_at`。它们是 `pub(pkg)` 的：模板写出的名称在模板所在的模块中检查（[refs-lang 6.9.9](../../refs-lang/006-meta-system/609-template-tokens.md#展开中的名字)），所以 derive 在任何包中都能工作，而在 `std` 之外直接使用它们是错误。读取器和写入器是标准库私有的。
 
 ### `#[derive(Nabion)]`
 

@@ -74,8 +74,8 @@ enum PluginError {
 fn message(self) -> str;   // also its Display
 ```
 
-每条消息都说明应当怎么做（见 [9.12.6](../../refs-lang/009-tools/912-plugins.md#9126-stability-and-errors) 的表格）。
+每条消息都说明应当怎么做（见 [9.12.6](../../refs-lang/009-tools/912-plugins.md#9126-稳定性与错误) 的表格）。
 
 ## 3.11.4. 目标
 
-插件可以在 [9.12.7](../../refs-lang/009-tools/912-plugins.md#9127-targets) 所列的目标上加载。在 wasm 和静态链接的 musl 目标上，用到 `std::plugin` 的程序无法链接，错误会提示改为构建成一个程序。
+插件可以在 [9.12.7](../../refs-lang/009-tools/912-plugins.md#9127-目标) 所列的目标上加载。在 wasm 和静态链接的 musl 目标上，用到 `std::plugin` 的程序无法链接，错误会提示改为构建成一个程序。

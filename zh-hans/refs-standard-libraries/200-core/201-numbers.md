@@ -7,7 +7,7 @@ int / float    (auto-promote, arbitrary precision, opt-in)
 fixed primitive (i8..i64, u8..u64, isize, usize, f32, f64; hardware-friendly, default)
 ```
 
-两个世界**并存**。无后缀字面量遵循期望类型；没有期望类型时为 `i64` / `f64`（[refs-lang 1.6.3](../../refs-lang/001-lexical/106-numeric-literals.md#163-unsuffixed-literals)）。`int` / `float` 只在写明类型的地方使用。
+两个世界**并存**。无后缀字面量遵循期望类型；没有期望类型时为 `i64` / `f64`（[refs-lang 1.6.3](../../refs-lang/001-lexical/106-numeric-literals.md#163-无后缀字面量)）。`int` / `float` 只在写明类型的地方使用。
 
 ## 2.1.1. 数的两个世界：为何分开
 
@@ -21,7 +21,7 @@ fixed primitive (i8..i64, u8..u64, isize, usize, f32, f64; hardware-friendly, de
 
 ### 哪一个是默认
 
-无后缀字面量（`42`、`3.14`）在没有任何东西确定其类型时是 **`i64` / `f64`**（用 `let` 绑定的字面量从后续使用中取得类型，[1.6.3](../../refs-lang/001-lexical/106-numeric-literals.md#163-unsuffixed-literals)）。只有写明 `int` / `float` 的地方才使用自动提升的世界。
+无后缀字面量（`42`、`3.14`）在没有任何东西确定其类型时是 **`i64` / `f64`**（用 `let` 绑定的字面量从后续使用中取得类型，[1.6.3](../../refs-lang/001-lexical/106-numeric-literals.md#163-无后缀字面量)）。只有写明 `int` / `float` 的地方才使用自动提升的世界。
 
 ```nabi
 let total: int = 0;               // int (auto-promote), explicit
@@ -242,7 +242,7 @@ pub struct BF16 { bits: u16; }     // bfloat16
 - **trait**。`Clone`、`Copy`、`Default`（`0.0`）、`Zero`、`One`、`PartialEq`、`PartialOrd`、上述运算符 trait、`Display`、`Debug`、`FromStr`（从十进制舍入一次），以及 `f32` 和 `f64` 的 `From<f16>` / `From<bf16>`（精确）。
 - **文本**。`Display` 输出能读回同一值的最短数字（`0.1`、`65500`），从不使用指数，以及 `inf` / `NaN`；`Debug` 为整数值加上 `.0`。格式说明符（`{h:.3}`、`{h:e}`）按 `f64` 的方式格式化精确值。
 - **硬件**。`f16` <-> `f32` 在 CPU 支持转换的地方使用 CPU：x86-64 上目标特性包含 `f16c` 时用 F16C（`-C target-cpu=x86-64-v3`），arm64 上用 `fcvt`。其他情况下是运行时调用，结果相同。`bf16` 的转换是内联的几条整数运算。
-- **C**。在 `extern "C"` 签名中，`f16` 是 C 的 `_Float16`，`bf16` 是 `__bf16`，与 C 一样通过浮点寄存器传递（[refs-lang 8.6.3](../../refs-lang/008-abi/806-calling-convention.md#863-struct-arguments--return-small-struct-rule)）。目标的 C 没有这种类型时（powerpc64le 和 wasm32；s390x 上的 `__bf16`；i686 上的半精度结果），该签名是错误：请改为把 `h.to_bits()` 作为 `uint16_t` 传递。
+- **C**。在 `extern "C"` 签名中，`f16` 是 C 的 `_Float16`，`bf16` 是 `__bf16`，与 C 一样通过浮点寄存器传递（[refs-lang 8.6.3](../../refs-lang/008-abi/806-calling-convention.md#863-struct-实参--返回小-struct-规则)）。目标的 C 没有这种类型时（powerpc64le 和 wasm32；s390x 上的 `__bf16`；i686 上的半精度结果），该签名是错误：请改为把 `h.to_bits()` 作为 `uint16_t` 传递。
 
 ### 布尔 / 字符（3 种）
 
@@ -588,7 +588,7 @@ let d = a + u;   // help: convert both sides: `(a as i64) + (u as i64)`
 
 [refs-lang 2.7 niche](../../refs-lang/002-types/207-niche-optimization.md) 定义了这一机制。获得自动 niche 的原始类型如下：
 
-`bool | none` 占 1 字节（niche 值为 `2`），`Ptr<T> | none` / `ConstPtr<T> | none` 与指针同宽（null 即 none）（[refs-lang 2.7.2](../../refs-lang/002-types/207-niche-optimization.md#272-automatic-niches)）。`i8`..`i64`、`u8`..`u64`、`f32` 和 `f64` 本身没有自动 niche，因为每种位模式都是有效值。
+`bool | none` 占 1 字节（niche 值为 `2`），`Ptr<T> | none` / `ConstPtr<T> | none` 与指针同宽（null 即 none）（[refs-lang 2.7.2](../../refs-lang/002-types/207-niche-optimization.md#272-自动-niche)）。`i8`..`i64`、`u8`..`u64`、`f32` 和 `f64` 本身没有自动 niche，因为每种位模式都是有效值。
 
 需要选择加入的 niche 时，请使用 [2.2 non-zero](202-non-zero.md) 的 `NonZero<T>` / `NonNan<F>` / `Finite<F>` / `Positive<T>` 包装类型。
 
@@ -646,4 +646,4 @@ fn fsum<I: IntoIterator<Item = f64>>(xs: I) -> f64; // correctly rounded sum; Py
 
 **`div_floor` / `rem_floor`**。每个整数类型都有 `div_floor(rhs)`，即向负无穷舍入的商（Python 的 `//`），以及 `rem_floor(rhs)`，即符号与除数相同的余数（Python 的 `%`、Nabi 的 `%%`）：`(-7).div_floor(2) == -4`，`(-7).rem_floor(2) == 1`。对无符号类型，它们就是 `/` 和 `%`。
 
-**`Complex<T>`**（`core::num::Complex`）是 `struct Complex<T> { pub re: T; pub im: T; }`，在 `T: FloatingPoint` 时提供 `new`、`i()`、`from_polar`、`abs`、`norm_sqr`、`arg`、`conj`、`recip`、`exp`、`ln`、`sqrt`（主平方根，每个部分都有完整的相对精度，包括极小的虚部）、`powi`、`pow`、`is_nan`；复数之间以及复数与任一侧的实数 `T` 之间的 `+ - * /` 和一元 `-`（`2.0 * z`、`z / 2.0`；实数在左侧仅限 `f32` 和 `f64`）、`Zero`、`One`、`PartialEq`、`Debug`（`Complex { re: 1.0, im: 2.0 }`）和 `Display`（`1+2i`、`1-2i`）。数值后缀 `i` 由 `#[literal(number "i", priority = -1)]` 在 core 中注册，生成虚数 `Complex<f64>`：`3.0 + 4.0i`、`1i`。包自己的 `i` 处理器优先于它（[refs-lang 6.5.5](../../refs-lang/006-meta-system/605-literal-magic.md#655-multiple-handlers-ambiguity)）。
+**`Complex<T>`**（`core::num::Complex`）是 `struct Complex<T> { pub re: T; pub im: T; }`，在 `T: FloatingPoint` 时提供 `new`、`i()`、`from_polar`、`abs`、`norm_sqr`、`arg`、`conj`、`recip`、`exp`、`ln`、`sqrt`（主平方根，每个部分都有完整的相对精度，包括极小的虚部）、`powi`、`pow`、`is_nan`；复数之间以及复数与任一侧的实数 `T` 之间的 `+ - * /` 和一元 `-`（`2.0 * z`、`z / 2.0`；实数在左侧仅限 `f32` 和 `f64`）、`Zero`、`One`、`PartialEq`、`Debug`（`Complex { re: 1.0, im: 2.0 }`）和 `Display`（`1+2i`、`1-2i`）。数值后缀 `i` 由 `#[literal(number "i", priority = -1)]` 在 core 中注册，生成虚数 `Complex<f64>`：`3.0 + 4.0i`、`1i`。包自己的 `i` 处理器优先于它（[refs-lang 6.5.5](../../refs-lang/006-meta-system/605-literal-magic.md#655-多个处理函数歧义)）。

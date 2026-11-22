@@ -104,7 +104,7 @@ impl<T: Default> ThreadLocal<T> {
 
 ### Panic 与 `JoinError`
 
-任何线程中的 panic 都会以退出码 101 终止整个进程。因此 `join` 永远不会收到另一个线程的 panic，而 `thread::panicking()` 只对进程结束期间在发生 panic 的线程上运行的代码（嵌入方的退出钩子）为 true。`JoinError` 表示操作系统层面的 join 失败（`JoinErrorKind::Os`），或者对以失败的 REPL 单元结束的线程表示为 `JoinErrorKind::Lost`（[refs-lang 9.7.0](../../refs-lang/009-tools/907-jit-cells.md#970-rules-of-the-cell-session)），显示为“thread join failed: the thread ended with a failed REPL cell”。
+任何线程中的 panic 都会以退出码 101 终止整个进程。因此 `join` 永远不会收到另一个线程的 panic，而 `thread::panicking()` 只对进程结束期间在发生 panic 的线程上运行的代码（嵌入方的退出钩子）为 true。`JoinError` 表示操作系统层面的 join 失败（`JoinErrorKind::Os`），或者对以失败的 REPL 单元结束的线程表示为 `JoinErrorKind::Lost`（[refs-lang 9.7.0](../../refs-lang/009-tools/907-jit-cells.md#970-单元会话的规则)），显示为“thread join failed: the thread ended with a failed REPL cell”。
 
 `JoinErrorKind::Taken`：该句柄或它的副本已经被 join 或 detach 过。第二次 `join` 会抛出它；第二次 `detach` 什么也不做。
 

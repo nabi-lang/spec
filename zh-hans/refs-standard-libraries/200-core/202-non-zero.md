@@ -1,12 +1,12 @@
 # 2.2. niche 包装类型：`NonZero` / `NonNan` / `Finite` / `Positive`
 
-`core::num::niche` 提供把值限制在某个子集内的包装类型。每个包装类型都是带有 `#[niche(..)]` 的 newtype（[refs-lang 2.7.4](../../refs-lang/002-types/207-niche-optimization.md#274-opt-in-niches-niche)），被排除的值成为 `T | none` 的 niche。
+`core::num::niche` 提供把值限制在某个子集内的包装类型。每个包装类型都是带有 `#[niche(..)]` 的 newtype（[refs-lang 2.7.4](../../refs-lang/002-types/207-niche-optimization.md#274-选择启用的-nicheniche)），被排除的值成为 `T | none` 的 niche。
 
 这些包装类型不在 prelude 中：通过 `num::niche::` 或 `use core::num::niche::NonZero;` 来指名。每个包装类型都实现 `Clone`、`Copy`、`PartialEq`、`Eq`、`PartialOrd`、`Ord`、`Hash`、`Display` 和 `Debug`（`NonZero(42)`），并可以用 `From` 无损地转换回它的 `T`。
 
 ## 2.2.1. 大小
 
-带有 niche 的 `T | none` 与 `T` 大小相同（[refs-lang 2.7.2](../../refs-lang/002-types/207-niche-optimization.md#272-automatic-niches)）。`none` 由 niche 值表示，实际的位由实现选择。
+带有 niche 的 `T | none` 与 `T` 大小相同（[refs-lang 2.7.2](../../refs-lang/002-types/207-niche-optimization.md#272-自动-niche)）。`none` 由 niche 值表示，实际的位由实现选择。
 
 | 类型                     | `T \| none` 的大小 | `none` 的 niche 值 |
 |--------------------------|-----------------|-----------------------|
@@ -120,7 +120,7 @@ let nz: NonZero<i32> = unsafe { NonZero::new_unchecked(n) };
 
 ## 2.2.7. 验证
 
-- 在常量位置，`NonZero::new(0)` 等在编译期求值为 `none`。附加 `?? panic(..)` 时是编译错误（[refs-lang 5.2.4](../../refs-lang/005-modules/502-const.md#524-constant-expressions-and-the-evaluator)）。
+- 在常量位置，`NonZero::new(0)` 等在编译期求值为 `none`。附加 `?? panic(..)` 时是编译错误（[refs-lang 5.2.4](../../refs-lang/005-modules/502-const.md#524-常量表达式与求值器)）。
 - 在运行时，用 `new`（`T | none`）和 `try_from`（抛出错误）进行验证。
 
 ## 2.2.8. 定义汇总

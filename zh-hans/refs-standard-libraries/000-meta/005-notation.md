@@ -235,7 +235,7 @@ let z = x + y;        //→ 4.0 (f64)
 | `task::race` | 最先完成的任务胜出；同一次唤醒时发现已完成的多个任务中，索引最小的胜出；其他任务被取消 |
 | `task::select` | 按列表顺序轮询；平局时索引较小者胜出 |
 
-`#[must_use]`（[refs-lang 6.2.11](../../refs-lang/006-meta-system/602-built-in-attributes.md#6211-unused-results-unused_result-discardable-must_use)）标记以下各项，每个类型都带有一条说明如何使用该值的消息：
+`#[must_use]`（[refs-lang 6.2.11](../../refs-lang/006-meta-system/602-built-in-attributes.md#6211-未使用的结果unused_resultdiscardablemust_use)）标记以下各项，每个类型都带有一条说明如何使用该值的消息：
 
 | 种类 | 项 |
 |---|---|

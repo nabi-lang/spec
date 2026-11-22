@@ -25,7 +25,7 @@
 | 可变缓冲区     | `String`         | `io.StringIO` 等   | `StrBuf`                   |
 | 内存           | 借用检查器       | 引用计数           | GC                         |
 
-Nabi 的 `str` 不需要追踪生命周期，这一点接近 Python 的不可变 `str`；它像 Rust 的 `&str` 一样表示为 `(ptr, len)` 对。运行时创建的字符串的字节位于一个 GC 对象中（type id `1`，[refs-lang 8.2.12](../../refs-lang/008-abi/802-scan-table.md#8212-runtime-reserved-type-ids)）。
+Nabi 的 `str` 不需要追踪生命周期，这一点接近 Python 的不可变 `str`；它像 Rust 的 `&str` 一样表示为 `(ptr, len)` 对。运行时创建的字符串的字节位于一个 GC 对象中（type id `1`，[refs-lang 8.2.12](../../refs-lang/008-abi/802-scan-table.md#8212-运行时保留的类型-id)）。
 
 ## 2.15.2. `str`：不可变的 UTF-8 字符串
 
@@ -193,7 +193,7 @@ let s4 = s[7:100];             //→ "세계!" (end clamped to the length)
 let s5 = s[-1:];               //→ "!"
 ```
 
-`str` / `StrBuf` 的边界是字节偏移。边界先像 Python 那样截断到有效范围（负数从末尾计数，[refs-lang 3.6.2](../../refs-lang/003-expressions/306-indexing-and-slicing.md#362-slicing-arrstartend)）；如果得到的位置在 UTF-8 序列中间，则触发 panic。结果是与原字符串共享字节的 `str`（见下文）。`str` 切片没有步长；`s[::2]` 是类型错误。
+`str` / `StrBuf` 的边界是字节偏移。边界先像 Python 那样截断到有效范围（负数从末尾计数，[refs-lang 3.6.2](../../refs-lang/003-expressions/306-indexing-and-slicing.md#362-切片arrstartend)）；如果得到的位置在 UTF-8 序列中间，则触发 panic。结果是与原字符串共享字节的 `str`（见下文）。`str` 切片没有步长；`s[::2]` 是类型错误。
 
 ### 字符边界与不会 panic 的切片
 
@@ -241,7 +241,7 @@ let c = s[0];                  // ERROR: `Index<usize>` is not defined
 
 ### 子串不会被复制
 
-对于 `str` 类型的 `s`，`s[a:b]`、`lines`、`split*`、`rsplit*`、`split_whitespace`、`split_once`、`match_indices`、`trim*` 和 `strip_*` 的结果都是与原字符串共享字节的 `str` 值，复杂度为 O(1)（[refs-lang 8.8.1](../../refs-lang/008-abi/808-lowering-types.md#881-primitive-integers--floating-point)）。因此一个小片段会让很大的原字符串保持存活。没有用于分离它的 API。`as_bytes()` 同样是不复制的只读 `Slice<u8>` 视图。`StrBuf` 的切片是持有该范围副本的新 `str`，复杂度为 O(b − a)：`str` 不可变，所以不能共享一个仍可能改变的缓冲区。
+对于 `str` 类型的 `s`，`s[a:b]`、`lines`、`split*`、`rsplit*`、`split_whitespace`、`split_once`、`match_indices`、`trim*` 和 `strip_*` 的结果都是与原字符串共享字节的 `str` 值，复杂度为 O(1)（[refs-lang 8.8.1](../../refs-lang/008-abi/808-lowering-types.md#881-基本整数--浮点数)）。因此一个小片段会让很大的原字符串保持存活。没有用于分离它的 API。`as_bytes()` 同样是不复制的只读 `Slice<u8>` 视图。`StrBuf` 的切片是持有该范围副本的新 `str`，复杂度为 O(b − a)：`str` 不可变，所以不能共享一个仍可能改变的缓冲区。
 
 ## 2.15.4. `char`：Unicode 标量值
 
@@ -425,7 +425,7 @@ trait FromStr {
 }
 ```
 
-`str.parse::<T>()` 是 `throws (T::Err)`，通过这个 trait 分派。对数值类型、`bool`、`char` 和 `str`，`Err` 是 core 的 `ParseError`（`input()`、`position()`、`message()`）（[2.14.4](214-error.md#2144-内置错误类型)）。`char` 解析恰好包含一个字符的字符串，失败时给出 `empty string` 或 `too many characters`；`str` 返回其输入，从不抛出错误。数值解析建立在运行时辅助函数 `nabi_str_parse_int` / `nabi_str_parse_float` 之上（[refs-lang 8.5](../../refs-lang/008-abi/805-extern-symbols.md#string-helpers)）。浮点数的 `FromStr` 在有限数字超出类型范围时以 `number out of range` 失败；`inf` / `NaN` 文本可以解析。
+`str.parse::<T>()` 是 `throws (T::Err)`，通过这个 trait 分派。对数值类型、`bool`、`char` 和 `str`，`Err` 是 core 的 `ParseError`（`input()`、`position()`、`message()`）（[2.14.4](214-error.md#2144-内置错误类型)）。`char` 解析恰好包含一个字符的字符串，失败时给出 `empty string` 或 `too many characters`；`str` 返回其输入，从不抛出错误。数值解析建立在运行时辅助函数 `nabi_str_parse_int` / `nabi_str_parse_float` 之上（[refs-lang 8.5](../../refs-lang/008-abi/805-extern-symbols.md#字符串辅助函数)）。浮点数的 `FromStr` 在有限数字超出类型范围时以 `number out of range` 失败；`inf` / `NaN` 文本可以解析。
 
 ```nabi
 let n: i32 = try "42".parse();         // FromStr for i32
@@ -454,7 +454,7 @@ let c: Color = try "red".parse();
 | `c_char` | 语言内置          | 编译器（方法：标准库）               |
 | `char`   | 语言内置          | 编译器（方法：标准库）               |
 
-`str` 和 `char` 的方法体调用在 `core::rt` 中声明为 `extern "nabi"` 函数的运行时辅助函数：`nabi_str_*`（长度、比较、搜索、切片、大小写映射与折叠、修剪、解析、规范化、分段）和 `nabi_char_*`（Unicode 属性与大小写）（[refs-lang 8.5](../../refs-lang/008-abi/805-extern-symbols.md#string-helpers)）。它们不带 `#[intrinsic]` 属性。
+`str` 和 `char` 的方法体调用在 `core::rt` 中声明为 `extern "nabi"` 函数的运行时辅助函数：`nabi_str_*`（长度、比较、搜索、切片、大小写映射与折叠、修剪、解析、规范化、分段）和 `nabi_char_*`（Unicode 属性与大小写）（[refs-lang 8.5](../../refs-lang/008-abi/805-extern-symbols.md#字符串辅助函数)）。它们不带 `#[intrinsic]` 属性。
 
 ## 2.15.9. 与其他语言的比较
 

@@ -25,7 +25,7 @@ use core::ops::{Add, Sub};           // operator traits are not in the prelude
 
 > [!NOTE]
 > prelude 的列表是规范性的，其中不含枚举变体：裸变体由
-> 期望类型解析（[refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-bare-variants-from-the-expected-type)）。
+> 期望类型解析（[refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-由期望类型确定的裸变体)）。
 
 完整的策略见 [0.2 导入策略](../000-meta/002-import.md)。
 
@@ -96,7 +96,7 @@ core 层级提供的模块按领域分组如下。每一项的末尾列出它所
 
 ### 基准测试 / 优化器提示
 
-- `bench`：`Bench`，即 `#[bench]` 函数接收的句柄。测量方式在 [refs-lang 9.9.11](../../refs-lang/009-tools/909-debug-tools.md#9911-benchmarks) 中规定。
+- `bench`：`Bench`，即 `#[bench]` 函数接收的句柄。测量方式在 [refs-lang 9.9.11](../../refs-lang/009-tools/909-debug-tools.md#9911-基准测试) 中规定。
 
   ```nabi
   pub struct Bench { /* private fields */ }   // Debug: `Bench { name: "parse_1kb", .. }`
