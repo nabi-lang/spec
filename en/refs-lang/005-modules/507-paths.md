@@ -23,7 +23,7 @@ The first identifier of a path is one of:
 | `pkg`                | From the root of the current package                     |
 | `sup`                | From the parent module                                   |
 | `std`, `core`, `bare` | A standard library tier, unless a local name takes it    |
-| `::`                 | The packages: a tier or a dependency, past any local name |
+| `::`                 | The packages: a tier or one of the package's dependencies, past any local name |
 | Ordinary identifier  | A currently visible name (child module, `use`d name)     |
 
 `pkg` shares its stem with the visibility keyword `pub(pkg)`, and `sup` is the **mirror** direction of the visibility `pub(sub)` (sub means descendants, sup means ancestors). Both are path roots only when immediately followed by `::`; elsewhere they are ordinary names ([1.5.4 Contextual keywords](../001-lexical/105-keywords.md)). The tier names `std`, `core` and `bare` are ordinary identifiers ([5.7.4](#574-std-core-bare-the-standard-library-tiers)).
@@ -34,7 +34,7 @@ Name resolution does not implicitly search ancestor modules (exception: `extern`
 
 Lookup order is as follows; the first match wins.
 
-1. Items and child modules of the current module, and the dependencies' names
+1. Items and child modules of the current module, and the names of the package's own dependencies ([5.7.14](#5714-paths-between-packages); a name that is both is an ERROR)
 2. A standard library tier (`std::fs`), unless a named `use` of the current module takes that name
 3. `use`s of the current module. Named imports take precedence over globs (`*`, `**`).
 4. The implicit `use core::prelude::*` (the standard library's own modules: `use core::**`)
@@ -173,7 +173,7 @@ use foo::*;
 
 An empty path (only `::` with no identifier) is a compile error.
 
-A leading `::` starts at the packages: the identifier after it is a standard library tier or a dependency (`::std::fs`, `::json::parse`), whatever a local name of that spelling is. Any other name after it is an ERROR (`::A`); an item of this package is written `pkg::A`.
+A leading `::` starts at the packages: the identifier after it is a standard library tier or a dependency of the package (`::std::fs`, `::json::parse`), whatever a local name of that spelling is. Any other name after it is an ERROR (`::A`); an item of this package is written `pkg::A`.
 
 ## 5.7.11. Shortening with `use`
 
@@ -215,8 +215,10 @@ let t = parser::lex(src);
 ```
 
 - The name of a dependency package is a top-level path. The name is the `deps` key in `nabi.nabion` with `-` replaced by `_` (`nabi-syntax` → `nabi_syntax::..`), and the build tool registers it with `nabic --extern name=..` ([9.2.3](../009-tools/902-aot-pipeline.md#923-dependency-resolution), [9.10.3](../009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)). No separate declaration such as Rust's `extern crate` is needed.
+- A package sees only the packages it depends on, under the names its own `deps` give them. The dependencies of another package in the build are not in scope: a package that depends on `csv` as `"csvio": Dep::..(package: "csv")` writes `csvio::..`, and there `csv::..` is its own module `csv`, or an ERROR whose help says to add `csv` to that package's `deps`.
+- A name that is both a dependency of the package and a child module of the current module is ambiguous: a path starting with it is an ERROR that names both. Its help says what to write: `::name::..` for the dependency, `pkg::..::name::..` for the module, or another name for the dependency in `nabi.nabion` (a key with `package:` naming the package).
 - `pkg::` inside a dependency package is that dependency's own root.
-- A module of the user package with the same name as a dependency package is an error.
+- A module at the root of the package being built may not have the name of a package in the build (the packages are mounted at the top of one module tree): it is an error that says to rename the module.
 - A dependency that resolves to the package being built is an error; a package names its own items with `pkg::`.
 
 ### Package boundaries

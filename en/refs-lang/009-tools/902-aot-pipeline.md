@@ -55,14 +55,15 @@ nabic build --extern util=../util --extern parser=target/debug/deps/libparser.a
 - User code uses that package's items via `use name::..`.
 - `pkg::` inside a dependency package refers to that dependency package itself.
 - A dependency package is a separate package. Only `pub` items are usable from outside; `pub(pkg)` / `pub(sub)` / private items are not ([5.7.14](../005-modules/507-paths.md#5714-paths-between-packages)).
-- It is an error for a module of the user package to have the same name as a dependency package.
-- A later `--extern` whose path is that of an earlier one is another name for the same package (packages may call a dependency differently, [9.10.2](910-nabi-frontend.md)). The package is built and mounted once, under the first name; a path that starts with another name (`other::..`, in code and in meta block templates) names it, so its items and types are the same under every name.
+- It is an error for a module at the root of the user package to have the same name as a package of the build.
+- A later `--extern` whose path is that of an earlier one is another name for the same package (packages may call a dependency differently, [9.10.2](910-nabi-frontend.md)). The package is built and mounted once, under the first name; a path that starts with another name (`other::..`, in the code and meta block templates of a package that calls it so) names it, so its items and types are the same under every name.
+- `--extern-dep <package>=<name>` says that package `<package>` (an `--extern` name, or `pkg` for the package being built) depends on the extern `<name>`; `nabi` passes one for each dependency of each package. With any, each package sees only the externs it depends on, by the names it gives them ([5.7.14](../005-modules/507-paths.md#5714-paths-between-packages)); an extern no `--extern-dep` names (the package's own library, which `nabic` mounts) is the built package's, and depends on what it depends on. Without any, every package sees every extern.
 
 `nabic build` on a package with `src/lib.nabi` produces `lib<name>.a` and `<name>.nabihir`, and with `src/main.nabi` the executable `<name>`; a package with both produces all three, the executable linked against that library. `--name <n>` sets the package name (the output name and mount name); the default is the directory name.
 
 ### Prebuilt dependency packages
 
-`nabic` prebuilds each source `--extern` **once**, in the order given, into `target/[<triple>/]<profile>/deps/`. Each dependency package sees all previously built dependency packages. Subsequent compilation uses these `lib<name>.a` and `<name>.nabihir` instead of the source.
+`nabic` prebuilds each source `--extern` **once**, in the order given, into `target/[<triple>/]<profile>/deps/`. Each dependency package is built after the ones before it, and sees those it depends on (`--extern-dep`; without it, all of them). Subsequent compilation uses these `lib<name>.a` and `<name>.nabihir` instead of the source.
 
 ```
 target/<profile>/deps/
@@ -75,7 +76,7 @@ If the fingerprint matches, it is not rebuilt. The fingerprint includes:
 
 - The identity of `nabic` (the same value as the NABIHIR producer)
 - Build options: `--release` / `-O*`, `-g`, `--target`, `--cfg` (without its `feature` keys), `--bootstrap`
-- The dependency's features (`--extern-feature`)
+- The dependency's features (`--extern-feature`), and the `--extern-dep`s of it and of the packages built before it
 - All files under that dependency package's `src/`, and its `nabi.nabion`
 - The fingerprints of dependency packages built before it
 
