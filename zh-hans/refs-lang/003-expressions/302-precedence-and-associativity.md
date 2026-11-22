@@ -1,0 +1,145 @@
+# 3.2. 优先级与结合性
+
+运算符有两个属性：优先级和结合性。当一个表达式中出现多个运算符时，这两个属性决定所得树的形状。
+
+## 3.2.1. 优先级
+
+```
+a + b * c       →   a + (b * c)              // * binds tighter than +
+a * b + c       →   (a * b) + c              // likewise
+a < b + c       →   a < (b + c)              // + binds tighter than <
+```
+
+优先级的值是整数；值越大的运算符越先结合。
+
+## 3.2.2. 结合性
+
+```
+a - b - c       →   (a - b) - c             // left-associative
+a ?? b ?? c     →   a ?? (b ?? c)           // right-associative (example)
+a ∈ s == t      →   ?                        // non-associative: an error
+```
+
+结合性有三种。
+
+| 记法     | 含义                                                 |
+|----------|------------------------------------------------------|
+| `left`   | 从左组合。`a OP b OP c` = `(a OP b) OP c`             |
+| `right`  | 从右组合。`a OP b OP c` = `a OP (b OP c)`             |
+| `none`   | 不组合。`a OP b OP c` 是编译错误，3.2.5 的比较链除外 |
+
+## 3.2.3. 优先级与结合性表
+
+语言固定每个内置运算符词法单元的优先级和结合性；下表是唯一的权威。标准库的 [`#[infix]` / `#[prefix]` / `#[postfix]`](../006-meta-system/607-operator-magic.md) 只把词法单元连接到 trait 方法；它们不设置也不改变优先级或结合性。
+
+### 优先级层级
+
+```
+Level Operators                                                 Assoc
+14   postfix: member access (.), ?., method call, indexing, ?   left
+13b  ** .** (power)                                             right
+13a  prefix unary: - ! ~ √ await                                -
+12   as is (postfix conversion / type test)                     left
+11   ∘ (function composition)                                   left
+10   * / % %% × ⋅ ÷ ∩                                           left
+ 9   + - ∪                                                      left
+ 8   << >>                                                      left
+ 7   &                                                          left
+ 6   ^                                                          left
+ 5   |                                                          left
+ 4   == != < > <= >= ≡ ≠ ≤ ≥ ∈ ∉ in !in ⊂ ⊆                     none (chains: 3.2.5)
+ 3   &&                                                         left
+ 2   ||                                                         left
+ 1   ?? (null coalescing)                                       right
+ 0   .. ..= (range)                                             none
+-1   |> (pipe, 3.18)                                            left
+-2   = += -= *= **= /= %= %%= &= |= ^= <<= >>= (assignment)     right  (statement only, 3.4.3)
+     .= .+= .-= .*= ./= .%= .%%= .**= .&= .|= .^= .<<= .>>=  (in-place broadcast, 3.3.7)
+```
+
+表中的 Unicode 运算符（`× ⋅ ÷ ∩ ∪ ∘ √ ≡ ≠ ≤ ≥ ∈ ∉ ⊂ ⊆`）是 [1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-fixed-token-table) 的固定词法单元。不在 3.2 表中的扩展词法单元（[1.10.4](../001-lexical/110-punctuation-and-operator-tokens.md#1104-extension-tokens)）不创建新层级；它们取注册时所指定的现有词法单元的层级和结合性，如 `like = "+"`（[6.7.2](../006-meta-system/607-operator-magic.md#672-arguments)）。
+
+> [!IMPORTANT]
+> **`??` 与 `..` 的相对优先级**：`??`（prec=1）比区间运算符 `..` / `..=`（prec=0）结合得**更紧**。因此 `a ?? 0..3` 组合为 `(a ?? 0)..3`，而区间运算符弱于除 `|>` 和赋值以外的所有二元运算符（`a || b..c` 是 `(a || b)..c`，`0..n |> f` 是 `f(0..n)`）。两者都不经运算符 trait 分派：`??` 是语言层面在和类型上的脱糖（[3.8.4](308-optional-chaining-and-coalescing.md#384-null-coalescing-)），而语言把六种区间形式识别为不同的表达式，每种都由 `core::range` 的一个 `#[literal]` 处理器构造（[3.7](307-range-expressions.md)、[6.5](../006-meta-system/605-literal-magic.md)）。区间运算符不可结合，所以 `a..b..c` 是编译错误。
+
+> [!IMPORTANT]
+> **比较作为区间操作数**：比较运算符（prec=4）比 `..` / `..=` 结合得更紧，所以 `x == 0..3` 组合为 `(x == 0)..3`，即一个 `bool` 的区间，而 `0..n < m` 组合为 `0..(n < m)`。这样的区间从来不是本意，因此把比较不加括号地写作区间的起点或终点是编译错误（E0019）；帮助信息会写出两种读法：与区间比较写 `x == (0..3)`，要区间本身写 `(x == 0)..3`。加括号则接受。`in` / `!in` 不受影响：它们的右侧原样接受区间（`i in 0..n`，见下文）。
+
+> [!IMPORTANT]
+> **`try` 与 `catch` / `finally` 的结合**：`try` / `try?` / `try!` 以及[错误控制流](314-error-control-flow.md)的 `catch` / `finally` 子句同样是与 trait 无关的语言语法。`try` 是前缀形式，但与表中的前缀一元运算符（prec=13a）不同，它覆盖其右侧的整个表达式。其操作数一直延伸到 `catch` / `finally` 子句、语句终止符 `;`、闭括号或逗号为止，所以 `try a + b()` 是 `try (a + b())`。`try?` / `try!` 的操作数还会在 `??` 之前结束：`try? f() ?? d` 是 `(try? f()) ?? d`，而 `try f() ?? d` 是 `try (f() ?? d)`。`catch` / `finally` 子句比赋值（prec=-2）结合得紧，比其他所有运算符（包括 `|>`（prec=-1））结合得弱，附着在其左侧的整个表达式上。因此 `try parse(s) catch _ { 0 }` 是 `(try parse(s)) catch _ { 0 }`，`x = try f() catch _ { 0 }` 是 `x = ((try f()) catch _ { 0 })`。
+
+> [!IMPORTANT]
+> **`in` / `!in` 与区间**：`in` 和 `!in` 是 `∈` / `∉` 的 ASCII 写法（[1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-fixed-token-table)）。成员运算符右侧的区间不需要括号：在右操作数之后，`..` / `..=` 把它延续为一个区间，其终点的结合方式与右操作数本身相同（prec=5）。所以 `i in 0..n` 是 `i ∈ (0..n)`，`i in 0..n + 1` 是 `i ∈ (0..(n + 1))`，`i in 0..n && ok` 是 `(i ∈ (0..n)) && ok`。
+
+> [!IMPORTANT]
+> **`**` 与前缀运算符**：`**`（幂，trait `Pow`，[stdlib 2.3.1](../../refs-standard-libraries/200-core/203-ops.md#231-arithmetic-traits)）位于 13b 层，比前缀运算符（13a）高一级，所以它的左操作数从来不是前缀表达式，与数学、Python 和 Fortran 一致：`-x**2` 是 `-(x**2)`，而 `(-x)**2` 是对 `-x` 求平方。它是右结合的，`2**3**2` 是 `2**(3**2)` = 512，而它的右操作数按 13a 解析，所以右操作数本身可以以前缀运算符开头：`2.0 ** -1` 是 `0.5`，`2 ** -x ** 2` 是 `2 ** (-(x ** 2))`。后缀形式结合得更紧（`a.b**2` 是 `(a.b)**2`），`as` 结合得更松（`n ** 2 as f64` 是 `(n ** 2) as f64`）。`.**` 是同一层级上的逐元素形式。这两个半层级只为这一对而设：没有其他运算符位于它们之间。
+
+> [!IMPORTANT]
+> **`await`**：`await` 是 prec=13a 的前缀一元运算符，与 `-` 和 `!` 相同，所以它的操作数是一元表达式：`await f() == x` 是 `(await f()) == x`（[4.12.2](../004-functions/412-async.md#4122-the-await-operator)）。
+
+> [!IMPORTANT]
+> **`as` 与 `is`**：这两个后缀运算符是与 trait 无关的语言语法，共享一个层级（prec=12）。它们弱于前缀一元、强于算术，所以 `-x as i64` 是 `(-x) as i64`，`a + b is i32` 是 `a + (b is i32)`。`e is T` 的结果是 `bool`（[2.2.5](../002-types/202-any-slot.md#225-checking-the-slots-current-type)）。
+
+> [!NOTE]
+> **点前缀（广播）运算符的优先级**：`.+`、`.*`、`.&&`、`.%%` 等点前缀形式与其不带点的形式具有相同的优先级和结合性。它们不单独列行；每个点前缀词法单元都取其对应普通词法单元的层级。例如 `.+` 与 `+` 一样是 prec=9 left，`.&&` 与 `&&` 一样是 prec=3 left。
+
+> [!NOTE]
+> 二元层级与 Rust 相同：算术比移位结合得紧，移位比 `&` 紧，然后是 `^`，再是 `|`，它们全都比比较结合得紧。所以 `1 + 2 << 3` 组合为 `(1 + 2) << 3 = 24`，`a ^ b & c` 组合为 `a ^ (b & c)`，`x & mask == 0` 组合为 `(x & mask) == 0`。
+
+### 同一词法单元的多个位置
+
+当同一个词法单元可以作为前缀、二元和后缀出现时（例如 `-`），每个位置有各自的优先级（前缀通常强于二元）。
+
+```
+-a + b          →   (-a) + b              // prefix `-` binds tighter than `+`
+```
+
+## 3.2.4. 冲突
+
+由于表固定了优先级，注册之间不会在优先级上冲突。按 [6.7.5](../006-meta-system/607-operator-magic.md#675-conflict-checking)，把不同的 trait 连接到同一（词法单元，位置）是编译错误。
+
+## 3.2.5. 比较链
+
+同一方向的比较可以像数学中那样链接：
+
+```nabi
+0 <= i < n          // 0 <= i && i < n
+a > b >= c          // a > b && b >= c
+a == b == c         // a == b && b == c
+```
+
+链是取自同一组的一串第 4 层运算符：`<` 和 `<=`（`≤`），或 `>` 和 `>=`（`≥`），或 `==`（`≡`）。`e0 o1 e1 o2 e2 ..` 表示 `e0 o1 e1 && e1 o2 e2 && ..`，并有三项保证：
+
+- 每个操作数从左到右只求值一次；
+- 求值在第一个为 `false` 的比较处停止，其后的操作数不求值；
+- 结果是 `bool`。
+
+若中间操作数是一个名字、名字的字段或字面量，则为下一次比较再次读取它，因此字面量仍从另一侧取得类型（`x: u8` 时的 `0 <= x < 10`）。其他任何中间操作数都只求值一次，存入临时值。
+
+其余一切仍不可结合：混合方向的链（`a < b > c`）、`!=`（`a != b != c`）以及成员或子集运算符（`x ∈ s == t`）都是编译错误（E0019）。帮助信息会写出 `&&` 形式（`a < b && b > c`）。
+
+```
+a < b > c       // ERROR: write a < b && b > c
+a != b != c     // ERROR: write a != b && b != c
+```
+
+同一方向的链与数学和 Python 中的写法读起来一致，区间测试（`lo <= x < hi`）只需写一次 `x`。混合链没有唯一的读法，而 `!=` 不具有传递性，所以这些仍是错误。
+
+## 3.2.6. 用括号强制组合
+
+当这些规则产生的树与预期形状不同时，括号可以强制组合。
+
+```
+a + b * c       →   a + (b * c)             // default grouping
+(a + b) * c     →   (a + b) * c             // explicit
+```
+
+括号在词法和语法阶段充当组合用的词法单元，直接控制树的形状。
+
+## 3.2.6a. 实现限制
+
+超过 4096 个运算符 / 后缀运算的链，或深于 256 层的嵌套，是错误。这些是 Nabi 的限制（由实现定义，[0.4.4](../000-meta/004-language-vs-standard-libraries.md#044-implementation-limits)）。
+
+## 3.2.7. 优先级相同而结合性不同的两个词法单元
+
+在 3.2.3 的表中，同一层级的所有词法单元共享相同的结合性，所以不会出现这种情况。扩展词法单元也通过 `like` 取现有词法单元的结合性，所以同样成立。
