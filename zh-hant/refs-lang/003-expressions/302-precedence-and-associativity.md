@@ -1,0 +1,145 @@
+# 3.2. 優先順序與結合性
+
+運算子有兩項性質：優先順序與結合性。當一個運算式中出現多個運算子時，這兩項性質決定所產生之樹的形狀。
+
+## 3.2.1. 優先順序
+
+```
+a + b * c       →   a + (b * c)              // * binds tighter than +
+a * b + c       →   (a * b) + c              // likewise
+a < b + c       →   a < (b + c)              // + binds tighter than <
+```
+
+優先順序的值是整數；值較大的運算子先結合。
+
+## 3.2.2. 結合性
+
+```
+a - b - c       →   (a - b) - c             // left-associative
+a ?? b ?? c     →   a ?? (b ?? c)           // right-associative (example)
+a ∈ s == t      →   ?                        // non-associative: an error
+```
+
+結合性有三種。
+
+| 記法     | 意義                                                 |
+|----------|------------------------------------------------------|
+| `left`   | 從左邊分組。`a OP b OP c` = `(a OP b) OP c`          |
+| `right`  | 從右邊分組。`a OP b OP c` = `a OP (b OP c)`          |
+| `none`   | 不分組。`a OP b OP c` 是編譯錯誤，但 3.2.5 的比較鏈除外 |
+
+## 3.2.3. 優先順序與結合性表
+
+語言固定每個內建運算子語彙單元的優先順序與結合性；下表是唯一的權威。標準函式庫的 [`#[infix]` / `#[prefix]` / `#[postfix]`](../006-meta-system/607-operator-magic.md) 只把語彙單元連接到 trait 方法；它們不設定也不改變優先順序或結合性。
+
+### 優先等級
+
+```
+Level Operators                                                 Assoc
+14   postfix: member access (.), ?., method call, indexing, ?   left
+13b  ** .** (power)                                             right
+13a  prefix unary: - ! ~ √ await                                -
+12   as is (postfix conversion / type test)                     left
+11   ∘ (function composition)                                   left
+10   * / % %% × ⋅ ÷ ∩                                           left
+ 9   + - ∪                                                      left
+ 8   << >>                                                      left
+ 7   &                                                          left
+ 6   ^                                                          left
+ 5   |                                                          left
+ 4   == != < > <= >= ≡ ≠ ≤ ≥ ∈ ∉ in !in ⊂ ⊆                     none (chains: 3.2.5)
+ 3   &&                                                         left
+ 2   ||                                                         left
+ 1   ?? (null coalescing)                                       right
+ 0   .. ..= (range)                                             none
+-1   |> (pipe, 3.18)                                            left
+-2   = += -= *= **= /= %= %%= &= |= ^= <<= >>= (assignment)     right  (statement only, 3.4.3)
+     .= .+= .-= .*= ./= .%= .%%= .**= .&= .|= .^= .<<= .>>=  (in-place broadcast, 3.3.7)
+```
+
+表中的 Unicode 運算子（`× ⋅ ÷ ∩ ∪ ∘ √ ≡ ≠ ≤ ≥ ∈ ∉ ⊂ ⊆`）是 [1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-fixed-token-table) 的固定語彙單元。不在 3.2 表中的擴充語彙單元（[1.10.4](../001-lexical/110-punctuation-and-operator-tokens.md#1104-extension-tokens)）不會建立新的等級；它們取註冊時指定之既有語彙單元的等級與結合性，例如 `like = "+"`（[6.7.2](../006-meta-system/607-operator-magic.md#672-arguments)）。
+
+> [!IMPORTANT]
+> **`??` 與 `..` 的相對優先順序**：`??`（prec=1）的結合比範圍運算子 `..` / `..=`（prec=0）**緊**。因此 `a ?? 0..3` 分組為 `(a ?? 0)..3`，而範圍運算子比 `|>` 與指派以外的每個二元運算子都弱（`a || b..c` 是 `(a || b)..c`，`0..n |> f` 是 `f(0..n)`）。這兩個運算子都不透過運算子 trait 分派：`??` 是作用於和型別的語言層級去糖（[3.8.4](308-optional-chaining-and-coalescing.md#384-null-coalescing-)），而語言把六種範圍形式辨識為不同的運算式，各自由 `core::range` 的 `#[literal]` 處理器建立（[3.7](307-range-expressions.md)、[6.5](../006-meta-system/605-literal-magic.md)）。範圍運算子是不結合的，因此 `a..b..c` 是編譯錯誤。
+
+> [!IMPORTANT]
+> **作為範圍運算元的比較**：比較運算子（prec=4）的結合比 `..` / `..=` 緊，因此 `x == 0..3` 分組為 `(x == 0)..3`，即 `bool` 的範圍，而 `0..n < m` 分組為 `0..(n < m)`。這樣的範圍絕不會是本意，因此以單獨的比較作為範圍的起點或終點是編譯錯誤（E0019）；說明會寫出兩種讀法：與範圍比較寫 `x == (0..3)`，範圍本身寫 `(x == 0)..3`。加上括號時會被接受。`in` / `!in` 不受影響：它們的右側原樣接受範圍（`i in 0..n`，見下文）。
+
+> [!IMPORTANT]
+> **`try` 與 `catch` / `finally` 的結合**：`try` / `try?` / `try!` 以及[錯誤控制流程](314-error-control-flow.md)的 `catch` / `finally` 子句，也是與 trait 無關的語言語法。`try` 是前綴形式，但與表中的前綴一元運算子（prec=13a）不同，它涵蓋其右側的整個運算式。它的運算元延伸到 `catch` / `finally` 子句、陳述式終止符 `;`、結尾括號或逗號為止，因此 `try a + b()` 是 `try (a + b())`。`try?` / `try!` 的運算元也在 `??` 之前結束：`try? f() ?? d` 是 `(try? f()) ?? d`，而 `try f() ?? d` 是 `try (f() ?? d)`。`catch` / `finally` 子句的結合比指派（prec=-2）緊，比其他每個運算子（包括 `|>`（prec=-1））弱，附加在其左側的整個運算式上。因此 `try parse(s) catch _ { 0 }` 是 `(try parse(s)) catch _ { 0 }`，`x = try f() catch _ { 0 }` 是 `x = ((try f()) catch _ { 0 })`。
+
+> [!IMPORTANT]
+> **`in` / `!in` 與範圍**：`in` 與 `!in` 是 `∈` / `∉` 的 ASCII 拼法（[1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-fixed-token-table)）。成員運算子右側的範圍不需要括號：在右運算元之後，`..` / `..=` 把它延續為一個範圍，其終點的結合方式與右運算元本身相同（prec=5）。因此 `i in 0..n` 是 `i ∈ (0..n)`，`i in 0..n + 1` 是 `i ∈ (0..(n + 1))`，`i in 0..n && ok` 是 `(i ∈ (0..n)) && ok`。
+
+> [!IMPORTANT]
+> **`**` 與前綴運算子**：`**`（乘冪，trait `Pow`，[stdlib 2.3.1](../../refs-standard-libraries/200-core/203-ops.md#231-arithmetic-traits)）位於等級 13b，比前綴運算子（13a）高一階，因此它的左運算元絕不會是前綴運算式，與數學、Python 和 Fortran 相同：`-x**2` 是 `-(x**2)`，而 `(-x)**2` 是 `-x` 的平方。它是右結合的，`2**3**2` 是 `2**(3**2)` = 512，而它的右運算元在 13a 剖析，因此本身可以以前綴運算子開頭：`2.0 ** -1` 是 `0.5`，`2 ** -x ** 2` 是 `2 ** (-(x ** 2))`。後綴形式結合得更緊（`a.b**2` 是 `(a.b)**2`），`as` 則較鬆（`n ** 2 as f64` 是 `(n ** 2) as f64`）。`.**` 是同一等級的逐元素形式。這兩個半等級只為這一對而存在：沒有其他運算子位於它們之間。
+
+> [!IMPORTANT]
+> **`await`**：`await` 是 prec=13a 的前綴一元運算子，與 `-` 和 `!` 相同，因此它的運算元是一元運算式：`await f() == x` 是 `(await f()) == x`（[4.12.2](../004-functions/412-async.md#4122-the-await-operator)）。
+
+> [!IMPORTANT]
+> **`as` 與 `is`**：這兩個後綴運算子是與 trait 無關的語言語法，共用一個等級（prec=12）。它們比前綴一元弱、比算術強，因此 `-x as i64` 是 `(-x) as i64`，`a + b is i32` 是 `a + (b is i32)`。`e is T` 的結果是 `bool`（[2.2.5](../002-types/202-any-slot.md#225-checking-the-slots-current-type)）。
+
+> [!NOTE]
+> **帶點前綴（廣播）運算子的優先順序**：`.+`、`.*`、`.&&`、`.%%` 等帶點前綴的形式，其優先順序與結合性與不帶點的形式相同。它們不另列一列；每個帶點前綴的語彙單元都取其對應一般語彙單元的等級。例如 `.+` 與 `+` 一樣是 prec=9 left，`.&&` 與 `&&` 一樣是 prec=3 left。
+
+> [!NOTE]
+> 二元運算的等級與 Rust 相同：算術的結合比移位緊，移位比 `&` 緊，再來是 `^`，再來是 `|`，而它們全都比比較緊。因此 `1 + 2 << 3` 分組為 `(1 + 2) << 3 = 24`，`a ^ b & c` 分組為 `a ^ (b & c)`，`x & mask == 0` 分組為 `(x & mask) == 0`。
+
+### 同一個語彙單元的多個位置
+
+當同一個語彙單元可以作為前綴、二元與後綴出現時（例如 `-`），每個位置都有自己的優先順序（前綴通常比二元強）。
+
+```
+-a + b          →   (-a) + b              // prefix `-` binds tighter than `+`
+```
+
+## 3.2.4. 衝突
+
+由於表格固定了優先順序，註冊不會在優先順序上衝突。把不同的 trait 連接到同一組（語彙單元、位置）是編譯錯誤，見 [6.7.5](../006-meta-system/607-operator-magic.md#675-conflict-checking)。
+
+## 3.2.5. 比較鏈
+
+同一方向的比較可以像數學中一樣串接：
+
+```nabi
+0 <= i < n          // 0 <= i && i < n
+a > b >= c          // a > b && b >= c
+a == b == c         // a == b && b == c
+```
+
+比較鏈是一串取自同一組的等級 4 運算子：`<` 與 `<=`（`≤`），或 `>` 與 `>=`（`≥`），或 `==`（`≡`）。`e0 o1 e1 o2 e2 ..` 表示 `e0 o1 e1 && e1 o2 e2 && ..`，並有三項保證：
+
+- 每個運算元由左至右各求值一次；
+- 求值在第一個為 `false` 的比較處停止，其後的運算元不會被求值；
+- 結果是 `bool`。
+
+名稱、名稱的欄位或字面值這類中間運算元，會為下一個比較再讀取一次，因此字面值仍會從另一側取得型別（`x: u8` 時的 `0 <= x < 10`）。其他任何中間運算元都只求值一次並存入暫存值。
+
+其他一切都保持不結合：混合方向的鏈（`a < b > c`）、`!=`（`a != b != c`），以及成員或子集運算子（`x ∈ s == t`）都是編譯錯誤（E0019）。說明會寫出 `&&` 形式（`a < b && b > c`）。
+
+```
+a < b > c       // ERROR: write a < b && b > c
+a != b != c     // ERROR: write a != b && b != c
+```
+
+同一方向的鏈讀起來與數學和 Python 中的寫法相同，而範圍測試（`lo <= x < hi`）只需寫一次 `x`。混合方向的鏈沒有單一的讀法，而 `!=` 不具遞移性，因此這些仍是錯誤。
+
+## 3.2.6. 以括號強制分組
+
+當這些規則產生的樹與預期的形狀不同時，括號會強制分組。
+
+```
+a + b * c       →   a + (b * c)             // default grouping
+(a + b) * c     →   (a + b) * c             // explicit
+```
+
+括號在語彙與語法階段作為分組語彙單元，直接控制樹的形狀。
+
+## 3.2.6a. 實作限制
+
+超過 4096 個運算子 / 後綴運算的鏈，或深度超過 256 的巢狀，是錯誤。這些是 Nabi 的限制（由實作定義，[0.4.4](../000-meta/004-language-vs-standard-libraries.md#044-implementation-limits)）。
+
+## 3.2.7. 優先順序相同而結合性不同的兩個語彙單元
+
+在 3.2.3 的表中，同一等級的所有語彙單元共用相同的結合性，因此不會出現這種情況。擴充語彙單元也透過 `like` 取既有語彙單元的結合性，因此同樣成立。
