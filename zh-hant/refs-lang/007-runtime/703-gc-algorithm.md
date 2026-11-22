@@ -1,0 +1,74 @@
+# 7.3. GC 演算法
+
+Nabi 的 GC 是在 [Immix](../000-meta/007-glossary.md#immix) mark-region[^immix] 之上疊加 sticky mark-bit 分代回收[^whippet] 的回收器。minor 回收與疏散是 stop-the-world 的，mutator 會在安全點停下（[8.4](../008-abi/804-safepoint.md)）。完整回收的標記階段可以並行執行（[7.5](705-concurrent-collection.md)）。根與寫入屏障定義於 [7.4](704-barriers-and-roots.md)。
+
+> [!NOTE]
+> 本節僅供參考：它描述的是參考執行環境的 GC，可能在任何版本中改變。只有在 [8.1](../008-abi/801-object-header-abi.md) 中固定為 ABI 的物件配置具規範性。
+
+## 7.3.1. Immix mark-region
+
+### 區塊與行
+
+```
+block (32 KiB) = line (128 B) × 256
+```
+
+[區塊](../000-meta/007-glossary.md#block)從作業系統取得（mmap）。物件可以跨越行的邊界。標記階段會標記物件以及它所跨越的行，清除階段回收未被標記的行。存活物件之間的小空隙以行為單位重用。
+
+### 清除：區塊的分類
+
+| 類別       | 狀態                          | 處理方式                         |
+|------------|-------------------------------|----------------------------------|
+| clean      | 所有行都是空的                | 放入可用池                       |
+| recyclable | 只有部分行存活                | 可用的行重用於配置               |
+| full       | 幾乎所有行都存活              | 保持原樣                         |
+
+清除階段不會把死亡物件清零，但機密緩衝區除外（`WIPE`，[7.1.2](701-object-layout.md#712-memory-spaces)）。配置器在填充 TLAB 時才把行清零。
+
+### 機會式疏散
+
+完整回收可能會把存活物件從碎片化的區塊移到其他區塊。
+
+- 候選依上一次清除所留下的行狀態選出（最多半滿的區塊）。之後才交出去的行算作已占用：其物件的存活與否尚未知道。只有在超過碎片化門檻時才會移動物件。
+- 在被移動之物件的舊位置留下轉發指標，所有精確的參照都在同一次回收中更新為新位置。
+- 不會被移動的物件：被根直接指向的物件（[7.4.1](704-barriers-and-roots.md#objects-pointed-to-by-roots-are-not-moved)）、被模糊字組指向的物件（`AMBIGUOUS`：型別 id 為 `2` 的緩衝區、不帶標籤的 `union`）、`PINNED` / `NOMOVE` 物件，以及 LOS 物件。
+- 超過下一個週期配置預算的可用區塊會歸還給作業系統。
+- 為了測試，`NABIR_GC_EVAC=always` 會在每次完整回收時進行疏散（[9.9.8](../009-tools/909-debug-tools.md#998-memory--gc-tools)）。
+
+## 7.3.2. Sticky mark-bit 分代回收
+
+沒有另外的 nursery 空間；世代以標頭的 `STICKY` 位元區分（[8.1.3](../008-abi/801-object-header-abi.md#813-gc_flags-offset-4-u32)）。在回收中存活的物件會被設定 `STICKY`，成為老物件。物件保持在原位；沒有晉升複製。
+
+| 回收          | 標記的起點                                       | 範圍                                          |
+|---------------|--------------------------------------------------|-----------------------------------------------|
+| minor（年輕） | 根、記憶集、髒卡片（[7.4.2](704-barriers-and-roots.md#742-write-barrier-object-remembering)） | 不進入老物件。清除只涵蓋自上次回收以來交出的區塊（以及在並行標記之後，它交出了行的那些區塊） |
+| full（老）    | 根                                               | 清除所有 `STICKY`，並進行完整的標記 / 清除    |
+
+- 年輕的行只在物件查找所到達的區塊中剖析。
+- minor 回收的簿記追蹤的是變更的部分，而不是整個堆積：有可用行之區塊的清單從一次回收保留到下一次，只有自那以後交出的區塊才會被清除並重新列出。髒卡片一次掃描一個字組（8 張卡片）。
+- 當老物件的位元組數達到 `max(4 MiB, live after the previous full collection × 2)`，或呼叫 `nabi_gc_collect` 時，會進行完整回收。
+
+## 7.3.3. 標記步驟
+
+1. 從根開始（[7.4.1](704-barriers-and-roots.md#741-root-tracking-a-shadow-stack-emitted-directly-by-the-compiler)）。
+2. 對每個到達的物件，在標頭中設定 `MARK`，標記它所跨越的行，並透過其 `type_id` 的 [ScanTable](../008-abi/802-scan-table.md) 追蹤其子項。
+3. 佇列為空時結束。
+
+在 stop-the-world 暫停中，一旦佇列中的工作多到足以分攤，標記就會在多個執行緒上執行（`NABIR_GC_WORKERS` 個輔助執行緒，[9.9.8](../009-tools/909-debug-tools.md#998-memory--gc-tools)）：每個執行緒從自己的堆疊標記，並透過共享池傳遞工作，`MARK` 以原子的 `fetch_or` 設定，因此每個物件只會被掃描一次，而一個區塊的年輕行由一個執行緒剖析，其他執行緒等待。並行標記（[7.5](705-concurrent-collection.md)）在其標記執行緒以及協助它的執行緒上執行。
+
+ScanTable 以 `nabi_gc_register_type` 註冊（[8.5.1](../008-abi/805-extern-symbols.md#851-gc-area)）。
+
+## 7.3.4. 遷移（熱重載）
+
+在 `nabi dev`（[9.14](../009-tools/914-hot-reload.md)）之下，熱套件的新版本可能會改變某個型別的配置。其物件在遷移中被改寫：遷移是一次完整的 stop-the-world 回收，其最後階段在標記與清除（以及疏散，若有的話）之後，改寫變更之型別的每個存活物件。
+
+- 哪些物件：熱建置為每個以值容納熱型別的 box 與緩衝區給予它自己的型別 id，因此型別 id 指出型別與版本。受影響的型別是變更的型別，以及每個以值容納這些型別的型別。
+- 如何改寫：保留的欄位依名稱（或 `#[renamed_from]`）複製，新增的欄位取其預設值在暫停之前所產生的值，移除的欄位被捨棄，列舉變體依名稱比對（[9.14.3](../009-tools/914-hot-reload.md#9143-what-may-change)）。新配置放得下的物件就地改寫；其他的則複製到新物件中，並像疏散一樣轉發，指向它的每個堆積參照都會被修正，包括指向緩衝區內部的參照與 weak 儲存格。根字組絕不會被改寫。
+- 先進行一次試跑：當變更之型別的被根指向、`PINNED` 或 `NOMOVE` 的物件必須變大、模糊字組指向會被移動之物件的中間、`any` 以行內方式容納變更之型別的值、舊程式碼的閉包、協程或函式值容納或使用變更的型別、存活的列舉值容納新版本已移除的變體，或不回收區域正開啟時，遷移不會做任何事，變更會等待。
+- 在 GC 統計中，遷移算作一次完整回收。
+
+## 參考文獻
+
+[^immix]: Blackburn & McKinley, _Immix: A Mark-Region Garbage Collector with Space Efficiency, Fast Collection, and Mutator Performance_, PLDI 2008.
+
+[^whippet]: Wingo, Whippet: a sub-toolkit for embeddable garbage collection. <https://wingolog.org/tags/whippet>
