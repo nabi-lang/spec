@@ -95,9 +95,9 @@ impl<T> SendFuture<T> {
 struct ReceiverIter<T> { /* ... */ }    // Iterator<Item = T>, ends when every sender is closed
 ```
 
-如果 `T: Send`，那么 `Sender<T>` 和 `Receiver<T>` 也是 `Send`，可以移动到其他任务或线程（[2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)）。`send`、`try_send` 和 `send_async` 把该值的集合的副本放入队列（2.13.9）：接收方与发送方不共享任何集合。
+如果 `T: Send`，那么 `Sender<T>` 和 `Receiver<T>` 也是 `Send`，可以移动到其他任务或线程（[2.13.9](213-marker.md#2139-send--sync线程边界标记)）。`send`、`try_send` 和 `send_async` 把该值的集合的副本放入队列（2.13.9）：接收方与发送方不共享任何集合。
 
-`recv` 和 `send`（有界通道已满时，或在会合通道上直到值被取走为止）会阻塞线程。要在异步代码中只挂起任务，使用 `await rx.recv_async()`、`for await v in rx` 或 `try await tx.send_async(v)`。`send_async` 在有界通道已满时挂起任务，在会合通道上则挂起到有接收方取走该值为止。与 `send` 一样，如果这个发送方已经被 `close()`，它抛出携带该值的 `SendError::Closed`。被取消的 `recv_async` 不会取走值，被取消的 `send_async` 不会发送它的值（[2.18.4](218-task.md#2184-cooperative-cancellation---taskcancel)）。`Mutex::lock` / `lock_async` 也做同样的区分（[2.16](216-sync.md)）。
+`recv` 和 `send`（有界通道已满时，或在会合通道上直到值被取走为止）会阻塞线程。要在异步代码中只挂起任务，使用 `await rx.recv_async()`、`for await v in rx` 或 `try await tx.send_async(v)`。`send_async` 在有界通道已满时挂起任务，在会合通道上则挂起到有接收方取走该值为止。与 `send` 一样，如果这个发送方已经被 `close()`，它抛出携带该值的 `SendError::Closed`。被取消的 `recv_async` 不会取走值，被取消的 `send_async` 不会发送它的值（[2.18.4](218-task.md#2184-协作式取消taskcancel)）。`Mutex::lock` / `lock_async` 也做同样的区分（[2.16](216-sync.md)）。
 
 ## 2.17.3. 关闭语义
 
@@ -114,7 +114,7 @@ rx.recv();             //→ 1
 rx.recv();             //→ none  (closed)
 ```
 
-`Sender` 是 `Drop` 资源（[2.13.4](213-marker.md#2134-drop---cleanup-on-release)）：`let tx2 = tx` 移动它，`clone()` 创建另一个拥有自己所有者的发送方，`close()` 只关闭那一个发送方。编译器在发送方的最后一个所有者离开作用域的地方释放它，任务结束时释放其 `async` 块捕获的发送方；所有发送方都关闭或释放后，通道关闭。释放发送方不会失败，所以不需要显式关闭。线程的闭包不会释放它捕获的东西：请在线程工作结束时关闭发送方。
+`Sender` 是 `Drop` 资源（[2.13.4](213-marker.md#2134-drop释放时的清理)）：`let tx2 = tx` 移动它，`clone()` 创建另一个拥有自己所有者的发送方，`close()` 只关闭那一个发送方。编译器在发送方的最后一个所有者离开作用域的地方释放它，任务结束时释放其 `async` 块捕获的发送方；所有发送方都关闭或释放后，通道关闭。释放发送方不会失败，所以不需要显式关闭。线程的闭包不会释放它捕获的东西：请在线程工作结束时关闭发送方。
 
 ## 2.17.4. 多个生产者与消费者
 
@@ -155,7 +155,7 @@ for await v in rx {
 
 ## 2.17.6. 模块映射
 
-每个类型和函数都定义在 `core::channel` 中，这是它唯一的路径（[0.1.6](../000-meta/001-tier-model.md#016-one-path-per-item)）：
+每个类型和函数都定义在 `core::channel` 中，这是它唯一的路径（[0.1.6](../000-meta/001-tier-model.md#016-每个项只有一条路径)）：
 
 | 类型           | 模块                 | 内部结构                 |
 |----------------|----------------------|--------------------------|

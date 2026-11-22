@@ -73,7 +73,7 @@ impl<T> Drop for Pinned<T> {
 }
 ```
 
-它是一个守卫。只要 `pin()` 返回的 `Pinned<T>` 还活着，GC 就不会移动该对象。`Pinned<T>` 是 `Drop` 值，只释放一次（[2.13.4](../200-core/213-marker.md#2134-drop---cleanup-on-release)）：在守卫的所有者离开作用域的位置，或在绑定它的 `using` 块结束时，`Pinned::drop` 运行并解除对象的固定。固定是计数的：只有经过同样次数的解除固定后，对象才会再次移动。`pin` 固定 `gc_object` 所指出的对象，`gc_object` 返回 `none` 时什么也不固定。`GcBuf<u8>` 是 [1.3.9](103-mem.md#139-gcbuft-and-the-buf_-primitives) 中擦除了类型的 GC 缓冲区。`Pinnable` 是封闭的（sealed），`gc_object` 是工具链内部的（[6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-shared-by-the-toolchains-packages)）：程序用 `pin(x)` 固定，不调用 `gc_object`。
+它是一个守卫。只要 `pin()` 返回的 `Pinned<T>` 还活着，GC 就不会移动该对象。`Pinned<T>` 是 `Drop` 值，只释放一次（[2.13.4](../200-core/213-marker.md#2134-drop释放时的清理)）：在守卫的所有者离开作用域的位置，或在绑定它的 `using` 块结束时，`Pinned::drop` 运行并解除对象的固定。固定是计数的：只有经过同样次数的解除固定后，对象才会再次移动。`pin` 固定 `gc_object` 所指出的对象，`gc_object` 返回 `none` 时什么也不固定。`GcBuf<u8>` 是 [1.3.9](103-mem.md#139-gcbuft-与-buf_-原语) 中擦除了类型的 GC 缓冲区。`Pinnable` 是封闭的（sealed），`gc_object` 是工具链内部的（[6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-shared-by-the-toolchains-packages)）：程序用 `pin(x)` 固定，不调用 `gc_object`。
 
 ### 示例：FFI 调用
 
@@ -162,12 +162,12 @@ drop(Pinned):
 
 ## 1.6.5. 何时需要固定
 
-每一次 `extern "C"` 调用都会让调用线程进入停驻（park）状态（[1.7.1](107-ffi.md#171-extern-c-block)）：C 运行期间，回收器不会等待该线程，所以在任何 C 调用期间，无论多短，都可能发生一次回收并移动对象。C 在调用期间使用的、指向 GC 对象内部的指针，只在以下情况下有效：
+每一次 `extern "C"` 调用都会让调用线程进入停驻（park）状态（[1.7.1](107-ffi.md#171-extern-c-块)）：C 运行期间，回收器不会等待该线程，所以在任何 C 调用期间，无论多短，都可能发生一次回收并移动对象。C 在调用期间使用的、指向 GC 对象内部的指针，只在以下情况下有效：
 
 - 对象在整个调用期间都被固定（`gc::pin`，1.6.2），并且在调用之后，只要 C 还保留着该指针，就一直被固定；或者
-- 指针指向的正是某个根所指出的对象本身：`str` 实参，调用者的帧会把它作为根保持到调用返回（[refs-lang 7.4.1](../../refs-lang/007-runtime/704-barriers-and-roots.md#objects-pointed-to-by-roots-are-not-moved)），以及在 [2.15.2](../200-core/215-string.md#2152-str---immutable-utf-8-string) 规则下的 `str::as_ptr` / `CStr::as_ptr`。
+- 指针指向的正是某个根所指出的对象本身：`str` 实参，调用者的帧会把它作为根保持到调用返回（[refs-lang 7.4.1](../../refs-lang/007-runtime/704-barriers-and-roots.md#objects-pointed-to-by-roots-are-not-moved)），以及在 [2.15.2](../200-core/215-string.md#2152-str不可变的-utf-8-字符串) 规则下的 `str::as_ptr` / `CStr::as_ptr`。
 
-其他所有指向 GC 对象内部的指针，即列表的缓冲区（`as_data_ptr`）、切片的元素、`StrBuf` 的字节、`GcPtr` 的值，都需要固定。无论是什么调用，编译器都不会自行省略固定：固定由程序来写。`#[leaf]`（[1.7.1](107-ffi.md#171-extern-c-block)）让调用更便宜，但不改变这条规则。C 在多次调用之间保留的值放在 `Handle`（[1.7.10](107-ffi.md#1710-handlet---nabi-values-c-holds)）中，它会一直固定该值直到被释放。
+其他所有指向 GC 对象内部的指针，即列表的缓冲区（`as_data_ptr`）、切片的元素、`StrBuf` 的字节、`GcPtr` 的值，都需要固定。无论是什么调用，编译器都不会自行省略固定：固定由程序来写。`#[leaf]`（[1.7.1](107-ffi.md#171-extern-c-块)）让调用更便宜，但不改变这条规则。C 在多次调用之间保留的值放在 `Handle`（[1.7.10](107-ffi.md#1710-handletc-持有的-nabi-值)）中，它会一直固定该值直到被释放。
 
 不持有裸指针的代码不需要固定：
 
@@ -230,7 +230,7 @@ impl Pinned<StrBuf> {
 }
 ```
 
-这些容器方法就是提取 API，在持有 `Pinned` 期间有效。（`str::as_ptr` 和 `CStr::as_ptr` 在 [2.15.2](../200-core/215-string.md#2152-str---immutable-utf-8-string) 更窄的规则下无需固定就给出地址。）没有泛型的 `as_ptr`；`as_value_ptr` 的命名有意与 `List` 的 `as_data_ptr` 区分开。每种容器都有专门的提取方法，因此可以按各容器的布局取出数据，例如缓冲区起始地址或以 null 结尾的形式。
+这些容器方法就是提取 API，在持有 `Pinned` 期间有效。（`str::as_ptr` 和 `CStr::as_ptr` 在 [2.15.2](../200-core/215-string.md#2152-str不可变的-utf-8-字符串) 更窄的规则下无需固定就给出地址。）没有泛型的 `as_ptr`；`as_value_ptr` 的命名有意与 `List` 的 `as_data_ptr` 区分开。每种容器都有专门的提取方法，因此可以按各容器的布局取出数据，例如缓冲区起始地址或以 null 结尾的形式。
 
 ## 1.6.7. GC 运行时链接
 

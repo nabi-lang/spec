@@ -184,7 +184,7 @@ trait 槽指明把用户编写的语法脱糖为标准库 trait 调用时，编�
 
 ## 0.4.5. 方法槽（1 个）
 
-方法槽用于用户不写调用、由编译器自动调用的方法。只有一个：`using` 绑定被释放时的处置。`?` 运算符由编译器针对 `T | none` 直接展开（[refs-lang 3.14.10](../../refs-lang/003-expressions/314-error-control-flow.md#31410-the--operator---early-return-of-none)），所以它没有方法槽。克隆值（`Clone::clone`）从不会被自动调用（[2.13.2](../200-core/213-marker.md#2132-clone---deep-copy)），所以它注册为 trait 槽 `clone_trait`，而不是方法槽。
+方法槽用于用户不写调用、由编译器自动调用的方法。只有一个：`using` 绑定被释放时的处置。`?` 运算符由编译器针对 `T | none` 直接展开（[refs-lang 3.14.10](../../refs-lang/003-expressions/314-error-control-flow.md#31410-the--operator---early-return-of-none)），所以它没有方法槽。克隆值（`Clone::clone`）从不会被自动调用（[2.13.2](../200-core/213-marker.md#2132-clone深复制)），所以它注册为 trait 槽 `clone_trait`，而不是方法槽。
 
 | 槽名          | 含义                                 | 标准库方法                      | 参见 |
 |---------------|--------------------------------------|---------------------------------|------|

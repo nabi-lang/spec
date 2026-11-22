@@ -194,7 +194,7 @@ let z = x + y;        //→ 4.0 (f64)
 
 `x_async` 是阻塞的 `x` 的异步孪生版本：实参相同、错误相同，经 await 调用（`try await s.x_async(..)`），并且只挂起任务。`x` 原地操作其接收者时，孪生版本接收 `ref self`；`x` 消耗接收者时，孪生版本接收 `self`（`close_async`）。
 
-流操作的孪生版本来自 trait，而不是各类型的方法：实现了 `Read`、`BufRead`、`Write`、`Seek` 或 `Close` 的类型，通过实现 `AsyncRead`、`AsyncBufRead`、`AsyncWrite`、`AsyncSeek` 或 `AsyncClose` 获得 `read_async`、`fill_buf_async`、`write_async`、`flush_async`、`seek_async` 或 `close_async`（[2.23.5](../200-core/223-io.md#2235-async-traits)）。只有不属于流 I/O 的操作才是固有的 `_async` 方法：打开和连接（`open_async`、`connect_async`）、`accept_async`、`shutdown_async`、数据报和 fd 传递调用、TLS 控制以及进程等待（`wait_async`、`output_async`、`status_async`）。
+流操作的孪生版本来自 trait，而不是各类型的方法：实现了 `Read`、`BufRead`、`Write`、`Seek` 或 `Close` 的类型，通过实现 `AsyncRead`、`AsyncBufRead`、`AsyncWrite`、`AsyncSeek` 或 `AsyncClose` 获得 `read_async`、`fill_buf_async`、`write_async`、`flush_async`、`seek_async` 或 `close_async`（[2.23.5](../200-core/223-io.md#2235-异步-trait)）。只有不属于流 I/O 的操作才是固有的 `_async` 方法：打开和连接（`open_async`、`connect_async`）、`accept_async`、`shutdown_async`、数据报和 fd 传递调用、TLS 控制以及进程等待（`wait_async`、`output_async`、`status_async`）。
 
 | 类型 | 异步 trait | 固有孪生版本 |
 |---|---|---|
@@ -213,8 +213,8 @@ let z = x + y;        //→ 4.0 (f64)
 | `ChildStdout`、`ChildStderr` | `AsyncRead`、`AsyncClose` | |
 | `Child` | | `wait_async` |
 | `Command` | | `output_async`、`status_async` |
-| `BufReader`、`BufWriter`、`LineWriter`、`Cursor` | 与其内部流相同（[2.23.6](../200-core/223-io.md#2236-buffers-and-cursor)） | |
-| `io::Owned<V, R>`、`io::Chain<A, B>` | 与其读取器（`R`；`A` 和 `B`）相同的 `AsyncClose`（[2.23.5](../200-core/223-io.md#2235-async-traits)） | |
+| `BufReader`、`BufWriter`、`LineWriter`、`Cursor` | 与其内部流相同（[2.23.6](../200-core/223-io.md#2236-缓冲区与-cursor)） | |
+| `io::Owned<V, R>`、`io::Chain<A, B>` | 与其读取器（`R`；`A` 和 `B`）相同的 `AsyncClose`（[2.23.5](../200-core/223-io.md#2235-异步-trait)） | |
 
 `Sender` 的 `close` 不是 I/O，没有孪生版本。`File` 或 `Dir` 的孪生版本接收 `ref self`；只有 `close_async` 消耗句柄。
 

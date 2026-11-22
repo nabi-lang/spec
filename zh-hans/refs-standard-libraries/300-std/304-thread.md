@@ -100,7 +100,7 @@ impl<T: Default> ThreadLocal<T> {
 
 `thread::spawn` 就是套在 `try!` 后面、使用默认设置的 `Builder::spawn`：当 `Builder::spawn` 抛出错误时（目标上没有线程，或操作系统拒绝创建新线程），`thread::spawn` 会触发 panic。要处理该错误，就使用 `Builder::new().spawn(f)`。
 
-`await handle`（[2.20.5](../200-core/220-future.md#2205-intofuture---awaitable-values)）在任务内部等待线程：join 在执行器的阻塞通道（[`task::spawn_blocking`](../200-core/218-task.md#2181-core-api)）上运行，因此只有该任务在等待。它产出 `T`；操作系统层面的 join 失败（`JoinError`）会触发 panic，所以要处理它就调用 `join`。
+`await handle`（[2.20.5](../200-core/220-future.md#2205-intofuture可等待的值)）在任务内部等待线程：join 在执行器的阻塞通道（[`task::spawn_blocking`](../200-core/218-task.md#2181-核心-api)）上运行，因此只有该任务在等待。它产出 `T`；操作系统层面的 join 失败（`JoinError`）会触发 panic，所以要处理它就调用 `join`。
 
 ### Panic 与 `JoinError`
 
@@ -149,7 +149,7 @@ try thread::spawn(|| {
 }).join();
 ```
 
-其形式沿用 Rust 的 `LocalKey`。`with(f)` 把当前线程的值借给 `f`，并返回 `f` 的返回值。该值是一个限定作用域的视图，像锁守卫的值一样被追踪（[stdlib 2.16.3](../200-core/216-sync.md#2163-mutext---exclusive-lock)）：把它从 `f` 中返回、在调用之后继续保存它（捕获、字段、`Cell`）、发送它，或者把它传给会保留它的被调用方，都是编译错误 E0136；给 `with` 传入 `async` 闭包同样如此，因为该闭包的 future 会跨越 `await` 持有这个值，并可能在另一个工作线程上恢复。应当改为保留 `clone()` 或 `f` 计算出的结果。
+其形式沿用 Rust 的 `LocalKey`。`with(f)` 把当前线程的值借给 `f`，并返回 `f` 的返回值。该值是一个限定作用域的视图，像锁守卫的值一样被追踪（[stdlib 2.16.3](../200-core/216-sync.md#2163-mutext互斥锁)）：把它从 `f` 中返回、在调用之后继续保存它（捕获、字段、`Cell`）、发送它，或者把它传给会保留它的被调用方，都是编译错误 E0136；给 `with` 传入 `async` 闭包同样如此，因为该闭包的 future 会跨越 `await` 持有这个值，并可能在另一个工作线程上恢复。应当改为保留 `clone()` 或 `f` 计算出的结果。
 
 ```nabi
 static SEEN: ThreadLocal<List<str>> = thread::local(|| -> List<str> { [] });

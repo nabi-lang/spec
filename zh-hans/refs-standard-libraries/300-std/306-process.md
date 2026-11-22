@@ -6,7 +6,7 @@
 
 首先遇到的是 `Command` 结构体，它是子进程的蓝图。所有设置（要运行的程序、参数、环境变量、标准 I/O 的连接方式）都在启动之前逐步构建。
 
-路径参数遵循整个层级共用的[参数约定](README.md#argument-conventions)（`Path` 即 `P: AsPath`）。
+路径参数遵循整个层级共用的[参数约定](README.md#参数约定)（`Path` 即 `P: AsPath`）。
 
 ```nabi
 #[must_use]
@@ -231,7 +231,7 @@ impl SignalError {
 
 `on_signal` 处理器不在信号上下文（信号处理器内部）中运行。运行时接收信号，并把它交给专用的分发线程 `nabi-signal`，处理器在那里像普通函数一样运行。因此处理器必须是 `Send`；它会被保存下来，每个信号调用一次，所以它也是 `Sync`。处理器可以分配内存或获取锁。对同一个信号再次调用 `on_signal` 会替换处理器。`Signal` 在每个操作系统上为信号命名。`process_group(pgid)`（`CommandExt`，unix）把子进程放入该进程组（`0` 表示以子进程的 pid 新建一个组）。
 
-在 Windows 上，控制台事件映射为信号：Ctrl-C → `Interrupt`（2），关闭控制台 / 注销 / 关机 → `Hangup`（1）。Ctrl-Break 没有对应的 `Signal`；由 `os::windows::process::on_ctrl_break` 转发它（[3.10.7](310-os.md#3107-oswindowsprocess---ctrl-break)）。`send_signal` 只发送 `Signal::Kill`，作为 `TerminateProcess`；`raise` 只引发 `Interrupt` 和 `Hangup`；其他任何 `Signal` 都是 `IoError`（`Unsupported`），对 `Interrupt` 或 `Hangup` 以外的信号调用 `on_signal` 是 `SignalError`。
+在 Windows 上，控制台事件映射为信号：Ctrl-C → `Interrupt`（2），关闭控制台 / 注销 / 关机 → `Hangup`（1）。Ctrl-Break 没有对应的 `Signal`；由 `os::windows::process::on_ctrl_break` 转发它（[3.10.7](310-os.md#3107-oswindowsprocessctrl-break)）。`send_signal` 只发送 `Signal::Kill`，作为 `TerminateProcess`；`raise` 只引发 `Interrupt` 和 `Hangup`；其他任何 `Signal` 都是 `IoError`（`Unsupported`），对 `Interrupt` 或 `Hangup` 以外的信号调用 `on_signal` 是 `SignalError`。
 
 大多数用户永远不需要接触这些。只有在守护进程、服务器和交互式 CLI 这类必须正面处理信号的场合，才需要这些工具。
 

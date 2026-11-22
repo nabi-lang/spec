@@ -17,7 +17,7 @@ fixed primitive (i8..i64, u8..u64, isize, usize, f32, f64; hardware-friendly, de
 
 ### 定宽原始类型：贴近硬件的世界
 
-与之相对，定宽原始类型是贴近硬件的世界。它们包括 `i32` / `f64` 等 15 种类型，其语法由 [refs-lang 2.1 类型表达式](../../refs-lang/002-types/201-type-expressions.md)定义。它们适合需要精确控制内存和性能的场景（FFI 接口、SIMD、大型数组、热循环），其溢出策略是明确的（见 [2.3 溢出行为](203-ops.md#overflow-behavior)）。
+与之相对，定宽原始类型是贴近硬件的世界。它们包括 `i32` / `f64` 等 15 种类型，其语法由 [refs-lang 2.1 类型表达式](../../refs-lang/002-types/201-type-expressions.md)定义。它们适合需要精确控制内存和性能的场景（FFI 接口、SIMD、大型数组、热循环），其溢出策略是明确的（见 [2.3 溢出行为](203-ops.md#溢出行为)）。
 
 ### 哪一个是默认
 
@@ -96,7 +96,7 @@ impl Int {
 }
 ```
 
-这些方法沿用定宽整数的名字和 panic 行为。位数和位索引是 `u64`，与 `bit_length` 一样：一个值可以超过 2^32 位（定宽的规则见下文）。与位宽绑定的位方法（`leading_zeros`、`rotate_left`、`swap_bytes` 等）在没有位宽时没有意义，因此不提供。`count_ones` 统计的是 `|self|`（即 Python 的 `bit_count`），因为负数有无穷多个 1 位。表示方式体现在名字上：`to_le_bytes` / `from_le_bytes` 使用二进制补码，与定宽整数的字节一致；`_unsigned` 形式使用绝对值，遇到负值会触发 panic（`Int::to_le_bytes_unsigned: negative value; use to_le_bytes for two's complement or call .abs() first`）。字节数取值所允许的最短长度：`128` 是 `[128, 0]`，无符号时是 `[128]`；`-1` 是 `[255]`；零是 `[0]`。`write_*` 形式则填满固定宽度，即 `out`（`List<u8>` 或其视图）的每个字节：`-2` 写成四个字节，小端为 `[254, 255, 255, 255]`；值所需的字节多于 `out` 时触发 panic（`Int::write_le_bytes: the value needs 2 bytes but `out` has 1; pass a view of at least 2 bytes`）。`from_*` 形式接受任意字节（[`AsBytes`](211-conversion.md)）：`List<u8>`、`Slice<u8>`、`[u8; N]` 或 `str`。`pow` 接受 `u32` 指数：除 0 和 ±1 之外，任何底数配上更大的指数都会得到至少 2^32 位。`modpow` 接受 `int` 指数，因为其结果总小于 `|m|`；结果的符号与 `m` 相同，与 [`%%`](203-ops.md#modulo---floored-modulo-) 一样。负指数是错误（没有模逆元）。零是 `Int::default()`（或 `Int::zero()`，见 2.1.5 的 `Zero`）；`Int` 没有 `new`。除以零会以 `attempt to divide an int by zero` 触发 panic，运算符 `/`、`%`、`%%` 和 `div_rem`、`div_euclid`、`rem_euclid` 都是如此。检查式的 `to_i32` / `to_i64` / `to_u64` 作为固有方法与 `TryFrom` 并存（[0.5.11](../000-meta/005-notation.md)）。
+这些方法沿用定宽整数的名字和 panic 行为。位数和位索引是 `u64`，与 `bit_length` 一样：一个值可以超过 2^32 位（定宽的规则见下文）。与位宽绑定的位方法（`leading_zeros`、`rotate_left`、`swap_bytes` 等）在没有位宽时没有意义，因此不提供。`count_ones` 统计的是 `|self|`（即 Python 的 `bit_count`），因为负数有无穷多个 1 位。表示方式体现在名字上：`to_le_bytes` / `from_le_bytes` 使用二进制补码，与定宽整数的字节一致；`_unsigned` 形式使用绝对值，遇到负值会触发 panic（`Int::to_le_bytes_unsigned: negative value; use to_le_bytes for two's complement or call .abs() first`）。字节数取值所允许的最短长度：`128` 是 `[128, 0]`，无符号时是 `[128]`；`-1` 是 `[255]`；零是 `[0]`。`write_*` 形式则填满固定宽度，即 `out`（`List<u8>` 或其视图）的每个字节：`-2` 写成四个字节，小端为 `[254, 255, 255, 255]`；值所需的字节多于 `out` 时触发 panic（`Int::write_le_bytes: the value needs 2 bytes but `out` has 1; pass a view of at least 2 bytes`）。`from_*` 形式接受任意字节（[`AsBytes`](211-conversion.md)）：`List<u8>`、`Slice<u8>`、`[u8; N]` 或 `str`。`pow` 接受 `u32` 指数：除 0 和 ±1 之外，任何底数配上更大的指数都会得到至少 2^32 位。`modpow` 接受 `int` 指数，因为其结果总小于 `|m|`；结果的符号与 `m` 相同，与 [`%%`](203-ops.md#modulo向下取整取模) 一样。负指数是错误（没有模逆元）。零是 `Int::default()`（或 `Int::zero()`，见 2.1.5 的 `Zero`）；`Int` 没有 `new`。除以零会以 `attempt to divide an int by zero` 触发 panic，运算符 `/`、`%`、`%%` 和 `div_rem`、`div_euclid`、`rem_euclid` 都是如此。检查式的 `to_i32` / `to_i64` / `to_u64` 作为固有方法与 `TryFrom` 并存（[0.5.11](../000-meta/005-notation.md)）。
 
 `Int` 定义在 `core::num::bigint::Int` 中（`Float` 定义在 `core::num::bigfloat::Float` 中）。`#[keyword("int")]` 把标识符 `int` 注册为类型关键字，这一注册对所有包生效。因此用户代码把这个类型写成小写的 `int`，而不是 PascalCase 的 `Int`（以 [refs-lang 6.6](../../refs-lang/006-meta-system/606-keyword-magic.md) 为准）。编译器通过 `#[lang("int_type")]` 找到 `int` 类型。
 
@@ -198,7 +198,7 @@ impl Float {
 | `f32` | 32        | IEEE 754 binary32（单精度）          |
 | `f64` | 64        | IEEE 754 binary64（双精度）          |
 
-16 位浮点数 `f16` 和 `bf16` 是标准库为存储而添加的类型（[见下文](#f16-and-bf16---16-bit-storage-floats)）。
+16 位浮点数 `f16` 和 `bf16` 是标准库为存储而添加的类型（[见下文](#f16-和-bf1616-位存储用浮点数)）。
 
 ### 浮点语义
 
@@ -209,7 +209,7 @@ impl Float {
 - **保留次正规数**。任何目标都不会把次正规数输入或结果冲刷为零。运行时在所有目标上都让浮点控制状态（MXCSR、FPCR、FPSCR）保持 IEEE 默认值，Nabi 代码无法更改它。
 - **NaN**。与 NaN 的任何比较都为假，`!=` 除外。运算返回哪个 NaN 是未指定的：其载荷和符号可能因目标而异（x86 让 `0.0 / 0.0` 为负）。`-x`、`abs` 和 `copysign` 只改变符号位，对 NaN 也是如此，`to_bits` / `from_bits` 保留每一位。`f32::NAN` 和 `f64::NAN` 是符号位清零的固定静默 NaN。
 - **有符号零**。`-0.0 == 0.0`，`1.0 / -0.0` 是 `-inf`。
-- **`min` / `max`** 是 IEEE 754 的 `minimumNumber` / `maximumNumber`：一个操作数为 NaN 时得到另一个（两者都是 NaN 时才得到 NaN），并且 `-0.0` 排在 `+0.0` 之前，因此在所有目标上 `(0.0).min(-0.0)` 都是 `-0.0`，`(-0.0).max(0.0)` 都是 `0.0`。`total_cmp` 是 IEEE 全序（[2.1.11](#2111-numeric-traits-float-ordering-ranges-complex-numbers)）。
+- **`min` / `max`** 是 IEEE 754 的 `minimumNumber` / `maximumNumber`：一个操作数为 NaN 时得到另一个（两者都是 NaN 时才得到 NaN），并且 `-0.0` 排在 `+0.0` 之前，因此在所有目标上 `(0.0).min(-0.0)` 都是 `-0.0`，`(-0.0).max(0.0)` 都是 `0.0`。`total_cmp` 是 IEEE 全序（[2.1.11](#2111-数值-trait浮点排序区间复数)）。
 - **浮点数到整数**的 `as` 向零截断，并在整数类型的边界处饱和；NaN 得到 0。整数到浮点数舍入到最近值，平局时取偶数。
 - **库函数**。`sin`、`exp`、`ln`、`pow` 及其他超越函数来自目标的 C 库：不保证正确舍入，最后一位可能因目标而异。常量求值不会折叠它们。
 
@@ -515,7 +515,7 @@ trait Zero { fn zero() -> Self; }       // additive identity
 trait One  { fn one() -> Self; }        // multiplicative identity
 ```
 
-每个数值原始类型以及 `int` / `float` 都实现这两个 trait。`Iterator::sum` / `product` 使用它们（[2.7.1](207-iter.md#271-iterator---stepping)）。
+每个数值原始类型以及 `int` / `float` 都实现这两个 trait。`Iterator::sum` / `product` 使用它们（[2.7.1](207-iter.md#271-iterator步进)）。
 
 ## 2.1.6. 算术结果类型
 
@@ -628,11 +628,11 @@ linspace(0.0, 1.0, 5)     //→ [0.0, 0.25, 0.5, 0.75, 1.0]: n values, both ends
 arange(0.0, 1.0, 0.25)    //→ [0.0, 0.25, 0.5, 0.75]: start + i*step while before stop
 ```
 
-`linspace(start, stop, n)` 给出 `start + i * step`，其中 `step = (stop - start) / (n - 1)`，最后一个值恰好为 `stop`（`n == 1` 时只有 `start`，`0` 时为空）。`arange(start, stop, step)` 给出 `ceil((stop - start) / step)` 个值 `start + i * step`，每个值都从 `i` 计算，因此误差不会累积；步长为零或 NaN 时触发 panic。`Range<f64>` 不是迭代器（[2.7.3](207-iter.md#273-step---the-one-step-abstraction)）。
+`linspace(start, stop, n)` 给出 `start + i * step`，其中 `step = (stop - start) / (n - 1)`，最后一个值恰好为 `stop`（`n == 1` 时只有 `start`，`0` 时为空）。`arange(start, stop, step)` 给出 `ceil((stop - start) / step)` 个值 `start + i * step`，每个值都从 `i` 计算，因此误差不会累积；步长为零或 NaN 时触发 panic。`Range<f64>` 不是迭代器（[2.7.3](207-iter.md#273-step单步抽象)）。
 
 **`gcd` / `lcm`**。每个定宽整数类型都有 `gcd(other)`，即最大公约数，从不为负（两个零时为 `0`；`12i32.gcd(-18) == 6`）；以及 `lcm(other)`，即最小公倍数，从不为负（任一为 0 时为 `0`）。结果放不下时触发 panic，并提示改用 `int` 计算（`i64::MIN.gcd(0)`、溢出的 `lcm`）；`int` 有自己的 `gcd` / `lcm`（2.1.2）。
 
-**`is_close`**。`f64::is_close(self, other, rel: f64 = 1e-9, abs: f64 = 0.0, equal_nan: bool = false) -> bool` 即 Python 的 `math.isclose`：两者相等，或两者都有限且 `|a - b| <= max(rel * max(|a|, |b|), abs)` 时为 `true`。它对两个值是对称的。默认的 `rel` 要求大约九位相同的数字；在零附近只有 `abs` 起作用（`1e-12.is_close(0.0)` 为 `false`，`1e-12.is_close(0.0, abs: 1e-9)` 为 `true`）。无穷大只与自身接近，NaN 与任何值都不接近，除非设置了 `equal_nan` 且两者都是 NaN。`f32::is_close` 形式相同，默认 `rel` 为 2^-20（末位的八个单位；1e-9 低于 `f32` 的精度）。数组形式是 `Array::is_close` / `all_close`（[2.9.14](209-collections.md#2914-arrayt-const-n-usize---n-dimensional-array)）。
+**`is_close`**。`f64::is_close(self, other, rel: f64 = 1e-9, abs: f64 = 0.0, equal_nan: bool = false) -> bool` 即 Python 的 `math.isclose`：两者相等，或两者都有限且 `|a - b| <= max(rel * max(|a|, |b|), abs)` 时为 `true`。它对两个值是对称的。默认的 `rel` 要求大约九位相同的数字；在零附近只有 `abs` 起作用（`1e-12.is_close(0.0)` 为 `false`，`1e-12.is_close(0.0, abs: 1e-9)` 为 `true`）。无穷大只与自身接近，NaN 与任何值都不接近，除非设置了 `equal_nan` 且两者都是 NaN。`f32::is_close` 形式相同，默认 `rel` 为 2^-20（末位的八个单位；1e-9 低于 `f32` 的精度）。数组形式是 `Array::is_close` / `all_close`（[2.9.14](209-collections.md#2914-arrayt-const-n-usizen-维数组)）。
 
 **`comb` / `perm` / `fsum`**（`core::num`）：
 

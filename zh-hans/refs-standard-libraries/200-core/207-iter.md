@@ -138,7 +138,7 @@ impl Iterator {
 - `peekable()` 返回一个 `Peekable<Self>`，其 `peek(ref self) -> Item | none` 给出下一项，并把它留给接下来的 `next`。
 - `inspect(f)` 把每一项交给 `f`，并原样产出。
 - `cycle()` 每当耗尽时，就从 `cycle` 收到时的迭代器副本重新开始，所以它是无限的；只有迭代器为空时例外，此时什么也不产出。生成器的副本共享同一个位置（2.7.10a），所以对生成器使用 cycle 不会重复它。
-- `chunks(size)` 依次产出含 `size` 项的列表，项用完时最后一个较短。`windows(size)` 产出含 `size` 个连续项、每次滑动一项的列表，项数少于 `size` 时什么也不产出。两者在 `size` 为 0 时都触发 panic。`List` 和 `Slice` 有自己产出视图的 `chunks` / `windows`（[2.9.7](209-collections.md#297-slicet---view)）。
+- `chunks(size)` 依次产出含 `size` 项的列表，项用完时最后一个较短。`windows(size)` 产出含 `size` 个连续项、每次滑动一项的列表，项数少于 `size` 时什么也不产出。两者在 `size` 为 0 时都触发 panic。`List` 和 `Slice` 有自己产出视图的 `chunks` / `windows`（[2.9.7](209-collections.md#297-slicet视图)）。
 - `try_fold` 和 `try_for_each` 接受会抛出错误的 `f`：第一个错误停止循环，之后的项不再访问，错误抛给调用方。
 - `partition(pred)` 以两个列表返回 `pred` 接受的项和其余的项，各自保持顺序。`unzip()` 把由对 `(A, B)` 组成的迭代器拆成一个 `List<A>` 和一个 `List<B>`。它的项必须是对：`A` 和 `B` 从 `Item = (A, B)` 推断，其他形式的项在调用处报错。
 
@@ -536,7 +536,7 @@ impl<T, E> TryIterator for TryGenIter<T, E> {
 }
 ```
 
-`TryGenIter` 是 `TryIterator`（[2.7.13](#2713-tryiterator---fallible-iteration)），而不是 `Iterator`，因为它的 `next` 会抛出错误。它用 `try for`、`try g.next()` 或它的适配器步进。抛出错误后生成器就结束了：下一次 `next` 给出 `none`。私有字段不作规定。副本共享同一个协程帧，因此共享进度位置。
+`TryGenIter` 是 `TryIterator`（[2.7.13](#2713-tryiterator可能失败的迭代)），而不是 `Iterator`，因为它的 `next` 会抛出错误。它用 `try for`、`try g.next()` 或它的适配器步进。抛出错误后生成器就结束了：下一次 `next` 给出 `none`。私有字段不作规定。副本共享同一个协程帧，因此共享进度位置。
 
 ## 2.7.11. 模块对应关系
 
@@ -673,7 +673,7 @@ let d = counts.map(|p| p.1).sum();             // a Dict iterates (k, v) pairs
 
 - `to_list()`、`to_set()`、`to_dict()` 把各项收集到一个新的集合中；`to_dict` 接受 `(K, V)` 项，后出现的键的值替换先出现的。
 - `sorted(reverse:)` 返回一个新的已排序 `List`（稳定排序；`reverse: true` 把最大的放在最前）。`sorted_by_key(key, reverse:)` 按 `key` 排序，在两个方向上键相等的项都保持原有顺序；`sorted_by(cmp)` 按比较函数排序。Python 的 `sorted(xs, key=f, reverse=True)` 即 `xs.sorted_by_key(f, reverse: true)`；Nabi 像 `sort_by_key` 和 `min_by_key` 一样，把按键的形式命名为 `_by_key`。
-- `counts()` 把每一项映射到它出现的次数，键按首次出现的顺序排列（Python 的 `Counter`）；`Dict<K, usize>::most_common(n)` 对结果排名（[2.9.3](209-collections.md#293-dictk-v-s---hash-map)）。`group_by(key)` 把每个键映射到它的项组成的列表，保持顺序；与 Python 的 `itertools.groupby` 不同，相等的键不必相邻。
+- `counts()` 把每一项映射到它出现的次数，键按首次出现的顺序排列（Python 的 `Counter`）；`Dict<K, usize>::most_common(n)` 对结果排名（[2.9.3](209-collections.md#293-dictk-v-s哈希映射)）。`group_by(key)` 把每个键映射到它的项组成的列表，保持顺序；与 Python 的 `itertools.groupby` 不同，相等的键不必相邻。
 - `enumerate(start: 1)` 从 `start` 开始计数。
 - `pairwise()` 把每一项与下一项一起产出。`combinations(k)` 把每种选取 `k` 项的组合作为列表产出，`permutations(k)` 产出在不同位置上 `k` 项的每种排列（`k` 为 `none` 时取全部项），两者都在收集各项之后按位置的字典序产出（Python 的 `itertools`）。
 - `min()` / `max()` 需要 `PartialOrd`，所以浮点迭代器也有它们：与自身无序的项（NaN）就是结果，与 IEEE 754 的 `minimum` / `maximum` 和 NumPy 相同。`min_by_key` / `max_by_key` 仍要求 `K: Ord`。

@@ -101,7 +101,7 @@ impl Sliceable<Range<usize>> for str { type Output = str; }   // shares bytes
 "--x--".trim_start_matches("-");        //→ "x--"
 ```
 
-`as_ptr` 返回指向字符串原位字节的指针。在可能出现指针值的函数中（变量或表达式的类型写出了 `bare::ptr` 类型，包括作为类型实参（`List<ConstPtr<u8>>`）或出现在函数类型中），只要持有该 `str` 的变量还在作用域内，GC 就不会移动该字符串，指针也保持有效。在生成器或 `async` 主体中，这一点跨 `yield` / `await` 成立。在其他地方，变量只持有字符串到它最后一次使用为止，并且只能通过另一个对象到达的字符串可能被 GC 移动：它没有被固定（[stdlib 1.6](../100-bare/106-gc-pin.md)）。要让字节在原位保持更久，请固定该字符串（[1.6.6](../100-bare/106-gc-pin.md#166-extraction-methods)）。
+`as_ptr` 返回指向字符串原位字节的指针。在可能出现指针值的函数中（变量或表达式的类型写出了 `bare::ptr` 类型，包括作为类型实参（`List<ConstPtr<u8>>`）或出现在函数类型中），只要持有该 `str` 的变量还在作用域内，GC 就不会移动该字符串，指针也保持有效。在生成器或 `async` 主体中，这一点跨 `yield` / `await` 成立。在其他地方，变量只持有字符串到它最后一次使用为止，并且只能通过另一个对象到达的字符串可能被 GC 移动：它没有被固定（[stdlib 1.6](../100-bare/106-gc-pin.md)）。要让字节在原位保持更久，请固定该字符串（[1.6.6](../100-bare/106-gc-pin.md#166-提取方法)）。
 
 ### 按 Python 命名补齐的方法
 
@@ -138,7 +138,7 @@ impl StrBuf {
 impl !Sync for StrBuf {}
 ```
 
-与集合类型一样，`StrBuf` 是引用句柄，所以它的方法接受 `self`（[2.9](209-collections.md)）；句柄的各个副本共享同一个缓冲区，所以它不是 `Sync`（[2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)）。它显示为其内容。
+与集合类型一样，`StrBuf` 是引用句柄，所以它的方法接受 `self`（[2.9](209-collections.md)）；句柄的各个副本共享同一个缓冲区，所以它不是 `Sync`（[2.13.9](213-marker.md#2139-send--sync线程边界标记)）。它显示为其内容。
 
 ```nabi
 let buf = StrBuf::new();
@@ -219,7 +219,7 @@ s.char_slice(7, 9);            //→ "세계"
 s.char_slice(0, 5);            //→ "hello" (the first 5 chars)
 ```
 
-当 `r.start > r.end`、任一边界超过 `len()` 或任一边界不是字符边界时，`get` 返回 `none`；否则结果为 `s[r.start:r.end]`。对任何 `i >= len()`，`floor_char_boundary` 和 `ceil_char_boundary` 返回 `len()`。`char_slice` 按 `chars()` 产生的顺序从 0 开始计数字符；两个边界都截断到 `char_count()`，`a >= b` 时得到 `""`。它需要遍历字符串，复杂度为 O(b)。要按用户感知的字符切片，使用 `grapheme_slice`（[2.15.10](#21510-unicode-text---normalization-case-folding-segmentation)）。
+当 `r.start > r.end`、任一边界超过 `len()` 或任一边界不是字符边界时，`get` 返回 `none`；否则结果为 `s[r.start:r.end]`。对任何 `i >= len()`，`floor_char_boundary` 和 `ceil_char_boundary` 返回 `len()`。`char_slice` 按 `chars()` 产生的顺序从 0 开始计数字符；两个边界都截断到 `char_count()`，`a >= b` 时得到 `""`。它需要遍历字符串，复杂度为 O(b)。要按用户感知的字符切片，使用 `grapheme_slice`（[2.15.10](#21510-unicode-文本规范化大小写折叠分段)）。
 
 不在字符边界上的切片会触发 panic，消息会指出以下内容：
 
@@ -301,7 +301,7 @@ impl char {
 }
 ```
 
-`char` 的 `to_lowercase` / `to_uppercase` / `to_titlecase` 返回使用完整 Unicode 映射的 `str`，结果可能是多个字符（`'ß'.to_uppercase() == "SS"`，`'ß'.to_titlecase() == "Ss"`，`'ǆ'.to_titlecase() == "ǅ"`，`'ﬁ'.to_titlecase() == "Fi"`，`'\u{130}'.to_lowercase() == "i\u{307}"`）。`to_simple_*` 形式返回使用 UCD 简单映射的一个 `char`，没有映射时返回字符本身（`'ß'.to_simple_uppercase() == 'ß'`，`'ǆ'.to_simple_titlecase() == 'ǅ'`）；它们从不分配。`str` 的 `to_lowercase` / `to_uppercase` 应用完整映射，包括 1:N 映射和上下文规则（希腊语词尾 sigma `Σ` → `ς`）（`"ß".to_uppercase() == "SS"`）。大小写映射与区域设置无关。要做不区分大小写的比较，使用完整大小写折叠（`casefold`，[2.15.10](#21510-unicode-text---normalization-case-folding-segmentation)），而不是 `to_lowercase`。
+`char` 的 `to_lowercase` / `to_uppercase` / `to_titlecase` 返回使用完整 Unicode 映射的 `str`，结果可能是多个字符（`'ß'.to_uppercase() == "SS"`，`'ß'.to_titlecase() == "Ss"`，`'ǆ'.to_titlecase() == "ǅ"`，`'ﬁ'.to_titlecase() == "Fi"`，`'\u{130}'.to_lowercase() == "i\u{307}"`）。`to_simple_*` 形式返回使用 UCD 简单映射的一个 `char`，没有映射时返回字符本身（`'ß'.to_simple_uppercase() == 'ß'`，`'ǆ'.to_simple_titlecase() == 'ǅ'`）；它们从不分配。`str` 的 `to_lowercase` / `to_uppercase` 应用完整映射，包括 1:N 映射和上下文规则（希腊语词尾 sigma `Σ` → `ς`）（`"ß".to_uppercase() == "SS"`）。大小写映射与区域设置无关。要做不区分大小写的比较，使用完整大小写折叠（`casefold`，[2.15.10](#21510-unicode-文本规范化大小写折叠分段)），而不是 `to_lowercase`。
 
 Unicode 属性表和大小写表采用 UCD 18.0.0。
 
@@ -404,7 +404,7 @@ let t = try str::from_utf16([0x61u16, 0x62u16, 0xDC00u16]);
 str::from_utf16_lossy([0x61u16, 0xD800u16]);  //→ "a\u{FFFD}"
 ```
 
-`encode_utf16` 给出字符串的 UTF-16 码元，U+FFFF 以上的字符表示为代理对，末尾不带 NUL（要得到传给 C 的以 NUL 结尾的字符串，使用 `bare::ffi::WideCString`，[stdlib 1.7.12](../100-bare/107-ffi.md#1712-widecstr--widecstring---wchar_t-strings)）。`str::from_utf16` 从任意 `IntoIterator<Item = u16>` 取回码元：`List<u16>`、`Slice<u16>` 或 `[u16; N]`。它在第一个未配对的代理项处抛出 `str::Utf16Error`：后面没有低代理项的高代理项、单独的低代理项，或位于末尾的高代理项。`str::from_utf16_lossy` 用一个 U+FFFD 替换每个未配对的代理项，从不抛出错误。
+`encode_utf16` 给出字符串的 UTF-16 码元，U+FFFF 以上的字符表示为代理对，末尾不带 NUL（要得到传给 C 的以 NUL 结尾的字符串，使用 `bare::ffi::WideCString`，[stdlib 1.7.12](../100-bare/107-ffi.md#1712-widecstr--widecstringwchar_t-字符串)）。`str::from_utf16` 从任意 `IntoIterator<Item = u16>` 取回码元：`List<u16>`、`Slice<u16>` 或 `[u16; N]`。它在第一个未配对的代理项处抛出 `str::Utf16Error`：后面没有低代理项的高代理项、单独的低代理项，或位于末尾的高代理项。`str::from_utf16_lossy` 用一个 U+FFFD 替换每个未配对的代理项，从不抛出错误。
 
 ```nabi
 struct Utf16Error { .. }      // str::Utf16Error; private fields (0.5.10)
@@ -425,7 +425,7 @@ trait FromStr {
 }
 ```
 
-`str.parse::<T>()` 是 `throws (T::Err)`，通过这个 trait 分派。对数值类型、`bool`、`char` 和 `str`，`Err` 是 core 的 `ParseError`（`input()`、`position()`、`message()`）（[2.14.4](214-error.md#2144-built-in-error-types)）。`char` 解析恰好包含一个字符的字符串，失败时给出 `empty string` 或 `too many characters`；`str` 返回其输入，从不抛出错误。数值解析建立在运行时辅助函数 `nabi_str_parse_int` / `nabi_str_parse_float` 之上（[refs-lang 8.5](../../refs-lang/008-abi/805-extern-symbols.md#string-helpers)）。浮点数的 `FromStr` 在有限数字超出类型范围时以 `number out of range` 失败；`inf` / `NaN` 文本可以解析。
+`str.parse::<T>()` 是 `throws (T::Err)`，通过这个 trait 分派。对数值类型、`bool`、`char` 和 `str`，`Err` 是 core 的 `ParseError`（`input()`、`position()`、`message()`）（[2.14.4](214-error.md#2144-内置错误类型)）。`char` 解析恰好包含一个字符的字符串，失败时给出 `empty string` 或 `too many characters`；`str` 返回其输入，从不抛出错误。数值解析建立在运行时辅助函数 `nabi_str_parse_int` / `nabi_str_parse_float` 之上（[refs-lang 8.5](../../refs-lang/008-abi/805-extern-symbols.md#string-helpers)）。浮点数的 `FromStr` 在有限数字超出类型范围时以 `number out of range` 失败；`inf` / `NaN` 文本可以解析。
 
 ```nabi
 let n: i32 = try "42".parse();         // FromStr for i32

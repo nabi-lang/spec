@@ -1,6 +1,6 @@
 # 3.3. `time::`：时间
 
-时间按需求分布在两个模块中。`core::time` 存放 `Duration` 和 `Instant`：单调时钟本来就在 `core` 中运行（任务计时器，2.18），所以这两者在所有目标上都可用，也不需要 `use`（0.2）。`std::time` 存放需要操作系统的时钟：挂钟 `SystemTime`、启动时钟 `BootTime` 和 `UNIX_EPOCH`。它还存放民用日历：`Date`、`Time`、`DateTime`、`Period`、`Offset`、`TimeZone` 和 `Zoned`（3.3.6 至 3.3.8），因为时区来自操作系统的 tz 数据库。每个类型只有一条路径（[0.1.6](../000-meta/001-tier-model.md#016-one-path-per-item)）；`std::time` 不重新导出 core 的类型。单调时钟、挂钟和自启动以来经过的时间被明确区分，因此可以选择适合所做测量的时钟。
+时间按需求分布在两个模块中。`core::time` 存放 `Duration` 和 `Instant`：单调时钟本来就在 `core` 中运行（任务计时器，2.18），所以这两者在所有目标上都可用，也不需要 `use`（0.2）。`std::time` 存放需要操作系统的时钟：挂钟 `SystemTime`、启动时钟 `BootTime` 和 `UNIX_EPOCH`。它还存放民用日历：`Date`、`Time`、`DateTime`、`Period`、`Offset`、`TimeZone` 和 `Zoned`（3.3.6 至 3.3.8），因为时区来自操作系统的 tz 数据库。每个类型只有一条路径（[0.1.6](../000-meta/001-tier-model.md#016-每个项只有一条路径)）；`std::time` 不重新导出 core 的类型。单调时钟、挂钟和自启动以来经过的时间被明确区分，因此可以选择适合所做测量的时钟。
 
 ## 3.3.1. 四类型模型
 

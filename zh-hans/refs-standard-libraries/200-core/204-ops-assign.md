@@ -105,7 +105,7 @@ trait ModuloAssign<Rhs = Self> {
 }
 ```
 
-`%%=` 是 [`Modulo`](203-ops.md#modulo---floored-modulo-)（向下取整取模，结果的符号与除数相同）的复合赋值形式。它是独立于 `RemAssign` 的 trait，并且就地更新，因此除数为正时，结果总在 `[0, rhs)` 之内。
+`%%=` 是 [`Modulo`](203-ops.md#modulo向下取整取模)（向下取整取模，结果的符号与除数相同）的复合赋值形式。它是独立于 `RemAssign` 的 trait，并且就地更新，因此除数为正时，结果总在 `[0, rhs)` 之内。
 
 ## 2.4.3. 位运算 *Assign trait
 

@@ -44,7 +44,7 @@ impl<T: NicheInt> NonZero<T> {
 | `NonZero<T> + - / NonZero<T>` | `T`                                             |
 | `T / NonZero<T>`            | `T`。不会除以零                          |
 
-`TryFrom<T>` 遇到 0 时抛出 `ZeroError`。`ZeroError` 是本模块定义的单元结构体（`core::num::niche::ZeroError`），实现了 `Error`（[2.14.4](214-error.md#2144-built-in-error-types)）。`From<NonZero<T>> for T` 是无损的。
+`TryFrom<T>` 遇到 0 时抛出 `ZeroError`。`ZeroError` 是本模块定义的单元结构体（`core::num::niche::ZeroError`），实现了 `Error`（[2.14.4](214-error.md#2144-内置错误类型)）。`From<NonZero<T>> for T` 是无损的。
 
 ```nabi
 use core::num::niche::NonZero;

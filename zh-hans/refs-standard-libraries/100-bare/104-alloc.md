@@ -78,7 +78,7 @@ impl<T> Allocation<T> {
 impl<T> Drop for Allocation<T> { /* frees the block */ }
 ```
 
-大小溢出 `usize` 或系统没有内存时，`new` 抛出 `LayoutError`（`message()` 为 `"out of memory"`）。`Allocation` 实现了 `Drop`，所以它是仿射的（[2.13.4](../200-core/213-marker.md#2134-drop---cleanup-on-release)）：`let b = a` 会移动它，它的内存块在最后一个所有者释放它的位置被释放（`using` 块结束，或所有者离开作用域）。
+大小溢出 `usize` 或系统没有内存时，`new` 抛出 `LayoutError`（`message()` 为 `"out of memory"`）。`Allocation` 实现了 `Drop`，所以它是仿射的（[2.13.4](../200-core/213-marker.md#2134-drop释放时的清理)）：`let b = a` 会移动它，它的内存块在最后一个所有者释放它的位置被释放（`using` 块结束，或所有者离开作用域）。
 
 ## 1.4.3. 与 GC 的关系
 
@@ -89,7 +89,7 @@ impl<T> Drop for Allocation<T> { /* frees the block */ }
 | FFI `malloc`             | C `malloc`                  | ✗                  |
 | 大对象（≥8KB）           | LOS（不移动的标记-清除）    | ✓（但不移动）      |
 
-如果需要由 GC 管理的裸缓冲区，请使用 `bare::mem::GcBuf<T>`（[2.9.12](../200-core/209-collections.md#2912-gcbuft---raw-gc-buffer)），而不是本模块。
+如果需要由 GC 管理的裸缓冲区，请使用 `bare::mem::GcBuf<T>`（[2.9.12](../200-core/209-collections.md#2912-gcbuft原始-gc-缓冲区)），而不是本模块。
 
 GC 之外的区域不被 GC 追踪，所以清理由用户负责。不过那里的对象不会移动，因此 `Ptr<T>` 无需单独的固定守卫也一直有效。
 

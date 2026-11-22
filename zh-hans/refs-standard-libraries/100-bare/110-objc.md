@@ -177,7 +177,7 @@ use ns::*;
 
 `ffi::objc::import { "Framework/Header.h", .. }` 用工具链 C 编译器的 Objective-C 前端（[9.13](../../refs-lang/009-tools/913-c-compiler.md)）读取 SDK 的头文件，并把它们的绑定以 `extern "objc"` 块和 C 声明的形式放进包含它的模块。名称可以是框架头文件（`Metal/Metal.h`：SDK 中的 `Metal.framework/Headers/Metal.h`）、SDK 的 `usr/include` 下的头文件，或相对于导入文件的路径。到处都找不到的头文件是错误，错误信息会显示应当写的形式。在 Apple 以外的目标上导入是错误，帮助信息与 `extern "objc"` 块相同。
 
-绑定的内容：所指名头文件所在目录中声明的每个类、协议和类别，那里的每个 C 声明（按 [1.7.6](107-ffi.md#176-automatic-binding-generation) 的方式绑定），以及它们从别处用到的类和协议（不含方法）。程序调用其方法的所有框架都应当在同一个 `ffi::objc::import` 中导入：被两次导入绑定的类是错误，错误信息会说明这一点。模块还会获得 `Id`、`NSObject`、`NSString` 和 `NSError`，所以 `use ns::*` 会引入绑定中提到的所有名称。
+绑定的内容：所指名头文件所在目录中声明的每个类、协议和类别，那里的每个 C 声明（按 [1.7.6](107-ffi.md#176-自动生成绑定) 的方式绑定），以及它们从别处用到的类和协议（不含方法）。程序调用其方法的所有框架都应当在同一个 `ffi::objc::import` 中导入：被两次导入绑定的类是错误，错误信息会说明这一点。模块还会获得 `Id`、`NSObject`、`NSString` 和 `NSError`，所以 `use ns::*` 会引入绑定中提到的所有名称。
 
 | Objective-C | Nabi |
 |-------------|------|

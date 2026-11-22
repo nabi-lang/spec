@@ -21,7 +21,7 @@ use core::sync::{Atomic, Mutex, RwLock, Once, Condvar, Cell};
 | `Once`      | 恰好运行一次初始化函数（2.16.4a）          | 延迟的全局初始化               |
 | `Condvar`   | 在 `Mutex` 下等待条件（2.16.4a）           | 生产者 / 消费者                |
 | `Frozen<T>` | 只读共享一个复制的值（2.16.4b）            | 共享配置                       |
-| `FrozenList<T>`, `FrozenDict<K, V>` | 没有人修改、无需复制即可共享的集合（[2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s---read-only-collections)） | 表、以读为主的映射 |
+| `FrozenList<T>`, `FrozenDict<K, V>` | 没有人修改、无需复制即可共享的集合（[2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s只读集合类型)） | 表、以读为主的映射 |
 
 ## 2.16.2. `Atomic<T>`：无锁原子操作
 
@@ -165,7 +165,7 @@ impl<T> MutexGuard<T> {
 
 用 `using` 绑定的守卫在离开块时被 `drop`，从而释放锁。不用 `using` 接收的守卫不会自动释放，所以守卫必须始终用 `using` 绑定。守卫来自函数调用、方法调用或 `await`。接收到的守卫只能用于初始化绑定（`let`、模式、`using`）、赋给变量，或交给调用方（`return`、函数的值）。把它传给函数、在它上面调用方法、把它存入字段或集合，或丢弃它，都是编译错误。用 `using` 绑定的守卫可以传给函数；不用 `using` 绑定的守卫不会因为被传递而释放。用普通 `let`（或 `if let`）绑定一个永远不会被 `using` 释放的守卫，或丢弃 `lock` 返回的守卫，都是编译错误。
 
-`Mutex::new(value)` 接管 `value`：之后使用调用方的句柄是编译错误；同样是编译错误的还有：在守卫的 `using` 块结束后使用 `get` 返回的值或 `set` 给出的值；在守卫持有期间（直到 `set` 给锁一个新值为止）交出 `get` 返回的值；把它返回、yield、作为块的值，或交给在块之后运行的协程（[2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)）。抛出持有它的错误（`throw Leak { xs: g.get() };`）也是如此：捕获方在锁释放之后才运行。`get` 返回的是有作用域的视图：它与守卫一样既不是 `Send` 也不是 `Sync`，把它传给会保留它的被调用方（存入 `Cell`、字段、捕获、线程局部变量）会在调用处产生编译错误 E0106，其帮助信息会给出 `get_clone()`。`get_clone()` 返回深拷贝（`T: Clone`），可以比锁存活得更久。请在 `using` 块内处理视图，或保留一份 `get_clone()`。守卫是 `!Sync`，只在其 `using` 块内有效：在块结束后使用它的副本（放在集合、闭包、字段中）是编译错误；要在另一个线程上运行的闭包中使用该值，先取深拷贝（`let v = g.get_clone();`），再捕获 `v`。`RwLockReadGuard` 和 `RwLockWriteGuard` 有同样的 `get` 和 `get_clone`。在运行时，`new`、`set` 和 `update` 存储该值带入的集合的副本（2.13.9）；`new_unshared` 跳过复制，由调用方保证没有其他东西能到达 `value` 的集合（例如刚刚创建的值）。
+`Mutex::new(value)` 接管 `value`：之后使用调用方的句柄是编译错误；同样是编译错误的还有：在守卫的 `using` 块结束后使用 `get` 返回的值或 `set` 给出的值；在守卫持有期间（直到 `set` 给锁一个新值为止）交出 `get` 返回的值；把它返回、yield、作为块的值，或交给在块之后运行的协程（[2.13.9](213-marker.md#2139-send--sync线程边界标记)）。抛出持有它的错误（`throw Leak { xs: g.get() };`）也是如此：捕获方在锁释放之后才运行。`get` 返回的是有作用域的视图：它与守卫一样既不是 `Send` 也不是 `Sync`，把它传给会保留它的被调用方（存入 `Cell`、字段、捕获、线程局部变量）会在调用处产生编译错误 E0106，其帮助信息会给出 `get_clone()`。`get_clone()` 返回深拷贝（`T: Clone`），可以比锁存活得更久。请在 `using` 块内处理视图，或保留一份 `get_clone()`。守卫是 `!Sync`，只在其 `using` 块内有效：在块结束后使用它的副本（放在集合、闭包、字段中）是编译错误；要在另一个线程上运行的闭包中使用该值，先取深拷贝（`let v = g.get_clone();`），再捕获 `v`。`RwLockReadGuard` 和 `RwLockWriteGuard` 有同样的 `get` 和 `get_clone`。在运行时，`new`、`set` 和 `update` 存储该值带入的集合的副本（2.13.9）；`new_unshared` 跳过复制，由调用方保证没有其他东西能到达 `value` 的集合（例如刚刚创建的值）。
 
 ```nabi
 static STATE: Mutex<List<i32>> = Mutex::new([]);
@@ -192,7 +192,7 @@ match STATE.try_lock() {
 
 Nabi 的 Mutex 与 Rust 的 PoisonError 模型不同。即使发生 panic，锁也会自动释放，下一个任务可以正常进入。这样设计有两个原因。
 
-1. panic 不能被捕获，会结束进程，所以其他任务永远不会观察到 panic 中途的锁状态。唯一的例外是 C 调用的函数上的 `#[on_panic]`：在那里被跳过的栈帧不会运行它们的 drop，它们锁住的 `Mutex` 会保持锁定（持有锁时请返回错误值，而不是触发 panic）。当错误通过 `throw` 传播出 `using` 块时，[`using` 会调用 Drop](213-marker.md#2134-drop---cleanup-on-release)，所以由 `MutexGuard` 的 drop 负责释放锁。
+1. panic 不能被捕获，会结束进程，所以其他任务永远不会观察到 panic 中途的锁状态。唯一的例外是 C 调用的函数上的 `#[on_panic]`：在那里被跳过的栈帧不会运行它们的 drop，它们锁住的 `Mutex` 会保持锁定（持有锁时请返回错误值，而不是触发 panic）。当错误通过 `throw` 传播出 `using` 块时，[`using` 会调用 Drop](213-marker.md#2134-drop释放时的清理)，所以由 `MutexGuard` 的 drop 负责释放锁。
 2. 中毒看似保守，却给用户带来很大负担，而且在大多数情况下是误报。
 
 如果确实必须在带着错误离开之前恢复一致性，请显式处理：
@@ -262,9 +262,9 @@ using w = CONFIG.write() {       // briefly blocks all readers
 }
 ```
 
-只有当 `T` 是 `Send + Sync` 时，`RwLock<T>` 才是 `Sync`（[2.16.5](#send--sync-markers)），所以这里的 `Config` 必须是 `Sync`。放在其中的集合是冻结的（`RwLock<FrozenDict<K, V>>`）：读者共享它，写者整体替换它（2.16.4b）。
+只有当 `T` 是 `Send + Sync` 时，`RwLock<T>` 才是 `Sync`（[2.16.5](#send--sync-标记)），所以这里的 `Config` 必须是 `Sync`。放在其中的集合是冻结的（`RwLock<FrozenDict<K, V>>`）：读者共享它，写者整体替换它（2.16.4b）。
 
-与 `Mutex` 一样，`RwLock::new(value)` 接管 `value`：之后使用调用方的句柄是编译错误；同样是编译错误的还有：在守卫的 `using` 块结束后使用其 `get` 返回的值或 `set` 给出的值；在守卫持有期间（直到 `set` 给锁一个新值为止）交出 `get` 返回的值；从块内返回它（[2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)）。请在 `using` 块内处理它，或保留一份 `clone()`。与 `Mutex` 一样，`new` 以及写守卫的 `set` 和 `update` 存储副本。
+与 `Mutex` 一样，`RwLock::new(value)` 接管 `value`：之后使用调用方的句柄是编译错误；同样是编译错误的还有：在守卫的 `using` 块结束后使用其 `get` 返回的值或 `set` 给出的值；在守卫持有期间（直到 `set` 给锁一个新值为止）交出 `get` 返回的值；从块内返回它（[2.13.9](213-marker.md#2139-send--sync线程边界标记)）。请在 `using` 块内处理它，或保留一份 `clone()`。与 `Mutex` 一样，`new` 以及写守卫的 `set` 和 `update` 存储副本。
 
 `RwLock` 的守卫也适用同样的规则：用普通 `let`（或 `if let`）绑定 `read` / `write` 的守卫而永远不被 `using` 释放，或丢弃它，都是编译错误。
 
@@ -294,7 +294,7 @@ impl Condvar {
 
 ### 异步锁与取消
 
-`lock_async` / `read_async` / `write_async` / `wait_async` 的 future 在被取消的轮询中不会获取锁（[2.18.4](218-task.md#2184-cooperative-cancellation---taskcancel)）。被取消的 `wait_async` 按如下方式结束。
+`lock_async` / `read_async` / `write_async` / `wait_async` 的 future 在被取消的轮询中不会获取锁（[2.18.4](218-task.md#2184-协作式取消taskcancel)）。被取消的 `wait_async` 按如下方式结束。
 
 - 如果互斥锁空闲，它会重新获取锁，于是调用方的 `using` 守卫照常释放它。
 - 如果另一个任务持有锁，它不获取锁就离开，被丢弃的守卫不会释放该互斥锁。
@@ -312,9 +312,9 @@ impl<T> Frozen<T> {
 }
 ```
 
-对于单个大集合，请改为冻结它（[2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s---read-only-collections)）：`FrozenList` / `FrozenDict` / `FrozenSet` 被每个线程原地读取，完全不复制。`Frozen<T>` 用于由多个部分组成的值，其中一些部分是集合，每个读者可以在自己的副本中修改它们。
+对于单个大集合，请改为冻结它（[2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s只读集合类型)）：`FrozenList` / `FrozenDict` / `FrozenSet` 被每个线程原地读取，完全不复制。`Frozen<T>` 用于由多个部分组成的值，其中一些部分是集合，每个读者可以在自己的副本中修改它们。
 
-`new` 像移交（hand-off）一样保留 `value` 所到达的集合的副本（[2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)），所以外部没有任何东西能到达它所持有的内容。`get` 给每个读者一份自己的副本：修改它不会改变其他读者看到的内容。`Sync` 的部分（`Mutex`、自己加锁的缓存、不可变 `Sync` 类型的值）不被复制，保持共享，所以一次 `get` 只需复制该值的其他集合。请把大的只读部分排除在这份副本之外：把它们作为 `Sync` 类型持有，或放在单独的 `Frozen` 字段中，在需要的地方读取。
+`new` 像移交（hand-off）一样保留 `value` 所到达的集合的副本（[2.13.9](213-marker.md#2139-send--sync线程边界标记)），所以外部没有任何东西能到达它所持有的内容。`get` 给每个读者一份自己的副本：修改它不会改变其他读者看到的内容。`Sync` 的部分（`Mutex`、自己加锁的缓存、不可变 `Sync` 类型的值）不被复制，保持共享，所以一次 `get` 只需复制该值的其他集合。请把大的只读部分排除在这份副本之外：把它们作为 `Sync` 类型持有，或放在单独的 `Frozen` 字段中，在需要的地方读取。
 
 ```nabi
 struct Settings {
@@ -382,19 +382,19 @@ task::spawn(async { c.set(100) });       // ERROR: Cell is not cross-task safe
 
 ### `Send` / `Sync` 标记
 
-`Send` / `Sync` 是 [2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers) 中的自动标记 trait。本章的类型遵循以下策略：
+`Send` / `Sync` 是 [2.13.9](213-marker.md#2139-send--sync线程边界标记) 中的自动标记 trait。本章的类型遵循以下策略：
 
 - `Atomic<T>`：Send + Sync，包括 `Atomic<Ptr<T>>`（单元中保存的是地址）
 - `Mutex<T>`：`T: Send` 时为 Send + Sync
 - `RwLock<T>`：`T: Send` 时为 Send；`T: Send + Sync` 时为 Sync。它的读者同时共享该值，所以集合（`!Sync`）的 `RwLock` 不能在线程之间共享；请使用 `Mutex<T>`。
 - `MutexGuard<T>`、`RwLockReadGuard<T>`、`RwLockWriteGuard<T>`：Send，`!Sync`。守卫只在其 `using` 块内有效，其 `get` 返回的视图既不是 `Send` 也不是 `Sync`（由 E0106 追踪，2.16.3）
 - `Frozen<T>`：`T: Send` 时为 Sync（2.16.4b）
-- `FrozenList<T>`、`FrozenSet<T, S>`：元素（及哈希器）为 `Send + Sync` 时为 Sync；`FrozenDict<K, V, S>` 在 `K`、`V` 和 `S` 都是时为 Sync（[2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s---read-only-collections)）
+- `FrozenList<T>`、`FrozenSet<T, S>`：元素（及哈希器）为 `Send + Sync` 时为 Sync；`FrozenDict<K, V, S>` 在 `K`、`V` 和 `S` 都是时为 Sync（[2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s只读集合类型)）
 - `Cell<T>`：两者都不是（仅限单个任务）。上面的 `task::spawn` 之所以是错误，是因为 `async` 块捕获了 `Cell`，因而不是 `Send`
 
 ## 2.16.6. 模块映射
 
-每个项都定义在 `core::sync` 中，这是它唯一的路径（[0.1.6](../000-meta/001-tier-model.md#016-one-path-per-item)）；没有按类型划分的子模块。
+每个项都定义在 `core::sync` 中，这是它唯一的路径（[0.1.6](../000-meta/001-tier-model.md#016-每个项只有一条路径)）；没有按类型划分的子模块。
 
 | 类型         | 模块              | 内部结构                         |
 |--------------|-------------------|----------------------------------|

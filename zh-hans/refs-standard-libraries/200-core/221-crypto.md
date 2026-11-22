@@ -4,7 +4,7 @@
 
 在 `core::crypto` 中唯一的名称（`Secret`、`constant_time_eq`、`HashAlgorithm`、`Digest`、SHA-3 和 SHAKE 状态、`Hmac`、`AeadAlgorithm`、`Aead`、`EcCurve`）可以通过 `core::crypto::` 使用；注释中写出了同样导出它们的子模块。密钥和 HKDF 只能通过其算法模块访问（`crypto::ed25519::SigningKey`、`crypto::hkdf::extract`），因为好几个模块都有 `PublicKey`。
 
-每个字节参数都对 `AsBytes` 泛型（[2.11.13](211-conversion.md#21113-asbytes-trait---bytes-as-a-view)）：`str` 给出其 UTF-8 字节，`List<u8>`、`Slice<u8>` 或 `[u8; N]` 给出其字节，`Secret` 原地给出其字节，程序自己的类型给出其 `byte_slice` 返回的内容。同一个函数的多个字节参数各有自己的类型参数，因此密钥与消息不必是同一类型。
+每个字节参数都对 `AsBytes` 泛型（[2.11.13](211-conversion.md#21113-asbytes-trait字节视图)）：`str` 给出其 UTF-8 字节，`List<u8>`、`Slice<u8>` 或 `[u8; N]` 给出其字节，`Secret` 原地给出其字节，程序自己的类型给出其 `byte_slice` 返回的内容。同一个函数的多个字节参数各有自己的类型参数，因此密钥与消息不必是同一类型。
 
 ```nabi
 struct Secret {                                     // crypto::secret
@@ -22,7 +22,7 @@ impl AsBytes for Secret;                            // byte_slice: as_bytes (2.1
 fn constant_time_eq<A: AsBytes, B: AsBytes>(a: A, b: B) -> bool;   // time depends only on the lengths
 ```
 
-`Secret` 是位于机密存储（[2.21.5](#2215-security-considerations)）中的定长字节串。与 `List` 一样，副本共享字节，它不是 `Sync`。与集合一样，交接给另一个线程时，新的所有者会在机密存储中得到自己的副本；`par` 会让到达同一个 `Secret` 的元素逐个运行（[2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)）。来自 `as_bytes` 或切片的视图直接读取存储本身：它能看到之后的写入，机密被擦除后读到的是零。`Secret` 没有 `==`；用 `constant_time_eq` 比较。
+`Secret` 是位于机密存储（[2.21.5](#2215-安全注意事项)）中的定长字节串。与 `List` 一样，副本共享字节，它不是 `Sync`。与集合一样，交接给另一个线程时，新的所有者会在机密存储中得到自己的副本；`par` 会让到达同一个 `Secret` 的元素逐个运行（[2.13.9](213-marker.md#2139-send--sync线程边界标记)）。来自 `as_bytes` 或切片的视图直接读取存储本身：它能看到之后的写入，机密被擦除后读到的是零。`Secret` 没有 `==`；用 `constant_time_eq` 比较。
 
 ## 2.21.1. 哈希、HMAC、HKDF
 
@@ -184,7 +184,7 @@ mod rsa {                                           // crypto::rsa (RFC 8017), 2
 }
 ```
 
-私钥和签名密钥把其机密材料保存在机密存储中（[2.21.5](#2215-security-considerations)）：副本共享这些材料，它们不是 `Sync`，`wipe` 和 `using` 释放会用零覆盖这些材料，`Debug` 不显示任何密钥字节：它以记录形式 `Type { field: .., .. }` 打印类型，只包含公开信息（长度、曲线、大小、公钥），其余部分写作 `..`（[0.5.12](../000-meta/005-notation.md#0512-trait-coverage-non_exhaustive-and-sealed)）。密钥只在创建时检查一次，所以 Ed25519 和 ECDSA 签名不会失败。密钥由字节构造；随机源由调用方提供（`SigningKey::from_seed(random::secret(32))`，3.9）。
+私钥和签名密钥把其机密材料保存在机密存储中（[2.21.5](#2215-安全注意事项)）：副本共享这些材料，它们不是 `Sync`，`wipe` 和 `using` 释放会用零覆盖这些材料，`Debug` 不显示任何密钥字节：它以记录形式 `Type { field: .., .. }` 打印类型，只包含公开信息（长度、曲线、大小、公钥），其余部分写作 `..`（[0.5.12](../000-meta/005-notation.md#0512-trait-覆盖non_exhaustive-与-sealed)）。密钥只在创建时检查一次，所以 Ed25519 和 ECDSA 签名不会失败。密钥由字节构造；随机源由调用方提供（`SigningKey::from_seed(random::secret(32))`，3.9）。
 
 Ed25519 验证不使用余因子（cofactorless），并拒绝 `R` 的非规范编码以及 `S ≥ L`；`ed25519::VerifyingKey::from_bytes` 拒绝非规范的 `A` 或不在曲线上的 `A`。`ecdsa::VerifyingKey::from_sec1` 拒绝不是曲线上坐标小于 p 的未压缩点的公钥，ECDSA 验证拒绝不是最小 DER 编码、或者 `r` 或 `s` 不在 `[1, n)` 中的签名。RSA 验证要求签名长度恰好等于模数长度且小于模数；PKCS #1 v1.5 比较完整重建的编码。`rsa::PublicKey::new` 接受 2048 到 4096 位的奇数模数和满足 `3 ≤ e < 2^33` 的奇数指数（忽略前导零字节）；其他任何输入都是 `ValueError`（验证时每个指数位要做一次模平方，所以不能让对端选择很长的指数）。
 
@@ -192,7 +192,7 @@ ECDSA 签名密钥是大端标量 `1 <= d < n`，长度不超过曲线的大小�
 
 ## 2.21.5. 安全注意事项
 
-**状态。** `core::crypto` 和 `net::tls`（[3.2.5](../300-std/302-net.md#325-tls-13---nettls)）是实验性的：它们依据已发布的标准编写，以 NIST CAVP 和 Wycheproof 测试向量进行测试，并检查了不同机密输入之间的时间差异，但尚未经过独立的安全审计。在涉及真实机密的场合，它们不能替代经过审计的库。
+**状态。** `core::crypto` 和 `net::tls`（[3.2.5](../300-std/302-net.md#325-tls-13nettls)）是实验性的：它们依据已发布的标准编写，以 NIST CAVP 和 Wycheproof 测试向量进行测试，并检查了不同机密输入之间的时间差异，但尚未经过独立的安全审计。在涉及真实机密的场合，它们不能替代经过审计的库。
 
 **常数时间。** 在对机密进行的操作中，没有任何分支或内存索引依赖于机密数据：AES（加密和密钥编排）、GHASH、ChaCha20、Poly1305、标签比较、X25519、Ed25519 签名、ECDSA 签名和密钥派生、RSA 私钥操作、ML-KEM 密钥生成和解封装、HMAC 和 HKDF。AES 采用位切片（bitsliced）实现（不查表），GHASH 用稀疏操作数的整数乘积做乘法（无表），标量乘法通过扫描每个表项来读取其预计算表，求逆通过公开指数的幂运算（ECDSA、Ed25519）或定长二进制 GCD（RSA 盲化）完成，RSA 幂运算对每个指数位都在素数的完整宽度上做平方和乘法，ML-KEM 用乘法加移位而不是除法来约简，条件选择使用编译器无法证明为 0 或全 1 的掩码，因此编译器无法把它们变回分支。运行时间只取决于公开的值：长度、算法、曲线和密钥大小，以及本来就公开的结果（无法通过验证的标签或签名，超出范围的 RFC 6979 候选 nonce）。无论密文能否重新加密成功，ML-KEM 解封装都走同一条路径；隐式拒绝密钥通过掩码选出。
 
@@ -206,14 +206,14 @@ ECDSA 签名密钥是大端标量 `1 <= d < n`，长度不超过曲线的大小�
 
 - `Secret` 的字节在堆中只存在于一个位置；交接给另一个线程（2.13.9）会在机密存储中生成第二个 `Secret`，按同样的规则擦除。这些字节会在 `wipe` 时、在 `using` 绑定释放该 `Secret` 时（直接释放或通过 drop glue），以及最迟在释放该缓冲区的那次回收时被零覆盖。清零使用优化器不得删除的存储操作。
 - 算法只在机密存储或局部变量中保存依赖于密钥的状态，从不放在普通堆对象中。这些状态包括 AES 轮密钥、GHASH 密钥和 ChaCha20 密钥（`Aead`），HMAC 和 HKDF（填充后的密钥、链值、输出块），X25519 私钥以及 X25519 和 ML-KEM 的共享密钥，ML-KEM 解封装密钥及其机密多项式、种子和消息，Ed25519 的种子、扩展密钥和 nonce 哈希，ECDSA 标量，以及 RSA 的素数、CRT 指数和 `q^-1`。结果为密钥材料的函数返回 `Secret`。机密存储中的临时值会在函数返回之前擦除，除非函数抛出错误；这时由回收来擦除。
-- `net::tls`（[3.2.5](../300-std/302-net.md#325-tls-13---nettls)）把其流量、握手和恢复机密、记录密钥、密钥交换机密、票据 PSK 以及 Ed25519 / EC 私钥保存在机密存储中，并在 KeyUpdate 时、握手结束时和关闭时擦除它们。
+- `net::tls`（[3.2.5](../300-std/302-net.md#325-tls-13nettls)）把其流量、握手和恢复机密、记录密钥、密钥交换机密、票据 PSK 以及 Ed25519 / EC 私钥保存在机密存储中，并在 KeyUpdate 时、握手结束时和关闭时擦除它们。
 
 这一保证有一些界限，实现会说明而不隐瞒：
 
 - **寄存器和栈。** 局部变量存放在寄存器和线程的栈上，不会被清除。这包括定长数组以及 `Digest`、`Hmac`、SHA-3 和密码状态等结构体值，以及 X25519、Ed25519 和 ECDSA 的域元素和标量。编译器产生的溢出（spill）也不会被清除；栈槽只在栈被复用时才被覆盖。没有清除它们的代码生成；Rust 的 `zeroize`、Go 的 `crypto/subtle` 辅助函数和 libsodium 的 `sodium_memzero` 同样只能触及交给它们的内存，触及不到编译器产生的副本。
 - **普通对象。** 存储在堆对象中的值存在于该对象中：收集器可能在疏散（evacuation）期间复制它，并且不清除就释放它。这包括 `List` 元素、由 GC 持有的结构体字段、闭包环境，以及跨越挂起点的 `async` / 生成器帧（[refs-lang 7.8.2](../../refs-lang/007-runtime/708-coroutine.md#782-coroutine-frame)）。把 `Secret` 的字节复制出来（`as_bytes().to_list()`、`str`、格式化）会产生普通副本。
 - **普通输入和输出。** 不在保证范围内的有：以 `List<u8>` 或 `str` 传入的密钥、明文和密文、`Hmac` 标签、`Digest` 输出，以及解码后的密钥文件（PEM / DER 解码会先生成普通列表，然后 `PrivateKey` 才复制密钥）。
-- **签名。** ECDSA 和 RSA 签名不在保证范围内：RFC 6979 状态和 `bignum` 的 limb是普通列表，RSA 操作在普通列表上计算（`rsa::PrivateKey` 把其素数、CRT 指数和 `q^-1` 保存在机密存储中，并为每次操作重建模数）。
+- **签名。** ECDSA 和 RSA 签名不在保证范围内：RFC 6979 状态和 `bignum` 的 limb 是普通列表，RSA 操作在普通列表上计算（`rsa::PrivateKey` 把其素数、CRT 指数和 `q^-1` 保存在机密存储中，并为每次操作重建模数）。
 - **未锁定在内存中。** 机密存储没有锁定（`mlock` / `VirtualLock`）。它可能被写入交换区或休眠文件，并出现在核心转储和进程快照中。锁定以页为单位，受每进程限制（RLIMIT_MEMLOCK），也以页为单位解除，所以需要一个自己的页粒度分配器。
 - **进程退出和 wasm。** 进程退出时释放的内存不会被擦除。在 wasm 目标上，宿主可以随时读取线性内存。
 

@@ -70,7 +70,7 @@ use foo::**;             // recursive glob (foo + all submodules)
 
 运算符 trait 不在 prelude 中：写 `ops::Add`，或者 `use core::ops::Add;`。运算符本身不需要名称，在任何地方都可用（[refs-lang 6.7.8](../../refs-lang/006-meta-system/607-operator-magic.md#678-visibility-of-mappings)），每个 `core` trait 的方法也是如此（[refs-lang 3.5](../../refs-lang/003-expressions/305-member-access-and-method-call.md)）。
 
-**操作系统扩展 trait。** 在具备它们的目标上，prelude 还会指称 `PermissionsExt`、`CommandExt` 和 `ExitStatusExt`（unix），以及 `ChildExt` 和 `TcpStreamExt`（linux），所以在这些目标上使用它们的方法不需要 `use`（[3.10.1](../300-std/310-os.md#3101-ext-traits-in-the-prelude)）。它们不计入上面的数目。
+**操作系统扩展 trait。** 在具备它们的目标上，prelude 还会指称 `PermissionsExt`、`CommandExt` 和 `ExitStatusExt`（unix），以及 `ChildExt` 和 `TcpStreamExt`（linux），所以在这些目标上使用它们的方法不需要 `use`（[3.10.1](../300-std/310-os.md#3101-prelude-中的扩展-trait)）。它们不计入上面的数目。
 
 **函数（13 个）。**
 

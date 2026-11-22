@@ -4,7 +4,7 @@
 
 本章定义 20 个广播 trait，以及函数广播的脱糖规则。
 
-这些 trait 声明在 `core::ops` 中，这是它们唯一的路径（[0.1.6](../000-meta/001-tier-model.md#016-one-path-per-item)）；没有 `broadcast` 子模块。[2.3.10](203-ops.md#2310-unicode-math-operator-traits) 中的 `⋅` 点积 trait `Dot` 与它们并列。`Dot` 不是 20 个广播 trait 之一：`a ⋅ b` 把两个操作数归约为一个值（`fn dot(self, rhs: Rhs) -> Output`），而不是逐元素运算，标准库也没有为任何类型实现它。
+这些 trait 声明在 `core::ops` 中，这是它们唯一的路径（[0.1.6](../000-meta/001-tier-model.md#016-每个项只有一条路径)）；没有 `broadcast` 子模块。[2.3.10](203-ops.md#2310-unicode-数学运算符-trait) 中的 `⋅` 点积 trait `Dot` 与它们并列。`Dot` 不是 20 个广播 trait 之一：`a ⋅ b` 把两个操作数归约为一个值（`fn dot(self, rhs: Rhs) -> Output`），而不是逐元素运算，标准库也没有为任何类型实现它。
 
 ## 2.6.1. 动机：为什么要单独的点运算符
 
@@ -24,7 +24,7 @@ m .* n      // element-wise (Hadamard product), always broadcast
 完整的集合是算术（7）+ 比较（6）+ 逻辑（2）+ 位运算（3）+ 移位（2）= **20** 个 trait。
 
 > [!NOTE]
-> 本章定义全部 20 个 trait：7 个算术、6 个比较、2 个逻辑、3 个位运算和 2 个移位。点比较（`.==`/`.!=`/`.<`/`.>`/`.<=`/`.>=`）在 [2.5.8 广播比较](205-cmp.md#258-broadcast-comparison-traits) 中只给出**简要签名**；
+> 本章定义全部 20 个 trait：7 个算术、6 个比较、2 个逻辑、3 个位运算和 2 个移位。点比较（`.==`/`.!=`/`.<`/`.>`/`.<=`/`.>=`）在 [2.5.8 广播比较](205-cmp.md#258-广播比较-trait) 中只给出**简要签名**；
 > 本章是**完整的依据**。
 
 ### 算术（7）
@@ -299,7 +299,7 @@ pub trait Materialize<U, const N: usize> {
 }
 ```
 
-`Array`（[2.9.14](209-collections.md#2914-arrayt-const-n-usize---n-dimensional-array)）由缓冲区、偏移、形状和步长组成，因此能描述任何带步长的存储；自定义类型（包中的 `Tensor`、数据框的列）通过返回它持有的 `Array` 来实现 `Broadcastable`，并实现 `Materialize` 以便从结果的元素构建自身。`Array` 两者都实现：它的视图就是它自己，`materialize` 返回交给它的 `Array<U, N>`。实现 `Broadcastable` 意味着承诺该类型的点运算符作用于所视图的元素，就像作用于普通值一样；包装单个数字的类型（带单位的量）实现 `BroadcastScalar`，以标量身份与它们并列。
+`Array`（[2.9.14](209-collections.md#2914-arrayt-const-n-usizen-维数组)）由缓冲区、偏移、形状和步长组成，因此能描述任何带步长的存储；自定义类型（包中的 `Tensor`、数据框的列）通过返回它持有的 `Array` 来实现 `Broadcastable`，并实现 `Materialize` 以便从结果的元素构建自身。`Array` 两者都实现：它的视图就是它自己，`materialize` 返回交给它的 `Array<U, N>`。实现 `Broadcastable` 意味着承诺该类型的点运算符作用于所视图的元素，就像作用于普通值一样；包装单个数字的类型（带单位的量）实现 `BroadcastScalar`，以标量身份与它们并列。
 
 ```nabi
 struct Signal { data: Array<f64, 1>; }
@@ -338,7 +338,7 @@ let t = s .* 2.0 .+ k;      // one loop; a Signal
 
 `T | none` 的点运算含义是可选值传播：只要任一侧是 `none`，结果就是 `none`。它在运算符层面处理，没有库实现：整棵点表达式树的操作数按源代码顺序各求值一次；然后逐个检查每个 `T | none` 操作数，第一个 `none` 使整棵树的值为 `none`，而不运行这棵树。否则树在 `T` 值上运行，按 2.6.6 所述融合或通过点 trait 运行，因此不会以 `none` 调用任何点 trait。值的类型是树的类型 `| none`。
 
-core 的 n 维 `Array<T, N>`（[2.9.14](209-collections.md#2914-arrayt-const-n-usize---n-dimensional-array)）实现了每个点 trait：数组与同秩数组、数组与标量、标量与数组，均按 2.6.8 的规则。库的数值容器（`Tensor<T>`、数据框的列）直接实现同样的 trait，包括标量在左的情况：孤儿规则允许在定义 `Tensor` 的包中写 `impl DotMul<Tensor> for f64`（[refs-lang 2.9.5](../../refs-lang/002-types/209-impl.md#295-orphan-rule)）。作用于此类类型的点表达式逐个运算符地调用 trait，除非该类型是 `Broadcastable`（2.6.6）；`Array` 是，所以它的点表达式会融合，而它的 trait 实现用于满足约束和按名调用。
+core 的 n 维 `Array<T, N>`（[2.9.14](209-collections.md#2914-arrayt-const-n-usizen-维数组)）实现了每个点 trait：数组与同秩数组、数组与标量、标量与数组，均按 2.6.8 的规则。库的数值容器（`Tensor<T>`、数据框的列）直接实现同样的 trait，包括标量在左的情况：孤儿规则允许在定义 `Tensor` 的包中写 `impl DotMul<Tensor> for f64`（[refs-lang 2.9.5](../../refs-lang/002-types/209-impl.md#295-orphan-rule)）。作用于此类类型的点表达式逐个运算符地调用 trait，除非该类型是 `Broadcastable`（2.6.6）；`Array` 是，所以它的点表达式会融合，而它的 trait 实现用于满足约束和按名调用。
 
 ## 2.6.8. NumPy 风格的广播规则
 

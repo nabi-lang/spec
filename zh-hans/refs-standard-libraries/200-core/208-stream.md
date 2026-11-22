@@ -199,11 +199,11 @@ impl<T, E> TryStream for TryAsyncStream<T, E> {
 }
 ```
 
-`AsyncStream<T>` 的适配器（`map`、`filter`、`collect` 等）是 `Stream` 的默认方法（2.8.5）。`TryAsyncStream` 是 `TryStream`（[2.8.11](#2811-trystream---fallible-streams)），而不是 `Stream`，因为它的 `poll_next` 会抛出错误；它通过 `try for await` 或 `TryStream` 适配器消费。私有字段不作规定。副本共享同一个协程帧，因此也共享前进位置。
+`AsyncStream<T>` 的适配器（`map`、`filter`、`collect` 等）是 `Stream` 的默认方法（2.8.5）。`TryAsyncStream` 是 `TryStream`（[2.8.11](#2811-trystream可失败的流)），而不是 `Stream`，因为它的 `poll_next` 会抛出错误；它通过 `try for await` 或 `TryStream` 适配器消费。私有字段不作规定。副本共享同一个协程帧，因此也共享前进位置。
 
 ## 2.8.9. 模块对应关系
 
-每个项都定义在 `core::stream` 中（`Receiver<T>` 定义在 `core::channel` 中），这是它唯一的路径（[0.1.6](../000-meta/001-tier-model.md#016-one-path-per-item)）；没有子模块。
+每个项都定义在 `core::stream` 中（`Receiver<T>` 定义在 `core::channel` 中），这是它唯一的路径（[0.1.6](../000-meta/001-tier-model.md#016-每个项只有一条路径)）；没有子模块。
 
 | 项                            | 模块                 | 形式                         |
 |-------------------------------|----------------------|------------------------------|
@@ -222,7 +222,7 @@ impl<T, E> TryStream for TryAsyncStream<T, E> {
 
 ## 2.8.11. `TryStream`：可失败的流
 
-它是 `TryIterator`（[2.7.13](207-iter.md#2713-tryiterator---fallible-iteration)）的异步对应物：`poll_next` 给出一个项，在结束时给出 `none`，或者抛出 `Error`。
+它是 `TryIterator`（[2.7.13](207-iter.md#2713-tryiterator可能失败的迭代)）的异步对应物：`poll_next` 给出一个项，在结束时给出 `none`，或者抛出 `Error`。
 
 ```nabi
 trait TryStream {

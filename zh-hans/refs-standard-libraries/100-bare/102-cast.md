@@ -1,6 +1,6 @@
 # 1.2. 强制转换操作：显式命名的强制转换
 
-指针之间以及类型之间的转换只以**命名函数**的形式存在。没有 `cast` 模块：`ptr_cast`、`align_cast`、`align_cast_unchecked` 和 `const_cast` 定义在 `bare::ptr` 中，`reinterpret` 和 `transmute_unchecked` 定义在 `bare::mem` 中，`bare` 根模块重新导出这全部六个函数（`bare::ptr_cast`）以及 `Pod`（[1.2.5](#125-reinterpreta-pod-b-pod---bit-cast-safe)）。C 和 Rust 中的 `as` 强制转换之所以危险，是因为转换是静默发生的；为了避开这个陷阱，Nabi 要求每一次强制转换都带有**显式的名字**。
+指针之间以及类型之间的转换只以**命名函数**的形式存在。没有 `cast` 模块：`ptr_cast`、`align_cast`、`align_cast_unchecked` 和 `const_cast` 定义在 `bare::ptr` 中，`reinterpret` 和 `transmute_unchecked` 定义在 `bare::mem` 中，`bare` 根模块重新导出这全部六个函数（`bare::ptr_cast`）以及 `Pod`（[1.2.5](#125-reinterpreta-pod-b-pod位强制转换安全)）。C 和 Rust 中的 `as` 强制转换之所以危险，是因为转换是静默发生的；为了避开这个陷阱，Nabi 要求每一次强制转换都带有**显式的名字**。
 
 ## 1.2.1. 4 个强制转换函数
 

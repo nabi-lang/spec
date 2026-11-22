@@ -409,7 +409,7 @@ impl From<i32> for i64 {
 
 ## 2.11.13. `AsBytes` trait：字节视图
 
-`core::convert::AsBytes` 是标准库中每个字节实参所接受的类型：`str::from_utf8`（[2.15.6](215-string.md#2156-utf-8-invariant---every-in-process-string)）、`hex` 和 `base64`（[2.22](222-encoding.md)）、`crypto`（[2.21](221-crypto.md)）、`CString::new`（[1.7.2](../100-bare/107-ffi.md)）、`fs` 和 `net` 的写入函数（[2.23.3](223-io.md)）以及 `Slice<u8>::find`（[2.9.7](209-collections.md)）。这样的参数写作 `<B: AsBytes>`，每个字节实参一个类型参数，所以密钥和消息不必是相同的类型。
+`core::convert::AsBytes` 是标准库中每个字节实参所接受的类型：`str::from_utf8`（[2.15.6](215-string.md#2156-utf-8-不变式进程内的每个字符串)）、`hex` 和 `base64`（[2.22](222-encoding.md)）、`crypto`（[2.21](221-crypto.md)）、`CString::new`（[1.7.2](../100-bare/107-ffi.md)）、`fs` 和 `net` 的写入函数（[2.23.3](223-io.md)）以及 `Slice<u8>::find`（[2.9.7](209-collections.md)）。这样的参数写作 `<B: AsBytes>`，每个字节实参一个类型参数，所以密钥和消息不必是相同的类型。
 
 ```nabi
 trait AsBytes {

@@ -19,7 +19,7 @@ const fn encoded_len(n: usize, codec: Codec = STANDARD) -> usize;
 const fn decoded_len_max(n: usize) -> usize;
 ```
 
-字节参数是 `AsBytes`（[2.11.13](211-conversion.md#21113-asbytes-trait---bytes-as-a-view)）：列表、视图、数组或字符串的 UTF-8 字节。`encode` 返回新的 `str`，`decode` 返回新的 `List<u8>`。`_into` 形式写入 `out` 的开头部分，`out` 是调用方设定好大小的列表的可写视图（[2.9.7](209-collections.md)），它们返回写入的字节数；它们不做任何分配。解码后的字节如果是 UTF-8 文本，可以通过 `str::from_utf8` 变为 `str`（[2.15.6](215-string.md#2156-utf-8-invariant---every-in-process-string)）。
+字节参数是 `AsBytes`（[2.11.13](211-conversion.md#21113-asbytes-trait字节视图)）：列表、视图、数组或字符串的 UTF-8 字节。`encode` 返回新的 `str`，`decode` 返回新的 `List<u8>`。`_into` 形式写入 `out` 的开头部分，`out` 是调用方设定好大小的列表的可写视图（[2.9.7](209-collections.md)），它们返回写入的字节数；它们不做任何分配。解码后的字节如果是 UTF-8 文本，可以通过 `str::from_utf8` 变为 `str`（[2.15.6](215-string.md#2156-utf-8-不变式进程内的每个字符串)）。
 
 ```nabi
 encoding::hex::encode("hi");                   //→ "6869"
@@ -75,7 +75,7 @@ const URL_SAFE_NO_PAD: Codec;          // UrlSafe, Absent
 | `"foo"`    | `"Zm9v"`       | `"Zm9v"`          |
 | `"foobar"` | `"Zm9vYmFy"`   | `"Zm9vYmFy"`      |
 
-存在的填充必须正确：末尾有一个或两个 `=`，使长度成为 4 的倍数。最后一个字符中剩余的位被忽略。空白和换行不会被跳过：按行折断的文本（PEM、MIME）要先拼接起来，例如用 `split_whitespace`（[2.15.2](215-string.md#2152-str---immutable-utf-8-string)）。
+存在的填充必须正确：末尾有一个或两个 `=`，使长度成为 4 的倍数。最后一个字符中剩余的位被忽略。空白和换行不会被跳过：按行折断的文本（PEM、MIME）要先拼接起来，例如用 `split_whitespace`（[2.15.2](215-string.md#2152-str不可变的-utf-8-字符串)）。
 
 ```nabi
 let raw: List<u8> = [0xfb, 0xff, 0xbf];

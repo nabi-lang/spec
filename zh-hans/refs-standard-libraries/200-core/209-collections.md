@@ -243,7 +243,7 @@ let (a, b) = zs.split_at(1);                 //→ views of [1] and [2, 4]
 ### 比较 / 哈希 / Debug：通用规则
 
 - `List<T>` 按顺序逐元素实现 `PartialEq` / `Eq` / `Hash`。
-- `Dict<K, V, S>` 和 `Set<T, S>` 的比较和哈希与顺序无关。只要持有相同的元素（键和值），它们就相等。每个条目都单独用进程密钥求哈希，再把结果相加（[2.5.6](205-cmp.md#256-hash---hashing-eq-consistency-promise)），因此哈希也不依赖于 `S`。
+- `Dict<K, V, S>` 和 `Set<T, S>` 的比较和哈希与顺序无关。只要持有相同的元素（键和值），它们就相等。每个条目都单独用进程密钥求哈希，再把结果相加（[2.5.6](205-cmp.md#256-hash哈希与-eq-一致的承诺)），因此哈希也不依赖于 `S`。
 - 当元素实现 `Debug` 时，这三种集合类型都实现 `Debug`，按迭代顺序打印。
 - 因此，元素为 `Eq + Hash` 的集合类型可以作为 `Set` 的元素或 `Dict` 的键（`Set<List<i32>>`）。
 
@@ -264,7 +264,7 @@ struct Dict<K: Hash + Eq, V, S = RandomState> {
 
 它提供平均 O(1) 的查找 / 插入 / 移除。迭代按插入顺序进行：已存在时再次插入的键保持原位，移除后再插入的键排到最后。
 
-`S` 构造哈希器（[2.5.11](205-cmp.md#2511-corehash---hashers)）。默认的 `RandomState` 使用每个进程抽取一次的密钥，因此键在表中的位置在每次运行之间会变化；迭代顺序不变。常量求值期间构造的字典在运行时首次使用时会用进程密钥重新哈希。`Dict<K, V>` 就是 `Dict<K, V, RandomState>`，每个 `{k: v}` 字面量也是如此。
+`S` 构造哈希器（[2.5.11](205-cmp.md#2511-corehash哈希器)）。默认的 `RandomState` 使用每个进程抽取一次的密钥，因此键在表中的位置在每次运行之间会变化；迭代顺序不变。常量求值期间构造的字典在运行时首次使用时会用进程密钥重新哈希。`Dict<K, V>` 就是 `Dict<K, V, RandomState>`，每个 `{k: v}` 字面量也是如此。
 
 ### 核心方法
 
@@ -317,7 +317,7 @@ impl<K: Hash + Eq, V: Default, S: BuildHasher> Entry<K, V, S> {
 }
 ```
 
-`d.freeze()`（`K`、`V` 和 `S` 为 `Send + Sync`）把字典移交给一个 `FrozenDict<K, V, S>`，线程之间无需锁即可共享它（[2.9.7b](#297b-frozenlistt--frozendictk-v-s--frozensett-s---read-only-collections)）。
+`d.freeze()`（`K`、`V` 和 `S` 为 `Send + Sync`）把字典移交给一个 `FrozenDict<K, V, S>`，线程之间无需锁即可共享它（[2.9.7b](#297b-frozenlistt--frozendictk-v-s--frozensett-s只读集合类型)）。
 
 `Dict` 实现 `IntoIterator`、`Index<K>`、`IndexSet<K, V>`、`AddAssign<Dict<K, V, S>>`、`PartialEq` / `Eq` / `Hash`（针对 `V`）、`Debug`（`K: Debug, V: Debug`）、`Clone`（`K: Clone, V: Clone`；克隆键和值，哈希器相同）、`Default`、`FromIterator<(K, V)>` 和 `From<List<(K, V)>>`。`Default`、`FromIterator` 和 `From<List<(K, V)>>` 需要 `S: BuildHasher + Default`；其他实现接受任意 `S: BuildHasher`。
 
@@ -379,7 +379,7 @@ struct Set<T: Hash + Eq, S = RandomState> {
 }
 ```
 
-它与 `Dict` 一样按插入顺序迭代；平均性能为 O(1)。与 `Dict` 一样，`S` 构造哈希器。`s.freeze()`（`T` 和 `S` 为 `Send + Sync`）把集合移交给一个 `FrozenSet<T, S>`（[2.9.7b](#297b-frozenlistt--frozendictk-v-s--frozensett-s---read-only-collections)）。
+它与 `Dict` 一样按插入顺序迭代；平均性能为 O(1)。与 `Dict` 一样，`S` 构造哈希器。`s.freeze()`（`T` 和 `S` 为 `Send + Sync`）把集合移交给一个 `FrozenSet<T, S>`（[2.9.7b](#297b-frozenlistt--frozendictk-v-s--frozensett-s只读集合类型)）。
 
 ```nabi
 impl<T: Hash + Eq> Set<T> {
@@ -441,7 +441,7 @@ let i = a.intersection(b);//→ {2, 3}
 - `pop_last` / `Set::pop` 取出最新的条目，`pop_first` 取出最旧的条目，平均都是 O(1)（它们留下的空洞数量超过条目数时会被压缩掉）；
 - 集合运算的结果先按左操作数的顺序排列。
 
-相等性和哈希忽略顺序（[2.9.2](#292-listt---dynamic-array)），因此 `{"a": 1, "b": 2} == {"b": 2, "a": 1}`。
+相等性和哈希忽略顺序（[2.9.2](#292-listt动态数组)），因此 `{"a": 1, "b": 2} == {"b": 2, "a": 1}`。
 
 ## 2.9.5a. `Deque<T>`：双端队列
 
@@ -613,7 +613,7 @@ struct Slice<T> {
 }
 ```
 
-它是 `xs[1:3]` / `xs[::2]` / `xs[1:]` 等表达式的结果（[2.3.4 `Sliceable`](203-ops.md#234-indexing-traits)）。视图不复制元素；它指向原对象的 GC 缓冲区，只要视图存活，该缓冲区就保持存活。
+它是 `xs[1:3]` / `xs[::2]` / `xs[1:]` 等表达式的结果（[2.3.4 `Sliceable`](203-ops.md#234-索引-trait)）。视图不复制元素；它指向原对象的 GC 缓冲区，只要视图存活，该缓冲区就保持存活。
 
 | 来源       | 视图看到的内容                                                                  |
 |------------|---------------------------------------------------------------------------------|
@@ -665,9 +665,9 @@ impl<T: Debug> Debug for Slice<T> { ... }
 
 `raw_parts` 把视图所见的元素作为缓冲区中一段连续的区域给出，用于对一块区域进行运行时调用。带步长的视图（`xs[::2]`）会先复制到新缓冲区，因此通过这段区域的写入不会到达该视图或其列表。`from_raw_parts(buf, start, len)` 是它的逆操作。两者都是 `unsafe` 的：不会检查 `start + len` 是否位于 `buf` 之内，也不会检查其元素是否已初始化。
 
-`slice::Windows<T>` 和 `slice::Chunks<T>` 是 `Item = Slice<T>` 的 `ExactSizeIterator`：每个窗口或块都是同一缓冲区的视图，而不是副本。`Iterator::windows` / `chunks`（[2.7.1](207-iter.md#271-iterator---stepping)）则收集为列表，用于没有缓冲区的迭代器。
+`slice::Windows<T>` 和 `slice::Chunks<T>` 是 `Item = Slice<T>` 的 `ExactSizeIterator`：每个窗口或块都是同一缓冲区的视图，而不是副本。`Iterator::windows` / `chunks`（[2.7.1](207-iter.md#271-iterator步进)）则收集为列表，用于没有缓冲区的迭代器。
 
-`find` 的 needle 可以是任何 `AsBytes` 类型（[2.11.13](211-conversion.md#21113-asbytes-trait---bytes-as-a-view)）：
+`find` 的 needle 可以是任何 `AsBytes` 类型（[2.11.13](211-conversion.md#21113-asbytes-trait字节视图)）：
 
 ```nabi
 trait AsBytes {
@@ -677,7 +677,7 @@ trait AsBytes {
 
 它为 `str`（其 UTF-8 字节）、`List<u8>`、`Slice<u8>` 和 `[u8; N]` 实现，因此字节串可以作为 needle 传入（依据其 `Slice<u8>` 规则，[refs-lang 1.7.5](../../refs-lang/001-lexical/107-string-literals.md#175-byte-strings)）。
 
-`Slice` 是只读的（没有 `IndexSet`）；写入列表的视图是 `SliceMut<T>`（[2.9.7a](#297a-slicemutt---writable-view)）。负索引从末尾开始计数（[refs-lang 3.6.1](../../refs-lang/003-expressions/306-indexing-and-slicing.md#361-indexing-arri)）。
+`Slice` 是只读的（没有 `IndexSet`）；写入列表的视图是 `SliceMut<T>`（[2.9.7a](#297a-slicemutt可写视图)）。负索引从末尾开始计数（[refs-lang 3.6.1](../../refs-lang/003-expressions/306-indexing-and-slicing.md#361-indexing-arri)）。
 
 ### 示例
 
@@ -769,7 +769,7 @@ impl<T: PartialEq> PartialEq for SliceMut<T> { ... }
 impl<T: Debug> Debug for SliceMut<T> { ... }
 ```
 
-`SliceMutIter<T>` 是 `Item = T` 的 `DoubleEndedIterator` 和 `ExactSizeIterator`；`ChunksMut<T>` 是 `Item = SliceMut<T>` 的 `ExactSizeIterator`。与 `List` 一样，`SliceMut` 不是 `Sync`（[2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)）；移交时会复制其列表，并让视图指向副本。`chunks_mut` 和 `split_at_mut` 给出的视图互不重叠，因此 `par::for_each` 可以把每个视图交给各自的工作线程，由它就地写入列表中属于自己的部分（[2.19.1](219-par.md#2191-core-api)）。负索引与列表上一样从末尾开始计数。
+`SliceMutIter<T>` 是 `Item = T` 的 `DoubleEndedIterator` 和 `ExactSizeIterator`；`ChunksMut<T>` 是 `Item = SliceMut<T>` 的 `ExactSizeIterator`。与 `List` 一样，`SliceMut` 不是 `Sync`（[2.13.9](213-marker.md#2139-send--sync线程边界标记)）；移交时会复制其列表，并让视图指向副本。`chunks_mut` 和 `split_at_mut` 给出的视图互不重叠，因此 `par::for_each` 可以把每个视图交给各自的工作线程，由它就地写入列表中属于自己的部分（[2.19.1](219-par.md#2191-核心-api)）。负索引与列表上一样从末尾开始计数。
 
 ### 视图存活期间调整列表大小
 
@@ -856,7 +856,7 @@ impl<T: Hash + Eq, S: BuildHasher> FrozenSet<T, S> {
 
 `fr[i]`（越界时 panic）和 `fr[a:b]`（只读的 `Slice<T>`，不复制）与列表上的用法相同，`fd[k]` 与字典上的用法相同；没有 `IndexSet`，也没有任何修改内容的方法。三者都实现 `IntoIterator`（按冻结前集合的顺序）、`Clone`（同一个集合：它不会改变，所以共享它与复制它效果相同）、`PartialEq`、`Debug`（与未冻结的集合相同）和 `Default`（空集合）；`FrozenList` 还实现 `Eq` 和 `Hash`。
 
-**冻结。** 只有当元素（对于字典是键、值和哈希器）为 `Send + Sync` 时才有 `freeze`：线程读取的内容同样不能改变，而冻结的列表的列表会让每个线程拿到同一批可修改的内层列表（`List<List<i32>>::freeze` 是错误 `E0069`，其帮助信息建议先冻结每个元素，或者通过 `Mutex` 共享该集合）。`freeze` 会移交集合（[2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)）：之后使用 `xs` 是编译错误 `E0105`，与任何移交一样会通过副本、字段和调用进行跟踪；应改为读取冻结后的值，或者冻结一个 `clone()` 以保留 `xs`。在运行时，冻结后的集合以 O(1) 接管存储并使 `xs` 变为空，因此检查器看不到的句柄（`unsafe` 中的代码）修改的是一个新的空集合，而永远不是读取者读取的内容。曾经有过 `SliceMut` 的列表则改为给出其元素的副本（O(n)）：过期视图仍可能写入旧的存储。常量求值期间构造的字典在冻结时会重新哈希，因此查找永远不会写入。要修改冻结的集合，应创建一个可修改的副本（`to_list()`、`to_dict()`、`to_set()`），修改后再重新冻结。
+**冻结。** 只有当元素（对于字典是键、值和哈希器）为 `Send + Sync` 时才有 `freeze`：线程读取的内容同样不能改变，而冻结的列表的列表会让每个线程拿到同一批可修改的内层列表（`List<List<i32>>::freeze` 是错误 `E0069`，其帮助信息建议先冻结每个元素，或者通过 `Mutex` 共享该集合）。`freeze` 会移交集合（[2.13.9](213-marker.md#2139-send--sync线程边界标记)）：之后使用 `xs` 是编译错误 `E0105`，与任何移交一样会通过副本、字段和调用进行跟踪；应改为读取冻结后的值，或者冻结一个 `clone()` 以保留 `xs`。在运行时，冻结后的集合以 O(1) 接管存储并使 `xs` 变为空，因此检查器看不到的句柄（`unsafe` 中的代码）修改的是一个新的空集合，而永远不是读取者读取的内容。曾经有过 `SliceMut` 的列表则改为给出其元素的副本（O(n)）：过期视图仍可能写入旧的存储。常量求值期间构造的字典在冻结时会重新哈希，因此查找永远不会写入。要修改冻结的集合，应创建一个可修改的副本（`to_list()`、`to_dict()`、`to_set()`），修改后再重新冻结。
 
 **共享。** 冻结类型是 `Sync`，因此它们可以放在集合类型不能去的地方：多个工作线程运行的闭包（`par::map(0..n, |i| table[i])`）、线程的闭包、`static`（`static PRIMES: FrozenList<i64> = [2, 3, 5, 7].freeze();`）、被多方读取的 `RwLock`、随之成为 `Sync` 的结构体的字段。移交（`send`、`Mutex::new`、`[move x]`、任务的结果）不会复制冻结的集合。它们的元素本身是 `Sync`，因此 `FrozenList<Atomic<i64>>` 是一个可供多个线程累加的计数器数组。
 
@@ -946,11 +946,11 @@ let d: Dict<str, i32> = [("a", 1), ("b", 2)].into_iter().collect();
 | 保持插入顺序的映射 | `IndexMap`（crate） | **默认的 dict**          | **默认的 `Dict`**                      |
 | 有序映射 / 集合 | `BTreeMap` / `BTreeSet` | 无（`sortedcontainers` 包） | `SortedDict` / `SortedSet`，独立的类型；`Dict` 不是有序映射 |
 
-Nabi 最主要的不同在于以下几点。第一，`List`、`Dict`、`Set`、`Tuple` 和 `Slice` 有一等的字面量语法，因此不使用 `vec![]` 这样的宏。第二，`Dict` / `Set` 与 Python 3.7+ 的 `dict` 一样按插入顺序迭代，因此不需要单独的保持插入顺序的类型。不过插入顺序不是键的顺序：区间查询、floor / ceiling 查找和按键顺序迭代需要有序映射，而 `Dict` 不是有序映射；有序映射是独立的 `SortedDict` / `SortedSet`（[2.9.5c](#295c-sorteddictk-v--sortedsett---sorted-map-and-set)）。第三，`Slice<T>` 是带步长的视图，因此即使是 `xs[::2]` 这样的表达式也是零拷贝的。
+Nabi 最主要的不同在于以下几点。第一，`List`、`Dict`、`Set`、`Tuple` 和 `Slice` 有一等的字面量语法，因此不使用 `vec![]` 这样的宏。第二，`Dict` / `Set` 与 Python 3.7+ 的 `dict` 一样按插入顺序迭代，因此不需要单独的保持插入顺序的类型。不过插入顺序不是键的顺序：区间查询、floor / ceiling 查找和按键顺序迭代需要有序映射，而 `Dict` 不是有序映射；有序映射是独立的 `SortedDict` / `SortedSet`（[2.9.5c](#295c-sorteddictk-v--sortedsett有序映射与有序集合)）。第三，`Slice<T>` 是带步长的视图，因此即使是 `xs[::2]` 这样的表达式也是零拷贝的。
 
 ## 2.9.12. `GcBuf<T>`：原始 GC 缓冲区
 
-`GcBuf<T>`（`bare::mem::GcBuf`）是 `List` / `Dict` 等集合类型的实现所用的定长 GC 缓冲区，是编译器已知的类型。它唯一的公开路径是 `bare::mem`（[0.1.6](../000-meta/001-tier-model.md#016-one-path-per-item)）；集合类型通过 core 内部的模块访问它。元素类型 `T` 不含 GC 引用（数值、`bool`、`char`、`Pod` 结构体）的缓冲区是回收器从不扫描的原始数据（类型 id `1`，[refs-lang 8.2.12](../../refs-lang/008-abi/802-scan-table.md#8212-runtime-reserved-type-ids)）；元素类型 `T` 含有引用的缓冲区则通过 `T` 的数组 `ScanTable` 扫描，只扫描其引用槽位。
+`GcBuf<T>`（`bare::mem::GcBuf`）是 `List` / `Dict` 等集合类型的实现所用的定长 GC 缓冲区，是编译器已知的类型。它唯一的公开路径是 `bare::mem`（[0.1.6](../000-meta/001-tier-model.md#016-每个项只有一条路径)）；集合类型通过 core 内部的模块访问它。元素类型 `T` 不含 GC 引用（数值、`bool`、`char`、`Pod` 结构体）的缓冲区是回收器从不扫描的原始数据（类型 id `1`，[refs-lang 8.2.12](../../refs-lang/008-abi/802-scan-table.md#8212-runtime-reserved-type-ids)）；元素类型 `T` 含有引用的缓冲区则通过 `T` 的数组 `ScanTable` 扫描，只扫描其引用槽位。
 
 ```nabi
 struct GcBuf<T> { /* representation known to the compiler */ }

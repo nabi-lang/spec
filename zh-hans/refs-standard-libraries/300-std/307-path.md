@@ -128,7 +128,7 @@ let p: Path = try Path::try_from(raw);    // throws Utf8Error if not UTF-8
 let q: Path = try raw.try_into();          // same
 ```
 
-这个转换是 `impl TryFrom<RawPath> for Path { type Error = Utf8Error; ... }`（[2.11.4](../200-core/211-conversion.md#2114-tryfromu-trait---fallible-conversion)）。
+这个转换是 `impl TryFrom<RawPath> for Path { type Error = Utf8Error; ... }`（[2.11.4](../200-core/211-conversion.md#2114-tryfromu-trait可失败转换)）。
 
 ## 3.7.5. `RawPath`：字节 / WTF-16
 

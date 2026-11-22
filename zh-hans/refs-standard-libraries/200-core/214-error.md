@@ -125,7 +125,7 @@ trait Error: Display + Debug {
 
 ### `#[derive(Error)]`
 
-`#[derive(Error)]` 以默认的 `source()` 实现 `Error`。它对字段没有要求；超 trait `Display` 和 `Debug` 来自各自的 derive / 属性或 impl，所以错误类型通常写成 `#[derive(Debug, Error)]` 加 `#[display("..")]`（[2.10.14](210-fmt.md#21014-derive-policy-summary)）。
+`#[derive(Error)]` 以默认的 `source()` 实现 `Error`。它对字段没有要求；超 trait `Display` 和 `Debug` 来自各自的 derive / 属性或 impl，所以错误类型通常写成 `#[derive(Debug, Error)]` 加 `#[display("..")]`（[2.10.14](210-fmt.md#21014-派生策略小结)）。
 
 ### 错误链：`source()`
 
@@ -210,8 +210,8 @@ struct ZeroError;                     // core::num::niche; message()
 | `ValueError`      | 一般的无效值（解析器 / API 等）；`throw "msg"` 抛出的就是它               |
 | `OverflowError`   | `try_into` 等检查（checked）转换中超出范围（算术溢出则触发 panic）         |
 | `ParseError`      | `str → number` 等解析失败（NABION 使用 `NabionError`）                     |
-| `ConversionError` | `TryFrom::Error` 的默认值；非数值转换失败（[2.11.4](211-conversion.md#2114-tryfromu-trait---fallible-conversion)）；`NonNan` / `Finite` 的 `try_from` |
-| `ZeroError`       | 向 `NonZero::try_from` 传入 0（[2.2.2](202-non-zero.md#222-nonzerot---zero-forbidden)） |
+| `ConversionError` | `TryFrom::Error` 的默认值；非数值转换失败（[2.11.4](211-conversion.md#2114-tryfromu-trait可失败转换)）；`NonNan` / `Finite` 的 `try_from` |
+| `ZeroError`       | 向 `NonZero::try_from` 传入 0（[2.2.2](202-non-zero.md#222-nonzerot禁止零)） |
 
 ### 致命错误
 

@@ -330,4 +330,4 @@ impl Variant {
 impl Attr { pub fn type_ref(self) -> TypeRef; pub fn get<A>(self) -> A | none; }
 ```
 
-`std::nabion::to_value_any` 和 `from_value_any`（[3.8.5](../300-std/308-nabion.md#385-library-stdnabion)）建立在这些之上。
+`std::nabion::to_value_any` 和 `from_value_any`（[3.8.5](../300-std/308-nabion.md#385-库stdnabion)）建立在这些之上。

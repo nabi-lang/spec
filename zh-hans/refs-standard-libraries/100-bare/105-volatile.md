@@ -33,7 +33,7 @@ unsafe fn read<T>(src: ConstPtr<T>) -> T;
 unsafe fn write<T>(dst: Ptr<T>, value: T);
 ```
 
-同样的操作也可以通过方法 `Ptr<T>::read_volatile` / `write_volatile` 使用，这种写法往往更自然（[1.1.2](101-ptr.md#112-ptrt---strict-provenance-api)）。`bare::mem` 没有 volatile 函数：这两个函数就是自由函数路径。
+同样的操作也可以通过方法 `Ptr<T>::read_volatile` / `write_volatile` 使用，这种写法往往更自然（[1.1.2](101-ptr.md#112-ptrtstrict-provenance-api)）。`bare::mem` 没有 volatile 函数：这两个函数就是自由函数路径。
 
 ## 1.5.3. 用途
 
@@ -53,7 +53,7 @@ unsafe fn write<T>(dst: Ptr<T>, value: T);
 - 跨线程时仍会发生竞态条件
 - 不强制任何内存顺序
 
-因此线程之间共享的变量必须使用 [`Atomic<T>`](../200-core/216-sync.md#2162-atomict---lock-free-atomics)，`volatile` 应当只作为**硬件 MMIO** 的工具使用。
+因此线程之间共享的变量必须使用 [`Atomic<T>`](../200-core/216-sync.md#2162-atomict无锁原子操作)，`volatile` 应当只作为**硬件 MMIO** 的工具使用。
 
 ## 1.5.5. 降级
 

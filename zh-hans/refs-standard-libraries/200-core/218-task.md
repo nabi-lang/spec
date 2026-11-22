@@ -72,7 +72,7 @@ await task::yield_now();
 
 `join`、`race` 和 `select` 接受任务或 future 的任意 `IntoIterator`，包括列表字面量。
 
-`race` 和 `timeout` 会取消落败者。`race` 一旦看到第一个任务完成（按列表顺序，因此同时完成时先列出的任务胜出），就对它收到的其他每个任务调用 `cancel`（[2.18.4](#2184-cooperative-cancellation---taskcancel)）；`timeout` 的时间一到，就取消它的任务并抛出 `TimeoutError`。落败者就成为一个如同被 `cancel` 取消的任务：
+`race` 和 `timeout` 会取消落败者。`race` 一旦看到第一个任务完成（按列表顺序，因此同时完成时先列出的任务胜出），就对它收到的其他每个任务调用 `cancel`（[2.18.4](#2184-协作式取消taskcancel)）；`timeout` 的时间一到，就取消它的任务并抛出 `TimeoutError`。落败者就成为一个如同被 `cancel` 取消的任务：
 
 - 如果它经过了取消点，`is_cancelled()` 为 true，`try await t.join()` 抛出 `CancellationError`，而普通的 `await t` 会触发 panic，消息中指明原因：``awaited a task cancelled by `task::race`; use `try await t.join()` ``（或 `task::timeout`）。
 - 如果它已经完成，或者没有再经过取消点就完成了，`await t` 和 `join` 返回它自己的值。落败者永远不会产生 `race` 的结果。
@@ -81,7 +81,7 @@ await task::yield_now();
 
 ### `spawn_blocking`：阻塞工作
 
-`spawn_blocking(f)` 在阻塞线程池的一个操作系统线程上运行 `f`，而不是在执行器的工作线程上运行，并返回一个以其结果完成的 `Task<T>`，与 `spawn` 返回的句柄相同（2.18.2）。它用于在任务内等待无法按就绪状态 `await` 的阻塞系统调用（普通文件 I/O 等，[stdlib 3.1.4a](../300-std/301-fs.md#314a-asynchronous-file-io-_async)）。
+`spawn_blocking(f)` 在阻塞线程池的一个操作系统线程上运行 `f`，而不是在执行器的工作线程上运行，并返回一个以其结果完成的 `Task<T>`，与 `spawn` 返回的句柄相同（2.18.2）。它用于在任务内等待无法按就绪状态 `await` 的阻塞系统调用（普通文件 I/O 等，[stdlib 3.1.4a](../300-std/301-fs.md#314a-异步文件-io_async)）。
 
 - `f` 在**调用时立即**开始，而不是在第一次轮询时（线程池已满时先排队）。
 - 每个进程有一个阻塞线程池。它按需增加线程（有上限），并结束空闲一段时间的线程。作业按到达顺序（FIFO）处理。上限为 512 个线程；达到上限后作业排队等待。空闲 10 秒的线程结束。每个作业交给一个空闲线程。
@@ -95,7 +95,7 @@ let n = await task::spawn_blocking(|| heavy_checksum(path));
 `f` 与创建它的代码共享其普通捕获，所以这些捕获必须是 `Send + Sync`（[refs-lang 4.6.9](../../refs-lang/004-functions/406-capture-semantics.md#469-additional-constraints-in-parallel-and-concurrent-contexts)）。只有阻塞工作需要的值（一个集合、一个 `Command`）以下面两种形式之一交给它：
 
 - 在 `f` 的捕获列表中写 `[move x]`，把 `x` 移动到闭包中（[refs-lang 4.6.11](../../refs-lang/004-functions/406-capture-semantics.md#4611-move-capture-the-move-x-capture-list)）。
-- `spawn_blocking_with_arg(arg, f)` 像通道发送那样交出 `arg`，并在线程池线程上调用 `f(arg)`：该线程得到 `arg` 所能到达的每个集合的副本，之后再使用 `arg` 是编译错误（[2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)）。`arg` 只需要 `Send`。
+- `spawn_blocking_with_arg(arg, f)` 像通道发送那样交出 `arg`，并在线程池线程上调用 `f(arg)`：该线程得到 `arg` 所能到达的每个集合的副本，之后再使用 `arg` 是编译错误（[2.13.9](213-marker.md#2139-send--sync线程边界标记)）。`arg` 只需要 `Send`。
 
 无论哪种方式，启动方的代码都不能再使用该值。拥有被移动捕获的闭包也会一并交出：在 `spawn_blocking(f)` 之后再次调用它是编译错误。
 
@@ -107,7 +107,7 @@ let m = await task::spawn_blocking_with_arg(load(), |rows: List<str>| write_all(
 
 ### `spawn` 的 `Send` 检查
 
-`task::spawn` 也要求结果类型是 `Send`（`where F::Output: Send`），并拒绝**帧**（frame）不是 `Send` 的 future（[2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)）。无论 future 来自何处都是如此：不仅检查 `async` 块和 `async fn` 调用，也检查参数、结构体 / 元组 / 和类型的字段、辅助函数的结果、列表元素、闭包持有的 future，以及其他协程帧中的 future。future 的帧由以下内容组成：
+`task::spawn` 也要求结果类型是 `Send`（`where F::Output: Send`），并拒绝**帧**（frame）不是 `Send` 的 future（[2.13.9](213-marker.md#2139-send--sync线程边界标记)）。无论 future 来自何处都是如此：不仅检查 `async` 块和 `async fn` 调用，也检查参数、结构体 / 元组 / 和类型的字段、辅助函数的结果、列表元素、闭包持有的 future，以及其他协程帧中的 future。future 的帧由以下内容组成：
 
 - 捕获的值；
 - 跨越 `await` 仍然存活的局部变量和临时值；
@@ -129,7 +129,7 @@ task::spawn(make());                       // ERROR: the frame of a future made 
 - 类型无法持有函数值的值（它们无法藏有 future 的帧）；
 - 类型带有显式 `unsafe impl Send` 的值（例如 `Task<T>`）；由该类型负责安全性。
 
-`async fn` 的结果类型 `AsyncFuture<T>` 在 `T: Send` 时是 `Send`；会抛出错误的对应类型 `TryAsyncFuture<T, E>` 在 `T` 和 `E` 都是 `Send` 时是 `Send`。捕获和帧由上面的检查分别考察。捕获是 `Send` 但不是 `Sync` 的帧（`async fn` 接受的列表，`async` 块捕获的列表或 future）是可以接受的：`task::spawn` 像通道发送那样交出 future（[2.13.9](213-marker.md#2139-send--sync---thread-boundary-markers)）。任务得到一个自己的帧，其中持有 future 所捕获内容的副本，这些副本在一次交接中生成，所以捕获之间原本共享的东西（同一个列表出现两次，一个列表和基于它的 future）仍然共享；与发送之后一样，spawn 之后再使用该 future 或它捕获的内容是编译错误（`E0105`）。只有尚未被轮询过的 future 才能交出：交出已经开始（被 `select`、用户的 `Future` 或手动轮询过一次）或已经完成的 future，或者其帧或所捕获 future 的帧中有 `[ref x]` 捕获的 future，会触发 panic，且不共享任何内容。通过通道发送、放入 `Mutex` 或 `Frozen` 的协程 future 也以同样方式交出，每次都得到自己的帧。对一个 `Task` 被转交出去（`Frozen::get`、通道、锁、`par` 元素）的任务，每次 `await` 都得到结果的独立副本；同一线程上的 `Task` 副本共享结果。
+`async fn` 的结果类型 `AsyncFuture<T>` 在 `T: Send` 时是 `Send`；会抛出错误的对应类型 `TryAsyncFuture<T, E>` 在 `T` 和 `E` 都是 `Send` 时是 `Send`。捕获和帧由上面的检查分别考察。捕获是 `Send` 但不是 `Sync` 的帧（`async fn` 接受的列表，`async` 块捕获的列表或 future）是可以接受的：`task::spawn` 像通道发送那样交出 future（[2.13.9](213-marker.md#2139-send--sync线程边界标记)）。任务得到一个自己的帧，其中持有 future 所捕获内容的副本，这些副本在一次交接中生成，所以捕获之间原本共享的东西（同一个列表出现两次，一个列表和基于它的 future）仍然共享；与发送之后一样，spawn 之后再使用该 future 或它捕获的内容是编译错误（`E0105`）。只有尚未被轮询过的 future 才能交出：交出已经开始（被 `select`、用户的 `Future` 或手动轮询过一次）或已经完成的 future，或者其帧或所捕获 future 的帧中有 `[ref x]` 捕获的 future，会触发 panic，且不共享任何内容。通过通道发送、放入 `Mutex` 或 `Frozen` 的协程 future 也以同样方式交出，每次都得到自己的帧。对一个 `Task` 被转交出去（`Frozen::get`、通道、锁、`par` 元素）的任务，每次 `await` 都得到结果的独立副本；同一线程上的 `Task` 副本共享结果。
 
 ### `select`：最先完成的 future
 

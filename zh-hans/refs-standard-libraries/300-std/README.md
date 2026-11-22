@@ -43,8 +43,8 @@ use std::thread::Builder;
 
 本层级的所有签名都遵循两条简写。
 
-- 写作 `Path` 的路径参数代表类型参数 `P: AsPath`，因此 `str` 和 `Path` 都可以传入（[3.7.3a](307-path.md#373a-aspath---path-arguments)）。两个路径参数彼此独立（`P: AsPath, Q: AsPath`）。
-- 写入的数据（`Write::write` / `write_all`、`send`、`send_to`、`send_with_fd`、它们的 `_async` 形式，以及 `fs` 的写入函数）是 `B: AsBytes`，因此可以传入 `str`、`List<u8>`、`Slice<u8>` 和 `[u8; N]`（[2.23.3](../200-core/223-io.md#2233-write-and-close)）。`write_zerocopy` 接受 `List<u8>`。
+- 写作 `Path` 的路径参数代表类型参数 `P: AsPath`，因此 `str` 和 `Path` 都可以传入（[3.7.3a](307-path.md#373a-aspath路径参数)）。两个路径参数彼此独立（`P: AsPath, Q: AsPath`）。
+- 写入的数据（`Write::write` / `write_all`、`send`、`send_to`、`send_with_fd`、它们的 `_async` 形式，以及 `fs` 的写入函数）是 `B: AsBytes`，因此可以传入 `str`、`List<u8>`、`Slice<u8>` 和 `[u8; N]`（[2.23.3](../200-core/223-io.md#2233-write-与-close)）。`write_zerocopy` 接受 `List<u8>`。
 
 读取缓冲区是 `SliceMut<u8>`：`read(buf)` 填充 `buf[0..n]` 并返回 `n`，到达流末尾时返回 `0`。`List<u8>` 作为整个列表的视图传入，`buf[a:b]` 作为其中一部分传入。
 
@@ -52,7 +52,7 @@ use std::thread::Builder;
 
 ### 1. 阻塞 API + `*_async`：两套 trait
 
-std 的 I/O 函数是同步的，会阻塞调用它的操作系统线程。要在任务中等待时让出工作线程，就 `await` 同一操作的 `*_async` 方法（[3.2.0](302-net.md#320-common-rules)）。在无栈协程下，普通函数无法挂起任务，所以同步调用永远不会自行变成异步调用。
+std 的 I/O 函数是同步的，会阻塞调用它的操作系统线程。要在任务中等待时让出工作线程，就 `await` 同一操作的 `*_async` 方法（[3.2.0](302-net.md#320-通用规则)）。在无栈协程下，普通函数无法挂起任务，所以同步调用永远不会自行变成异步调用。
 
 ```nabi
 // blocking: on an OS thread (thread::spawn) or outside a task
@@ -70,7 +70,7 @@ async fn fetch_async(addr: str) throws (IoError) -> List<u8> {
 }
 ```
 
-流 I/O 通过 `core::io` 的 trait 进行（[2.23](../200-core/223-io.md)）：`Read` / `Write` 会阻塞，`AsyncRead` / `AsyncWrite` 会挂起任务，方法名保留 `_async` 后缀，因此两者可以同时处于作用域中。不属于流 I/O 的操作（`connect_async`、`accept_async`、`open_async` 等）是各类型的固有方法和函数。套接字等待 I/O 驱动报告就绪（[3.2.0](302-net.md#320-common-rules)）；普通文件则在另一个操作系统线程上执行阻塞调用（[3.1.4a](301-fs.md#314a-asynchronous-file-io-_async)）。
+流 I/O 通过 `core::io` 的 trait 进行（[2.23](../200-core/223-io.md)）：`Read` / `Write` 会阻塞，`AsyncRead` / `AsyncWrite` 会挂起任务，方法名保留 `_async` 后缀，因此两者可以同时处于作用域中。不属于流 I/O 的操作（`connect_async`、`accept_async`、`open_async` 等）是各类型的固有方法和函数。套接字等待 I/O 驱动报告就绪（[3.2.0](302-net.md#320-通用规则)）；普通文件则在另一个操作系统线程上执行阻塞调用（[3.1.4a](301-fs.md#314a-异步文件-io_async)）。
 
 ### 2. I/O 后端：运行时细节
 
@@ -98,7 +98,7 @@ let resp = try tls_conn.read_to_end();
 try tls_conn.close();
 ```
 
-这套协议栈是 Nabi 自己的，基于 `core::crypto`（[2.21](../200-core/221-crypto.md)）编写；不使用操作系统或第三方的 TLS 库（[3.2.5](302-net.md#325-tls-13---nettls)）。
+这套协议栈是 Nabi 自己的，基于 `core::crypto`（[2.21](../200-core/221-crypto.md)）编写；不使用操作系统或第三方的 TLS 库（[3.2.5](302-net.md#325-tls-13nettls)）。
 
 而 HTTP/1、HTTP/2 和 HTTP/3（QUIC）则位于 **std 之外**的独立包中（`http` 涵盖 HTTP/1.1 和 HTTP/2）。这是从 Go 的 `net/http` **冻结在 1.0** 中得到的教训。
 
