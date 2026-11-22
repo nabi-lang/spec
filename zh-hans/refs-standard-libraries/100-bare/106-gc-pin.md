@@ -162,7 +162,7 @@ drop(Pinned):
 
 ## 1.6.5. 何时需要固定
 
-每一次 `extern "C"` 调用都会让调用线程进入停靠（park）状态（[1.7.1](107-ffi.md#171-extern-c-block)）：C 运行期间，回收器不会等待该线程，所以在任何 C 调用期间，无论多短，都可能发生一次回收并移动对象。C 在调用期间使用的、指向 GC 对象内部的指针，只在以下情况下有效：
+每一次 `extern "C"` 调用都会让调用线程进入停驻（park）状态（[1.7.1](107-ffi.md#171-extern-c-block)）：C 运行期间，回收器不会等待该线程，所以在任何 C 调用期间，无论多短，都可能发生一次回收并移动对象。C 在调用期间使用的、指向 GC 对象内部的指针，只在以下情况下有效：
 
 - 对象在整个调用期间都被固定（`gc::pin`，1.6.2），并且在调用之后，只要 C 还保留着该指针，就一直被固定；或者
 - 指针指向的正是某个根所指出的对象本身：`str` 实参，调用者的帧会把它作为根保持到调用返回（[refs-lang 7.4.1](../../refs-lang/007-runtime/704-barriers-and-roots.md#objects-pointed-to-by-roots-are-not-moved)），以及在 [2.15.2](../200-core/215-string.md#2152-str---immutable-utf-8-string) 规则下的 `str::as_ptr` / `CStr::as_ptr`。
