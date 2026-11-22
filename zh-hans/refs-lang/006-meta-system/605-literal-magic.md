@@ -1,0 +1,237 @@
+# 6.5. `#[literal(...)]` 魔法
+
+`#[literal(...)]` 属性把用户编写的语法模式注册为字面量，该字面量会分派给库中的处理函数。
+
+## 6.5.1. 动机
+
+除了从[数字字面量](../001-lexical/106-numeric-literals.md)到[布尔与哨兵字面量](../001-lexical/109-other-literals.md)的词法字面量（数字、字符串、字符、布尔值）之外，Nabi 还在标准库中注册集合、区间和切片等复合字面量。
+
+```
+[1, 2, 3]                 → List<T> instance (compiler: fixed array if the expected type is [T; N])
+{"a": 1, "b": 2}          → Dict<K, V>
+{1, 2, 3}                 → Set<T>
+(1, "hi", true)            → Tuple (compiler)
+0..5                       → Range<T>
+0..=5                      → RangeInclusive<T>
+1:3                        → Slice<T> (compiler)
+2i                         → Complex<f64>
+```
+
+`(compiler)` 标记表示由编译器直接构建、不经过处理函数的字面量。定长数组、元组以及索引内的切片 `a[i:j]` 是语言固有的，不能注册（6.5.7、6.5.9）。
+
+这些字面量的语法由[标点与运算符词法单元](../001-lexical/110-punctuation-and-operator-tokens.md)中的词法单元和[类型表达式](../002-types/201-type-expressions.md)中的形式构成，但构造哪个库类型由库决定。
+
+`#[literal]` 魔法把这个决定附着到 trait 或函数上。
+
+数字字面量的类型由语言决定，而不是由这个魔法决定（[1.6.2](../001-lexical/106-numeric-literals.md#162-type-suffixes)、[1.6.3](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)）。对于数字，`#[literal]` 只处理语言没有定义的后缀。标准库注册了一个后缀 `i`（`2i` 是虚数 `Complex<f64>`，[标准库 2.1.11](../../refs-standard-libraries/200-core/201-numbers.md#2111-numeric-traits-float-ordering-ranges-complex-numbers)），优先级为 -1，这样包自己的 `i` 处理函数会胜出（6.5.5）。
+
+## 6.5.2. 形式
+
+模式在属性的括号内**直接以词法单元**写出，而不是写成字符串。引号只用于包住模式中的单个字面词法单元。
+
+```
+literal_attr    ::= "#" "[" "literal" "(" pattern ("," "priority" "=" "-"? int_lit)? ")" "]"
+pattern         ::= pat_elem+
+pat_elem        ::= pat_atom pat_rep?
+pat_atom        ::= string_lit                          // a single literal token
+                  | "expr" | "number" | "string" | "ident"  // captures
+                  | "{" pattern "}" | "(" pattern ")"     // groups
+pat_rep         ::= ("%" string_lit)? ("*" | "+")
+                  | "?"
+```
+
+```nabi
+#[literal("[" {expr} % "," * "]")]
+fn list_literal<T>(items: ...T) -> List<T> { ... }
+
+#[literal("{" {expr ":" expr} % "," * "}")]
+fn dict_literal<K: Hash, V>(pairs: ...(K, V)) -> Dict<K, V> { ... }
+
+#[literal("{" {expr} % "," + "}")]
+fn set_literal<T: Hash>(items: ...T) -> Set<T> { ... }
+
+#[literal(expr ".." expr)]
+fn range_literal<T>(start: T, end: T) -> Range<T> { ... }
+
+#[literal(expr "..=" expr)]
+fn range_inclusive_literal<T>(start: T, end: T) -> RangeInclusive<T> { ... }
+
+#[literal(number "i", priority = -1)]
+fn imaginary_literal(n: f64) -> Complex<f64> { ... }      // core::num
+
+#[literal("m" "[" {{expr} % "," +} % ";" + "]", priority = 2)]
+fn matrix_literal<const C: usize>(rows: ...[f64; C]) -> Matrix { ... }   // [f64; C] per row
+```
+
+前六个属于标准库；最后一个展示了拥有自己 `Matrix` 类型的包可以注册什么（标准库中没有）。
+
+基本形式是 `#[literal(pattern)]`，后面可以跟 `, priority = N`（可以为负，默认为 0）（6.5.5）。处理函数是一个函数，与模式匹配的字面量会变成对该函数的调用。
+
+注册的作用范围：标准库中的注册在每个包中都可见。其他任何包中的注册作用于该包自己的源代码；当其处理函数是 `pub` 时，还作用于直接依赖它的每个包的源代码，就像运算符映射随其 trait 的可见范围生效一样（[6.7.8](607-operator-magic.md#678-visibility-of-mappings)）：依赖一个导出 `#[literal(number "m")] pub fn meters(..)` 的 `units` 包后，`9.81m` 就表示 `units::meters(9.81)`，无需 `use`。不是 `pub` 的处理函数只在其包内有效，而且一个包的注册永远不会到达依赖其依赖者的包。包之间的冲突按 6.5.5 处理（依赖中的 `i` 优先于标准库中优先级为 -1 的 `i`；两个依赖以同一优先级注册同一后缀时，其使用是有歧义的）。编译器在解析之前收集注册，因此无论注册在何处，它们都会生效。处理函数被调用时就像从它自己的模块中调用一样（[6.9.9](609-template-tokens.md#names-in-an-expansion)），因此它可以具有任何可见性：标准库的处理函数（`list_literal`、`set_literal`、`dict_literal` 以及六个 `range_*_literal`）是 `pub(pkg)`，在 `core` 之外命名它们是错误。
+
+## 6.5.3. 语法模式的格式
+
+语法模式构成一种小型查询语言。
+
+| 记号       | 含义                                                       |
+|------------|------------------------------------------------------------|
+| `"string"` | 字面词法单元（标点或关键字）。按原样匹配                   |
+| `expr`     | 任意表达式                                                 |
+| `number`   | 数字字面量                                                 |
+| `string`   | 字符串字面量                                               |
+| `ident`    | 标识符                                                     |
+| `{ ... }`  | 分组                                                       |
+| `( ... )`  | 分组（与 `{ }` 相同）                                      |
+| `% ","`    | 分隔符（逗号等）。其后必须跟 `*` / `+`                     |
+| `+`        | 重复一次或多次                                             |
+| `*`        | 重复零次或多次                                             |
+| `?`        | 可选（零次或一次）                                         |
+
+上面的示例分解如下。
+
+```
+"[" {expr} % "," * "]"
+ │   │      │       │
+ │   │      │       └── close token
+ │   │      └── zero or more
+ │   ├── separated by comma
+ │   └── expr group
+ └── open token
+```
+
+> open token 是开始词法单元，close token 是结束词法单元，expr group 是 `expr` 的分组，“separated by comma”表示以逗号分隔，“zero or more”表示重复零次或多次。
+
+这个模式匹配所有以逗号分隔的列表：`[]`、`[1]`、`[1, 2]`、`[1, 2, 3]` 等。带分隔符的重复允许一个末尾分隔符（`[1, 2,]`）。
+
+引号中的内容必须是单个词法单元。`"ab cd"` 这样包含多个词法单元的写法是错误；应把每个词法单元分别加引号。
+
+## 6.5.4. 匹配与分派
+
+当 `[1, 2, 3]` 出现在源代码中时，按以下步骤处理。
+
+1. 解析器在已注册的 `#[literal]` 模式中查找匹配的模式。
+2. 匹配成功后，匹配到的子表达式作为实参传给处理函数。
+3. 处理函数构造并返回值。
+
+```nabi
+[1, 2, 3]
+   ↓
+list_literal(1, 2, 3)          // items: Slice<i64>
+   ↓
+List<i64> instance
+```
+
+无论调用哪个处理函数，字面量都是初等表达式：第 14 级的后缀形式（成员访问、方法调用、索引、`?`、后缀运算符）可以跟在它后面，就像跟在 `"ab".len()` 后面一样。因此 `date"2024-01-01".days()` 对处理函数返回的值调用 `days`，`m[1, 2; 3, 4][0]` 对矩阵进行索引。
+
+捕获按顺序成为处理函数的实参。
+
+| 模式部分                           | 实参                                                                                |
+|------------------------------------|-------------------------------------------------------------------------------------|
+| 单个捕获（`expr` 等）              | 一个值                                                                              |
+| `?` 分组中的捕获                   | 每个捕获对应一个值或 `none`                                                         |
+| `*` / `+` 重复                     | 各元素放在一个实参中。每个元素是一个值；有多个捕获时是元组；重复嵌套时是数组 |
+| 处于可变参数 `...T` 位置的重复     | 各元素成为可变参数的实参（[4.2.5](../004-functions/402-parameters.md#425-variadic-t)） |
+
+编译器检查处理函数的签名是否与捕获的数量和重复的位置相符。
+
+## 6.5.5. 多个处理函数（歧义）
+
+当多个模式匹配同一输入时，首先由**最长匹配**胜出（在用户模式之间）。如果匹配长度相等，或者同一模式有多个处理函数，则依次应用以下规则。
+
+1. 选择返回类型与接收槽的类型相同的处理函数。如果接收槽是 `Set<T>`，则优先选择集合的处理函数。
+2. 在剩下的处理函数中，选择 `priority` 最高的那个。
+3. 如果仍剩下两个或更多，则是歧义错误。
+
+槽的类型也决定所选处理函数的类型参数。在 `let s: Set<i64> = {1, 2};` 中，`set_literal` 的 `T` 是 `i64`。
+
+以相同的 `priority` 和相同的返回类型两次注册同一模式，无法用上述规则解决，因此在注册时（而不是使用时）就是错误。
+
+## 6.5.6. Dict 与 Set 的歧义
+
+```
+{ "a": 1 }              // Dict (matches the `:` pattern)
+{ 1, 2 }                 // Set (values only)
+{ 1, }                   // Set (single element, trailing comma)
+{ 1 }                    // always a block
+{ stmt; stmt; expr }    // block ([block expression](../003-expressions/309-block-expressions.md))
+```
+
+由于 `{ ... }` 也用作[块表达式](../003-expressions/309-block-expressions.md)，以下规则用于区分它们。
+
+- 如果有语句，如 `{ expr ; ... }`，则是[块](../000-meta/007-glossary.md#block)。
+- 如果有 `:`，如 `{ expr : expr , ... }`，则是 Dict。
+- 如果至少有一个逗号，如 `{ expr , ... }`，则是 Set。单元素的 Set 写作 `{ expr , }`。
+- 无论接收槽的类型如何，`{ expr }` 总是块。
+
+集合模式 `"{" {expr} % "," + "}"` 在文本上也能匹配 `{e}`，但按上述规则 `{e}` 是块，不会交给处理函数。单元素集合写作 `{e,}`。
+
+解析器通过查看内容来判定。出于可读性考虑，不引入 `s{1, 2}` 这样的集合显式前缀。
+
+## 6.5.7. 用户定义的字面量
+
+虽然少见，用户也可以注册自己的字面量。
+
+```nabi
+struct Coord { x: f64; y: f64; }
+
+#[literal("(" expr "," expr ")" "@")]
+fn coord_literal(x: f64, y: f64) -> Coord { Coord { x, y } }
+
+let p = (3.14, 2.71)@;        // → coord_literal(3.14, 2.71) → Coord
+```
+
+可以注册三类模式。
+
+| 模式                                                         | 处理方式                                                                   |
+|--------------------------------------------------------------|----------------------------------------------------------------------------|
+| 内置形状（`[..]`、`{k: v}`、`{a, b}`、六种区间形式）         | 解析器按语言规则解析，并调用为该形状注册的处理函数                         |
+| `number "suffix"`                                            | 语言没有的数字后缀（`2i`，[1.6.2](../001-lexical/106-numeric-literals.md#162-type-suffixes)） |
+| 以带引号的词法单元开头的其他任何模式                         | 在每个表达式开头先于内置语法尝试；取最长匹配                               |
+
+后缀是紧贴在数字后面的名称，与语言自身的后缀一样（`2i`、`5kg`）。`%` 是取余运算符，因此 `95%` 永远不是字面量，`number "%"` 是错误：百分比用具名后缀写出，即 `#[literal(number "pct")]` 和 `95pct`。
+
+由一个带引号的名称后跟 `string` 构成的模式，如 `#[literal("date" string)]`，是字符串前缀：`date"2024-01-15"` 是以该字符串调用其处理函数。
+
+数字后缀和字符串前缀都是名称，无论是数字形式还是字符串形式：每个都以标识符起始字符开头，只包含标识符字符（[1.4.1](../001-lexical/104-identifiers.md#141-format)），首字符之后可以有数字（`x2`）。词缀是符号的注册，如 `number "+"`、`number "°"`、`number "$"`、`number "⊛"`、`"$" string` 或 `"€" string`，会在属性处报错，并提示使用名称（`pct`、`deg`、`usd`、`eur`）。数字后缀不得以 `e` 或 `E` 开头（`2e3` 是指数），也不得以 `_` 开头（数字分隔符）；字符串前缀不得是 `r`、`b`、`f` 或 `br`，它们是语言自身的字符串前缀。
+
+作用域中没有任何处理函数接受的后缀会在该后缀处报错；紧贴在字符串前、没有任何 `"name" string` 处理函数接受的名称（`dat"2024-01-15"`）也同样报错。当作用域中注册的某个后缀或前缀与之相近（大小写不同，或约三分之一的字符不同）时，错误会给出那个名称，``did you mean `10hz`?``，并附带写出它的修复。在编译期拒绝其实参的处理函数（`date"2024-13-01"`）会在该字面量处报告。
+
+用户模式必须以带引号的词法单元开头。只有内置的区间形状（`expr ".." expr` 等）可以以捕获开头。以下是错误：
+
+- 注册元组形状 `"(" expr "," {expr} % "," * ")"`。元组是语言固有的。
+- 注册语言的数字后缀（`i32`、`f64` 等）。
+
+以标识符词法单元开头的模式（`"m" "["`）会先于对同名变量的索引（`m[i]`）被尝试，因此它会遮蔽该名称。
+
+## 6.5.8. 字面量处理函数的 `const` 兼容性
+
+```nabi
+#[literal("[" {expr} % "," * "]")]
+const fn list_literal<T>(items: ...T) -> List<T> { ... }
+```
+
+- 如果所有实参都是常量，`const fn` 处理函数在编译期求值（[5.2.4](../005-modules/502-const.md#524-constant-expressions-and-the-evaluator)）。其中的 panic 或 `throw` 是位于该字面量位置的编译错误。超出步数或调用深度限制（[0.4.4](../000-meta/004-language-vs-standard-libraries.md#044-implementation-limits)）的求值则不是错误：该调用留到程序运行时执行（`[List::from_fn(1000000, f)]`）。
+- 如果结果使用堆（`List` 等），则只在编译期检查，在运行时构造（[5.2.5](../005-modules/502-const.md#525-const-fn-functions-evaluable-at-compile-time)）。
+- 如果任一实参是运行时值，则是普通调用。
+- 不是 `const fn` 的处理函数在运行时调用。
+
+## 6.5.9. 切片
+
+索引内的 `a[i:j]` / `a[i:j:k]` 不是字面量，而是语言的切片语法，不能用 `#[literal]` 注册。其含义和 trait 映射由[索引与切片](../003-expressions/306-indexing-and-slicing.md)定义。
+
+## 6.5.10. 何时求值
+
+`#[literal]` 映射在编译期按以下顺序进行。
+
+1. 解析器把输入切分为词法单元。
+2. 在输入的每个表达式位置，尝试已注册的模式。
+3. 找到匹配的模式时，在该表达式位置放入对处理函数的调用。
+4. 随后的名称解析和类型检查阶段处理这个结果。
+
+因此 `[1, 2, 3]` 变成哪个函数调用，在编译期就能无歧义地确定。
+
+## 6.5.11. 魔法与标准库
+
+`#[literal]` 几乎只由标准库使用；Nabi 的集合字面量是它的主要注册。
+
+用户可以在自己的库中注册字面量，但必须谨慎选择模式，以免与基本词法单元冲突。
