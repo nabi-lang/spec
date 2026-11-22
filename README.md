@@ -10,8 +10,10 @@ Designed and maintained by [Han Damin](https://github.com/miniex) (`@miniex`).
 
 - [English](en/README.md) - default
 - [한국어](ko/README.md) - Korean
+- [简体中文](zh-hans/README.md) - Simplified Chinese
+- [繁體中文](zh-hant/README.md) - Traditional Chinese (Taiwan)
 
-Both editions have the same files and the same section numbers. If they disagree, the English text is the reference.
+All editions have the same files and the same section numbers. If they disagree, the English text is the reference.
 
 ## Status
 

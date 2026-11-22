@@ -1,8 +1,8 @@
 # The Nabi language specification
 
-**English** · [한국어](../ko/README.md)
+**English** · [한국어](../ko/README.md) · [简体中文](../zh-hans/README.md) · [繁體中文](../zh-hant/README.md)
 
-> **Status**: active draft, describing Nabi 0.1. The specification is published in two editions: English (`en/`, the default) and Korean ([`ko/`](../ko/README.md)). Both cover the same content with the same section numbers.
+> **Status**: active draft, describing Nabi 0.1. The specification is published in four editions: English (`en/`, the default), Korean ([`ko/`](../ko/README.md)), Simplified Chinese ([`zh-hans/`](../zh-hans/README.md)) and Traditional Chinese ([`zh-hant/`](../zh-hant/README.md)). All cover the same content with the same section numbers.
 
 Nabi is a programming language, and this repository is its formal specification. Starting from lexical structure and the type system, it defines every layer of the language in one place: expressions, the runtime model, the ABI, and the tools that accompany the specification. The compiler and the standard library implementation live in a separate repository; this one holds only the normative answer to the question "what is Nabi".
 
@@ -54,6 +54,8 @@ The specification exists in two language editions:
 
 - **English** (`en/`) - the default edition.
 - **한국어** ([`ko/`](../ko/README.md)) - Korean.
+- **简体中文** ([`zh-hans/`](../zh-hans/README.md)) - Simplified Chinese.
+- **繁體中文** ([`zh-hant/`](../zh-hant/README.md)) - Traditional Chinese, as used in Taiwan.
 
 Both editions use the same file layout and section numbering (`3.11.4`), so a section number names the same rule in either. If the two editions disagree, the English text is the reference, and the discrepancy is a bug to be fixed in both.
 
