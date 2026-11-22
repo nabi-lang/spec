@@ -1,6 +1,6 @@
 # 6.7. 运算符魔法
 
-`#[infix]`、`#[prefix]` 和 `#[postfix]` 这三个属性只负责把运算符词法单元连接到 trait 方法。优先级和结合性由 [3.2.3](../003-expressions/302-precedence-and-associativity.md#323-precedence-and-associativity-table) 中的表格在语言层面固定，这些属性既不能设置也不能修改它们。它们是[运算符分派](../003-expressions/301-operator-dispatch.md)的脱糖机制得以运作所必需的核心魔法。
+`#[infix]`、`#[prefix]` 和 `#[postfix]` 这三个属性只负责把运算符词法单元连接到 trait 方法。优先级和结合性由 [3.2.3](../003-expressions/302-precedence-and-associativity.md#323-优先级与结合性表) 中的表格在语言层面固定，这些属性既不能设置也不能修改它们。它们是[运算符分派](../003-expressions/301-operator-dispatch.md)的脱糖机制得以运作所必需的核心魔法。
 
 ```
 infix_attr      ::= "#" "[" "infix" "(" string_lit ("," like_arg)? ("," "swap")? ")" "]"
@@ -70,9 +70,9 @@ trait Degrees {
 
 三个属性都遵循同一模式，被绑定的只有词法单元、位置和 trait 方法。
 
-操作数按该调用的实参进行类型检查。字面量形式的右操作数（`[1.0, 2.0]`、`{..}`、数字）采用为左操作数选定的 impl 的参数类型，因此当该 impl 的方法接受 `Vector<f64>` 时，`t ⊲ [1.0, 2.0]` 传入的就是 `Vector<f64>`。闭包操作数按其 `fn` 类型匹配 impl，与匹配约束的方式相同（[4.4.2](../004-functions/404-function-type.md#442-types-of-function-and-closure-values)），覆盖实现 `impl<F: Tr> Op for F` 也适用于它。对于没有类型参数的 trait，方法自身的参数类型就是右操作数的类型。
+操作数按该调用的实参进行类型检查。字面量形式的右操作数（`[1.0, 2.0]`、`{..}`、数字）采用为左操作数选定的 impl 的参数类型，因此当该 impl 的方法接受 `Vector<f64>` 时，`t ⊲ [1.0, 2.0]` 传入的就是 `Vector<f64>`。闭包操作数按其 `fn` 类型匹配 impl，与匹配约束的方式相同（[4.4.2](../004-functions/404-function-type.md#442-函数值与闭包值的类型)），覆盖实现 `impl<F: Tr> Op for F` 也适用于它。对于没有类型参数的 trait，方法自身的参数类型就是右操作数的类型。
 
-接受 `ref self` 的方法，以方法调用接受接收者的方式接受其左操作数（或唯一操作数）：当操作数是变量或变量的字段时，方法所做的修改会写回该操作数，因此在 `fn draw(ref self, d: D)` 下，`g ∼ d` 会像 `g.draw(d)` 一样推进 `g`。闭包中按值捕获的变量会像方法调用时一样被拒绝（[4.6.7](../004-functions/406-capture-semantics.md#467-capturing-structs-and-reference-handles)）。
+接受 `ref self` 的方法，以方法调用接受接收者的方式接受其左操作数（或唯一操作数）：当操作数是变量或变量的字段时，方法所做的修改会写回该操作数，因此在 `fn draw(ref self, d: D)` 下，`g ∼ d` 会像 `g.draw(d)` 一样推进 `g`。闭包中按值捕获的变量会像方法调用时一样被拒绝（[4.6.7](../004-functions/406-capture-semantics.md#467-捕获结构体与引用句柄)）。
 
 运算符不抛出错误（[4.14](../004-functions/414-throws.md)），因此方法必须声明为不带 `throws`；在会抛出错误的方法上使用运算符属性，会在声明处报错。可能失败的运算把错误作为值返回，即 `Result<T, E>` 或 `T | E`，由调用方处理（`try (a ⧵ b).get()`、`match`）；或者保持为不带该属性的具名方法（`try a.solve(b)`）。
 
@@ -97,7 +97,7 @@ trait Join<Rhs = Self> {
 }
 ```
 
-两个词法单元都调用 `join`。`÷ ≡ ≠ ≤ ≥` 不需要别名：词法分析器把它们读作 `/ == != <= >=`（[1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-fixed-token-table)），因此它们与 ASCII 词法单元到达同一个方法。实现 ASCII 词法单元对应的 trait（`<=` 对应 `PartialOrd`）即可让两种写法都生效。
+两个词法单元都调用 `join`。`÷ ≡ ≠ ≤ ≥` 不需要别名：词法分析器把它们读作 `/ == != <= >=`（[1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-固定词法单元表)），因此它们与 ASCII 词法单元到达同一个方法。实现 ASCII 词法单元对应的 trait（`<=` 对应 `PartialOrd`）即可让两种写法都生效。
 
 注册这些写法之一是编译错误：词法分析器永远不会产生词法单元 `≤`，因此对它的绑定永远不会触发。该错误会指出对应的 ASCII 词法单元和需要实现的 trait。Unicode 运算符前面加点（`.≤`、`.×`）也不构成词法单元：词法分析器会把 `.` 和运算符分开读取，只有 1.10.3 中的 ASCII 运算符才有广播形式。
 
@@ -167,7 +167,7 @@ trait DotMul<Rhs = Self> {
 
 通过 `#[infix]` 等属性进行的注册，只在该 trait 可见的地方生效。可见是指在 [5.6](../005-modules/506-visibility.md) 的意义下可以访问：能通过路径到达的 `pub` trait 即可，不需要 `use`。在 trait 不可见的地方，运算符也不起作用。
 
-这一规则契合库的隔离：在某个包中定义的用户自定义运算符 trait，只在导入该包的代码中生效。`pub` 运算符 trait 的词法单元也会到达同一批代码：在依赖于注册包的每个包的文件中，词法分析器都会切分出这些词法单元，因此来自依赖的 `<~` 或 `<-` 在那里的词法分析结果与在其自身包中相同（[1.10.4](../001-lexical/110-punctuation-and-operator-tokens.md#1104-extension-tokens)）。`#[literal]` 注册对 `pub` 处理函数遵循同一规则，作用于直接依赖其所在包的包（[6.5.2](605-literal-magic.md#652-form)）；其他注册则留在其所在包内。
+这一规则契合库的隔离：在某个包中定义的用户自定义运算符 trait，只在导入该包的代码中生效。`pub` 运算符 trait 的词法单元也会到达同一批代码：在依赖于注册包的每个包的文件中，词法分析器都会切分出这些词法单元，因此来自依赖的 `<~` 或 `<-` 在那里的词法分析结果与在其自身包中相同（[1.10.4](../001-lexical/110-punctuation-and-operator-tokens.md#1104-扩展词法单元)）。`#[literal]` 注册对 `pub` 处理函数遵循同一规则，作用于直接依赖其所在包的包（[6.5.2](605-literal-magic.md#652-形式)）；其他注册则留在其所在包内。
 
 标准库的运算符 trait（`Add`、`Sub`、`Mul` 等）位于 `core::ops`。使用运算符不需要 trait 名在作用域内：`core` trait 的映射在每个源文件中都适用，因此算术和比较表达式无需单独导入即可使用。直接写出 trait 本身，例如 `impl ops::Add for V`，则要经由 prelude 模块 `ops` 或 `use`（[标准库 0.2.3](../../refs-standard-libraries/000-meta/002-import.md)）。
 
@@ -187,19 +187,19 @@ impl CustomCombine for MyType { ... }
 let r = a ⊕ b;            // user token
 ```
 
-不在 3.2 表中的词法单元（如 `⊕`）要用 `like = "+"` 指定一个已有词法单元，并沿用该词法单元的级别和结合性。不能创建新的级别。该词法单元必须满足[标点与运算符词法单元](../001-lexical/110-punctuation-and-operator-tokens.md#1104-extension-tokens)中扩展词法单元的条件：每个字符都必须是 Unicode `Pattern_Syntax`，且与已有固定词法单元相同时报错。
+不在 3.2 表中的词法单元（如 `⊕`）要用 `like = "+"` 指定一个已有词法单元，并沿用该词法单元的级别和结合性。不能创建新的级别。该词法单元必须满足[标点与运算符词法单元](../001-lexical/110-punctuation-and-operator-tokens.md#1104-扩展词法单元)中扩展词法单元的条件：每个字符都必须是 Unicode `Pattern_Syntax`，且与已有固定词法单元相同时报错。
 
-词法单元可以以固定词法单元的开头开始：`#[infix("<-", like = "+")]` 会让 `c <- 3` 成为一个运算符，因为词法分析器采用最长匹配。这样的词法单元，即以某个固定词法单元的起始字符开头的词法单元，在注册它的包的文件中生效；若来自 `pub` trait，还在依赖该包的包中生效；在其他地方，`a<-1` 仍然是 `a < -1`（[1.10.4](../001-lexical/110-punctuation-and-operator-tokens.md#1104-extension-tokens)）。
+词法单元可以以固定词法单元的开头开始：`#[infix("<-", like = "+")]` 会让 `c <- 3` 成为一个运算符，因为词法分析器采用最长匹配。这样的词法单元，即以某个固定词法单元的起始字符开头的词法单元，在注册它的包的文件中生效；若来自 `pub` trait，还在依赖该包的包中生效；在其他地方，`a<-1` 仍然是 `a < -1`（[1.10.4](../001-lexical/110-punctuation-and-operator-tokens.md#1104-扩展词法单元)）。
 
 二元 `@` 也可以借助 `like` 绑定：`#[infix("@", like = "*")]` 会像 NumPy 那样让 `a @ b` 表示矩阵乘积。`@` 仍是固定词法单元，而语法中没有其他二元 `@`：语言只在其前面没有操作数结束的位置使用它，即元语法之前（`@derive`、`@Self`）、模式中绑定名之后（`n @ (a, b)`），以及紧贴 `return`（`return@f`）。因此，在完整操作数之后的 `@`，在其 trait 可见的任何地方都是运算符，而其他用法在同一文件中保持原有含义。`@` 不能绑定为前缀或后缀运算符，因为这些位置是元语法。
 
-二元 `~` 同样是空闲的：语言只把 `~` 读作前缀按位取反（`~x`），从不出现在操作数之后，因此 `#[infix("~", like = "==")]` 会让 `x ~ d`（“服从某分布”，或模型公式 `y ~ x`）成为运算符，而 `~x` 保持原有含义。其他固定词法单元只能在 3.2 表为其规定了形式的地方绑定：后缀 `%` 是错误，报错会指向数字后缀（`95pct`，[6.5.7](605-literal-magic.md#657-user-defined-literals)），而 `->` 或 `|>` 是语法。后缀 `!`（阶乘 `n!`）也是错误：在名字之后，`!` 开始一个宏调用（`name!(..)`），在操作数之前则是 `not`；应写成函数或方法（`factorial(n)`、`n.factorial()`）。
+二元 `~` 同样是空闲的：语言只把 `~` 读作前缀按位取反（`~x`），从不出现在操作数之后，因此 `#[infix("~", like = "==")]` 会让 `x ~ d`（“服从某分布”，或模型公式 `y ~ x`）成为运算符，而 `~x` 保持原有含义。其他固定词法单元只能在 3.2 表为其规定了形式的地方绑定：后缀 `%` 是错误，报错会指向数字后缀（`95pct`，[6.5.7](605-literal-magic.md#657-用户定义的字面量)），而 `->` 或 `|>` 是语法。后缀 `!`（阶乘 `n!`）也是错误：在名字之后，`!` 开始一个宏调用（`name!(..)`），在操作数之前则是 `not`；应写成函数或方法（`factorial(n)`、`n.factorial()`）。
 
-词法单元中不含标识符字符：`′`（`f′` 是一个名字）和 `ℱ`（一个字母）不能作为运算符。应写成方法（`a.t()`）或函数（`fourier(x)`），或者选择 `†` 这样的符号（[1.10.4](../001-lexical/110-punctuation-and-operator-tokens.md#1104-extension-tokens)）。
+词法单元中不含标识符字符：`′`（`f′` 是一个名字）和 `ℱ`（一个字母）不能作为运算符。应写成方法（`a.t()`）或函数（`fourier(x)`），或者选择 `†` 这样的符号（[1.10.4](../001-lexical/110-punctuation-and-operator-tokens.md#1104-扩展词法单元)）。
 
 ## 6.7.10. 优先级与结合性级别
 
-运算符级别唯一的权威出处是 [3.2.3 优先级表](../003-expressions/302-precedence-and-associativity.md#323-precedence-and-associativity-table)。标准库和用户代码都不能设置或修改级别；新的词法单元通过 `like` 挂靠到某个已有级别上。
+运算符级别唯一的权威出处是 [3.2.3 优先级表](../003-expressions/302-precedence-and-associativity.md#323-优先级与结合性表)。标准库和用户代码都不能设置或修改级别；新的词法单元通过 `like` 挂靠到某个已有级别上。
 
 ## 6.7.11. 何时求值
 
@@ -249,7 +249,7 @@ let s = Spline { a: 2.0 };
 s(1.5);                          // 3: s.call(1.5)
 ```
 
-`Args` 不同的多个 impl 按实参选择，与其他重载的 trait 方法相同（[3.1.3](../003-expressions/301-operator-dispatch.md#313-dispatch-without-a-vtable)）：具体的 `Call<f64>` 与泛型的 `impl<const N: usize> Call<Array<f64, N>>` 并存时，`s(1.5)` 和 `s(xs)` 对任意维数的数组都可用，`s(1)` 采用 `f64` 的 impl，`s([1.0, 2.0])` 采用一维的 impl。保存可调用值的字段要写成 `(r.f)(x)` 来调用；`r.f(x)` 表示方法（[4.9.6](../004-functions/409-method.md#496-call-forms-of-free-functions-and-methods)）。约束 `F: Call<f64, Output = f64>` 通过它来调用 `f(x)`。实参只能按位置传递。`fn` 值和闭包被直接调用，不实现任何 trait。调用其他任何类型的值都是错误，其帮助信息会给出需要编写的 impl。
+`Args` 不同的多个 impl 按实参选择，与其他重载的 trait 方法相同（[3.1.3](../003-expressions/301-operator-dispatch.md#313-不经虚表的分派)）：具体的 `Call<f64>` 与泛型的 `impl<const N: usize> Call<Array<f64, N>>` 并存时，`s(1.5)` 和 `s(xs)` 对任意维数的数组都可用，`s(1)` 采用 `f64` 的 impl，`s([1.0, 2.0])` 采用一维的 impl。保存可调用值的字段要写成 `(r.f)(x)` 来调用；`r.f(x)` 表示方法（[4.9.6](../004-functions/409-method.md#496-自由函数与方法的调用形式)）。约束 `F: Call<f64, Output = f64>` 通过它来调用 `f(x)`。实参只能按位置传递。`fn` 值和闭包被直接调用，不实现任何 trait。调用其他任何类型的值都是错误，其帮助信息会给出需要编写的 impl。
 
 ## 6.7.15. 小结
 

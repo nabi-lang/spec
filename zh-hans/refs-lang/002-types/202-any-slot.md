@@ -1,9 +1,9 @@
 # 2.2. `any` 槽
 
-`any` 是表示可变槽的类型名，这种槽可以持有任何类型的值（它是上下文关键字，只在类型位置中是关键字，[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)；声明名为 `any` 的类型是错误）。它是 Nabi 渐进类型的核心概念。
+`any` 是表示可变槽的类型名，这种槽可以持有任何类型的值（它是上下文关键字，只在类型位置中是关键字，[1.5.4](../001-lexical/105-keywords.md#154-上下文关键字)；声明名为 `any` 的类型是错误）。它是 Nabi 渐进类型的核心概念。
 
 > [!IMPORTANT]
-> `any` 槽只存在于写了 `any` 的地方。省略类型注解的变量会成为静态槽，其类型由初始化表达式的类型推断而来（[5.1.7](../005-modules/501-variable-declaration.md#517-type-annotations-and-type-inference)）。Nabi 的渐进类型由一行规则决定：“默认静态，只有写了 `any` 的地方才是动态的。”
+> `any` 槽只存在于写了 `any` 的地方。省略类型注解的变量会成为静态槽，其类型由初始化表达式的类型推断而来（[5.1.7](../005-modules/501-variable-declaration.md#517-类型标注与类型推断)）。Nabi 的渐进类型由一行规则决定：“默认静态，只有写了 `any` 的地方才是动态的。”
 
 ## 2.2.1. 与静态槽的对比
 
@@ -80,13 +80,13 @@ s = "hello";        // ERROR
 
 ## 2.2.5. 检查槽的当前类型
 
-`any` 槽中值的当前类型可以用后缀运算符 `is` 检查。`e is T` 的结果是 `bool`，其优先级与 `as` 相同（[3.2.3](../003-expressions/302-precedence-and-associativity.md#323-precedence-and-associativity-table)）。
+`any` 槽中值的当前类型可以用后缀运算符 `is` 检查。`e is T` 的结果是 `bool`，其优先级与 `as` 相同（[3.2.3](../003-expressions/302-precedence-and-associativity.md#323-优先级与结合性表)）。
 
 ```nabi
 if v is i32 { ... }
 ```
 
-检查是一次运行时标签比较。在 `any` 上，当存储的值是 `A` 或 `B` 时，以及存储的是整个和类型 `A | B` 的值时，`is (A | B)` 和模式 `x: A | B` 都匹配。绑定会被重新标记为和类型 `A | B`。如果操作数的静态类型既不是 `any` 也不是和类型，类型检查 `e is T` 是编译期常量。没有被之前任何用法固定的无后缀字面量，在那里取其默认类型（[1.6.3](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)）：在 `let v = 3;` 之后，`v is i64` 为 `true`。目标为和类型时，它检验成员关系：对普通类型 `A` 的值，`e is (A | B)` 为 `true`。
+检查是一次运行时标签比较。在 `any` 上，当存储的值是 `A` 或 `B` 时，以及存储的是整个和类型 `A | B` 的值时，`is (A | B)` 和模式 `x: A | B` 都匹配。绑定会被重新标记为和类型 `A | B`。如果操作数的静态类型既不是 `any` 也不是和类型，类型检查 `e is T` 是编译期常量。没有被之前任何用法固定的无后缀字面量，在那里取其默认类型（[1.6.3](../001-lexical/106-numeric-literals.md#163-无后缀字面量)）：在 `let v = 3;` 之后，`v is i64` 为 `true`。目标为和类型时，它检验成员关系：对普通类型 `A` 的值，`e is (A | B)` 为 `true`。
 
 对静态类型为 `enum` 的值，`e is Enum::Variant` 检查变体。它是一次运行时变体比较，只要是该变体，无论载荷如何都为 `true`。它不收窄类型；需要载荷时，使用 `match` 或 `if let`。
 
@@ -115,7 +115,7 @@ if v is i32 {
 - 除此以外，在 `||` 或 `!` 之下、在 `else` 块中，以及对字段路径（`p.x is T`），都不发生收窄。
 - 变体检查 `x is Enum::Variant`（2.2.5）不收窄。
 - 当操作数的静态类型是被检查和类型的普通成员 `A` 时，`x is (A | B)` 不收窄；`x` 保持类型 `A`。
-- 当 `x` 被 `[ref x]` 捕获（[4.6.2](../004-functions/406-capture-semantics.md#462-reference-capture-the-ref-x-capture-list)）时，在收窄作用域中每次读取 `x` 都会再次检查共享单元；如果某个闭包存入了不是 `T` 的值，读取会 panic。
+- 当 `x` 被 `[ref x]` 捕获（[4.6.2](../004-functions/406-capture-semantics.md#462-引用捕获ref-x-捕获列表)）时，在收窄作用域中每次读取 `x` 都会再次检查共享单元；如果某个闭包存入了不是 `T` 的值，读取会 panic。
 - 在收窄作用域内，`x` 的类型是 `T`。对 `x`（或其字段 / 元素）的赋值会转换回去并写入原来的槽；作为 `ref` 实参传出的 `x`（或其字段）的最终值，在调用返回时也是如此。赋予一个属于声明类型但不是 `T` 的值，会在该作用域的剩余部分结束收窄：`x` 重新具有其声明类型，正常的流类型继续进行。赋予声明类型以外的值仍是类型错误。
 
 ```nabi
@@ -147,7 +147,7 @@ let s = "hi";           // s: the string type chosen by the literal handler
 let n2: any = 42i32;    // dynamic slot only when written explicitly
 ```
 
-`let` 遵循局部类型推断。初始化表达式的类型成为槽的类型，之后的重新赋值都按它检查。无法从初始化表达式确定类型时的规则在 [5.1.7](../005-modules/501-variable-declaration.md#517-type-annotations-and-type-inference) 中定义。
+`let` 遵循局部类型推断。初始化表达式的类型成为槽的类型，之后的重新赋值都按它检查。无法从初始化表达式确定类型时的规则在 [5.1.7](../005-modules/501-variable-declaration.md#517-类型标注与类型推断) 中定义。
 
 ### 没有类型注解的函数参数
 
@@ -182,7 +182,7 @@ struct Cell { tag: i32; payload: any; }   // OK
 
 ## 2.2.8. 槽的种类由声明固定
 
-变量的槽是动态的还是静态的，单看声明语法就能知道。写 `: any` 构成动态槽；其他情况（显式或推断的类型）构成静态槽。槽的种类一旦固定就不再改变。重新声明该名称的 `let` 会创建一个新槽，新槽有自己的种类（[5.1.4](../005-modules/501-variable-declaration.md#514-redeclaration-in-the-same-scope)）；旧槽保持其种类。
+变量的槽是动态的还是静态的，单看声明语法就能知道。写 `: any` 构成动态槽；其他情况（显式或推断的类型）构成静态槽。槽的种类一旦固定就不再改变。重新声明该名称的 `let` 会创建一个新槽，新槽有自己的种类（[5.1.4](../005-modules/501-variable-declaration.md#514-在同一作用域中重新声明)）；旧槽保持其种类。
 
 ```nabi
 let x = 1;              // static slot (inferred from initializer)

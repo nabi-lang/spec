@@ -102,13 +102,13 @@ mutator 承担的开销是对 `yield` 标志的一次读取和一个分支。
 
 STW 回收（minor 回收、带疏散的完整回收、`nabi_gc_collect`）是单次停顿。发起回收的线程停止所有其他 mutator（`GC_COOPERATING`，若处于阻塞的运行时调用中则为 `PARKED`），完成回收后再让它们恢复。
 
-带并发标记的完整回收有两次停顿：初始停顿和最终停顿（[7.5.2](../007-runtime/705-concurrent-collection.md#752-phases)）。在两次停顿之间，一个标记线程与 mutator 并行运行。
+带并发标记的完整回收有两次停顿：初始停顿和最终停顿（[7.5.2](../007-runtime/705-concurrent-collection.md#752-阶段)）。在两次停顿之间，一个标记线程与 mutator 并行运行。
 
 ## 8.4.7. 安全点不变式
 
 到达安全点时，mutator 的每个存活 GC 对象变量都必须已注册在影子栈中。
 
-编译器通过在函数每条路径的第一个安全点之前链接[屏障与根追踪](../007-runtime/704-barriers-and-roots.md)中的影子栈帧来保证这一点：在入口处链接，或在到达安全点的路径上稍后链接。不会到达安全点的路径不必链接，帧也只在链接过的地方于返回时解除链接。同样，只由 Nabi 直接调用进入的函数可以把入口轮询移到链接之后：每个调用环仍然包含一个轮询，因为闭合该环的调用就是一个安全点。从 C 调用或经由函数值调用的函数在入口处轮询。在安全点持有 GC 引用的局部变量被注册在帧中，且每次写入时都保持所注册的字为最新。只有回边轮询才看得到的局部变量，可以改为由轮询的慢速路径仅为该运行时调用而注册（[7.4.1](../007-runtime/704-barriers-and-roots.md#741-root-tracking-a-shadow-stack-emitted-directly-by-the-compiler) 规则 4），因此唯一的安全点是其轮询的循环在运行期间不链接帧，也不写根字。编译器还可以（在寄存器中）保留私有副本，因为回收从不改写根字：从根直接到达的对象不会被移动（[7.4.1](../007-runtime/704-barriers-and-roots.md#741-root-tracking-a-shadow-stack-emitted-directly-by-the-compiler)）。热重载代码是例外（8.4.13）。
+编译器通过在函数每条路径的第一个安全点之前链接[屏障与根追踪](../007-runtime/704-barriers-and-roots.md)中的影子栈帧来保证这一点：在入口处链接，或在到达安全点的路径上稍后链接。不会到达安全点的路径不必链接，帧也只在链接过的地方于返回时解除链接。同样，只由 Nabi 直接调用进入的函数可以把入口轮询移到链接之后：每个调用环仍然包含一个轮询，因为闭合该环的调用就是一个安全点。从 C 调用或经由函数值调用的函数在入口处轮询。在安全点持有 GC 引用的局部变量被注册在帧中，且每次写入时都保持所注册的字为最新。只有回边轮询才看得到的局部变量，可以改为由轮询的慢速路径仅为该运行时调用而注册（[7.4.1](../007-runtime/704-barriers-and-roots.md#741-根跟踪编译器直接生成的影子栈) 规则 4），因此唯一的安全点是其轮询的循环在运行期间不链接帧，也不写根字。编译器还可以（在寄存器中）保留私有副本，因为回收从不改写根字：从根直接到达的对象不会被移动（[7.4.1](../007-runtime/704-barriers-and-roots.md#741-根跟踪编译器直接生成的影子栈)）。热重载代码是例外（8.4.13）。
 
 ## 8.4.8. 循环回边轮询
 
@@ -137,10 +137,10 @@ loop:
 
 处于 C 调用或阻塞的运行时调用中的线程无法到达安全点，因此算作 `PARKED`：GC 视其为已在协作。
 
-- 编译器包围每个 `extern "C"` 调用：调用期间为 `PARKED`，调用之后为 `RUNNING`，每次存储之后都检查 yield 标志。调用者的实参根保留在其影子栈帧中。快速路径是内联的；`nabi_enter_native` / `nabi_leave_native` 是慢速路径（[8.5.2](805-extern-symbols.md#852-runtime-area)）。对 `#[leaf]` 声明的调用不加包围：线程保持 `RUNNING`，并推迟所有回收直到调用返回（[标准库 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf---short-calls)）。
+- 编译器包围每个 `extern "C"` 调用：调用期间为 `PARKED`，调用之后为 `RUNNING`，每次存储之后都检查 yield 标志。调用者的实参根保留在其影子栈帧中。快速路径是内联的；`nabi_enter_native` / `nabi_leave_native` 是慢速路径（[8.5.2](805-extern-symbols.md#852-运行时区域)）。对 `#[leaf]` 声明的调用不加包围：线程保持 `RUNNING`，并推迟所有回收直到调用返回（[标准库 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf短调用)）。
 - 每个 `extern "C" fn` 定义都以 `nabi_native_reenter` 开始、以 `nabi_native_resume` 结束，因此 C 回调作为 mutator 运行。
-- 运行时以同样方式包围自己的阻塞调用（I/O 等待、`nabi_sync_wait`、join、sleep），以及不触及任何 GC 对象（只触及调用者帧保持存活的缓冲区）、且不存储引用的长时间计算：`int` 内核（乘法、除法、gcd；以及从 64 Ki 个 limb 起的加法、减法、移位和单 limb 除法），以及从 64 KiB 起的 `str` 搜索与计数、UTF-8 检查和字节复制（[8.5.2](805-extern-symbols.md#functions-that-are-not-safepoints)）。它们的 `extern "nabi"` 声明不是 `#[no_safepoint]`（[5.9.2](../005-modules/509-extern-block.md#592-abi-specifiers)），因此对它们的调用是安全点，缓冲区也已作为根。
-- 对 `#[no_safepoint]` 运行时函数的调用不加包围。其他所有线程的回收都要等到它返回，因此这样的函数只做有界的工作量；较长的输入交给它的 parked 变体处理。调试版 nabic 用 `nabi_nosp_enter()` / `nabi_nosp_leave()` 包裹它（[8.5.2](805-extern-symbols.md#852-runtime-area)），这两个函数升高和降低线程的 `no_safepoint` 深度（[8.3.1](803-tls-slots.md#831-tls-slot-structure)）；如果线程在深度非零时会因回收而停下，调试版运行时以致命错误失败。发布版 nabic 两个调用都不生成。
+- 运行时以同样方式包围自己的阻塞调用（I/O 等待、`nabi_sync_wait`、join、sleep），以及不触及任何 GC 对象（只触及调用者帧保持存活的缓冲区）、且不存储引用的长时间计算：`int` 内核（乘法、除法、gcd；以及从 64 Ki 个 limb 起的加法、减法、移位和单 limb 除法），以及从 64 KiB 起的 `str` 搜索与计数、UTF-8 检查和字节复制（[8.5.2](805-extern-symbols.md#不是安全点的函数)）。它们的 `extern "nabi"` 声明不是 `#[no_safepoint]`（[5.9.2](../005-modules/509-extern-block.md#592-abi-说明符)），因此对它们的调用是安全点，缓冲区也已作为根。
+- 对 `#[no_safepoint]` 运行时函数的调用不加包围。其他所有线程的回收都要等到它返回，因此这样的函数只做有界的工作量；较长的输入交给它的 parked 变体处理。调试版 nabic 用 `nabi_nosp_enter()` / `nabi_nosp_leave()` 包裹它（[8.5.2](805-extern-symbols.md#852-运行时区域)），这两个函数升高和降低线程的 `no_safepoint` 深度（[8.3.1](803-tls-slots.md#831-tls-槽结构)）；如果线程在深度非零时会因回收而停下，调试版运行时以致命错误失败。发布版 nabic 两个调用都不生成。
 - 通过 `nabi_*` 符号（[8.5](805-extern-symbols.md)，运行时的保留前缀）的 `extern "C"` 声明进行的调用不加包围：该运行时函数作为 mutator 运行。
 
 ```
@@ -175,7 +175,7 @@ fn long_loop() {
 
 ## 8.4.12. 稳定性
 
-ABI 是 `nabi_tls` 偏移 10p+8 处的槽（`nabi_tls_yield_flag`）及其类型（u8）（[8.3.1](803-tls-slots.md#831-tls-slot-structure)）。
+ABI 是 `nabi_tls` 偏移 10p+8 处的槽（`nabi_tls_yield_flag`）及其类型（u8）（[8.3.1](803-tls-slots.md#831-tls-槽结构)）。
 
 `nabi_runtime_yield` 遵循无参数、无返回值的简单调用约定。
 
@@ -185,6 +185,6 @@ ABI 是 `nabi_tls` 偏移 10p+8 处的槽（`nabi_tls_yield_flag`）及其类型
 
 - 热构建是 `-O0` 构建。其中每个局部变量都位于其帧槽中，而该帧槽正是影子栈帧注册的字，因此每次使用都读取根字。
 - 对热包中函数的调用，无论其当前函数体做什么，都算作安全点：它所经由的槽可能到达一个会停下的后续版本。调用者把跨该调用存活的值作为根。
-- 持有热包中某个类型的值的函数，以描述符形式链接其影子栈帧（[7.4.1](../007-runtime/704-barriers-and-roots.md#741-root-tracking-a-shadow-stack-emitted-directly-by-the-compiler)），即使它不注册任何根也是如此；其描述符之前的字存放其帧记录（它所持有的类型）的地址，它的某个根字也存放该地址。热运行时在那里找到旧代码中已停下的帧。
+- 持有热包中某个类型的值的函数，以描述符形式链接其影子栈帧（[7.4.1](../007-runtime/704-barriers-and-roots.md#741-根跟踪编译器直接生成的影子栈)），即使它不注册任何根也是如此；其描述符之前的字存放其帧记录（它所持有的类型）的地址，它的某个根字也存放该地址。热运行时在那里找到旧代码中已停下的帧。
 
 不用 `--hot` 构建的代码（宿主程序、C）的帧仍遵循 8.4.7 的规则；迁移不会改写这类帧的根。

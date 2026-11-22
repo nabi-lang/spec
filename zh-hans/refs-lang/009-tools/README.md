@@ -105,16 +105,16 @@ foo/target/debug/
 └── ...
 ```
 
-各构建配置的目录布局在 [9.2.15](902-aot-pipeline.md#9215-output) 中定义，[归档文件](../000-meta/007-glossary.md#archive)格式在[包归档文件](903-package-archive.md)中定义。
+各构建配置的目录布局在 [9.2.15](902-aot-pipeline.md#9215-输出) 中定义，[归档文件](../000-meta/007-glossary.md#archive)格式在[包归档文件](903-package-archive.md)中定义。
 
 ## NABIHIR：泛型函数的可移植 IR
 
-泛型函数必须在调用处[单态化](../000-meta/007-glossary.md#monomorphization)，因此仅有二进制代码并不够。为此，库旁边放着一个接口文件 NABIHIR。NABIHIR 保存去掉了具体函数体的包源代码（因为单态化以 AST 为输入）。
+泛型函数必须在调用处[单态化](../000-meta/007-glossary.md#monomorphization单态化)，因此仅有二进制代码并不够。为此，库旁边放着一个接口文件 NABIHIR。NABIHIR 保存去掉了具体函数体的包源代码（因为单态化以 AST 为输入）。
 
 详细格式在 [NABIHIR 格式](904-nabihir-bytecode.md)中定义。
 
 ## 唯一的依赖：`libnabir.a`
 
-可执行文件链接用户包的 `libfoo.a`、运行时 `libnabir.a`，以及它用到的标准库函数；这些函数要么随它从源代码编译，要么取自工具链的函数缓存（[9.3.6](903-package-archive.md#936-standard-library)）。除外部的操作系统库之外，没有其他依赖。
+可执行文件链接用户包的 `libfoo.a`、运行时 `libnabir.a`，以及它用到的标准库函数；这些函数要么随它从源代码编译，要么取自工具链的函数缓存（[9.3.6](903-package-archive.md#936-标准库)）。除外部的操作系统库之外，没有其他依赖。
 
 详细的构建流程在 [AOT 构建流水线](902-aot-pipeline.md)中定义。

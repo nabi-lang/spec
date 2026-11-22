@@ -23,7 +23,7 @@ fn(str) throws (ParseError) -> i32  // typed
 fn(Path) throws (IoError)           // return type omitted: unit
 ```
 
-`unsafe fn(..) -> R` 是调用时需要 `unsafe` 的函数的类型。`unsafe fn` 和 C 函数作为值具有这个类型。在期望 `unsafe fn` 的位置可以使用安全的 `fn` 值，反之则不行（[4.15](415-unsafe.md#unsafe-fn-types)）。
+`unsafe fn(..) -> R` 是调用时需要 `unsafe` 的函数的类型。`unsafe fn` 和 C 函数作为值具有这个类型。在期望 `unsafe fn` 的位置可以使用安全的 `fn` 值，反之则不行（[4.15](415-unsafe.md#unsafe-fn-类型)）。
 
 `throws` 是函数类型的一部分，所以调用可抛出错误的函数类型的值时，同样必须用 `try` 标注。`rethrows` 只用于函数声明，从不用于函数类型。
 
@@ -105,14 +105,14 @@ Rust 中 `Fn`、`FnMut` 和 `FnOnce` trait 的区分在 nabi 中不存在。捕�
 
 ### `Send` / `Sync` 约束
 
-在函数类型后附加 `+ Send` / `+ Sync`，就在类型中记录了该值可以跨越线程边界（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）。
+在函数类型后附加 `+ Send` / `+ Sync`，就在类型中记录了该值可以跨越线程边界（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)）。
 
 ```nabi
 fn(i32) -> i32 + Send
 fn() + Send + Sync
 ```
 
-- 闭包字面量出现在 `+ Send` 位置时，每个普通捕获都必须是 `Send + Sync`：普通捕获是创建者会继续使用的句柄，所以两个线程都能访问它。`[move x]` 捕获只属于该闭包（[4.6.11](406-capture-semantics.md#4611-move-capture-the-move-x-capture-list)），所以只需要 `Send`。
+- 闭包字面量出现在 `+ Send` 位置时，每个普通捕获都必须是 `Send + Sync`：普通捕获是创建者会继续使用的句柄，所以两个线程都能访问它。`[move x]` 捕获只属于该闭包（[4.6.11](406-capture-semantics.md#4611-移动捕获move-x-捕获列表)），所以只需要 `Send`。
 - `+ Sync` 位置要求每个捕获都是 `Sync`，无论是否移动。`fn(..) + Send` 值不是 `Sync`，除非其类型写明：它背后的闭包可能拥有一个不是 `Sync` 的移动捕获。被多个线程同时调用的值（`static`、`par::*` 闭包）的类型是 `fn(..) + Send + Sync`。
 - 派生任务的函数（`task::spawn_blocking`、`thread::spawn`、`par::Scope::spawn`）接受 `+ Send` 闭包，所以被派生的代码不与其创建者共享任何非 `Sync` 的值；`[move x]` 改为把值交给它。`par::for_each`、`par::map` 和 `par::filter` 接受 `+ Send + Sync` 闭包，每个工作线程都会调用它。
 - 要使用 `fn` 类型的变量，该变量的类型必须已经带有同样的约束。`fn() -> T` 值不适用于 `fn() -> T + Send` 位置。捕获了 `fn(..) + Send` 值的闭包，只有在把该值移入（`[move f]`），或者该值的类型是 `+ Send + Sync` 时，才能跨线程。
@@ -160,7 +160,7 @@ let f: fn() -> i32 = || panic("never");     // fn() -> ! value → fn() -> i32 p
 
 ### 函数值的表示
 
-函数值是一个 `{code, env}` 对：`code` 是代码指针，`env` 是捕获环境。对具名函数的值，`env` 为 null。`extern "C"` 声明中函数类型的参数，其类型为 `extern "C" fn(..)`，即不带 `env` 的 C 函数指针，不能与 Nabi 函数值相互转换（[5.9.4](../005-modules/509-extern-block.md#c-function-pointer-types)）。方法路径（`S::new`、`i32::add`）也是函数值（[3.5.3](../003-expressions/305-member-access-and-method-call.md#method-path-values)）。
+函数值是一个 `{code, env}` 对：`code` 是代码指针，`env` 是捕获环境。对具名函数的值，`env` 为 null。`extern "C"` 声明中函数类型的参数，其类型为 `extern "C" fn(..)`，即不带 `env` 的 C 函数指针，不能与 Nabi 函数值相互转换（[5.9.4](../005-modules/509-extern-block.md#c-函数指针类型)）。方法路径（`S::new`、`i32::add`）也是函数值（[3.5.3](../003-expressions/305-member-access-and-method-call.md#方法路径值)）。
 
 ## 4.4.9. 函数类型之间的子类型关系（不存在）
 

@@ -16,7 +16,7 @@
 以下绑定和效果不受支持。
 
 - 无法在顶层命名的类型（闭包、私有类型等）的绑定。它们在创建它们的单元中就被拒绝。
-- 在单元内调用 `exit(..)`。该单元被视为失败的单元（规则 5）。（单独的 `exit` 或 `quit` 结束会话，[9.9.9](909-debug-tools.md#999-repl--jupyter-debugging)。）
+- 在单元内调用 `exit(..)`。该单元被视为失败的单元（规则 5）。（单独的 `exit` 或 `quit` 结束会话，[9.9.9](909-debug-tools.md#999-repl--jupyter-调试)。）
 - 失败的单元所创建的线程。它们不会在该单元之后存活（规则 5）。
 
 ## 9.7.1. 单元的种类
@@ -31,12 +31,12 @@ REPL 的一行或 Jupyter 的一个单元，按其内容以不同方式处理。
 5. meta / attribute          → handle as appropriate
 ```
 
-这五种都遵循相同的单元处理流程，只有最终输出不同。表达式单元显示的值会绑定到 `it`，供之后的单元使用（9.7.7）。表达式单元打印其值（`Display`，没有则 `Debug`，再没有则其类型名）；`let` 单元不打印任何内容。发散的表达式单元（[4.3.7](../004-functions/403-return.md#437-divergent-functions)；`panic(..)`、`exit(..)`、`throw`）作为语句运行。
+这五种都遵循相同的单元处理流程，只有最终输出不同。表达式单元显示的值会绑定到 `it`，供之后的单元使用（9.7.7）。表达式单元打印其值（`Display`，没有则 `Debug`，再没有则其类型名）；`let` 单元不打印任何内容。发散的表达式单元（[4.3.7](../004-functions/403-return.md#437-发散函数)；`panic(..)`、`exit(..)`、`throw`）作为语句运行。
 
-单元可以在顶层语句中使用 `await`，就像隐式 `main` 一样（[4.16.5](../004-functions/416-entry-point.md#4165-async-main)）：此时单元在执行器上运行直到完成。它的 `let` 绑定和它的值与其他单元一样延续到之后的单元。
+单元可以在顶层语句中使用 `await`，就像隐式 `main` 一样（[4.16.5](../004-functions/416-entry-point.md#4165-异步-main)）：此时单元在执行器上运行直到完成。它的 `let` 绑定和它的值与其他单元一样延续到之后的单元。
 
 > [!IMPORTANT]
-> 从语言语义上说，一系列单元等价于把顶层语句和项追加到一个隐式 `main.nabi` 的末尾（[4.16.10](../004-functions/416-entry-point.md#41610-relationship-to-jit--repl)）。单元中的 `let` 是隐式 `main` 的局部变量，因此之后单元的语句可以看到它，但在单元中声明的 `fn` 的函数体内看不到它。下文 9.7.3 的全局存储是一种让局部变量跨越单元边界保持存活的实现技术，不改变这一可见性规则。单元重新执行（9.7.4）、自动显示最后一个表达式的值及其绑定 `it`（9.7.7）是只存在于交互界面上的会话操作。
+> 从语言语义上说，一系列单元等价于把顶层语句和项追加到一个隐式 `main.nabi` 的末尾（[4.16.10](../004-functions/416-entry-point.md#41610-与-jit--repl-的关系)）。单元中的 `let` 是隐式 `main` 的局部变量，因此之后单元的语句可以看到它，但在单元中声明的 `fn` 的函数体内看不到它。下文 9.7.3 的全局存储是一种让局部变量跨越单元边界保持存活的实现技术，不改变这一可见性规则。单元重新执行（9.7.4）、自动显示最后一个表达式的值及其绑定 `it`（9.7.7）是只存在于交互界面上的会话操作。
 
 ## 9.7.2. 执行流程：详细说明
 
@@ -51,7 +51,7 @@ REPL 的一行或 Jupyter 的一个单元，按其内容以不同方式处理。
 
 每个步骤都是事务性的；失败时回滚到之前的状态。
 
-当 REPL 读取终端时，单元的标准输入是终端，否则为空（[9.7.10](#9710-loading-a-program-repl-path)）；Jupyter 单元通过客户端读取（[9.8.1](908-jupyter-integration.md#981-kernel)）。单元的标准输出在每个换行处刷新，即使它不是终端也是如此，因此输出会随写随显。REPL 宿主在运行时启动前设置 `NABIR_GC_CONCURRENT=off`，不管用户环境如何设置：并发标记线程不会成为快照的一部分，所以会话中的完整回收在没有它的情况下进行标记（[7.5](../007-runtime/705-concurrent-collection.md)）。
+当 REPL 读取终端时，单元的标准输入是终端，否则为空（[9.7.10](#9710-加载程序repl-path)）；Jupyter 单元通过客户端读取（[9.8.1](908-jupyter-integration.md#981-内核)）。单元的标准输出在每个换行处刷新，即使它不是终端也是如此，因此输出会随写随显。REPL 宿主在运行时启动前设置 `NABIR_GC_CONCURRENT=off`，不管用户环境如何设置：并发标记线程不会成为快照的一部分，所以会话中的完整回收在没有它的情况下进行标记（[7.5](../007-runtime/705-concurrent-collection.md)）。
 
 ## 9.7.3. 顶层变量存储
 
@@ -87,7 +87,7 @@ heap payload                → register GC root
 [2] let x = "hi";            // redeclaration at cell top level: new binding (x: str)
 ```
 
-在单元顶层对已经绑定的名称使用 `let` 是重新声明，与源文件中相同（[5.1.4](../005-modules/501-variable-declaration.md#514-redeclaration-in-the-same-scope)）。它创建一个新绑定，其类型可以与之前的绑定不同。之后的单元看到的是新绑定。
+在单元顶层对已经绑定的名称使用 `let` 是重新声明，与源文件中相同（[5.1.4](../005-modules/501-variable-declaration.md#514-在同一作用域中重新声明)）。它创建一个新绑定，其类型可以与之前的绑定不同。之后的单元看到的是新绑定。
 
 此时现有的全局变量被覆盖：其内存留在原处，只有名称槽被重定向到新定义。
 
@@ -150,7 +150,7 @@ other (a fault)   the cell failed; the session is unchanged
 
 ### 位置
 
-正在输入的单元中的诊断给出 `<repl>:line:col`，按该单元自身的文本计数。之前单元的项中的诊断，以及正在运行的代码报告的位置（panic、未捕获的错误、`try!`），给出 `<repl cell N>:line:col`：单元 N 是会话中输入的第 N 个单元（`:type` 等命令不是单元；失败的单元也计入），行和列按其文本计数。在 Jupyter 内核中，N 是笔记本单元的执行计数，被拆分为多个 REPL 单元的笔记本单元把它们编号为 `N.1`、`N.2` 等（[9.8.1](908-jupyter-integration.md#notebook-cells-and-repl-cells)）。在之前单元中定义的函数报告的是该单元中的位置。
+正在输入的单元中的诊断给出 `<repl>:line:col`，按该单元自身的文本计数。之前单元的项中的诊断，以及正在运行的代码报告的位置（panic、未捕获的错误、`try!`），给出 `<repl cell N>:line:col`：单元 N 是会话中输入的第 N 个单元（`:type` 等命令不是单元；失败的单元也计入），行和列按其文本计数。在 Jupyter 内核中，N 是笔记本单元的执行计数，被拆分为多个 REPL 单元的笔记本单元把它们编号为 `N.1`、`N.2` 等（[9.8.1](908-jupyter-integration.md#笔记本单元与-repl-单元)）。在之前单元中定义的函数报告的是该单元中的位置。
 
 ```
 >>> fn boom(n: i32) {
@@ -177,7 +177,7 @@ error: the cell panicked; the session is unchanged
 hi
 ```
 
-最后一个表达式的值用 `Display` 打印，没有则用 `Debug`。末尾的 `?`（如 `xs?`）改为打印 `Debug` 形式，`:type xs` 只打印类型。既没有 `Display` 也没有 `Debug`（对 `?` 而言是没有 `Debug`）的值只打印其类型名（`type_name_of_val`，[标准库 2.12.4](../../refs-standard-libraries/200-core/212-reflect.md#2124-repl-output)：`any` 值给出它所持有的类型）。`let` 单元不打印任何内容。在 Jupyter 笔记本中，具有 `RichDisplay` 的值改为显示其 MIME 包（[9.8.2](908-jupyter-integration.md#982-local-native-kernel-operation)）。
+最后一个表达式的值用 `Display` 打印，没有则用 `Debug`。末尾的 `?`（如 `xs?`）改为打印 `Debug` 形式，`:type xs` 只打印类型。既没有 `Display` 也没有 `Debug`（对 `?` 而言是没有 `Debug`）的值只打印其类型名（`type_name_of_val`，[标准库 2.12.4](../../refs-standard-libraries/200-core/212-reflect.md#2124-repl-输出)：`any` 值给出它所持有的类型）。`let` 单元不打印任何内容。在 Jupyter 笔记本中，具有 `RichDisplay` 的值改为显示其 MIME 包（[9.8.2](908-jupyter-integration.md#982-本地原生内核运行方式)）。
 
 ```
 >>> let xs = [1, 2, 3];
@@ -232,8 +232,8 @@ REPL 以完整的表达式或语句为单位处理输入。
 
 - **启动**。当标准输入和标准输出都是终端时，REPL 在第一个提示符之前打印两行：`Nabi <version> (<commit> <date>) on <host triple>`，其中版本文本与 `nabic --version` 打印的相同，然后是 `Type :help for help, :exit to quit.`。`-q` 省略这两行；管道输入永远不会得到它们。
 - **按键**。方向键、Home / End 和 Emacs 按键用于移动和编辑：`C-a` / `C-e` 移到行首和行尾，`C-b` / `C-f` 和 `M-b` / `M-f`（也可以是 Alt 或 Ctrl 加方向键）按字符或单词移动，`C-k` / `C-u` / `C-w` / `M-Backspace` 删除到行尾、到行首或前一个单词，`C-d` 删除下一个字符，在空行上则结束输入，`C-l` 清屏，`C-c` 丢弃当前行和未完成的单元。在 Unix 上，`C-z` 把 REPL 作为作业挂起。
-- **显示**。长行横向滚动。列按显示宽度计数：东亚宽字符（East Asian Wide）、全角字符（Fullwidth）和 emoji 占两列，组合标记和其他零宽字符不占列。输入按词法单元类别着色，与文档中相同：关键字和属性为浅粉色，类型为天蓝色，字符串为绿色，数字为琥珀色，注释为灰色，使用 [9.1.8](901-nabic-cli.md#colour) 的调色板和色深。标准输出上的颜色遵循 [9.1.5](901-nabic-cli.md#915-global-options)：`--color=never`、`NO_COLOR` 或 `TERM=dumb` 会关闭它。
-- **补全**。Tab 把光标前的单词补全为候选项的最长公共前缀，如果这样补不出任何内容，就列出候选项。候选项包括光标处作用域内的局部变量、会话的绑定和项、prelude 的名称（`use core::prelude::*;`）、会话的 `use` 项导入的名称，以及关键字；在 `x.` 之后是 `x` 的类型的字段和方法（对于标准库类型，只有其公开的字段和方法），在 `a::` 之后是 `a` 下的模块和项。在行首按 Tab 缩进四个空格。Jupyter 内核从相同的候选项中补全（[9.8.5](908-jupyter-integration.md#985-code-completion)），语言服务器使用相同的引擎（[9.9.13](909-debug-tools.md#9913-lsp-server)）。
+- **显示**。长行横向滚动。列按显示宽度计数：东亚宽字符（East Asian Wide）、全角字符（Fullwidth）和 emoji 占两列，组合标记和其他零宽字符不占列。输入按词法单元类别着色，与文档中相同：关键字和属性为浅粉色，类型为天蓝色，字符串为绿色，数字为琥珀色，注释为灰色，使用 [9.1.8](901-nabic-cli.md#颜色) 的调色板和色深。标准输出上的颜色遵循 [9.1.5](901-nabic-cli.md#915-全局选项)：`--color=never`、`NO_COLOR` 或 `TERM=dumb` 会关闭它。
+- **补全**。Tab 把光标前的单词补全为候选项的最长公共前缀，如果这样补不出任何内容，就列出候选项。候选项包括光标处作用域内的局部变量、会话的绑定和项、prelude 的名称（`use core::prelude::*;`）、会话的 `use` 项导入的名称，以及关键字；在 `x.` 之后是 `x` 的类型的字段和方法（对于标准库类型，只有其公开的字段和方法），在 `a::` 之后是 `a` 下的模块和项。在行首按 Tab 缩进四个空格。Jupyter 内核从相同的候选项中补全（[9.8.5](908-jupyter-integration.md#985-代码补全)），语言服务器使用相同的引擎（[9.9.13](909-debug-tools.md#9913-lsp-服务器)）。
 - **粘贴**。REPL 开启括号粘贴（bracketed paste）：粘贴的块（包括换行和 Tab）作为文本插入，按下 Enter 时成为一个单元，而不是逐行运行。编辑时，输入中的换行显示为 `↵`；输入后，单元显示为 `...` 之后的各行。
 - **历史**。历史记录保存完整的单元：跨多行输入或粘贴的单元是一个条目。Up / Down（`C-p` / `C-n`）在其中移动；已输入文本时，Up 和 Down 只在以该文本开头的条目之间切换。`C-r` 进行增量反向搜索：输入的文本缩小搜索范围，再按 `C-r` 查找更早的匹配项，Enter 运行匹配项，按其他键则编辑它，`C-g` 返回到当前行。历史记录在启动时加载，保存在 `$NABI_HOME/repl_history` 中；它保留最近的 1000 个单元，在达到 2000 个时丢弃较早的单元，并且不保存超过 64 KiB 的单元。
 - **Windows**。控制台被切换到 VT 输入和输出。括号粘贴在支持它的终端（如 Windows Terminal）中可用。
@@ -263,7 +263,7 @@ y                       # last expression = cell result
 - **`fn main`**。带有 `fn main` 的程序把 `main` 作为入口运行；之后 `main` 离开会话，因此它的局部变量不可见。
 - **位置**。诊断和 panic 使用文件自身的位置。
 - **输入**。程序像任何单元一样读取 stdin。在终端上，正在运行的单元读取终端（控制终端；在 Windows 上是控制台 `CONIN$`）；单元结束后，行编辑器以单元之前的模式收回终端。管道输入属于 REPL：单元读取的是空的 stdin（`/dev/null`，在 Windows 上是 `NUL`），会立即遇到输入结束，其后的各行仍作为单元读取。
-- **`:load`、`:reload`**。`:load <file>` 按相同规则把程序加载到正在运行的会话中；它的项替换会话中同名的项。`:reload` 再次加载上一次加载的程序（[9.9.9](909-debug-tools.md#999-repl--jupyter-debugging)）。由 `:save` 写出的脚本不作为程序加载：它的单元会像手动输入一样逐个重新运行，因此再次声明的名称保持其最后的绑定。
+- **`:load`、`:reload`**。`:load <file>` 按相同规则把程序加载到正在运行的会话中；它的项替换会话中同名的项。`:reload` 再次加载上一次加载的程序（[9.9.9](909-debug-tools.md#999-repl--jupyter-调试)）。由 `:save` 写出的脚本不作为程序加载：它的单元会像手动输入一样逐个重新运行，因此再次声明的名称保持其最后的绑定。
 
 ## 9.7.11. 下一步
 

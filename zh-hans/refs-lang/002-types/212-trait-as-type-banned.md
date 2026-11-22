@@ -55,11 +55,11 @@ fn report(e: any Error) -> str { f"{e}" }
 struct ConfigError { msg: str; cause: any Error | none; }
 ```
 
-`any Trait` 槽只接受实现了 `Trait` 的类型的值（在编译期检查），并且可以在其值上调用 `Trait` 及其父 trait 的方法。调用按运行时标签分派，开销模型与 [`any` 槽](202-any-slot.md)相同。确切规则在 [2.2.10](202-any-slot.md#2210-constrained-any-any-trait) 中定义。
+`any Trait` 槽只接受实现了 `Trait` 的类型的值（在编译期检查），并且可以在其值上调用 `Trait` 及其父 trait 的方法。调用按运行时标签分派，开销模型与 [`any` 槽](202-any-slot.md)相同。确切规则在 [2.2.10](202-any-slot.md#2210-受约束的-anyany-trait) 中定义。
 
 ### 4. 用 `some Trait` 表示函数的隐藏返回类型
 
-函数可以返回一个具体类型，而其调用者只能通过 trait 看到它：`-> some Iterator<Item = i32>`（[4.1.13](../004-functions/401-function-declaration.md#4113-opaque-return-types-some-trait)）；参数也可以接受这样的类型：`x: some Display`（[4.1.14](../004-functions/401-function-declaration.md#4114-some-parameters)）。要把该类型存入字段或在签名中指名，给它起一个名字：`type Evens = some Iterator<Item = i32>;`（[4.1.15](../004-functions/401-function-declaration.md#4115-named-opaque-types-type-x--some-trait)）。分派是静态的，与泛型相同：`some Tr` 是一个被隐藏的静态类型，而 `any Tr` 持有任意实现了 `Tr` 的类型的值，并在运行时分派。
+函数可以返回一个具体类型，而其调用者只能通过 trait 看到它：`-> some Iterator<Item = i32>`（[4.1.13](../004-functions/401-function-declaration.md#4113-不透明返回类型some-trait)）；参数也可以接受这样的类型：`x: some Display`（[4.1.14](../004-functions/401-function-declaration.md#4114-some-参数)）。要把该类型存入字段或在签名中指名，给它起一个名字：`type Evens = some Iterator<Item = i32>;`（[4.1.15](../004-functions/401-function-declaration.md#4115-具名不透明类型type-x--some-trait)）。分派是静态的，与泛型相同：`some Tr` 是一个被隐藏的静态类型，而 `any Tr` 持有任意实现了 `Tr` 的类型的值，并在运行时分派。
 
 ```nabi
 pub fn evens(n: i32) -> some Iterator<Item = i32> { (0..n).filter(|x| x % 2 == 0) }

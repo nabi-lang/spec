@@ -46,7 +46,7 @@ fn validate(s: str) -> bool {
 
 [函数声明](401-function-declaration.md)中定义的返回类型必须在主体的每条返回路径上一致。返回路径是指主体最后一个表达式的类型，以及每个 `return expr;` 中 `expr` 的类型。
 
-声明的返回类型是每条路径的接收类型，与[表达式概述](../003-expressions/README.md#branch-result-types)中分支结果的规则相同：每条路径都必须与之兼容；当声明的类型是能容纳各条路径类型的和类型时，路径类型可以不同。
+声明的返回类型是每条路径的接收类型，与[表达式概述](../003-expressions/README.md#分支结果类型)中分支结果的规则相同：每条路径都必须与之兼容；当声明的类型是能容纳各条路径类型的和类型时，路径类型可以不同。
 
 ```nabi
 fn maybe_int(cond: bool) -> i32 | str {
@@ -57,7 +57,7 @@ fn maybe_int(cond: bool) -> i32 | str {
 
 ## 4.3.4. 省略返回类型
 
-如[函数声明](401-function-declaration.md)所示，返回类型可以省略，此时从主体推断。在 `pub` 或 `pub(pkg)` 函数上，缺少 `->` 则表示 `()`（[4.1.3](401-function-declaration.md#413-omitting-the-return-type)）。
+如[函数声明](401-function-declaration.md)所示，返回类型可以省略，此时从主体推断。在 `pub` 或 `pub(pkg)` 函数上，缺少 `->` 则表示 `()`（[4.1.3](401-function-declaration.md#413-省略返回类型)）。
 
 ```nabi
 fn double(x: i32) {

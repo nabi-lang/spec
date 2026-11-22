@@ -30,10 +30,10 @@
 
 如果找到，该目录就是包根，其 `src/` 就是包的源代码（见[源单元](../000-meta/003-source-units.md)）。其他情形：
 
-- 如果 path 是位于所找到的包的 `src/` 之外的文件（放在包源代码旁边的脚本或工具），或者向上查找没有找到包，那么它是一个只由这一个文件构成的匿名可执行包（[4.16.8](../004-functions/416-entry-point.md#4168-single-file-execution)）。它的文件子模块位于它旁边。
+- 如果 path 是位于所找到的包的 `src/` 之外的文件（放在包源代码旁边的脚本或工具），或者向上查找没有找到包，那么它是一个只由这一个文件构成的匿名可执行包（[4.16.8](../004-functions/416-entry-point.md#4168-单文件执行)）。它的文件子模块位于它旁边。
 - 如果 path 是目录且没有包，则是错误。
 
-包名是包目录的名称（匿名包则是去掉 `.nabi` 的文件名），并成为输出名（9.2.15）。同时具有两个根文件的包按两个目标构建：先构建其库，再构建其可执行文件，可执行文件把该库作为依赖 `<name>` 挂载（[0.3.1](../000-meta/003-source-units.md#library-and-executable-in-one-package)）。
+包名是包目录的名称（匿名包则是去掉 `.nabi` 的文件名），并成为输出名（9.2.15）。同时具有两个根文件的包按两个目标构建：先构建其库，再构建其可执行文件，可执行文件把该库作为依赖 `<name>` 挂载（[0.3.1](../000-meta/003-source-units.md#同一个包中的库与可执行文件)）。
 
 ## 9.2.3. 依赖解析
 
@@ -54,10 +54,10 @@ nabic build --extern util=../util --extern parser=target/debug/deps/libparser.a
 
 - 用户代码通过 `use name::..` 使用该包的项。
 - 依赖包内部的 `pkg::` 指该依赖包自身。
-- 依赖包是独立的包。从外部只能使用 `pub` 项；`pub(pkg)` / `pub(sub)` / 私有项不可使用（[5.7.14](../005-modules/507-paths.md#5714-paths-between-packages)）。
+- 依赖包是独立的包。从外部只能使用 `pub` 项；`pub(pkg)` / `pub(sub)` / 私有项不可使用（[5.7.14](../005-modules/507-paths.md#5714-包之间的路径)）。
 - 用户包根部的模块与构建中的某个包同名是错误。
 - 如果后出现的 `--extern` 的路径与之前某个 `--extern` 的路径相同，它就是同一个包的另一个名称（不同的包可以用不同的名称称呼同一个依赖，[9.10.2](910-nabi-frontend.md)）。该包只以第一个名称构建并挂载一次；以另一个名称开头的路径（`other::..`，出现在如此称呼它的包的代码和元块模板中）也指向它，因此它的项和类型在每个名称下都相同。
-- `--extern-dep <package>=<name>` 表示包 `<package>`（一个 `--extern` 名称，或代表正在构建的包的 `pkg`）依赖外部包 `<name>`；`nabi` 为每个包的每个依赖各传一个。只要有任何一个，每个包就只能以它自己给出的名称看到它所依赖的外部包（[5.7.14](../005-modules/507-paths.md#5714-paths-between-packages)）；没有任何 `--extern-dep` 提到的外部包（即 `nabic` 挂载的、包自身的库）属于正在构建的包，并依赖该包所依赖的一切。如果一个也没有，每个包都能看到所有外部包。
+- `--extern-dep <package>=<name>` 表示包 `<package>`（一个 `--extern` 名称，或代表正在构建的包的 `pkg`）依赖外部包 `<name>`；`nabi` 为每个包的每个依赖各传一个。只要有任何一个，每个包就只能以它自己给出的名称看到它所依赖的外部包（[5.7.14](../005-modules/507-paths.md#5714-包之间的路径)）；没有任何 `--extern-dep` 提到的外部包（即 `nabic` 挂载的、包自身的库）属于正在构建的包，并依赖该包所依赖的一切。如果一个也没有，每个包都能看到所有外部包。
 
 对含有 `src/lib.nabi` 的包执行 `nabic build` 会生成 `lib<name>.a` 和 `<name>.nabihir`，含有 `src/main.nabi` 时生成可执行文件 `<name>`；两者都有的包会生成全部三个文件，可执行文件链接该库。`--name <n>` 设置包名（输出名和挂载名）；默认是目录名。
 
@@ -80,11 +80,11 @@ target/<profile>/deps/
 - 该依赖包 `src/` 下的所有文件，以及它的 `nabi.nabion`
 - 在它之前构建的依赖包的指纹
 
-预构建包的接口按它构建时所用的特性读取（其 NABIHIR 元数据，[9.4.6](904-nabihir-bytecode.md#946-meta)），而不是按使用方的特性。
+预构建包的接口按它构建时所用的特性读取（其 NABIHIR 元数据，[9.4.6](904-nabihir-bytecode.md#946-元数据)），而不是按使用方的特性。
 
 每个进行编译的命令都走这条路径：`build` / `run` / `test` / `bench` / `check` / `lint` / `doc` / `lsp` / `repl` / `jupyter`、单文件脚本，以及具名环境。REPL 宿主也会链接预构建的归档文件。如果既没有包也没有目标目录（`--target-dir`、`NABI_TARGET_DIR`），它们会放在系统临时目录下的单文件缓存中（9.2.16）。
 
-标准库在每次构建时都从源代码编译，并且只编译程序可达的部分；编译好的函数保存在工具链的函数缓存中（[9.3.6](903-package-archive.md#936-standard-library)）。
+标准库在每次构建时都从源代码编译，并且只编译程序可达的部分；编译好的函数保存在工具链的函数缓存中（[9.3.6](903-package-archive.md#936-标准库)）。
 
 ## 9.2.4. 源代码解析
 
@@ -139,7 +139,7 @@ MIR 是比 HIR 低一层的 IR。此步骤完成运算符脱糖（见[运算符�
 
 ## 9.2.10. 优化级别
 
-优化级别决定 nabi-mir 在代码生成之前如何优化（[8.7.3](../008-abi/807-code-generation.md#873-optimization-levels)）；代码生成器在每个级别都相同（[0.2.4](../000-meta/002-pipeline.md#024-code-generation)）。
+优化级别决定 nabi-mir 在代码生成之前如何优化（[8.7.3](../008-abi/807-code-generation.md#873-优化级别)）；代码生成器在每个级别都相同（[0.2.4](../000-meta/002-pipeline.md#024-代码生成)）。
 
 | 级别         | 效果 |
 |---------------|--------|
@@ -149,15 +149,15 @@ MIR 是比 HIR 低一层的 IR。此步骤完成运算符脱糖（见[运算符�
 | `-O3`         | 在循环之内也内联较大的函数体，并对保持标量的循环进行展开：一个保持浮点累加和或调用函数的循环，其整段每 2 次或 4 次迭代才检查一次计数器 |
 | `-Os`         | 只在函数体与调用差不多小（在循环中为其数倍）时内联，循环仍变为计数循环并分段，函数体较短时进行向量化 |
 
-`-g` 既不改变优化，也不改变代码（8.7.3）：调试信息跟随优化后的代码，内联的函数体作为栈帧，每个变量位于寄存器中、栈槽中或已被优化掉（[9.9.6](909-debug-tools.md#996-debugger-integration-gdb--lldb)）。优化器在包被划分为代码生成单元（9.2.16）之前一次看到整个包，因此它可以跨模块内联，也可以内联进出标准库的函数，而标准库在每次构建时都与程序一起编译（[9.3.6](903-package-archive.md#936-standard-library)）。在不同级别构建的目标文件遵循相同的运行时 ABI（[8](../008-abi/README.md)），可以链接在一起，包括在另一个级别构建的预构建依赖。REPL 按 `:opt` 设置的级别编译单元（[9.9.9](909-debug-tools.md#999-repl--jupyter-debugging)），但不优化其 nabi-mir。
+`-g` 既不改变优化，也不改变代码（8.7.3）：调试信息跟随优化后的代码，内联的函数体作为栈帧，每个变量位于寄存器中、栈槽中或已被优化掉（[9.9.6](909-debug-tools.md#996-调试器集成gdb--lldb)）。优化器在包被划分为代码生成单元（9.2.16）之前一次看到整个包，因此它可以跨模块内联，也可以内联进出标准库的函数，而标准库在每次构建时都与程序一起编译（[9.3.6](903-package-archive.md#936-标准库)）。在不同级别构建的目标文件遵循相同的运行时 ABI（[8](../008-abi/README.md)），可以链接在一起，包括在另一个级别构建的预构建依赖。REPL 按 `:opt` 设置的级别编译单元（[9.9.9](909-debug-tools.md#999-repl--jupyter-调试)），但不优化其 nabi-mir。
 
 ## 9.2.11. 代码生成器
 
-代码生成器（[8.7](../008-abi/807-code-generation.md)）经由所有目标共用的一种低层形式，直接从 nabi-mir 生成机器码和目标文件，支持 `x86_64`、`aarch64`、i686、armv7、riscv64、riscv32、powerpc64le、s390x 和 wasm32。使用 `-g` 时，它生成 DWARF：函数、行表、参数、局部变量及其类型，在优化后的代码中还包括内联的函数体以及每个变量按代码范围所在的位置（[9.9.6](909-debug-tools.md#996-debugger-integration-gdb--lldb)）；对于 Windows 目标，它在目标文件中生成等价的 CodeView（`.debug$S`、`.debug$T`），由链接器汇集成 PDB（9.2.14）。使用了它尚不支持的功能的代码会产生 `E0129` 错误，并指出该功能。
+代码生成器（[8.7](../008-abi/807-code-generation.md)）经由所有目标共用的一种低层形式，直接从 nabi-mir 生成机器码和目标文件，支持 `x86_64`、`aarch64`、i686、armv7、riscv64、riscv32、powerpc64le、s390x 和 wasm32。使用 `-g` 时，它生成 DWARF：函数、行表、参数、局部变量及其类型，在优化后的代码中还包括内联的函数体以及每个变量按代码范围所在的位置（[9.9.6](909-debug-tools.md#996-调试器集成gdb--lldb)）；对于 Windows 目标，它在目标文件中生成等价的 CodeView（`.debug$S`、`.debug$T`），由链接器汇集成 PDB（9.2.14）。使用了它尚不支持的功能的代码会产生 `E0129` 错误，并指出该功能。
 
 ## 9.2.12. 目标文件
 
-每个目标的目标文件都由 `nabic` 写出：Apple 目标为 Mach-O，Linux、FreeBSD 和 riscv32 为 ELF，Windows 为 COFF，wasm32 为 wasm 目标文件。一次构建的代码生成单元（9.2.16）并行编译，每个单元生成一个目标文件。`--emit=obj` 写出目标文件而不进行链接（[9.9.1](909-debug-tools.md#991-intermediate-output---emit)）。
+每个目标的目标文件都由 `nabic` 写出：Apple 目标为 Mach-O，Linux、FreeBSD 和 riscv32 为 ELF，Windows 为 COFF，wasm32 为 wasm 目标文件。一次构建的代码生成单元（9.2.16）并行编译，每个单元生成一个目标文件。`--emit=obj` 写出目标文件而不进行链接（[9.9.1](909-debug-tools.md#991-中间输出--emit)）。
 
 ```
 target/debug/build/foo.o
@@ -180,7 +180,7 @@ target/debug/foo.nabihir
 foo.o + <deps>/lib*.a + <sysroot>/lib/libnabir.a + target libc  →  target/debug/foo
 ```
 
-Mach-O 可执行文件链接 macOS SDK（Xcode Command Line Tools）。Windows 可执行文件链接 `nabic` 根据其自带的模块定义（源自 mingw-w64）构建的导入库，并在 UCRT 之上使用 Nabi 自己的启动代码；不需要 MSVC 工具或 Windows SDK。Nabi 的 Windows 启动代码在 `main` 之前运行 `.CRT$XCA`..`.CRT$XCZ` 中的 C 初始化函数。对于 x86 Windows，导入名称来自 mingw-w64 的 `lib32` 定义，带有 stdcall 的 `@N` 修饰，映像以 `/SAFESEH:NO` 链接。Linux 目标无论是本机构建还是交叉构建，总是链接 `<sysroot>/lib/nabi/targets/<triple>/` 中随附的 C 库：musl 静态链接，glibc 通过链接桩链接（可执行文件需要 glibc 2.34 或更高版本）。其他库通过 `-L` 和 `LIBRARY_PATH` 查找。32 位 glibc 目标指定的动态加载器为 `/lib/ld-linux.so.2`（i686）和 `/lib/ld-linux-armhf.so.3`（armv7hf）。riscv32 映像（无操作系统，进行中）是静态的，不链接 C 库：运行时自带入口点和堆（[0.6.2](../000-meta/006-platform-targets.md#riscv32imac-unknown-none-elf)）。如果设置了 `NABI_CC`，则改由该 C 编译器驱动程序执行最终链接（`$NABI_CC <objects> <archives> -o <out>`）；这是一个可选的覆盖手段。用 `--native-runtime` 给出的共享库会被复制到可执行文件旁边，可执行文件获得 rpath `@loader_path`（Mach-O）/ `$ORIGIN`（ELF）；Windows 从可执行文件所在目录加载 DLL。可执行文件会经过死代码剥离：删除未被引用的函数和数据；`release` 构建还会折叠相同的函数，并合并相同的字符串字面量（[9.2.15](#9215-output)）。Mach-O 可执行文件带有临时（ad-hoc）代码签名，arm64 macOS 要求有它才能运行。在 Apple 目标上，当可执行文件带有调试信息时，`nabic` 把目标文件中的 DWARF 汇集到可执行文件旁边的 `.dSYM` 包中；在 Windows 目标上，链接器写出 PDB（MSF 7.0）：合并后的目标文件 CodeView 类型、每个目标文件一个模块（含其符号和行表）、全局符号和公开符号，以及节贡献；可执行文件的调试目录指向它（一条带有 PDB 的 GUID 和 age 的 RSDS 记录）。`wasm32-wasip2` 可执行文件先链接为核心 wasm 模块，再用工具链为该目标随附的 preview 1 适配器制成 WASI preview 2 组件；`ffi::wit` world（[std 1.8](../../refs-standard-libraries/100-bare/108-wit.md)）决定它的导入和导出。
+Mach-O 可执行文件链接 macOS SDK（Xcode Command Line Tools）。Windows 可执行文件链接 `nabic` 根据其自带的模块定义（源自 mingw-w64）构建的导入库，并在 UCRT 之上使用 Nabi 自己的启动代码；不需要 MSVC 工具或 Windows SDK。Nabi 的 Windows 启动代码在 `main` 之前运行 `.CRT$XCA`..`.CRT$XCZ` 中的 C 初始化函数。对于 x86 Windows，导入名称来自 mingw-w64 的 `lib32` 定义，带有 stdcall 的 `@N` 修饰，映像以 `/SAFESEH:NO` 链接。Linux 目标无论是本机构建还是交叉构建，总是链接 `<sysroot>/lib/nabi/targets/<triple>/` 中随附的 C 库：musl 静态链接，glibc 通过链接桩链接（可执行文件需要 glibc 2.34 或更高版本）。其他库通过 `-L` 和 `LIBRARY_PATH` 查找。32 位 glibc 目标指定的动态加载器为 `/lib/ld-linux.so.2`（i686）和 `/lib/ld-linux-armhf.so.3`（armv7hf）。riscv32 映像（无操作系统，进行中）是静态的，不链接 C 库：运行时自带入口点和堆（[0.6.2](../000-meta/006-platform-targets.md#riscv32imac-unknown-none-elf)）。如果设置了 `NABI_CC`，则改由该 C 编译器驱动程序执行最终链接（`$NABI_CC <objects> <archives> -o <out>`）；这是一个可选的覆盖手段。用 `--native-runtime` 给出的共享库会被复制到可执行文件旁边，可执行文件获得 rpath `@loader_path`（Mach-O）/ `$ORIGIN`（ELF）；Windows 从可执行文件所在目录加载 DLL。可执行文件会经过死代码剥离：删除未被引用的函数和数据；`release` 构建还会折叠相同的函数，并合并相同的字符串字面量（[9.2.15](#9215-输出)）。Mach-O 可执行文件带有临时（ad-hoc）代码签名，arm64 macOS 要求有它才能运行。在 Apple 目标上，当可执行文件带有调试信息时，`nabic` 把目标文件中的 DWARF 汇集到可执行文件旁边的 `.dSYM` 包中；在 Windows 目标上，链接器写出 PDB（MSF 7.0）：合并后的目标文件 CodeView 类型、每个目标文件一个模块（含其符号和行表）、全局符号和公开符号，以及节贡献；可执行文件的调试目录指向它（一条带有 PDB 的 GUID 和 age 的 RSDS 记录）。`wasm32-wasip2` 可执行文件先链接为核心 wasm 模块，再用工具链为该目标随附的 preview 1 适配器制成 WASI preview 2 组件；`ffi::wit` world（[std 1.8](../../refs-standard-libraries/100-bare/108-wit.md)）决定它的导入和导出。
 
 ## 9.2.15. 输出
 
@@ -235,12 +235,12 @@ target/
 - 包及其依赖的 `src/` 下的文件、它们的 `nabi.nabion`，以及构建读取的所有其他文件（`src/` 之外的 `#[path]` / `include_str!`）
 - 由 `include_str!` / `include_bytes!` 读取的文件（[6.11](../006-meta-system/611-include.md)）及其内容
 - lint 级别（`-A` / `-W` / `-D`，以及通过它们生效的清单中的 `lints`）
-- 运行时库、工具链为该目标随附的 C 运行时目标文件和 C 库（[9.2.19](#9219-installation-layout)），以及预构建依赖的 `.a`，每一项都按其大小、修改时间和文件身份（inode 和状态变更时间；在 Windows 上为创建时间）比较，因此保留了修改时间的副本也算作变化
+- 运行时库、工具链为该目标随附的 C 运行时目标文件和 C 库（[9.2.19](#9219-安装布局)），以及预构建依赖的 `.a`，每一项都按其大小、修改时间和文件身份（inode 和状态变更时间；在 Windows 上为创建时间）比较，因此保留了修改时间的副本也算作变化
 - 输出的大小、修改时间和文件身份
 
 构建发出的警告（包括 lint 警告和后端的警告）会被记录下来，`Fresh` 构建会再次打印它们。
 
-每次构建，无论是本机构建还是交叉构建，都会编译程序可达的标准库函数（[9.3.6](903-package-archive.md#936-standard-library)）；它们的优化后代码和所在单元的目标文件保存在工具链的函数缓存 `lib/nabi-cache/fn/`（9.2.19）中，供该工具链的每次构建使用，单文件的构建也不例外：
+每次构建，无论是本机构建还是交叉构建，都会编译程序可达的标准库函数（[9.3.6](903-package-archive.md#936-标准库)）；它们的优化后代码和所在单元的目标文件保存在工具链的函数缓存 `lib/nabi-cache/fn/`（9.2.19）中，供该工具链的每次构建使用，单文件的构建也不例外：
 
 - 条目的键涵盖其结果所依赖的一切：对于优化后代码，是该步骤之前的函数代码、级别、目标，以及该步骤从它所调用的函数中读取的内容，全部按名称记录；对于目标文件，是该单元的键（见下文）；两者都包含编译器的身份。包会把标准库降级后的函数体与自己的函数体一起保存（前端，见下文）。构建取用键匹配的条目，并写入自己生成的条目；输出与使用空缓存的构建所生成的输出相同。
 - 条目是先完整写出再重命名到位的文件，因此同时运行的多个构建可以安全地共享缓存。
@@ -265,10 +265,10 @@ target/
 
 - 只有当单元的键自上次构建到同一目标目录以来发生了变化时，才编译该单元。否则就重用保存在 `target/<profile>/incremental/<name>/`（库的为 `lib<name>/`）下的结果；然后链接所有内容。标准库单元则保存在函数缓存中（见上文），供每个包的构建使用；单个文件也会使用它，尽管它不保存自己的单元。预构建依赖（9.2.3）编译为一个目标文件，不划分单元。
 - 匿名文件的单元保存在不使用包时所用的目标目录中（`--target-dir`、`NABI_TARGET_DIR`，否则为单文件缓存），位于 `[<triple>/]<profile>/incremental/<stem>-<hash of its path>/` 下。单文件缓存在 Unix 上是 `<system temporary directory>/nabic-target-<uid>/`，`<uid>` 为有效用户 ID；在 Windows 上是 `%TEMP%\nabic-target\`，Windows 的临时目录是用户自己的。它是缓存：nabic 每天最多一次删除一周内没有任何构建写入过的文件。
-- 单个文件的可执行文件保存在同一目标目录中，位于 `[<triple>/]<profile>/scripts/<key>/` 下，在其键匹配时被重用；一天未使用的条目会在构建另一个条目时被删除（[9.10.7](910-nabi-frontend.md#9107-inline-manifest-for-single-file-scripts)）。`nabi run` 运行它，`nabic build` 把它复制到文件旁边。对于脚本，`nabi` 用 `$NABI_HOME/cache/scripts/<hash>/` 下脚本自己的 `target/` 传入 `--target-dir`；其余内容由单文件缓存保存：由 `nabic` 自身构建的单个文件，以及位于其 `nabi.nabion` 使之成为单文件包的目录中的文件（9.10.1）。
+- 单个文件的可执行文件保存在同一目标目录中，位于 `[<triple>/]<profile>/scripts/<key>/` 下，在其键匹配时被重用；一天未使用的条目会在构建另一个条目时被删除（[9.10.7](910-nabi-frontend.md#9107-单文件脚本的内联清单)）。`nabi run` 运行它，`nabic build` 把它复制到文件旁边。对于脚本，`nabi` 用 `$NABI_HOME/cache/scripts/<hash>/` 下脚本自己的 `target/` 传入 `--target-dir`；其余内容由单文件缓存保存：由 `nabic` 自身构建的单个文件，以及位于其 `nabi.nabion` 使之成为单文件包的目录中的文件（9.10.1）。
 - 单文件缓存保存会被运行的可执行文件，因此在 Unix 上它是私有的：编译器以模式 `0700` 创建它，使用前检查它是目录（不是符号链接）、属于有效用户、并且对组和其他用户没有任何权限位。否则命令以退出码 `1` 失败，并输出 ``nabic: error: <dir> is not private to you (owner uid N, mode 0755); remove it or set NABI_TARGET_DIR``。`--target-dir` 和 `NABI_TARGET_DIR` 按给出的值使用。
 - 单元的键涵盖其函数的代码、它从其他单元使用的内容的签名和代码生成事实（函数的签名变化会重新编译其调用者所在的单元）、它使用的静态变量和 GC 类型、目标、优化级别、代码生成选项、编译器的身份，以及在 `-g` 下其调试信息所指的源文件路径（添加文件只会重新编译引用它的单元）。
-- 符号和 GC 类型 ID 不依赖于其他单元的内容（单元从包的共享单元所定义的符号中读取 GC 类型 ID；[9.5.7](905-symbol-mangling.md#957-collision-avoidance-typehash-stability)），因此输出与干净构建所生成的输出相同。
+- 符号和 GC 类型 ID 不依赖于其他单元的内容（单元从包的共享单元所定义的符号中读取 GC 类型 ID；[9.5.7](905-symbol-mangling.md#957-避免冲突typehash-的稳定性)），因此输出与干净构建所生成的输出相同。
 - 优化构建仍然跨单元内联：包在划分之前作为整体进行优化（9.2.10）。
 - `-v` 报告有多少单元被重用、多少被编译；`-vv` 列出被编译的单元的名称。
 
@@ -284,7 +284,7 @@ target/
 
 ## 9.2.18. 自包含的工具链
 
-`nabic` 是自包含的：它的代码生成器和链接器都是它自己的（[0.2.4](../000-meta/002-pipeline.md#024-code-generation)），它不运行任何外部编译器、汇编器或链接器。交叉编译是内置的：工具链为其支持的 Linux 目标随附 C 库（musl、glibc 链接桩）。
+`nabic` 是自包含的：它的代码生成器和链接器都是它自己的（[0.2.4](../000-meta/002-pipeline.md#024-代码生成)），它不运行任何外部编译器、汇编器或链接器。交叉编译是内置的：工具链为其支持的 Linux 目标随附 C 库（musl、glibc 链接桩）。
 
 | 需要系统提供的内容 | 目标                                   |
 |------------------------|------------------------------------------|
@@ -293,7 +293,7 @@ target/
 | 无（由随附的模块定义构建的导入库；UCRT） | Windows 目标 |
 | `NABI_CC`（可选）    | 覆盖最终链接（9.2.14）        |
 
-C 编译器 `nabicc` 还需要目标的 C 头文件：工具链为其 Linux 和 wasm32 目标随附这些头文件，Apple 目标从 macOS SDK 获取，Windows 目标则在 Windows 主机上从 Windows SDK 和 Visual Studio 获取（[9.13.7](913-c-compiler.md#9137-headers-and-c-library)）。
+C 编译器 `nabicc` 还需要目标的 C 头文件：工具链为其 Linux 和 wasm32 目标随附这些头文件，Apple 目标从 macOS SDK 获取，Windows 目标则在 Windows 主机上从 Windows SDK 和 Visual Studio 获取（[9.13.7](913-c-compiler.md#9137-头文件与-c-库)）。
 
 ## 9.2.19. 安装布局
 

@@ -1,8 +1,8 @@
 # 8.5. Extern "C" 符号
 
-本节定义 `libnabir.a` 暴露的[符号](../000-meta/007-glossary.md#extern-c-symbol)的签名。编译器生成的代码和标准库会调用这些符号。
+本节定义 `libnabir.a` 暴露的[符号](../000-meta/007-glossary.md#extern-c-符号)的签名。编译器生成的代码和标准库会调用这些符号。
 
-在 Nabi 一侧，它们以运行时 ABI `extern "nabi"`（[5.9.2](../005-modules/509-extern-block.md#592-abi-specifiers)）声明，工具链的包把它们声明为私有项（大多在 `core::rt` 中）。在下面的代码块中，`fn` 值是 `NabiFn`（8.5.0a），其他所有值与 C ABI 中相同。`str` 是 `struct { const uint8_t *ptr; size_t len; }`；接收或返回 `str` 的运行时函数，与 `NabiFn` 一样，遵循平台 C ABI 中 16 字节结构体的规则（[8.6.3](806-calling-convention.md#863-struct-arguments--return-small-struct-rule)）：在 ABI 允许时按值放在寄存器中，从不拆分到寄存器和栈上，在 Windows x64 和 wasm32 上按引用传递。程序可以自行声明运行时符号（`extern "nabi"` / `extern "C"`）；其声明必须与工具链自身对该符号的声明相同，不同的声明是错误。下面的列表给出 C ABI 的形态；如果工具链以 GC 类型（`GcBuf<T>`，例如 `nabi_gc_pin`、`nabi_gc_secret_new` 以及 waker 实参）声明了某个参数，而列表中显示为 `Ptr<u8>` / `usize`，则应当写成该 GC 类型。
+在 Nabi 一侧，它们以运行时 ABI `extern "nabi"`（[5.9.2](../005-modules/509-extern-block.md#592-abi-说明符)）声明，工具链的包把它们声明为私有项（大多在 `core::rt` 中）。在下面的代码块中，`fn` 值是 `NabiFn`（8.5.0a），其他所有值与 C ABI 中相同。`str` 是 `struct { const uint8_t *ptr; size_t len; }`；接收或返回 `str` 的运行时函数，与 `NabiFn` 一样，遵循平台 C ABI 中 16 字节结构体的规则（[8.6.3](806-calling-convention.md#863-struct-实参--返回小-struct-规则)）：在 ABI 允许时按值放在寄存器中，从不拆分到寄存器和栈上，在 Windows x64 和 wasm32 上按引用传递。程序可以自行声明运行时符号（`extern "nabi"` / `extern "C"`）；其声明必须与工具链自身对该符号的声明相同，不同的声明是错误。下面的列表给出 C ABI 的形态；如果工具链以 GC 类型（`GcBuf<T>`，例如 `nabi_gc_pin`、`nabi_gc_secret_new` 以及 waker 实参）声明了某个参数，而列表中显示为 `Ptr<u8>` / `usize`，则应当写成该 GC 类型。
 
 > [!IMPORTANT]
 > 每个符号都以 `nabi_` 前缀开头，以避免与外部库和用户代码发生符号冲突。
@@ -24,7 +24,7 @@
 
 ## 8.5.0a. `NabiFn` - 函数值的 C ABI 形式
 
-把 Nabi 函数值 `{code, env}`（[4.4](../004-functions/404-function-type.md#representation-of-function-values)）传给运行时符号时使用的 C 表示。
+把 Nabi 函数值 `{code, env}`（[4.4](../004-functions/404-function-type.md#函数值的表示)）传给运行时符号时使用的 C 表示。
 
 ```c
 typedef struct {
@@ -79,7 +79,7 @@ extern "nabi" {
 }
 ```
 
-实参 `obj` 是指向包含被修改槽的对象的指针，`slot` 是该槽的地址，`len` 是即将存入的值的字节大小；没有返回值。效果：把 obj 加入记忆集，日志写满时刷新。在并发标记期间，它还会记录该对象持有的引用，对于大对象则记录 `slot..slot + len` 所跨越的卡中的引用（[7.5.3](../007-runtime/705-concurrent-collection.md#753-satb-barrier)）。
+实参 `obj` 是指向包含被修改槽的对象的指针，`slot` 是该槽的地址，`len` 是即将存入的值的字节大小；没有返回值。效果：把 obj 加入记忆集，日志写满时刷新。在并发标记期间，它还会记录该对象持有的引用，对于大对象则记录 `slot..slot + len` 所跨越的卡中的引用（[7.5.3](../007-runtime/705-concurrent-collection.md#753-satb-屏障)）。
 
 ### `nabi_gc_register_type` / `nabi_gc_register_types`
 
@@ -92,7 +92,7 @@ extern "nabi" {
 }
 ```
 
-在进程启动时、进入多线程之前调用，因此不需要同步。`nabi_gc_register_types` 用一次调用把 `n` 个表注册到连续的 id 之下（[8.2.13](802-scan-table.md#8213-registration-time)）。
+在进程启动时、进入多线程之前调用，因此不需要同步。`nabi_gc_register_types` 用一次调用把 `n` 个表注册到连续的 id 之下（[8.2.13](802-scan-table.md#8213-注册时机)）。
 
 ### `nabi_gc_pin` / `nabi_gc_unpin`
 
@@ -105,7 +105,7 @@ extern "nabi" {
 }
 ```
 
-传给 `extern "C"` 函数的 GC 指针（`str` 实参）或传给阻塞运行时调用的 GC 指针，即使不固定也不会被移动，因为该实参在调用结束前一直留在根中（[7.4.1](../007-runtime/704-barriers-and-roots.md#objects-pointed-to-by-roots-are-not-moved)）。指向一个没有任何实参作为其根的对象内部的指针（列表的缓冲区），在整个调用期间都需要固定，因为回收可能在任何 C 调用期间运行；C 在调用之后仍保留的任何指针也同样需要固定（[标准库 1.6.5](../../refs-standard-libraries/100-bare/106-gc-pin.md#165-when-a-pin-is-needed)）。固定会在对象上设置 `PINNED`，使其不参与疏散并保持存活；取消固定则将其释放。
+传给 `extern "C"` 函数的 GC 指针（`str` 实参）或传给阻塞运行时调用的 GC 指针，即使不固定也不会被移动，因为该实参在调用结束前一直留在根中（[7.4.1](../007-runtime/704-barriers-and-roots.md#根指向的对象不会被移动)）。指向一个没有任何实参作为其根的对象内部的指针（列表的缓冲区），在整个调用期间都需要固定，因为回收可能在任何 C 调用期间运行；C 在调用之后仍保留的任何指针也同样需要固定（[标准库 1.6.5](../../refs-standard-libraries/100-bare/106-gc-pin.md#165-何时需要固定)）。固定会在对象上设置 `PINNED`，使其不参与疏散并保持存活；取消固定则将其释放。
 
 ### `nabi_gc_collect`
 
@@ -121,7 +121,7 @@ extern "nabi" {
 
 ### `nabi_gc_secret_new` / `nabi_gc_secret_wipe`
 
-`core::crypto::Secret` 的机密存储（[标准库 2.21.5](../../refs-standard-libraries/200-core/221-crypto.md#2215-security-considerations)）。**线程安全性：`thread-safe`**。
+`core::crypto::Secret` 的机密存储（[标准库 2.21.5](../../refs-standard-libraries/200-core/221-crypto.md#2215-安全注意事项)）。**线程安全性：`thread-safe`**。
 
 ```
 extern "nabi" {
@@ -130,7 +130,7 @@ extern "nabi" {
 }
 ```
 
-`nabi_gc_secret_new` 分配一个类型 id 为 1（无引用）、设置了 `WIPE` 的 LOS 对象（[8.1.3](801-object-header-abi.md#813-gc_flags-offset-4-u32)）。其清零的载荷容纳 `len` 字节，向上取整到 8 的倍数。它可能先进行一次回收，超过 `isize::MAX` 的请求是致命错误“allocation too large”。`nabi_gc_secret_wipe` 用 volatile 存储覆写整个载荷，随后加一道编译器屏障；它既不分配也不阻塞，因此不是安全点（[8.4](804-safepoint.md)）。回收器在释放该对象之前也以同样方式覆写其载荷。
+`nabi_gc_secret_new` 分配一个类型 id 为 1（无引用）、设置了 `WIPE` 的 LOS 对象（[8.1.3](801-object-header-abi.md#813-gc_flags偏移-4u32)）。其清零的载荷容纳 `len` 字节，向上取整到 8 的倍数。它可能先进行一次回收，超过 `isize::MAX` 的请求是致命错误“allocation too large”。`nabi_gc_secret_wipe` 用 volatile 存储覆写整个载荷，随后加一道编译器屏障；它既不分配也不阻塞，因此不是安全点（[8.4](804-safepoint.md)）。回收器在释放该对象之前也以同样方式覆写其载荷。
 
 ## 8.5.2. 运行时区域
 
@@ -144,9 +144,9 @@ extern "nabi" {
 }
 ```
 
-在进程启动后、`main()` 之前立即调用。效果：把调用线程设置为主 mutator（其 TLS 块、栈保护区和 GC 状态）。执行器的工作线程池是由 `core::task` 在首次使用时启动的 Nabi 代码，I/O 轮询器在首次注册时惰性创建。编译器生成的 C ABI `main` 在此调用之后立即调用 `nabi.register_types`（[8.2.13](802-scan-table.md#8213-registration-time)）。
+在进程启动后、`main()` 之前立即调用。效果：把调用线程设置为主 mutator（其 TLS 块、栈保护区和 GC 状态）。执行器的工作线程池是由 `core::task` 在首次使用时启动的 Nabi 代码，I/O 轮询器在首次注册时惰性创建。编译器生成的 C ABI `main` 在此调用之后立即调用 `nabi.register_types`（[8.2.13](802-scan-table.md#8213-注册时机)）。
 
-运行时还导出线程局部块 `nabi_tls`（[8.3.8](803-tls-slots.md#838-form-of-compiler-emission)）。
+运行时还导出线程局部块 `nabi_tls`（[8.3.8](803-tls-slots.md#838-编译器生成的形式)）。
 
 ### `nabi_runtime_shutdown`
 
@@ -170,7 +170,7 @@ extern "nabi" {
 }
 ```
 
-[`std::process::exit`](../../refs-standard-libraries/300-std/306-process.md) 调用此符号。`finally` 和 `Drop` 不会运行（[4.16.4](../004-functions/416-entry-point.md#4164-exit-codes-and-unhandled-exceptions)）。
+[`std::process::exit`](../../refs-standard-libraries/300-std/306-process.md) 调用此符号。`finally` 和 `Drop` 不会运行（[4.16.4](../004-functions/416-entry-point.md#4164-退出码与未处理的异常)）。
 
 ### 字符串辅助函数
 
@@ -187,7 +187,7 @@ extern "nabi" {
 }
 ```
 
-在 Nabi 一侧，`nabi_str_slice` 以 `#[track_caller]` 声明，且只有前三个参数（[6.2.12](../006-meta-system/602-built-in-attributes.md#6212-track_caller-passing-the-call-site)）；编译器把调用者的位置 `at` 作为第四个 C 实参传入。
+在 Nabi 一侧，`nabi_str_slice` 以 `#[track_caller]` 声明，且只有前三个参数（[6.2.12](../006-meta-system/602-built-in-attributes.md#6212-track_caller-传递调用位置)）；编译器把调用者的位置 `at` 作为第四个 C 实参传入。
 
 ### `nabi_runtime_yield`
 
@@ -201,7 +201,7 @@ extern "nabi" {
 
 ### `nabi_enter_native` / `nabi_leave_native`
 
-原生调用包围的慢速路径（[8.4.10](804-safepoint.md#8410-native-calls)）。**线程安全性：`caller-thread-only`**。
+原生调用包围的慢速路径（[8.4.10](804-safepoint.md#8410-原生调用)）。**线程安全性：`caller-thread-only`**。
 
 ```
 extern "nabi" {
@@ -210,7 +210,7 @@ extern "nabi" {
 }
 ```
 
-编译器在每个 `extern "C"` 调用（`#[leaf]` 调用除外，[标准库 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf---short-calls)）周围内联快速路径：以 seq_cst 方式向 mutator 状态存入 `PARKED` / `RUNNING`，然后检查 yield 标志。只有在标志被设置时才调用这两个函数。
+编译器在每个 `extern "C"` 调用（`#[leaf]` 调用除外，[标准库 1.7.1](../../refs-standard-libraries/100-bare/107-ffi.md#leaf短调用)）周围内联快速路径：以 seq_cst 方式向 mutator 状态存入 `PARKED` / `RUNNING`，然后检查 yield 标志。只有在标志被设置时才调用这两个函数。
 
 ### `nabi_native_reenter` / `nabi_native_resume`
 
@@ -223,11 +223,11 @@ extern "nabi" {
 }
 ```
 
-外部代码调用的入口在返回之前计入该线程的外部入口计数。计数非零时发生的 panic 不会退出：在报告和 panic 钩子之后，如果最内层的 `#[on_panic]` 入口就是最近的外部入口（`nabi_catch_push`），则返回到该入口；否则写出 `` panic in a function C called: aborting (`#[on_panic(return = v)]` on the `extern "C" fn` returns `v` to C instead) `` 并中止进程，退出状态为 134（[5.9.12](../005-modules/509-extern-block.md#5912-responsibility-for-ffi-safety)）。
+外部代码调用的入口在返回之前计入该线程的外部入口计数。计数非零时发生的 panic 不会退出：在报告和 panic 钩子之后，如果最内层的 `#[on_panic]` 入口就是最近的外部入口（`nabi_catch_push`），则返回到该入口；否则写出 `` panic in a function C called: aborting (`#[on_panic(return = v)]` on the `extern "C" fn` returns `v` to C instead) `` 并中止进程，退出状态为 134（[5.9.12](../005-modules/509-extern-block.md#5912-ffi-安全的责任)）。
 
 ### `nabi_catch_push` / `nabi_catch_pop`
 
-`#[on_panic]` 入口的恢复记录（[5.9.10](../005-modules/509-extern-block.md#on_panic---a-value-for-c-instead-of-an-abort)）。**线程安全性：`caller-thread-only`**。
+`#[on_panic]` 入口的恢复记录（[5.9.10](../005-modules/509-extern-block.md#on_panic给-c-一个值而不是中止)）。**线程安全性：`caller-thread-only`**。
 
 ```
 extern "nabi" {
@@ -240,7 +240,7 @@ extern "nabi" {
 
 ### `nabi_errno_save`
 
-`#[errno]` 调用的 errno（[标准库 1.7.11](../../refs-standard-libraries/100-bare/107-ffi.md#1711-errno---errno-and-getlasterror)）。**线程安全性：`caller-thread-only`**。
+`#[errno]` 调用的 errno（[标准库 1.7.11](../../refs-standard-libraries/100-bare/107-ffi.md#1711-errnoerrno-与-getlasterror)）。**线程安全性：`caller-thread-only`**。
 
 ```
 extern "nabi" {
@@ -252,7 +252,7 @@ extern "nabi" {
 
 ### `nabi_nosp_enter` / `nabi_nosp_leave`
 
-围绕对 `#[no_safepoint]` 运行时函数调用的检查包围（[8.4.10](804-safepoint.md#8410-native-calls)）。只有调试版 nabic 生成它。**线程安全性：`caller-thread-only`**。
+围绕对 `#[no_safepoint]` 运行时函数调用的检查包围（[8.4.10](804-safepoint.md#8410-原生调用)）。只有调试版 nabic 生成它。**线程安全性：`caller-thread-only`**。
 
 ```
 extern "nabi" {
@@ -282,11 +282,11 @@ extern "nabi" {
 
 ### 不是安全点的函数
 
-在 Nabi 一侧，它们声明在标有 `#[no_safepoint]` 的 `extern "nabi"` 块中（[5.9.2](../005-modules/509-extern-block.md#592-abi-specifiers)）。
+在 Nabi 一侧，它们声明在标有 `#[no_safepoint]` 的 `extern "nabi"` 块中（[5.9.2](../005-modules/509-extern-block.md#592-abi-说明符)）。
 
-以下运行时函数保证从不分配、从不阻塞，因此对它们的调用不是安全点（[8.4.2](804-safepoint.md#842-emission-sites)、[8.9.12](809-lowering-control.md#8912-shadow-stack-frame)）：`nabi_str_len`、`nabi_str_byte`、`nabi_str_cmp`、`nabi_str_eq`、`nabi_str_eq_at`、`nabi_str_find_near`、`nabi_str_rfind_near`、`nabi_str_char_count`、`nabi_str_bytes_buf`、`nabi_buf_copy`、`nabi_char_*` 属性与大小写函数、`nabi_fmt_len`、`nabi_f64_*`、`nabi_f32_*`。
+以下运行时函数保证从不分配、从不阻塞，因此对它们的调用不是安全点（[8.4.2](804-safepoint.md#842-生成位置)、[8.9.12](809-lowering-control.md#8912-影子栈帧)）：`nabi_str_len`、`nabi_str_byte`、`nabi_str_cmp`、`nabi_str_eq`、`nabi_str_eq_at`、`nabi_str_find_near`、`nabi_str_rfind_near`、`nabi_str_char_count`、`nabi_str_bytes_buf`、`nabi_buf_copy`、`nabi_char_*` 属性与大小写函数、`nabi_fmt_len`、`nabi_f64_*`、`nabi_f32_*`。
 
-对其中任一函数的调用会推迟其他所有线程的回收直到它返回，因此它的工作保持简短。对于较长的输入（64 KiB 或以上），标准库改为调用声明在 `#[no_safepoint]` 块之外的 parked 变体（[8.4.10](804-safepoint.md#8410-native-calls)）：`nabi_str_find_parked` / `nabi_str_rfind_parked`（搜索在前 64 KiB 之后的剩余部分，前 64 KiB 由 `nabi_str_find_near` / `nabi_str_rfind_near` 就地查看）、`nabi_str_char_count_parked`、`nabi_str_grapheme_count_parked`、`nabi_buf_utf8_error_parked`、`nabi_buf_copy_parked`、`nabi_buf_put_str_parked`。
+对其中任一函数的调用会推迟其他所有线程的回收直到它返回，因此它的工作保持简短。对于较长的输入（64 KiB 或以上），标准库改为调用声明在 `#[no_safepoint]` 块之外的 parked 变体（[8.4.10](804-safepoint.md#8410-原生调用)）：`nabi_str_find_parked` / `nabi_str_rfind_parked`（搜索在前 64 KiB 之后的剩余部分，前 64 KiB 由 `nabi_str_find_near` / `nabi_str_rfind_near` 就地查看）、`nabi_str_char_count_parked`、`nabi_str_grapheme_count_parked`、`nabi_buf_utf8_error_parked`、`nabi_buf_copy_parked`、`nabi_buf_put_str_parked`。
 
 ## 8.5.3. 协程区域
 
@@ -325,7 +325,7 @@ extern "nabi" {
 
 ### `nabi_task_worker_*` / `nabi_time_now_ns`
 
-在 TLS 槽 `nabi_tls_task_worker`（[8.3.1](803-tls-slots.md#831-tls-slot-structure)）中存取当前线程的执行器工作线程（[标准库 2.18](../../refs-standard-libraries/200-core/218-task.md)）的函数，外加一个时钟。**线程安全性：`caller-thread-only`**（`nabi_time_now_ns` 为 `thread-safe`）。
+在 TLS 槽 `nabi_tls_task_worker`（[8.3.1](803-tls-slots.md#831-tls-槽结构)）中存取当前线程的执行器工作线程（[标准库 2.18](../../refs-standard-libraries/200-core/218-task.md)）的函数，外加一个时钟。**线程安全性：`caller-thread-only`**（`nabi_time_now_ns` 为 `thread-safe`）。
 
 ```
 extern "nabi" {
@@ -370,7 +370,7 @@ extern "nabi" {
 }
 ```
 
-`nabi_task_key` 把地址用作键，因此会在对象上设置 `NOMOVE`（[8.1.3](801-object-header-abi.md#813-gc_flags-offset-4-u32)）。此后该对象永远不会被移动。只在一次调用内使用的同一性比较使用 `buf_same`（[标准库 2.9](../../refs-standard-libraries/200-core/209-collections.md)），它不固定任何对象。
+`nabi_task_key` 把地址用作键，因此会在对象上设置 `NOMOVE`（[8.1.3](801-object-header-abi.md#813-gc_flags偏移-4u32)）。此后该对象永远不会被移动。只在一次调用内使用的同一性比较使用 `buf_same`（[标准库 2.9](../../refs-standard-libraries/200-core/209-collections.md)），它不固定任何对象。
 
 ### `nabi_sync_wait` / `nabi_sync_wake`
 
@@ -417,7 +417,7 @@ extern "nabi" {
 }
 ```
 
-`state` 是该 `static` 的状态字节（0 为新建，1 为进行中，2 为就绪）。如果另一个线程正在初始化，`nabi_static_init_begin` 会等到它完成，期间就 GC 而言该线程被视为已停止。`at` / `at_len` 是读取该 static 的代码的 `path:line:col`；读取自身 static 的初始化器会在该处 panic（[4.14.13](../004-functions/414-throws.md#41413-panics-and-fatal-errors)）。
+`state` 是该 `static` 的状态字节（0 为新建，1 为进行中，2 为就绪）。如果另一个线程正在初始化，`nabi_static_init_begin` 会等到它完成，期间就 GC 而言该线程被视为已停止。`at` / `at_len` 是读取该 static 的代码的 `path:line:col`；读取自身 static 的初始化器会在该处 panic（[4.14.13](../004-functions/414-throws.md#41413-panic-与致命错误)）。
 
 ### `nabi_gc_add_root`
 
@@ -468,7 +468,7 @@ extern "nabi" {
 
 ### `nabi_deque_*` - 工作窃取双端队列
 
-任务调度器的无锁 Chase-Lev 双端队列（[7.6.2](../007-runtime/706-scheduler.md#762-work-stealing-structure)）。双端队列及其环形缓冲都是由 GC 追踪的 GC 对象，因此只存在于双端队列中的元素也会保持存活。**线程安全性**：`push` / `pop` 只能由所属线程调用；`steal` 和 `len` 可由任意线程调用。
+任务调度器的无锁 Chase-Lev 双端队列（[7.6.2](../007-runtime/706-scheduler.md#762-工作窃取结构)）。双端队列及其环形缓冲都是由 GC 追踪的 GC 对象，因此只存在于双端队列中的元素也会保持存活。**线程安全性**：`push` / `pop` 只能由所属线程调用；`steal` 和 `len` 可由任意线程调用。
 
 ```
 extern "nabi" {
@@ -536,11 +536,11 @@ nabi_net_splice        nabi_net_getopt
 
 ## 8.5.6. 错误传播（无符号）
 
-[错误控制流](../003-expressions/314-error-control-flow.md)中的 `throw` / `try` / `catch` 没有运行时符号。会抛出错误的函数把错误作为其返回值的一部分返回（[8.6.5](806-calling-convention.md#865-return-of-throwing-functions-value-based-error-propagation)），调用处检查该值并分支（[8.9.6](809-lowering-control.md#896-try--catch--finally-value-based-branching)）。因此不存在用于抛出错误或获取当前错误的运行时调用，也没有用于错误处理的 TLS 槽或 jmp_buf。
+[错误控制流](../003-expressions/314-error-control-flow.md)中的 `throw` / `try` / `catch` 没有运行时符号。会抛出错误的函数把错误作为其返回值的一部分返回（[8.6.5](806-calling-convention.md#865-抛出函数的返回基于值的错误传播)），调用处检查该值并分支（[8.9.6](809-lowering-control.md#896-try--catch--finally基于值的分支)）。因此不存在用于抛出错误或获取当前错误的运行时调用，也没有用于错误处理的 TLS 槽或 jmp_buf。
 
 ## 8.5.7. 诊断区域
 
-在 `wasm32-wasip2` 上，下列退出码（`101` 等）以普通失败的形式到达宿主（[4.16.4](../004-functions/416-entry-point.md#4164-exit-codes-and-unhandled-exceptions)）。
+在 `wasm32-wasip2` 上，下列退出码（`101` 等）以普通失败的形式到达宿主（[4.16.4](../004-functions/416-entry-point.md#4164-退出码与未处理的异常)）。
 
 ### `nabi_panic`
 
@@ -577,9 +577,9 @@ extern "nabi" {
 }
 ```
 
-该声明是 `#[track_caller]`（[6.2.12](../006-meta-system/602-built-in-attributes.md#6212-track_caller-passing-the-call-site)），因此该符号以一个隐藏的尾随 `str` 实参（`"path:line:col"`）接收调用者的位置：`nabi_panic_at(msg, at)`。
+该声明是 `#[track_caller]`（[6.2.12](../006-meta-system/602-built-in-attributes.md#6212-track_caller-传递调用位置)），因此该符号以一个隐藏的尾随 `str` 实参（`"path:line:col"`）接收调用者的位置：`nabi_panic_at(msg, at)`。
 
-按 [4.14.13](../004-functions/414-throws.md#41413-panics-and-fatal-errors) 的格式打印，并以退出码 `101` 退出。core 的 `panic` 以及编译器生成的 panic（边界检查、溢出、除以零等）调用此符号。
+按 [4.14.13](../004-functions/414-throws.md#41413-panic-与致命错误) 的格式打印，并以退出码 `101` 退出。core 的 `panic` 以及编译器生成的 panic（边界检查、溢出、除以零等）调用此符号。
 
 ### `nabi_uncaught_error` / `nabi_uncaught_error_at`
 
@@ -590,7 +590,7 @@ extern "nabi" {
 }
 ```
 
-处理从入口点传播出来的错误（[4.16.4](../004-functions/416-entry-point.md#4164-exit-codes-and-unhandled-exceptions)）。声明位于 core 中。
+处理从入口点传播出来的错误（[4.16.4](../004-functions/416-entry-point.md#4164-退出码与未处理的异常)）。声明位于 core 中。
 
 ### `nabi_oom`
 
@@ -613,7 +613,7 @@ thread '<name>' has overflowed its stack
 fatal runtime error: stack overflow, aborting
 ```
 
-`<name>` 是用 `thread::Builder::name` 指定的线程名（同时也被设为 OS 线程名，[7. 运行时](../007-runtime/README.md#runtime-error-stack-overflow)）。这覆盖主线程（`nabi_runtime_init`）、`nabi_thread_spawn` 线程（包括执行器工作线程以及深层 `await` 链）以及调用了 `nabi_thread_init` 的 C 线程。运行时把每个线程栈下方的保护范围记录在 TLS 槽 `nabi_tls_stack_guard`（[8.3.1](803-tls-slots.md#831-tls-slot-structure)）中，并安装一个备用信号栈（`sigaltstack`）。只有该范围内的 SIGSEGV / SIGBUS 才被报告为栈溢出；其他故障交给运行时安装其处理器之前设置的动作（默认动作，除非把 Nabi 作为共享库加载的宿主进程设置了别的动作）。在 wasm 上，模块无法捕获陷阱；由宿主报告（随附的 JS 宿主打印上述消息）。
+`<name>` 是用 `thread::Builder::name` 指定的线程名（同时也被设为 OS 线程名，[7. 运行时](../007-runtime/README.md#运行时错误栈溢出)）。这覆盖主线程（`nabi_runtime_init`）、`nabi_thread_spawn` 线程（包括执行器工作线程以及深层 `await` 链）以及调用了 `nabi_thread_init` 的 C 线程。运行时把每个线程栈下方的保护范围记录在 TLS 槽 `nabi_tls_stack_guard`（[8.3.1](803-tls-slots.md#831-tls-槽结构)）中，并安装一个备用信号栈（`sigaltstack`）。只有该范围内的 SIGSEGV / SIGBUS 才被报告为栈溢出；其他故障交给运行时安装其处理器之前设置的动作（默认动作，除非把 Nabi 作为共享库加载的宿主进程设置了别的动作）。在 wasm 上，模块无法捕获陷阱；由宿主报告（随附的 JS 宿主打印上述消息）。
 
 ## 8.5.8. 符号命名约定
 
@@ -667,7 +667,7 @@ bb_cont:
     ; ... continue
 ```
 
-该示例展示了组合快速路径与慢速路径的生成代码结构（伪代码；快速路径中对对象头的存储见 [8.9.9](809-lowering-control.md#899-gc-alloc-fast--slow-path)）。
+该示例展示了组合快速路径与慢速路径的生成代码结构（伪代码；快速路径中对对象头的存储见 [8.9.9](809-lowering-control.md#899-gc-分配快速--慢速路径)）。
 
 ## 8.5.12. 辅助符号（附录，资料性）
 
@@ -744,4 +744,4 @@ extern "nabi" {
 
 - 用户代码不得依赖这些符号。它们的签名可能在不另行通知的情况下变更或被移除。标准库与运行时一同发布，并调用其中的一部分（`nabi_free`、`nabi_gc_weak_new`、`nabi_gc_weak_get`、`nabi_gc_pinned`、`nabi_panic_set_hook`，以及 `nabi_handle_*`、`nabi_errno_*`、`nabi_last_error_*`、`nabi_session_*` 和 `nabi_lock_*` 函数）。
 - 它们共用 `nabi_` 前缀，但不包含在 8.5.8 的区域表中。为避免名称冲突，规范中的规范性符号不复用这些名称。
-- `nabi_panic` 不属于本附录。[8.5.7](#857-diagnostic-area) 中的签名 `nabi_panic(msg: ConstPtr<u8>, msg_len: usize)` 具有权威性，导出不同签名的实现不符合规范。
+- `nabi_panic` 不属于本附录。[8.5.7](#857-诊断区域) 中的签名 `nabi_panic(msg: ConstPtr<u8>, msg_len: usize)` 具有权威性，导出不同签名的实现不符合规范。

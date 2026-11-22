@@ -4,7 +4,7 @@ Nabi 的调度器是 M:N [工作窃取](../000-meta/007-glossary.md#work-stealin
 
 ## 7.6.1. 统一的工作线程模型
 
-一个进程有一个执行器，在首次使用时启动。工作线程是与 CPU 数量相同的操作系统线程，外加一条阻塞通道和一个 I/O 驱动。`task::block_on` 把调用线程作为访客工作线程接入；它返回后，剩余的任务继续运行。`par::*` 和 `spawn_blocking` 使用同一个执行器（[标准库 2.18.3](../../refs-standard-libraries/200-core/218-task.md#2183-scheduler-model---work-stealing)）。每个工作线程兼具以下角色：
+一个进程有一个执行器，在首次使用时启动。工作线程是与 CPU 数量相同的操作系统线程，外加一条阻塞通道和一个 I/O 驱动。`task::block_on` 把调用线程作为访客工作线程接入；它返回后，剩余的任务继续运行。`par::*` 和 `spawn_blocking` 使用同一个执行器（[标准库 2.18.3](../../refs-standard-libraries/200-core/218-task.md#2183-调度器模型工作窃取)）。每个工作线程兼具以下角色：
 
 ```
 worker = {
@@ -13,11 +13,11 @@ worker = {
 }
 ```
 
-工作线程不兼任 I/O 驱动；每个进程由单个 reactor 线程负责 I/O（[7.7.1](707-io-and-timer.md#771-io-multiplexing)）。STW 回收由发起回收的线程执行，并发标记由标记线程执行（7.6.10）。
+工作线程不兼任 I/O 驱动；每个进程由单个 reactor 线程负责 I/O（[7.7.1](707-io-and-timer.md#771-io-多路复用)）。STW 回收由发起回收的线程执行，并发标记由标记线程执行（7.6.10）。
 
 ## 7.6.2. 工作窃取结构
 
-每个工作线程有一个本地双端队列（无锁的 Chase-Lev 双端队列，[8.5.4 `nabi_deque_*`](../008-abi/805-extern-symbols.md#nabi_deque_---work-stealing-deque)）。
+每个工作线程有一个本地双端队列（无锁的 Chase-Lev 双端队列，[8.5.4 `nabi_deque_*`](../008-abi/805-extern-symbols.md#nabi_deque_---工作窃取双端队列)）。
 
 ```
 Worker:
@@ -66,7 +66,7 @@ Global injector:
 | `task::join([...])`     | 直到全部完成（`List<Task<T>>`，await）。                                 |
 | `task::timeout(d, t)`   | 时间限制。超时则在 `try await` 处得到 `TimeoutError`。                   |
 | `thread::spawn(f)`      | 创建新的操作系统线程（1:1）。                                            |
-| `par::for_each(xs, f)`  | 并行 for-each（在 join 上[阻塞](../000-meta/007-glossary.md#block)）。   |
+| `par::for_each(xs, f)`  | 并行 for-each（在 join 上[阻塞](../000-meta/007-glossary.md#block块)）。   |
 | `par::scope { ... }`    | 并行作用域（尾随闭包）。                                                 |
 
 由于它们不是关键字，用户代码中可以自由使用 `spawn` 或 `race` 这样的标识符。
@@ -93,7 +93,7 @@ Global injector:
 它通过环境变量 `NABIR_THREAD_PER_CORE=1` 开启；`NABIR_WORKERS=<n>` 设置 N（默认：在线 CPU 数）。
 
 > [!NOTE]
-> 任务固定在工作线程上；任务阻塞的工作线程可能在另一个操作系统线程上继续（[7.6.7](#767-automatic-detection-of-blocking-syscalls)），因此对于固定的任务，线程身份并不稳定。
+> 任务固定在工作线程上；任务阻塞的工作线程可能在另一个操作系统线程上继续（[7.6.7](#767-自动检测阻塞系统调用)），因此对于固定的任务，线程身份并不稳定。
 
 ## 7.6.9. 优先级 / 公平性
 
@@ -105,7 +105,7 @@ Global injector:
 
 ## 7.6.10. 集成的 GC 工作角色
 
-STW 回收由通过分配或 `nabi_gc_collect` 发起它的线程执行，其他工作线程在安全点停下并等待（[7.4.3](704-barriers-and-roots.md#743-safepoint-polling)）。回收之后，工作线程恢复运行任务。并发标记由单独的一个标记线程完成（[7.5](705-concurrent-collection.md)）。
+STW 回收由通过分配或 `nabi_gc_collect` 发起它的线程执行，其他工作线程在安全点停下并等待（[7.4.3](704-barriers-and-roots.md#743-安全点轮询)）。回收之后，工作线程恢复运行任务。并发标记由单独的一个标记线程完成（[7.5](705-concurrent-collection.md)）。
 
 ## 7.6.11. 调度器与协程
 

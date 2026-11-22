@@ -45,7 +45,7 @@ let d = p.distance(q);                         // instance.method() call
 let n = p.norm();
 ```
 
-这种形式的第一个参数是 `self`。`self` 表示实例的值（对 `struct` 而言是一份副本，[2.3.8](../002-types/203-struct.md#238-value-semantics)），函数体用 `self.field` 访问字段。它以 `instance.method(args)` 的形式调用。
+这种形式的第一个参数是 `self`。`self` 表示实例的值（对 `struct` 而言是一份副本，[2.3.8](../002-types/203-struct.md#238-值语义)），函数体用 `self.field` 访问字段。它以 `instance.method(args)` 的形式调用。
 
 ### 实例方法：`ref self`
 
@@ -111,9 +111,9 @@ let c = Counter { count: 0 };
 c.increment();                                 // no explicit 'ref'
 ```
 
-这是 [`ref` 关键字](407-ref-keyword.md)中普通函数调用规则（必须显式写 `ref`）的一个例外。理由是：方法调用语法 `x.method()` 本身就是接收者[分派](../000-meta/007-glossary.md#dispatch)机制，而且无论接收者是 `self` 还是 `ref self`，调用形式都相同。再额外显式写 `ref` 只会造成视觉噪音。
+这是 [`ref` 关键字](407-ref-keyword.md)中普通函数调用规则（必须显式写 `ref`）的一个例外。理由是：方法调用语法 `x.method()` 本身就是接收者[分派](../000-meta/007-glossary.md#dispatch分派)机制，而且无论接收者是 `self` 还是 `ref self`，调用形式都相同。再额外显式写 `ref` 只会造成视觉噪音。
 
-这与 Rust、C# 和 Swift 的方法调用约定一致。不过，按路径调用同一个方法时，接收者是普通实参，因此要写 `ref`（`Counter::increment(ref c)`，[4.7.3](407-ref-keyword.md#473-explicit-at-the-call-c-style)）。
+这与 Rust、C# 和 Swift 的方法调用约定一致。不过，按路径调用同一个方法时，接收者是普通实参，因此要写 `ref`（`Counter::increment(ref c)`，[4.7.3](407-ref-keyword.md#473-在调用处显式标注c-风格)）。
 
 ## 4.9.6. 自由函数与方法的调用形式
 
@@ -131,7 +131,7 @@ c.increment();                                 // no explicit 'ref'
 
 1. 固有 `impl` 的方法优先于 trait 方法。
 2. 在 trait 方法中，当前包定义的或显式 `use` 的 trait 优先于 `core` trait（`core` trait 在任何地方都处于方法作用域中）。当前包是调用所在的实际包。依赖包的 trait 除非被 `use`，否则不优先于 core 的 trait。
-3. 如果仍有多于一个候选，就是歧义错误，诊断会建议写成 `Trait::method(x)`。同一个 trait 仅在类型参数上不同的多个实现（`Call<f64>`、`Call<Array<f64, N>>`）不构成冲突：由实参选择实现（[3.1.3](../003-expressions/301-operator-dispatch.md#313-dispatch-without-a-vtable)）。
+3. 如果仍有多于一个候选，就是歧义错误，诊断会建议写成 `Trait::method(x)`。同一个 trait 仅在类型参数上不同的多个实现（`Call<f64>`、`Call<Array<f64, N>>`）不构成冲突：由实参选择实现（[3.1.3](../003-expressions/301-operator-dispatch.md#313-不经虚表的分派)）。
 
 ```nabi
 use pkg::geom::Union;              // user trait: union method

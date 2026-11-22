@@ -57,10 +57,10 @@ Level Operators                                                 Assoc
      .= .+= .-= .*= ./= .%= .%%= .**= .&= .|= .^= .<<= .>>=  (in-place broadcast, 3.3.7)
 ```
 
-表中的 Unicode 运算符（`× ⋅ ÷ ∩ ∪ ∘ √ ≡ ≠ ≤ ≥ ∈ ∉ ⊂ ⊆`）是 [1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-fixed-token-table) 的固定词法单元。不在 3.2 表中的扩展词法单元（[1.10.4](../001-lexical/110-punctuation-and-operator-tokens.md#1104-extension-tokens)）不创建新层级；它们取注册时所指定的现有词法单元的层级和结合性，如 `like = "+"`（[6.7.2](../006-meta-system/607-operator-magic.md#672-arguments)）。
+表中的 Unicode 运算符（`× ⋅ ÷ ∩ ∪ ∘ √ ≡ ≠ ≤ ≥ ∈ ∉ ⊂ ⊆`）是 [1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-固定词法单元表) 的固定词法单元。不在 3.2 表中的扩展词法单元（[1.10.4](../001-lexical/110-punctuation-and-operator-tokens.md#1104-扩展词法单元)）不创建新层级；它们取注册时所指定的现有词法单元的层级和结合性，如 `like = "+"`（[6.7.2](../006-meta-system/607-operator-magic.md#672-参数)）。
 
 > [!IMPORTANT]
-> **`??` 与 `..` 的相对优先级**：`??`（prec=1）比区间运算符 `..` / `..=`（prec=0）结合得**更紧**。因此 `a ?? 0..3` 组合为 `(a ?? 0)..3`，而区间运算符弱于除 `|>` 和赋值以外的所有二元运算符（`a || b..c` 是 `(a || b)..c`，`0..n |> f` 是 `f(0..n)`）。两者都不经运算符 trait 分派：`??` 是语言层面在和类型上的脱糖（[3.8.4](308-optional-chaining-and-coalescing.md#384-null-coalescing-)），而语言把六种区间形式识别为不同的表达式，每种都由 `core::range` 的一个 `#[literal]` 处理器构造（[3.7](307-range-expressions.md)、[6.5](../006-meta-system/605-literal-magic.md)）。区间运算符不可结合，所以 `a..b..c` 是编译错误。
+> **`??` 与 `..` 的相对优先级**：`??`（prec=1）比区间运算符 `..` / `..=`（prec=0）结合得**更紧**。因此 `a ?? 0..3` 组合为 `(a ?? 0)..3`，而区间运算符弱于除 `|>` 和赋值以外的所有二元运算符（`a || b..c` 是 `(a || b)..c`，`0..n |> f` 是 `f(0..n)`）。两者都不经运算符 trait 分派：`??` 是语言层面在和类型上的脱糖（[3.8.4](308-optional-chaining-and-coalescing.md#384-空值合并)），而语言把六种区间形式识别为不同的表达式，每种都由 `core::range` 的一个 `#[literal]` 处理器构造（[3.7](307-range-expressions.md)、[6.5](../006-meta-system/605-literal-magic.md)）。区间运算符不可结合，所以 `a..b..c` 是编译错误。
 
 > [!IMPORTANT]
 > **比较作为区间操作数**：比较运算符（prec=4）比 `..` / `..=` 结合得更紧，所以 `x == 0..3` 组合为 `(x == 0)..3`，即一个 `bool` 的区间，而 `0..n < m` 组合为 `0..(n < m)`。这样的区间从来不是本意，因此把比较不加括号地写作区间的起点或终点是编译错误（E0019）；帮助信息会写出两种读法：与区间比较写 `x == (0..3)`，要区间本身写 `(x == 0)..3`。加括号则接受。`in` / `!in` 不受影响：它们的右侧原样接受区间（`i in 0..n`，见下文）。
@@ -69,16 +69,16 @@ Level Operators                                                 Assoc
 > **`try` 与 `catch` / `finally` 的结合**：`try` / `try?` / `try!` 以及[错误控制流](314-error-control-flow.md)的 `catch` / `finally` 子句同样是与 trait 无关的语言语法。`try` 是前缀形式，但与表中的前缀一元运算符（prec=13a）不同，它覆盖其右侧的整个表达式。其操作数一直延伸到 `catch` / `finally` 子句、语句终止符 `;`、闭括号或逗号为止，所以 `try a + b()` 是 `try (a + b())`。`try?` / `try!` 的操作数还会在 `??` 之前结束：`try? f() ?? d` 是 `(try? f()) ?? d`，而 `try f() ?? d` 是 `try (f() ?? d)`。`catch` / `finally` 子句比赋值（prec=-2）结合得紧，比其他所有运算符（包括 `|>`（prec=-1））结合得弱，附着在其左侧的整个表达式上。因此 `try parse(s) catch _ { 0 }` 是 `(try parse(s)) catch _ { 0 }`，`x = try f() catch _ { 0 }` 是 `x = ((try f()) catch _ { 0 })`。
 
 > [!IMPORTANT]
-> **`in` / `!in` 与区间**：`in` 和 `!in` 是 `∈` / `∉` 的 ASCII 写法（[1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-fixed-token-table)）。成员运算符右侧的区间不需要括号：在右操作数之后，`..` / `..=` 把它延续为一个区间，其终点的结合方式与右操作数本身相同（prec=5）。所以 `i in 0..n` 是 `i ∈ (0..n)`，`i in 0..n + 1` 是 `i ∈ (0..(n + 1))`，`i in 0..n && ok` 是 `(i ∈ (0..n)) && ok`。
+> **`in` / `!in` 与区间**：`in` 和 `!in` 是 `∈` / `∉` 的 ASCII 写法（[1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-固定词法单元表)）。成员运算符右侧的区间不需要括号：在右操作数之后，`..` / `..=` 把它延续为一个区间，其终点的结合方式与右操作数本身相同（prec=5）。所以 `i in 0..n` 是 `i ∈ (0..n)`，`i in 0..n + 1` 是 `i ∈ (0..(n + 1))`，`i in 0..n && ok` 是 `(i ∈ (0..n)) && ok`。
 
 > [!IMPORTANT]
-> **`**` 与前缀运算符**：`**`（幂，trait `Pow`，[stdlib 2.3.1](../../refs-standard-libraries/200-core/203-ops.md#231-arithmetic-traits)）位于 13b 层，比前缀运算符（13a）高一级，所以它的左操作数从来不是前缀表达式，与数学、Python 和 Fortran 一致：`-x**2` 是 `-(x**2)`，而 `(-x)**2` 是对 `-x` 求平方。它是右结合的，`2**3**2` 是 `2**(3**2)` = 512，而它的右操作数按 13a 解析，所以右操作数本身可以以前缀运算符开头：`2.0 ** -1` 是 `0.5`，`2 ** -x ** 2` 是 `2 ** (-(x ** 2))`。后缀形式结合得更紧（`a.b**2` 是 `(a.b)**2`），`as` 结合得更松（`n ** 2 as f64` 是 `(n ** 2) as f64`）。`.**` 是同一层级上的逐元素形式。这两个半层级只为这一对而设：没有其他运算符位于它们之间。
+> **`**` 与前缀运算符**：`**`（幂，trait `Pow`，[stdlib 2.3.1](../../refs-standard-libraries/200-core/203-ops.md#231-算术-trait)）位于 13b 层，比前缀运算符（13a）高一级，所以它的左操作数从来不是前缀表达式，与数学、Python 和 Fortran 一致：`-x**2` 是 `-(x**2)`，而 `(-x)**2` 是对 `-x` 求平方。它是右结合的，`2**3**2` 是 `2**(3**2)` = 512，而它的右操作数按 13a 解析，所以右操作数本身可以以前缀运算符开头：`2.0 ** -1` 是 `0.5`，`2 ** -x ** 2` 是 `2 ** (-(x ** 2))`。后缀形式结合得更紧（`a.b**2` 是 `(a.b)**2`），`as` 结合得更松（`n ** 2 as f64` 是 `(n ** 2) as f64`）。`.**` 是同一层级上的逐元素形式。这两个半层级只为这一对而设：没有其他运算符位于它们之间。
 
 > [!IMPORTANT]
-> **`await`**：`await` 是 prec=13a 的前缀一元运算符，与 `-` 和 `!` 相同，所以它的操作数是一元表达式：`await f() == x` 是 `(await f()) == x`（[4.12.2](../004-functions/412-async.md#4122-the-await-operator)）。
+> **`await`**：`await` 是 prec=13a 的前缀一元运算符，与 `-` 和 `!` 相同，所以它的操作数是一元表达式：`await f() == x` 是 `(await f()) == x`（[4.12.2](../004-functions/412-async.md#4122-await-运算符)）。
 
 > [!IMPORTANT]
-> **`as` 与 `is`**：这两个后缀运算符是与 trait 无关的语言语法，共享一个层级（prec=12）。它们弱于前缀一元、强于算术，所以 `-x as i64` 是 `(-x) as i64`，`a + b is i32` 是 `a + (b is i32)`。`e is T` 的结果是 `bool`（[2.2.5](../002-types/202-any-slot.md#225-checking-the-slots-current-type)）。
+> **`as` 与 `is`**：这两个后缀运算符是与 trait 无关的语言语法，共享一个层级（prec=12）。它们弱于前缀一元、强于算术，所以 `-x as i64` 是 `(-x) as i64`，`a + b is i32` 是 `a + (b is i32)`。`e is T` 的结果是 `bool`（[2.2.5](../002-types/202-any-slot.md#225-检查槽的当前类型)）。
 
 > [!NOTE]
 > **点前缀（广播）运算符的优先级**：`.+`、`.*`、`.&&`、`.%%` 等点前缀形式与其不带点的形式具有相同的优先级和结合性。它们不单独列行；每个点前缀词法单元都取其对应普通词法单元的层级。例如 `.+` 与 `+` 一样是 prec=9 left，`.&&` 与 `&&` 一样是 prec=3 left。
@@ -96,7 +96,7 @@ Level Operators                                                 Assoc
 
 ## 3.2.4. 冲突
 
-由于表固定了优先级，注册之间不会在优先级上冲突。按 [6.7.5](../006-meta-system/607-operator-magic.md#675-conflict-checking)，把不同的 trait 连接到同一（词法单元，位置）是编译错误。
+由于表固定了优先级，注册之间不会在优先级上冲突。按 [6.7.5](../006-meta-system/607-operator-magic.md#675-冲突检查)，把不同的 trait 连接到同一（词法单元，位置）是编译错误。
 
 ## 3.2.5. 比较链
 
@@ -138,7 +138,7 @@ a + b * c       →   a + (b * c)             // default grouping
 
 ## 3.2.6a. 实现限制
 
-超过 4096 个运算符 / 后缀运算的链，或深于 256 层的嵌套，是错误。这些是 Nabi 的限制（由实现定义，[0.4.4](../000-meta/004-language-vs-standard-libraries.md#044-implementation-limits)）。
+超过 4096 个运算符 / 后缀运算的链，或深于 256 层的嵌套，是错误。这些是 Nabi 的限制（由实现定义，[0.4.4](../000-meta/004-language-vs-standard-libraries.md#044-实现限制)）。
 
 ## 3.2.7. 优先级相同而结合性不同的两个词法单元
 

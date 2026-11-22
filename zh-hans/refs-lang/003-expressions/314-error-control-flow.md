@@ -12,7 +12,7 @@ finally_clause ::= "finally" block
 question_expr  ::= expr "?"
 ```
 
-`catch` 和 `finally` 是上下文关键字，只在表达式或块之后的后缀子句位置是关键字（[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)）。可能抛出错误的函数的签名（`throws`、`rethrows`）在 [`throws` 签名](../004-functions/414-throws.md)中定义。本文档讨论表达式和语句层面的控制流。
+`catch` 和 `finally` 是上下文关键字，只在表达式或块之后的后缀子句位置是关键字（[1.5.4](../001-lexical/105-keywords.md#154-上下文关键字)）。可能抛出错误的函数的签名（`throws`、`rethrows`）在 [`throws` 签名](../004-functions/414-throws.md)中定义。本文档讨论表达式和语句层面的控制流。
 
 ## 3.14.1. `throw`：抛出错误
 
@@ -20,7 +20,7 @@ question_expr  ::= expr "?"
 throw err;
 ```
 
-由 `throw` 关键字后跟任意表达式构成的语句；表达式的结果值作为错误值被抛出。被抛出的错误由包围该语句的最近的 `catch` 表达式处理；如果未被处理，它就成为外层函数的错误结果。此时外层函数的 `throws` 签名必须接受该错误类型（[4.14.5](../004-functions/414-throws.md#4145-agreement-between-throws-and-the-body)）。
+由 `throw` 关键字后跟任意表达式构成的语句；表达式的结果值作为错误值被抛出。被抛出的错误由包围该语句的最近的 `catch` 表达式处理；如果未被处理，它就成为外层函数的错误结果。此时外层函数的 `throws` 签名必须接受该错误类型（[4.14.5](../004-functions/414-throws.md#4145-throws-与函数体的一致)）。
 
 `throw` 语句之后控制流不再继续，因此以 `throw` 语句结尾的块是发散的。
 
@@ -65,7 +65,7 @@ try {                       // a block is also an expression, so every call in i
 
 当 `try` 作为二元运算符的右操作数或出现在函数实参位置时，它只覆盖该操作数。
 
-唯一的例外是 `for` 操作数：`try for pat in xs { body }` 覆盖可迭代值 `xs` 和循环的每一步，而不覆盖 `body`（[3.13.3](313-loop-expressions.md#3133-for-iterator-based-repetition)）。主体中可能抛出错误的调用需要自己的 `try`。
+唯一的例外是 `for` 操作数：`try for pat in xs { body }` 覆盖可迭代值 `xs` 和循环的每一步，而不覆盖 `body`（[3.13.3](313-loop-expressions.md#3133-for基于迭代器的重复)）。主体中可能抛出错误的调用需要自己的 `try`。
 
 ```nabi
 let total = base + try fetch_extra();
@@ -74,7 +74,7 @@ log(try describe(item));
 
 ### 与 `await` 一起使用
 
-`async` 且可能抛出错误的函数的错误在 `await` 点交付，因此 `await` 表达式由 `try` 覆盖（[4.14.10](../004-functions/414-throws.md#41410-effect-of-throws-on-sum-type-signatures)）。生成器的错误同样在 `next` 点接收。
+`async` 且可能抛出错误的函数的错误在 `await` 点交付，因此 `await` 表达式由 `try` 覆盖（[4.14.10](../004-functions/414-throws.md#41410-throws-对和类型签名的影响)）。生成器的错误同样在 `next` 点接收。
 
 ```nabi
 let data = try await fetch(url);
@@ -95,7 +95,7 @@ let port = try? env::var("PORT") ?? "8080";      // (try? env::var("PORT")) ?? "
 let cfg = try! load_builtin_config();      // failure is a program bug
 ```
 
-`try? e` 的类型是以 `T` 为泛型项的 `T?`（[2.6.4 泛型和类型的层](../002-types/206-sum-types.md#layers-of-generic-sums)）。如果 `T` 不含 `none`，那就是扁平的 `T | none`。如果 `T` 已经含有 `none`，结果是嵌套的 `(T | none)?`，因此被抛出的错误（外层的 `none`）与被返回的 `none`（内层的那个）保持区分。`??`、`?`、`is none` 和模式只作用于外层。
+`try? e` 的类型是以 `T` 为泛型项的 `T?`（[2.6.4 泛型和类型的层](../002-types/206-sum-types.md#泛型和类型的分层)）。如果 `T` 不含 `none`，那就是扁平的 `T | none`。如果 `T` 已经含有 `none`，结果是嵌套的 `(T | none)?`，因此被抛出的错误（外层的 `none`）与被返回的 `none`（内层的那个）保持区分。`??`、`?`、`is none` 和模式只作用于外层。
 
 ```nabi
 fn lookup(k: str) throws (IoError) -> i32 | none { .. }

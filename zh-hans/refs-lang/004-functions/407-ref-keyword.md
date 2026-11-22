@@ -10,7 +10,7 @@
 3. at the call:             f(ref x)
 ```
 
-在这三种位置上，它的含义相同：改变会反映到外部变量上。`for ref x in xs` 以同样的方式绑定列表或数组的每个元素：改变会反映到元素上（[3.13.3](../003-expressions/313-loop-expressions.md#for-ref-elements-as-places)）。
+在这三种位置上，它的含义相同：改变会反映到外部变量上。`for ref x in xs` 以同样的方式绑定列表或数组的每个元素：改变会反映到元素上（[3.13.3](../003-expressions/313-loop-expressions.md#for-ref作为位置的元素)）。
 
 ## 4.7.2. 函数参数
 
@@ -32,7 +32,7 @@ fn swap(ref a: i32, ref b: i32) {
 
 - **写回时机**：不仅正常返回时会写回，被调用者抛出错误时也会写回。因此，`throw` 之前所做的改变对调用者可见。
 - **排他性**：调用进行期间，不得通过其他路径访问同一位置，编译器会检查这一点。把同一位置两次作为 `ref` 传入，或者在一个实参中作为 `ref` 传入、又在另一个实参中读取它，都是编译错误（E0050）。不同的字段（`ref p.x`、`ref p.y`）互不重叠，是允许的。
-- **位置**：实参必须指向一个变量或变量的字段。元素（`inc(ref xs[2])`）是编译错误：`` `ref` argument `n` of `inc` must name a variable or a field of one ``。应把元素复制到一个变量中，传入该变量，再存回去。`ref self` 接收者也可以是元素或 `Dict` 条目（[见下文](#meaning-of-ref-self---copy-in--copy-out)）。
+- **位置**：实参必须指向一个变量或变量的字段。元素（`inc(ref xs[2])`）是编译错误：`` `ref` argument `n` of `inc` must name a variable or a field of one ``。应把元素复制到一个变量中，传入该变量，再存回去。`ref self` 接收者也可以是元素或 `Dict` 条目（[见下文](#ref-self-的含义复制入--复制出)）。
 
 ```nabi
 fn bump_then_fail(ref n: i32) throws {
@@ -79,7 +79,7 @@ let inc = [ref count] || { count = count + 1 };
 
 按照[捕获语义](406-capture-semantics.md)中定义的 `ref` 捕获，捕获列表中的 `ref` 变量存放在一个共享单元中（装箱）。外部作用域和闭包读写同一个单元，所以闭包可以比变量的作用域活得更久。
 
-`ref` 参数（包括 `ref self`）以同样的方式捕获（`[ref n]`、`[ref self]`）。函数主体和闭包共享该参数的同一个单元，所以通过闭包所做的写入是参数最终值的一部分，会被写回调用者（[4.7.2](#472-function-parameters)）。闭包在调用结束后所做的写入不会到达调用者。
+`ref` 参数（包括 `ref self`）以同样的方式捕获（`[ref n]`、`[ref self]`）。函数主体和闭包共享该参数的同一个单元，所以通过闭包所做的写入是参数最终值的一部分，会被写回调用者（[4.7.2](#472-函数参数)）。闭包在调用结束后所做的写入不会到达调用者。
 
 ```nabi
 fn bump(ref c: Counter) {
@@ -107,7 +107,7 @@ let c = Counter { count: 0 };
 c.increment();                    // no 'ref': handled automatically for method receivers
 ```
 
-这是方法接收者的特殊规则，与普通 `ref` 参数不同。方法调用语法本身就是自动[分派](../000-meta/007-glossary.md#dispatch)接收者的机制，额外的标记只会造成视觉干扰。
+这是方法接收者的特殊规则，与普通 `ref` 参数不同。方法调用语法本身就是自动[分派](../000-meta/007-glossary.md#dispatch分派)接收者的机制，额外的标记只会造成视觉干扰。
 
 ```nabi
 fn external_inc(ref c: Counter) { ... }
@@ -158,7 +158,7 @@ let r: SomePointerType = ref x;   // ERROR
 
 协程函数（`yield fn`、`async fn`、`async yield fn`）不能有 `ref` 参数；这样写是编译错误（E0023）。调用返回后主体仍在继续运行，所以没有可以写回的时间点。
 
-唯一的例外是 `async` 方法上的 `ref self`（[4.12.13](412-async.md#41213-async-on-methods)）：future 持有接收者，写回在 future 完成时进行。这样的调用要在发起处等待（`await r.read_one()`）。
+唯一的例外是 `async` 方法上的 `ref self`（[4.12.13](412-async.md#41213-方法上的-async)）：future 持有接收者，写回在 future 完成时进行。这样的调用要在发起处等待（`await r.read_one()`）。
 
 出于同样的原因，带 `ref` 参数的函数不能作为函数值使用（`let f = increment;` 是错误），闭包也不能有 `ref` 参数。函数类型 `fn(..)` 没有表达 `ref` 的位置。
 
@@ -183,7 +183,7 @@ by_ref(ref a);                    // a = 10
 
 ## 4.7.9. 结构体与引用句柄
 
-`struct` 是值类型：按值传递会复制它，所以被调用者中的字段写入是局部的。要改变调用者的结构体，就以 `ref`（或 `ref self`）接收它，或者返回新值。引用句柄（`List`、`Dict` 等，[标准库 2.9](../../refs-standard-libraries/200-core/209-collections.md#reference-handles)）作为句柄被复制，所以对其元素的改变对调用者可见。
+`struct` 是值类型：按值传递会复制它，所以被调用者中的字段写入是局部的。要改变调用者的结构体，就以 `ref`（或 `ref self`）接收它，或者返回新值。引用句柄（`List`、`Dict` 等，[标准库 2.9](../../refs-standard-libraries/200-core/209-collections.md#引用句柄)）作为句柄被复制，所以对其元素的改变对调用者可见。
 
 ```nabi
 fn set_x(p: Point) { p.x = 10.0; }          // local copy: the caller's p is unchanged

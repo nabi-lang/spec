@@ -18,9 +18,9 @@ reach           ::= "pkg" | "sub"
 | `pub(pkg)` | 仅在同一包内。                             |
 | `pub`      | 外部包也可以访问。                              |
 
-最窄的范围是默认的私有；最宽的是 `pub`。工具链自己的包之间还共享一些标记为 `#[internal]` 的 `pub` 项，其他包不能使用它们（[6.2.16](../006-meta-system/602-built-in-attributes.md#6216-internal-shared-by-the-toolchains-packages)）；这一标记不是可见性级别。
+最窄的范围是默认的私有；最宽的是 `pub`。工具链自己的包之间还共享一些标记为 `#[internal]` 的 `pub` 项，其他包不能使用它们（[6.2.16](../006-meta-system/602-built-in-attributes.md#6216-internal-由工具链的各个包共用)）；这一标记不是可见性级别。
 
-`pkg` 和 `sub` 是上下文关键字，只在 `pub(...)` 的括号内充当限定符；在其他位置它们是普通标识符（请见 [1.5.4 可见性限定符](../001-lexical/105-keywords.md#visibility-qualifiers-pkg--sub)）。
+`pkg` 和 `sub` 是上下文关键字，只在 `pub(...)` 的括号内充当限定符；在其他位置它们是普通标识符（请见 [1.5.4 可见性限定符](../001-lexical/105-keywords.md#可见性限定符pkg--sub)）。
 
 ## 5.6.2. 默认：无可见性关键字
 
@@ -58,7 +58,7 @@ pub trait Display { ... }
 pub(pkg) fn internal_helper() -> i32 { ... }
 ```
 
-它对同一包中的任何模块可见，但对外部包不可见。依赖包和每个标准库层级也都是独立的包（[5.7.14](507-paths.md#5714-paths-between-packages)）。
+它对同一包中的任何模块可见，但对外部包不可见。依赖包和每个标准库层级也都是独立的包（[5.7.14](507-paths.md#5714-包之间的路径)）。
 
 这一级别用于包内部的库工具：那些不是公开 API、但必须在模块之间共享的函数和类型。
 
@@ -124,7 +124,7 @@ let c = Counter::new();             // OK: factory method (if any)
 
 这是暴露类型、同时阻止直接实例化的标准模式（newtype、不透明类型）。
 
-结构体字面量检查它所写字段的可见性。只有当使用处看不到的字段具有默认值（[2.3.3](../002-types/203-struct.md#233-field-default-values)）时，字面量才可以省略该字段；没有默认值的私有字段会使其作用范围之外的每个字面量都成为错误，此时要用其所在模块的函数构造该值。
+结构体字面量检查它所写字段的可见性。只有当使用处看不到的字段具有默认值（[2.3.3](../002-types/203-struct.md#233-字段默认值)）时，字面量才可以省略该字段；没有默认值的私有字段会使其作用范围之外的每个字面量都成为错误，此时要用其所在模块的函数构造该值。
 
 ```nabi
 pub struct Opts {
@@ -224,7 +224,7 @@ pub trait T { ... }
 
 对于可见性不足的项，编译器诊断会报告它不可见的原因，并指出能到达该使用处的可见性：在其包中任何位置使用需要 `pub(pkg)`，在该项下层的模块中使用也是如此（私有项对子模块不可见），在另一个包中使用需要 `pub`。
 
-元模板或编译器生成的代码，从其定义所在的模块进行检查，而不是从展开处检查（[6.9.9](../006-meta-system/609-template-tokens.md#names-in-an-expansion)）：模板可以调用它自己模块的私有项和它所在包的 `pub(pkg)` 项，而使用处传入的内容在使用处检查。
+元模板或编译器生成的代码，从其定义所在的模块进行检查，而不是从展开处检查（[6.9.9](../006-meta-system/609-template-tokens.md#展开中的名字)）：模板可以调用它自己模块的私有项和它所在包的 `pub(pkg)` 项，而使用处传入的内容在使用处检查。
 
 ```text
 error[E0034]: function `foo::secret` is private to module `foo` and cannot be used from `<root>` (add `pub(pkg)` to expose it)

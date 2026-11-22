@@ -2,7 +2,7 @@
 
 `using` 关键字（[关键字](../001-lexical/105-keywords.md)）是一种把资源绑定到块的生命周期的表达式形式。无论块以何种方式结束（正常完成、提前 `return`、由 `?` 返回 `none`、错误传播），被绑定资源的 `Drop::drop` 总会被调用。
 
-GC 会自动回收内存，但外部资源（文件、套接字、互斥锁、FFI 句柄、GC 固定等）必须确定性地释放。`Drop` 值是仿射的：编译器在其所有者离开作用域之处释放它（[标准库 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)）。`using` 让这一点变得显式：它把值绑定到它的块，在块结束时释放它；对于关闭操作可能失败的值，它也是无需写 `try x.close()` 就能关闭该值的方式。
+GC 会自动回收内存，但外部资源（文件、套接字、互斥锁、FFI 句柄、GC 固定等）必须确定性地释放。`Drop` 值是仿射的：编译器在其所有者离开作用域之处释放它（[标准库 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop释放时的清理)）。`using` 让这一点变得显式：它把值绑定到它的块，在块结束时释放它；对于关闭操作可能失败的值，它也是无需写 `try x.close()` 就能关闭该值的方式。
 
 ## 3.17.1. 形式
 
@@ -12,14 +12,14 @@ using_stmt     ::= "using" using_binding ("," using_binding)* ";"
 using_binding  ::= pattern "=" expr
 ```
 
-`using_stmt` 是 [3.17.9](#3179-statement-form) 中的语句形式。
+`using_stmt` 是 [3.17.9](#3179-语句形式) 中的语句形式。
 
 各组成部分的含义：
 
 - `pattern` 可以是[模式](311-patterns.md)中定义的任何不可反驳的模式（标识符、元组、结构体解构等）。大多数情况下使用单个标识符。被释放的是 `expr` 的整个值。
 - `expr` 是创建或获取资源的表达式。其结果类型必须实现 [`Drop`](../../refs-standard-libraries/200-core/213-marker.md) trait。
 - 如果获取资源可能失败，用 `try` 标记 `expr`（`using f = try fs::open(path) { ... }`）。如果获取时产生错误，控制在未绑定任何资源的情况下离开，因此不会发生 `Drop` 调用。详细语义遵循[错误控制流](314-error-control-flow.md)。
-- 用 `,` 连接的多个绑定构成多重资源；详细行为在 [3.17.4 多重资源](#3174-multiple-resources)中定义。
+- 用 `,` 连接的多个绑定构成多重资源；详细行为在 [3.17.4 多重资源](#3174-多重资源)中定义。
 - `block` 遵循[块表达式](309-block-expressions.md)的规则，其最后一个表达式的值是整个 `using` 表达式的值。
 
 ## 3.17.2. 最简单的示例
@@ -98,13 +98,13 @@ let content = using f = try fs::open(path) {
 - 主体内由 `?` 返回 `none`
 - 主体内的 `throw`，以及来自用 `try` 标记的调用的错误传播
 
-panic 和致命错误会立即终止进程，因此不会调用 `drop`（[3.14.8](314-error-control-flow.md#3148-panics-and-fatal-errors)）。这是 panic 的一般结果，而不是 `using` 特有的行为。
+panic 和致命错误会立即终止进程，因此不会调用 `drop`（[3.14.8](314-error-control-flow.md#3148-panic-与致命错误)）。这是 panic 的一般结果，而不是 `using` 特有的行为。
 
-一个值只释放一次（[标准库 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)）。`using x = a { .. }` 把 `a` 移入 `x`，因此第二个 `using y = a { .. }`，或在第一个块之后使用 `a`，都是编译错误（E0133）：应让每个 `using` 接收它自己创建的值（`using g = m.lock() { .. }`），或者在一个 `using` 块内完成全部工作。在块内已关闭的值（`try x.close()`）不会再次释放。
+一个值只释放一次（[标准库 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop释放时的清理)）。`using x = a { .. }` 把 `a` 移入 `x`，因此第二个 `using y = a { .. }`，或在第一个块之后使用 `a`，都是编译错误（E0133）：应让每个 `using` 接收它自己创建的值（`using g = m.lock() { .. }`），或者在一个 `using` 块内完成全部工作。在块内已关闭的值（`try x.close()`）不会再次释放。
 
 ## 3.17.7. 可以绑定的类型
 
-`using` 右侧表达式的类型必须实现 [`Drop`](../../refs-standard-libraries/200-core/213-marker.md)，或者包含具有 `Drop` 的字段（drop glue，[标准库 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)）。否则是编译错误（E0066）。
+`using` 右侧表达式的类型必须实现 [`Drop`](../../refs-standard-libraries/200-core/213-marker.md)，或者包含具有 `Drop` 的字段（drop glue，[标准库 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop释放时的清理)）。否则是编译错误（E0066）。
 
 ```nabi
 using x = 42 { ... }   // ERROR (E0066): using requires a type implementing Drop; i64 does not implement Drop

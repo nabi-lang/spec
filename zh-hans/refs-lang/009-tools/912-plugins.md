@@ -33,9 +33,9 @@ Package {
 - 插件包有 `src/lib.nabi`，没有 `src/main.nabi`（`` a plugin is loaded by a program, so move main.nabi to a package of its own that loads this one with `std::plugin::load` ``）。对插件包运行 `nabi run` 是错误。
 - 依赖默认从宿主获取：插件针对它编译，它的静态变量是宿主的，描述符在 `needs` 下列出它。`bundle: true` 则把依赖链接进插件：它的静态变量归插件自己所有，并在 `provides` 下列出。对非插件包的依赖使用 `bundle` 是错误。
 - 程序的依赖 `Dep::path("../physics", plugin: true)` 会作为插件构建到程序的目标目录中（因而位于程序旁边，使用程序的构建配置和目标），且不被链接进程序；程序用 `plugin::load(plugin::beside("physics"))` 加载它。在同一个依赖上同时使用 `plugin: true` 和 `bundle: true` 是错误。
-- 插件用到的标准库代码被编译进插件（与程序一样只编译用到的部分，[9.3.6](903-package-archive.md#936-standard-library)）；其静态变量是宿主的。重复的代码无害，因为一个进程中的每个模块都由同一个工具链构建（9.12.6）。
+- 插件用到的标准库代码被编译进插件（与程序一样只编译用到的部分，[9.3.6](903-package-archive.md#936-标准库)）；其静态变量是宿主的。重复的代码无害，因为一个进程中的每个模块都由同一个工具链构建（9.12.6）。
 - 插件的泛型实例被编译进需要它们的模块：`List<Orc>` 位于定义 `Orc` 的插件中。泛型代码没有自己的静态变量，因此它的各个副本可以互换。
-- 对插件和宿主关闭代码生成单元（[9.2.16](902-aot-pipeline.md#9216-incremental-build)）：它们的描述符保存真实的包哈希。
+- 对插件和宿主关闭代码生成单元（[9.2.16](902-aot-pipeline.md#9216-增量构建)）：它们的描述符保存真实的包哈希。
 
 ## 9.12.3. 同一性
 

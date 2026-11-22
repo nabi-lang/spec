@@ -22,7 +22,7 @@
 
 ### 1. 运行时 ABI
 
-编译器生成的代码与 `libnabir.a` 链接并一起运行时所用的接口。对象的内存布局有明确规定，使 [GC](../000-meta/007-glossary.md#gc-garbage-collector) 能准确解释编译器创建的对象。[Extern "C" 符号](../000-meta/007-glossary.md#extern-c-symbol)是编译器可以调用的运行时函数；每个符号的线程安全类别（`thread-safe` / `caller-thread-only` / `process-init` 等）在 [8.5.0 线程安全类别](805-extern-symbols.md#850-thread-safety-classes)中定义。TLS 槽是编译器生成的内联代码读写的线程局部位置。调用约定规定函数调用中寄存器与栈的使用方式。
+编译器生成的代码与 `libnabir.a` 链接并一起运行时所用的接口。对象的内存布局有明确规定，使 [GC](../000-meta/007-glossary.md#gc-garbage-collector) 能准确解释编译器创建的对象。[Extern "C" 符号](../000-meta/007-glossary.md#extern-c-符号)是编译器可以调用的运行时函数；每个符号的线程安全类别（`thread-safe` / `caller-thread-only` / `process-init` 等）在 [8.5.0 线程安全类别](805-extern-symbols.md#850-线程安全类别)中定义。TLS 槽是编译器生成的内联代码读写的线程局部位置。调用约定规定函数调用中寄存器与栈的使用方式。
 
 ### 2. 降级
 

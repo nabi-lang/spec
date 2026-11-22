@@ -37,7 +37,7 @@ Nabi 用以下规则把两者联系起来。
 
 ## 控制结构是表达式
 
-每种控制结构（`if`、`match`、`loop`、`while`、`for`、`try`）也都是表达式；`try` 表达式的值见 [3.14.6](314-error-control-flow.md#3146-value-and-type-of-the-expression)。下面的示例展示了直接产生值的控制结构。
+每种控制结构（`if`、`match`、`loop`、`while`、`for`、`try`）也都是表达式；`try` 表达式的值见 [3.14.6](314-error-control-flow.md#3146-表达式的值与类型)。下面的示例展示了直接产生值的控制结构。
 
 ```nabi
 let a = if cond { x } else { y };
@@ -85,7 +85,7 @@ if cond { xs } else { [] }              // xs: List<f64> → result type: List<f
 
 ### 用槽接收表达式结果
 
-当变量槽接收表达式的结果时，槽的类型遵循[变量声明](../005-modules/501-variable-declaration.md#517-type-annotations-and-type-inference)的规则。给出类型时，它就是接收类型；省略时，槽的类型由表达式的结果类型推断。
+当变量槽接收表达式的结果时，槽的类型遵循[变量声明](../005-modules/501-variable-declaration.md#517-类型标注与类型推断)的规则。给出类型时，它就是接收类型；省略时，槽的类型由表达式的结果类型推断。
 
 ```nabi
 // no type annotation → slot is inferred from the expression's result type
@@ -133,7 +133,7 @@ let f: i32 = if cond { 1i32 } else { 2.0f64 };         // ERROR: f64 branch does
 <control-or-expr>;       // a statement that discards the expression's result
 ```
 
-以 `}` 结尾的表达式，例如 `if` / `match` / 循环 / 块，在语句位置可以省略 `;`（[1.3.4](../001-lexical/103-statement-terminator.md#134-block-like-expression-statements)）。
+以 `}` 结尾的表达式，例如 `if` / `match` / 循环 / 块，在语句位置可以省略 `;`（[1.3.4](../001-lexical/103-statement-terminator.md#134-类块表达式语句)）。
 
 块中的最后一个表达式是例外。
 
@@ -151,4 +151,4 @@ let f: i32 = if cond { 1i32 } else { 2.0f64 };         // ERROR: f64 branch does
 
 表达式在求值过程中可能产生副作用，例如 I/O、变量重新赋值或外部调用。求值顺序由运算符优先级和函数调用的求值顺序决定，这些在后续文档中定义。
 
-当副作用在单个表达式内形成依赖时，该依赖遵循明确的顺序：从左到右、深度优先。编译器不会重新排列它。赋值先对其值求值，再对其位置求值（[3.4.7](304-assignment.md#347-evaluation-order)）。
+当副作用在单个表达式内形成依赖时，该依赖遵循明确的顺序：从左到右、深度优先。编译器不会重新排列它。赋值先对其值求值，再对其位置求值（[3.4.7](304-assignment.md#347-求值顺序)）。

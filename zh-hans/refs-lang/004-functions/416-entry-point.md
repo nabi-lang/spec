@@ -4,7 +4,7 @@
 
 ## 4.16.1. 入口模块：`main.nabi`
 
-可执行包的根文件 `src/main.nabi`（[0.3.1](../000-meta/003-source-units.md#executable-package-srcmainnabi)）是**入口模块**。入口模块以下面两种形式中的**恰好一种**提供入口点。
+可执行包的根文件 `src/main.nabi`（[0.3.1](../000-meta/003-source-units.md#可执行包srcmainnabi)）是**入口模块**。入口模块以下面两种形式中的**恰好一种**提供入口点。
 
 | 形式                  | 入口点                                               | 用途                             |
 |-----------------------|------------------------------------------------------|----------------------------------|
@@ -18,7 +18,7 @@ top_stmt    ::= let_stmt | let_else_stmt | expr ";" | block_like_expr ";"?   // 
 module_file ::= item*                          // lib.nabi and every module file other than main.nabi
 ```
 
-`item` 是[模块中的项](../005-modules/504-modules.md#547-items-within-a-module)（`fn`、`struct`、`enum`、`trait`、`impl`、`const`、`static`、`mod`、`use` 等），`let_stmt` / `let_else_stmt` / `expr ";"` 与[块表达式](../003-expressions/309-block-expressions.md)中的语句相同。控制流（`if`、`match`、`for`、`while`、`loop`、`try`）由表达式构成，因此包含在 `expr ";"` 中。与函数体不同，这里没有不带终止符的最终表达式（`tail_expr`）：隐式 `main` 不返回值。只有项而没有语句（也没有 `fn main`）的 `main.nabi` 得到一个空的隐式 `main`，导出 WIT 的包除外：这样的包是没有入口点的 reactor（[标准库 1.8.2](../../refs-standard-libraries/100-bare/108-wit.md#exports)）。
+`item` 是[模块中的项](../005-modules/504-modules.md#547-模块内的项)（`fn`、`struct`、`enum`、`trait`、`impl`、`const`、`static`、`mod`、`use` 等），`let_stmt` / `let_else_stmt` / `expr ";"` 与[块表达式](../003-expressions/309-block-expressions.md)中的语句相同。控制流（`if`、`match`、`for`、`while`、`loop`、`try`）由表达式构成，因此包含在 `expr ";"` 中。与函数体不同，这里没有不带终止符的最终表达式（`tail_expr`）：隐式 `main` 不返回值。只有项而没有语句（也没有 `fn main`）的 `main.nabi` 得到一个空的隐式 `main`，导出 WIT 的包除外：这样的包是没有入口点的 reactor（[标准库 1.8.2](../../refs-standard-libraries/100-bare/108-wit.md#导出)）。
 
 > [!IMPORTANT]
 > 如果同一个 `main.nabi` **同时**包含顶层语句和 `fn main` 声明，就是**编译错误**（E0036）。这排除了读者必须猜测两个入口点中哪一个会运行的情况。
@@ -96,8 +96,8 @@ fn main() throws {          // form of the implicit main (see 4.16.4)
 进程的退出码由入口点的结束方式决定。
 
 - **正常退出**：按 4.16.3 的表格，为 `0` 或返回的 `i32`。
-- **未处理的异常**：在 `throws` main（包括不带 `->` 的 `fn main()`）中，如果错误传播出入口点，运行时向标准错误（stderr）打印 ``error: `main` returned an uncaught error: ``，后接异常值，并以退出码 **`1`** 退出。输出格式：如果该值实现 [`Display`](../../refs-standard-libraries/200-core/210-fmt.md) 则用 `Display`，否则用 `Debug`，两者都没有则打印类型名（[`Error`](../../refs-standard-libraries/200-core/214-error.md) trait 要求 `Display`，因此普通错误类型用 `Display` 打印）。下一行给出错误离开 `main` 的位置，形如 `  --> path:line:col`。当引发它的 `throw` 已知且位于别处时，最后一行给出其位置，形如 `  raised at path:line:col`（指明哪一个 `throw` 遵循失败的 `try!` 的规则，[3.14.8](../003-expressions/314-error-control-flow.md#3148-panics-and-fatal-errors)）。
-- **panic**：panic 和致命错误不会被 `catch` 捕获；运行时把消息打印到标准错误，并以退出码 **`101`** 退出；在被 C 调用的函数之下则改为中止（[4.14.13](414-throws.md#41413-panics-and-fatal-errors)）。
+- **未处理的异常**：在 `throws` main（包括不带 `->` 的 `fn main()`）中，如果错误传播出入口点，运行时向标准错误（stderr）打印 ``error: `main` returned an uncaught error: ``，后接异常值，并以退出码 **`1`** 退出。输出格式：如果该值实现 [`Display`](../../refs-standard-libraries/200-core/210-fmt.md) 则用 `Display`，否则用 `Debug`，两者都没有则打印类型名（[`Error`](../../refs-standard-libraries/200-core/214-error.md) trait 要求 `Display`，因此普通错误类型用 `Display` 打印）。下一行给出错误离开 `main` 的位置，形如 `  --> path:line:col`。当引发它的 `throw` 已知且位于别处时，最后一行给出其位置，形如 `  raised at path:line:col`（指明哪一个 `throw` 遵循失败的 `try!` 的规则，[3.14.8](../003-expressions/314-error-control-flow.md#3148-panic-与致命错误)）。
+- **panic**：panic 和致命错误不会被 `catch` 捕获；运行时把消息打印到标准错误，并以退出码 **`101`** 退出；在被 C 调用的函数之下则改为中止（[4.14.13](414-throws.md#41413-panic-与致命错误)）。
 - **显式退出**：[`std::process::exit(code)`](../../refs-standard-libraries/300-std/306-process.md) 可以从任何位置立即终止进程。这条路径不运行 `finally` 或 `Drop`。
 
 不带 `->` 也不带 `throws` 的显式 `fn main()` 与隐式 `main` 一样，被读作 `fn main() throws`（无类型）：脚本中的 `try` 不需要 `main` 上的 `throws`。`fn main() -> i32` 不抛出（带 `-> i32` 的 `throws` 不是入口形式）。
@@ -130,14 +130,14 @@ println(body.len());
 
 这一决定的理由：
 
-- **AOT 是语义的基准**（[0.1.4](../000-meta/001-execution-modes.md#014-semantic-baseline)）。要在 AOT 输出中支持导入时执行，就需要在链接时合成每个模块的初始化函数及其调用顺序。只包含定义的模块不需要这样的机制。
+- **AOT 是语义的基准**（[0.1.4](../000-meta/001-execution-modes.md#014-语义基准)）。要在 AOT 输出中支持导入时执行，就需要在链接时合成每个模块的初始化函数及其调用顺序。只包含定义的模块不需要这样的机制。
 - **没有初始化顺序语义**。跨模块的导入时代码需要定义“哪个模块先初始化”以及“循环导入期间什么可见”。Nabi 保证这些问题永远不会出现。全局状态的初始值在编译期确定（4.16.7）。
-- **缓存与增量构建**。由于模块的含义仅由其定义决定，基于内容哈希的缓存（[0.3.3](../000-meta/003-source-units.md#033-package-identifier)）和增量构建无需考虑执行的副作用。
-- **包的种类由文件是否存在决定**（[0.3.4](../000-meta/003-source-units.md#034-the-manifest-nabinabion-is-optional)）。可执行代码恰好位于 `src/main.nabi`，因此“这是不是可执行包？”和“可执行代码在哪里？”这两个问题的答案总是一致。
+- **缓存与增量构建**。由于模块的含义仅由其定义决定，基于内容哈希的缓存（[0.3.3](../000-meta/003-source-units.md#033-包标识符)）和增量构建无需考虑执行的副作用。
+- **包的种类由文件是否存在决定**（[0.3.4](../000-meta/003-source-units.md#034-清单nabinabion是可选的)）。可执行代码恰好位于 `src/main.nabi`，因此“这是不是可执行包？”和“可执行代码在哪里？”这两个问题的答案总是一致。
 
 ## 4.16.7. 全局状态
 
-模块级的全局状态只用 [`static`](../005-modules/503-static.md) 声明。`const` 初始化表达式在编译期求值；其他初始化表达式在首次访问其 `static` 时运行，绝不会早于入口点（[5.3.9](../005-modules/503-static.md#539-initializers-compile-time-or-first-use)）。因此程序执行总是从入口点的第一条语句开始，在此之前不运行任何用户代码。
+模块级的全局状态只用 [`static`](../005-modules/503-static.md) 声明。`const` 初始化表达式在编译期求值；其他初始化表达式在首次访问其 `static` 时运行，绝不会早于入口点（[5.3.9](../005-modules/503-static.md#539-初始化式编译期或首次使用时)）。因此程序执行总是从入口点的第一条语句开始，在此之前不运行任何用户代码。
 
 ## 4.16.8. 单文件执行
 
@@ -148,7 +148,7 @@ nabi run hello.nabi
 nabic build hello.nabi
 ```
 
-如果作为参数给出的文件不在某个包的 `src/` 中，编译器就构造一个仅由该文件组成的**匿名可执行包**，并把该文件视为这个包的 `main.nabi`。文件名没有意义，入口点规则（4.16.1 至 4.16.5）与 `main.nabi` 完全相同地适用。位于包的 `src/` 之外的 `.nabi` 文件（例如包根目录中的脚本）也以这种方式运行。匿名包可以有文件子模块：`mod foo;` 加载该文件旁边的 `foo.nabi`（其自身的子模块位于 `foo/` 中），与包的 `src/` 中完全相同（[5.4.4](../005-modules/504-modules.md#544-package-root)）。只有没有文件的源代码（标准输入、REPL 会话）不能这样做；它们使用内联模块。如果需要依赖，就在文件及其任何子模块文件的开头用内联清单块声明（[9.10.7](../009-tools/910-nabi-frontend.md#9107-inline-manifest-for-single-file-scripts)）。详细的命令形式在 [`nabic` CLI](../009-tools/901-nabic-cli.md) 和 [`nabi run`](../009-tools/910-nabi-frontend.md#nabi-run-build-and-run) 中定义。
+如果作为参数给出的文件不在某个包的 `src/` 中，编译器就构造一个仅由该文件组成的**匿名可执行包**，并把该文件视为这个包的 `main.nabi`。文件名没有意义，入口点规则（4.16.1 至 4.16.5）与 `main.nabi` 完全相同地适用。位于包的 `src/` 之外的 `.nabi` 文件（例如包根目录中的脚本）也以这种方式运行。匿名包可以有文件子模块：`mod foo;` 加载该文件旁边的 `foo.nabi`（其自身的子模块位于 `foo/` 中），与包的 `src/` 中完全相同（[5.4.4](../005-modules/504-modules.md#544-包根)）。只有没有文件的源代码（标准输入、REPL 会话）不能这样做；它们使用内联模块。如果需要依赖，就在文件及其任何子模块文件的开头用内联清单块声明（[9.10.7](../009-tools/910-nabi-frontend.md#9107-单文件脚本的内联清单)）。详细的命令形式在 [`nabic` CLI](../009-tools/901-nabic-cli.md) 和 [`nabi run`](../009-tools/910-nabi-frontend.md#nabi-run构建并运行) 中定义。
 
 ## 4.16.9. 没有入口点属性
 
@@ -158,8 +158,8 @@ Nabi **没有**用于指定入口点的属性（例如 `#[main]`）。根文件 
 
 REPL 输入和 Jupyter 单元（[JIT 单元](../009-tools/907-jit-cells.md)）的含义等同于**按顺序把顶层语句和项追加到一个隐式 `main.nabi` 的末尾**。单元中的 `let` 是隐式 `main` 的局部变量，在后续单元中可见；单元中的 `fn` / `struct` 成为模块项。4.16.2 的规则原样适用，因此在单元中声明的 `fn` 的函数体不能引用之前单元中的顶层 `let`（可以用闭包捕获）。
 
-得益于这一等价关系，[0.1.1](../000-meta/001-execution-modes.md#the-semantics-are-the-same) 中“JIT 与 AOT 共享相同语义”的原则对入口点同样成立。把笔记本的各个单元按顺序拼接而成的文件，就是一个产生相同结果的 `main.nabi`。不过，以下三项是只存在于交互式会话中的**会话操作**，而不是语言语义的扩展：
+得益于这一等价关系，[0.1.1](../000-meta/001-execution-modes.md#语义相同) 中“JIT 与 AOT 共享相同语义”的原则对入口点同样成立。把笔记本的各个单元按顺序拼接而成的文件，就是一个产生相同结果的 `main.nabi`。不过，以下三项是只存在于交互式会话中的**会话操作**，而不是语言语义的扩展：
 
-- 删除和重新运行单元（[9.7.4](../009-tools/907-jit-cells.md#974-undo--cell-re-execution)）。
-- 自动显示不带终止符的最终表达式的值（[9.7.7](../009-tools/907-jit-cells.md#977-visualization--output)）。在文件中，这等同于在该表达式后追加 `;`。
-- 在该最终表达式后加上 `?`（`xs?`），显示其 `Debug` 形式（[9.7.7](../009-tools/907-jit-cells.md#977-visualization--output)）。在文件中，末尾的 `?` 是 [`?` 运算符](../003-expressions/314-error-control-flow.md#31410-the--operator---early-return-of-none)。
+- 删除和重新运行单元（[9.7.4](../009-tools/907-jit-cells.md#974-撤销--单元重新执行)）。
+- 自动显示不带终止符的最终表达式的值（[9.7.7](../009-tools/907-jit-cells.md#977-可视化--输出)）。在文件中，这等同于在该表达式后追加 `;`。
+- 在该最终表达式后加上 `?`（`xs?`），显示其 `Debug` 形式（[9.7.7](../009-tools/907-jit-cells.md#977-可视化--输出)）。在文件中，末尾的 `?` 是 [`?` 运算符](../003-expressions/314-error-control-flow.md#31410--运算符提前返回-none)。

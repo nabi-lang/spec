@@ -18,14 +18,14 @@ block_like_expr ::= block | if_expr | match_expr | loop_expr
 tail_expr   ::= expr            // no trailing ";"
 ```
 
-块中可以声明 `fn`（[4.10](../004-functions/410-nested-functions.md)）、`const`（[5.2.2](../005-modules/502-const.md#522-permitted-positions)）、`use`、`struct`、`enum`、`union`、`trait`、`impl`、`type` 和 `static` 项。`mod` 和 `extern` 项只能在模块层级声明（[5.4.10](../005-modules/504-modules.md#5410-where-module-declarations-may-appear)、[5.9.8](../005-modules/509-extern-block.md#598-position-of-the-extern-block-itself)）；在块中声明它们是编译错误（E0017）。
+块中可以声明 `fn`（[4.10](../004-functions/410-nested-functions.md)）、`const`（[5.2.2](../005-modules/502-const.md#522-允许的位置)）、`use`、`struct`、`enum`、`union`、`trait`、`impl`、`type` 和 `static` 项。`mod` 和 `extern` 项只能在模块层级声明（[5.4.10](../005-modules/504-modules.md#5410-模块声明可以出现的位置)、[5.9.8](../005-modules/509-extern-block.md#598-extern-块本身的位置)）；在块中声明它们是编译错误（E0017）。
 
 块中声明的项遵循以下规则：
 
 - **作用域**。项的名字在整个块中可见，包括其声明之前和之后，以及该块中声明的各项内部。在块内，它遮蔽块外声明的同名、同命名空间的项；内层块中的 `use` 又会遮蔽它。在块外不能指称它。同一块中两个同名、同命名空间的项，或一个项与其名字的 `use`，是编译错误（E0026 和 E0032，与模块层级相同）。
 - **它能看到什么**。块中的项能看到其模块的项，以及其所在块和外围各块的项与 `use` 声明。它不能使用外围代码的局部变量或参数（`let`、函数或闭包参数、模式绑定）或泛型参数；这样做是编译错误（E0039）。值通过字段和参数传给它；类型通过它自己的泛型参数传给它。块中的 glob `use p::*` 会被该块中声明的各项的头部（字段类型、签名、`const` / `static` 初始化器、别名、变体）看到，与其主体一样，优先级与函数体中相同：模块自身的项优先于 glob，内层块的 glob 优先于外层块的，而泛型参数优先于两者。
 - **一个项**。块中的项无论其所在块运行多少次，都是同一个项：泛型函数中的项不随函数的参数泛型化；块中的 `static` 是一个槽，只初始化一次；块中的 `const` 只有一个值。
-- **一致性**。块中的 `impl` 与同一模块的模块层级 `impl` 一样参与一致性和孤儿规则（[2.9.5](../002-types/209-impl.md#295-orphan-rule)）；它的方法和 trait 实现在任何地方都成立。它可以为外部类型实现外部 trait。
+- **一致性**。块中的 `impl` 与同一模块的模块层级 `impl` 一样参与一致性和孤儿规则（[2.9.5](../002-types/209-impl.md#295-孤儿规则)）；它的方法和 trait 实现在任何地方都成立。它可以为外部类型实现外部 trait。
 - **可见性**。块中的项没有自己的可见性：在其上写 `pub` 是编译错误（E0016）。块中声明的类型的字段和方法在其模块内遵循通常规则。
 - **名字**。`type_name`、`Debug` 和调试信息按书写形式命名块中的项（`S`）；诊断也如此，并在另有同名项时加上声明它的函数（`f::S`）。
 
@@ -116,9 +116,9 @@ let b = { x; };         // b is unit
 不带终止符结束的表达式成为块的值，而带终止符结束的表达式的结果被丢弃，块的值为单元值。这一区别与[语句终止符](../001-lexical/103-statement-terminator.md)的规则一致。
 
 - 块中间不带 `;` 的类块语句的类型必须为 `()`。
-- `}` 之前的最后一条语句可以省略 `;`，含义与写上它相同（[1.3.4](../001-lexical/103-statement-terminator.md#134-block-like-expression-statements)）：`{ x += 1 }` 和 `{ let y = x }` 的值为单元值，与 `{ x += 1; }` 和 `{ let y = x; }` 相同。
+- `}` 之前的最后一条语句可以省略 `;`，含义与写上它相同（[1.3.4](../001-lexical/103-statement-terminator.md#134-类块表达式语句)）：`{ x += 1 }` 和 `{ let y = x }` 的值为单元值，与 `{ x += 1; }` 和 `{ let y = x; }` 相同。
 - `;;` 是空语句。
-- 类块表达式之后的成员访问（`.`）和 `?` 会延续该表达式（`match v { .. }.len();`）。在语句位置，其 `}` 之后的 `(` 或 `[` 开始一个新表达式（[1.3.4](../001-lexical/103-statement-terminator.md#134-block-like-expression-statements)）；在更大的表达式内部，如 `let f = if c { g } else { h }(x);`，它是调用或索引。
+- 类块表达式之后的成员访问（`.`）和 `?` 会延续该表达式（`match v { .. }.len();`）。在语句位置，其 `}` 之后的 `(` 或 `[` 开始一个新表达式（[1.3.4](../001-lexical/103-statement-terminator.md#134-类块表达式语句)）；在更大的表达式内部，如 `let f = if c { g } else { h }(x);`，它是调用或索引。
 
 ### 等价形式：最后表达式与显式 `return` / `break`
 
@@ -223,7 +223,7 @@ let result = 'b: {
 };
 ```
 
-标签词法单元的形式（`'identifier:`）与 [3.13.4 标签](313-loop-expressions.md#3134-labels-controlling-nested-loops)中相同。`break 'name value` 以给定的值退出该带标签的块。如果 `continue 'name` 的 `'name` 指向一个**块**标签，则是编译错误（E0059），因为 `continue` 只适用于循环标签。此外，不带标签的 `break` / `continue` 不能以块为目标（它们只以最内层的**循环**为目标）。
+标签词法单元的形式（`'identifier:`）与 [3.13.4 标签](313-loop-expressions.md#3134-标签控制嵌套循环)中相同。`break 'name value` 以给定的值退出该带标签的块。如果 `continue 'name` 的 `'name` 指向一个**块**标签，则是编译错误（E0059），因为 `continue` 只适用于循环标签。此外，不带标签的 `break` / `continue` 不能以块为目标（它们只以最内层的**循环**为目标）。
 
 无需为提前退出而编写小的辅助函数，带标签的块就能清晰地表达带着一个值提前离开块。
 
@@ -239,12 +239,12 @@ let n: usize = unsafe { strlen(cs.as_ptr()) };
 
 ## 3.9.12. 作用域结束时的释放顺序
 
-大多数值无需释放：GC 会回收它们，没有确定的顺序，也不运行代码。类型带有 `Drop`（[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)）的值在确定的时间点释放。以下规则汇集自定义它们的各节：
+大多数值无需释放：GC 会回收它们，没有确定的顺序，也不运行代码。类型带有 `Drop`（[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop释放时的清理)）的值在确定的时间点释放。以下规则汇集自定义它们的各节：
 
 1. 值在其所有者离开作用域处释放，覆盖每种退出方式：正常完成、`return`、`break` / `continue`、`?`、`throw` 以及错误传播。移交给新所有者（调用实参、字段、通道）的值改由该所有者释放。
 2. 在同一作用域内，所有者按声明的逆序离开（最后声明的最先释放）；内层块的所有者先于外层块的离开。
-3. `using` 在其块结束时释放其绑定，最后一个绑定最先释放（[3.17.4](317-using-expression.md#3174-multiple-resources)）。
+3. `using` 在其块结束时释放其绑定，最后一个绑定最先释放（[3.17.4](317-using-expression.md#3174-多重资源)）。
 4. 释放一个值时，先运行它自己的 `drop`，然后按声明的逆序运行其字段的 drop glue，按逆序运行元组元素的，以及枚举或和类型当前所持有载荷的。
-5. 重新声明名字的 `let`（[5.1.4](../005-modules/501-variable-declaration.md#514-redeclaration-in-the-same-scope)）不释放任何东西：旧值在旧绑定本应离开作用域的地方释放。
+5. 重新声明名字的 `let`（[5.1.4](../005-modules/501-variable-declaration.md#514-在同一作用域中重新声明)）不释放任何东西：旧值在旧绑定本应离开作用域的地方释放。
 6. 关闭可能失败的值（`io::Close`）从不替你关闭：让它在未关闭的状态下离开作用域是编译错误，没有所有者的此类类型的临时值也是（E0134）；应用 `using` 绑定它。
 7. panic 会结束进程，不运行任何 `drop`。

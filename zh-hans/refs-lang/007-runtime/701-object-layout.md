@@ -43,11 +43,11 @@ offset 16 :  payload ...           // the object's actual fields
 
 ### `gc_word`（偏移 8，8 字节）
 
-对象的总大小（包括头）。对于在疏散中被移动的对象，会设置 `forwarded` 位，此槽指向新位置（[8.1.4](../008-abi/801-object-header-abi.md#814-gc_word-offset-8-u64-or-ptr)）。
+对象的总大小（包括头）。对于在疏散中被移动的对象，会设置 `forwarded` 位，此槽指向新位置（[8.1.4](../008-abi/801-object-header-abi.md#814-gc_word偏移-8u64-或-ptr)）。
 
 ### `payload`（偏移 16 起）
 
-存放对象字段的区域。字段顺序和对齐由编译器决定；这同样适用于 [`enum`](../002-types/204-enum.md) 和 [`union`](../002-types/205-union.md)。[`struct`](../002-types/203-struct.md) 值本身不是堆对象；当它存放在某个堆对象（列表缓冲区、闭包环境、协程帧）中时，会内联布局在这里（[8.8.3](../008-abi/808-lowering-types.md#883-representation-of-struct)）。
+存放对象字段的区域。字段顺序和对齐由编译器决定；这同样适用于 [`enum`](../002-types/204-enum.md) 和 [`union`](../002-types/205-union.md)。[`struct`](../002-types/203-struct.md) 值本身不是堆对象；当它存放在某个堆对象（列表缓冲区、闭包环境、协程帧）中时，会内联布局在这里（[8.8.3](../008-abi/808-lowering-types.md#883-struct-的表示)）。
 
 如果附加了 `#[repr(C)]` 这样的属性，则适用相应的表示规则（[内置属性](../006-meta-system/602-built-in-attributes.md)）。
 
@@ -59,15 +59,15 @@ GC 把每个对象放在以下三种空间之一。字面量以及 `const` / `st
 
 大多数普通对象所在的空间，使用 Immix mark-region 算法。
 
-它被划分为 32 KiB 的[块](../000-meta/007-glossary.md#block)和 128 B 的行。默认采用标记-清除，完整回收可以把对象移出碎片化的块（机会式疏散）。代由 sticky mark-bit 区分（[7.3](703-gc-algorithm.md)）。
+它被划分为 32 KiB 的[块](../000-meta/007-glossary.md#block块)和 128 B 的行。默认采用标记-清除，完整回收可以把对象移出碎片化的块（机会式疏散）。代由 sticky mark-bit 区分（[7.3](703-gc-algorithm.md)）。
 
 ### 2. 大对象空间（LOS）
 
-8 KiB 或更大的对象、需要大于 8 字节对齐的对象，以及机密缓冲区（`nabi_gc_secret_new`，[8.5.1](../008-abi/805-extern-symbols.md#nabi_gc_secret_new--nabi_gc_secret_wipe)），在 LOS 中逐个分配，并设置 `gc_flags` 的 `LARGE` 位。LOS 用标记-清除回收，不移动对象。老的 LOS 对象带有卡表（[7.4.2](704-barriers-and-roots.md#742-write-barrier-object-remembering)）。机密缓冲区带有 `WIPE` 位（[8.1.3](../008-abi/801-object-header-abi.md#813-gc_flags-offset-4-u32)）：释放它的清除阶段会先用零覆写其载荷。
+8 KiB 或更大的对象、需要大于 8 字节对齐的对象，以及机密缓冲区（`nabi_gc_secret_new`，[8.5.1](../008-abi/805-extern-symbols.md#nabi_gc_secret_new--nabi_gc_secret_wipe)），在 LOS 中逐个分配，并设置 `gc_flags` 的 `LARGE` 位。LOS 用标记-清除回收，不移动对象。老的 LOS 对象带有卡表（[7.4.2](704-barriers-and-roots.md#742-写屏障对象记忆)）。机密缓冲区带有 `WIPE` 位（[8.1.3](../008-abi/801-object-header-abi.md#813-gc_flags偏移-4u32)）：释放它的清除阶段会先用零覆写其载荷。
 
 ### 3. 固定对象（FFI 固定）
 
-传给 [`extern` 块](../005-modules/509-extern-block.md)中 FFI 函数的 GC 指针在调用结束前不会被移动，因为该实参位于根中（[7.4.1](704-barriers-and-roots.md#objects-pointed-to-by-roots-are-not-moved)）。如果外部代码需要在调用之后保留该地址，就用 `nabi_gc_pin` 固定它。固定的对象会设置 `gc_flags` 的 `PINNED` 位并保持原位。`nabi_gc_unpin` 解除固定。
+传给 [`extern` 块](../005-modules/509-extern-block.md)中 FFI 函数的 GC 指针在调用结束前不会被移动，因为该实参位于根中（[7.4.1](704-barriers-and-roots.md#根指向的对象不会被移动)）。如果外部代码需要在调用之后保留该地址，就用 `nabi_gc_pin` 固定它。固定的对象会设置 `gc_flags` 的 `PINNED` 位并保持原位。`nabi_gc_unpin` 解除固定。
 
 固定对象仍由标记-清除回收，但永远不会被疏散。
 
@@ -109,4 +109,4 @@ nabi_gc_register_type(type_id, scan_table)
 size = 16  (header) + payload_size  (aligned size of the fields)
 ```
 
-分配器为每个对象（无论是 Immix 还是 LOS）把这个总大小存入头的 `gc_word`（[8.1.4](../008-abi/801-object-header-abi.md#814-gc_word-offset-8-u64-or-ptr)），回收器从那里读取它。
+分配器为每个对象（无论是 Immix 还是 LOS）把这个总大小存入头的 `gc_word`（[8.1.4](../008-abi/801-object-header-abi.md#814-gc_word偏移-8u64-或-ptr)），回收器从那里读取它。

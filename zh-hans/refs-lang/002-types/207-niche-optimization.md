@@ -30,7 +30,7 @@ let p: Ptr<u8> | none;     // 64-bit pointer + none
 
 - 载荷中持有 GC 引用的 `enum` 没有 niche。
 - `bool` 或浮点标量上的非零 niche（`bool`，或 `#[niche(NAN)]` 浮点包装类型）只经由单字段包装类型传递。多字段聚合会跳过这样的字段，所以 `(i64, bool) | none` 有标签，而 `(i64, char) | none` 使用 `char` 的 niche。
-- 当 niche 值为 0（空指针、`extern "C" fn`、`NonZero`）时，该项的位保持不变，因此这样的 `T | none` 可以作为可空值原样跨越 C ABI 传递（[5.9.4](../005-modules/509-extern-block.md#nullable-c-function-pointers-extern-c-fn---r--none)）。
+- 当 niche 值为 0（空指针、`extern "C" fn`、`NonZero`）时，该项的位保持不变，因此这样的 `T | none` 可以作为可空值原样跨越 C ABI 传递（[5.9.4](../005-modules/509-extern-block.md#可空的-c-函数指针extern-c-fn---r--none)）。
 - 除 `none` 外有两项或更多的和类型带有标签。
 
 ```nabi
@@ -73,7 +73,7 @@ struct Real { value: f64; }
 
 | 名称          | 排除的值                              | 定义                          |
 |---------------|---------------------------------------|-------------------------------|
-| `NonZero<T>`  | 0（仅限整数 T）                       | [标准库 2.2.2](../../refs-standard-libraries/200-core/202-non-zero.md#222-nonzerot---zero-forbidden) |
-| `NonNan<F>`   | NaN                                   | [标准库 2.2.3](../../refs-standard-libraries/200-core/202-non-zero.md#223-nonnanf---nan-forbidden) |
-| `Finite<F>`   | NaN、±∞                               | [标准库 2.2.4](../../refs-standard-libraries/200-core/202-non-zero.md#224-finitef---nan-and--forbidden) |
-| `Positive<T>` | 负数（含 0）。无符号 `T` 没有 niche（`Positive<u32> \| none` 为 8 字节） | [标准库 2.2.5](../../refs-standard-libraries/200-core/202-non-zero.md#225-positivet---negative-values-forbidden) |
+| `NonZero<T>`  | 0（仅限整数 T）                       | [标准库 2.2.2](../../refs-standard-libraries/200-core/202-non-zero.md#222-nonzerot禁止零) |
+| `NonNan<F>`   | NaN                                   | [标准库 2.2.3](../../refs-standard-libraries/200-core/202-non-zero.md#223-nonnanf禁止-nan) |
+| `Finite<F>`   | NaN、±∞                               | [标准库 2.2.4](../../refs-standard-libraries/200-core/202-non-zero.md#224-finitef禁止-nan-和-) |
+| `Positive<T>` | 负数（含 0）。无符号 `T` 没有 niche（`Positive<u32> \| none` 为 8 字节） | [标准库 2.2.5](../../refs-standard-libraries/200-core/202-non-zero.md#225-positivet禁止负值) |

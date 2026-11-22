@@ -1,6 +1,6 @@
 # 4.13. 流（`async yield`）
 
-同时使用 `async` 和 `yield` 两个修饰符，可以定义异步生成器，即随时间推移产出多个值的函数。其结果是库类型 `AsyncStream<T>`（实现 `Stream<Item = T>`）的值；带 `throws (E)` 时是 `TryAsyncStream<T, E>`（[4.1.11](401-function-declaration.md#result-types-of-coroutine-functions)）。
+同时使用 `async` 和 `yield` 两个修饰符，可以定义异步生成器，即随时间推移产出多个值的函数。其结果是库类型 `AsyncStream<T>`（实现 `Stream<Item = T>`）的值；带 `throws (E)` 时是 `TryAsyncStream<T, E>`（[4.1.11](401-function-declaration.md#协程函数的结果类型)）。
 
 ## 4.13.1. 三种定义形式
 

@@ -26,19 +26,19 @@ type_arg_list   ::= type_expr ("," type_expr)* ","?
 | `::`                 | 包：一个层级或该包的某个依赖，越过任何局部名称 |
 | 普通标识符  | 当前可见的名称（子模块、已 `use` 的名称）     |
 
-`pkg` 与可见性关键字 `pub(pkg)` 同词干，`sup` 是可见性 `pub(sub)` 的**镜像**方向（sub 指后代，sup 指祖先）。两者只有紧跟 `::` 时才是路径根；在其他位置它们是普通名称（[1.5.4 上下文关键字](../001-lexical/105-keywords.md)）。层级名称 `std`、`core` 和 `bare` 是普通标识符（[5.7.4](#574-std-core-bare-the-standard-library-tiers)）。
+`pkg` 与可见性关键字 `pub(pkg)` 同词干，`sup` 是可见性 `pub(sub)` 的**镜像**方向（sub 指后代，sup 指祖先）。两者只有紧跟 `::` 时才是路径根；在其他位置它们是普通名称（[1.5.4 上下文关键字](../001-lexical/105-keywords.md)）。层级名称 `std`、`core` 和 `bare` 是普通标识符（[5.7.4](#574-stdcorebare标准库层级)）。
 
 `self::` 不是路径起点。同一模块的子模块和项可以通过普通标识符访问（`child::item`）。
 
-名称解析不会隐式查找祖先模块（例外：`extern` 函数，[5.9.4](509-extern-block.md#name-space-of-extern-functions)）。普通标识符只在当前模块的项、子模块和用 `use` 导入的名称（包括隐式的 `use core::prelude::*`）中查找。父模块或更高层模块的项必须用 `sup::` 指名或用 `use` 导入。
+名称解析不会隐式查找祖先模块（例外：`extern` 函数，[5.9.4](509-extern-block.md#extern-函数的名称空间)）。普通标识符只在当前模块的项、子模块和用 `use` 导入的名称（包括隐式的 `use core::prelude::*`）中查找。父模块或更高层模块的项必须用 `sup::` 指名或用 `use` 导入。
 
 查找顺序如下；第一个匹配者胜出。
 
-1. 当前模块的项和子模块，以及包自身依赖的名称（[5.7.14](#5714-paths-between-packages)；同时属于两者的名称是错误（ERROR））
+1. 当前模块的项和子模块，以及包自身依赖的名称（[5.7.14](#5714-包之间的路径)；同时属于两者的名称是错误（ERROR））
 2. 标准库层级（`std::fs`），除非当前模块的某个具名 `use` 占用了该名称
 3. 当前模块的 `use`。具名导入优先于 glob（`*`、`**`）。
 4. 隐式的 `use core::prelude::*`（标准库自身的模块：`use core::**`）
-5. 对于期望枚举类型的位置上的单独名称，该枚举的一个变体（[2.4.8](../002-types/204-enum.md#248-bare-variants-from-the-expected-type)）
+5. 对于期望枚举类型的位置上的单独名称，该枚举的一个变体（[2.4.8](../002-types/204-enum.md#248-由期望类型确定的裸变体)）
 
 函数无论是否泛型，都共享同一个值名称空间。因此最近的声明胜出，与种类无关（当前模块中的非泛型 `max` 会隐藏 core 的泛型 `max`）。
 
@@ -90,7 +90,7 @@ std::fs::File
 | `core::*` | 基础、常用 trait    |
 | `std::*`  | 操作系统集成、I/O 等            |
 
-这三个包随工具链一起提供，编译器自动构建并链接它们（[0.5.4](../000-meta/005-standard-libraries-tiers.md#054-distribution-form-and-linking-mechanism)）；它们不是用户包的依赖，也不需要 `--extern`。其他任何包都不能命名为 `std`、`core` 或 `bare`（[9.10.3](../009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)）。
+这三个包随工具链一起提供，编译器自动构建并链接它们（[0.5.4](../000-meta/005-standard-libraries-tiers.md#054-分发形式与链接机制)）；它们不是用户包的依赖，也不需要 `--extern`。其他任何包都不能命名为 `std`、`core` 或 `bare`（[9.10.3](../009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)）。
 
 除此之外，层级名称是普通名称。模块、项或依赖别名都可以叫 `std`、`core` 或 `bare`；在声明或导入它的模块中，该名称指的是局部的那个，就像任何遮蔽其他名称的名称一样。前导 `::` 总是指名工具链的库（或某个依赖）：`::std::fs::File` 越过局部的 `std` 到达该层级。
 
@@ -214,7 +214,7 @@ use parser::Token;
 let t = parser::lex(src);
 ```
 
-- 依赖包的名称是一个顶层路径。该名称是 `nabi.nabion` 中的 `deps` 键，其中的 `-` 替换为 `_`（`nabi-syntax` → `nabi_syntax::..`），构建工具用 `nabic --extern name=..` 注册它（[9.2.3](../009-tools/902-aot-pipeline.md#923-dependency-resolution)、[9.10.3](../009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)）。不需要 Rust 的 `extern crate` 那样的单独声明。
+- 依赖包的名称是一个顶层路径。该名称是 `nabi.nabion` 中的 `deps` 键，其中的 `-` 替换为 `_`（`nabi-syntax` → `nabi_syntax::..`），构建工具用 `nabic --extern name=..` 注册它（[9.2.3](../009-tools/902-aot-pipeline.md#923-依赖解析)、[9.10.3](../009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)）。不需要 Rust 的 `extern crate` 那样的单独声明。
 - 一个包只能看到它所依赖的包，并且使用它自己的 `deps` 给它们起的名称。构建中其他包的依赖不在作用域内：以 `"csvio": Dep::..(package: "csv")` 依赖 `csv` 的包写作 `csvio::..`，在那里 `csv::..` 是它自己的模块 `csv`，否则是错误（ERROR），其帮助信息提示把 `csv` 添加到该包的 `deps` 中。
 - 既是包的依赖、又是当前模块子模块的名称是有歧义的：以它开始的路径是错误（ERROR），并指出两者。其帮助信息说明应写什么：依赖写 `::name::..`，模块写 `pkg::..::name::..`，或者在 `nabi.nabion` 中给依赖另起一个名称（用带 `package:` 的键指名该包）。
 - 依赖包内的 `pkg::` 是该依赖自己的根。

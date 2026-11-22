@@ -45,7 +45,7 @@ x.fd = 7i32;                    // write: safe
 let y = unsafe { x.val };       // read: requires unsafe; reinterprets x's bit pattern as u64
 ```
 
-用某个字段创建实例，会把该字段的位写入内存。之后通过另一个字段读取，会把同样的内存位重新解释为那个字段的类型。写入字段是安全的，但读取字段只允许在 [`unsafe`](../004-functions/415-unsafe.md#4152-unsafe------block-expression) 内进行，因为语言不保证读到的位是该类型（例如 `bool`、`char`、指针）的有效值。
+用某个字段创建实例，会把该字段的位写入内存。之后通过另一个字段读取，会把同样的内存位重新解释为那个字段的类型。写入字段是安全的，但读取字段只允许在 [`unsafe`](../004-functions/415-unsafe.md#4152-unsafe---块表达式) 内进行，因为语言不保证读到的位是该类型（例如 `bool`、`char`、指针）的有效值。
 
 ## 2.5.3. 安全责任在哪里
 

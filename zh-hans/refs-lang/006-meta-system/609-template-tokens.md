@@ -155,7 +155,7 @@ fn typed<T>() where T == @field.type { ... }
 
 ### `@field.has_default` / `@field.default`
 
-如果字段有默认值（`x: i32 = 0`，[2.3.3](../002-types/203-struct.md#233-field-default-values)），`@field.has_default` 为真，`@field.default` 是该 `= expr` 中的表达式。在没有默认值的字段上使用 `@field.default` 是错误。
+如果字段有默认值（`x: i32 = 0`，[2.3.3](../002-types/203-struct.md#233-字段默认值)），`@field.has_default` 为真，`@field.default` 是该 `= expr` 中的表达式。在没有默认值的字段上使用 `@field.default` 是错误。
 
 ```nabi
 @apply_if(@field.has_default) {
@@ -181,7 +181,7 @@ fn typed<T>() where T == @field.type { ... }
 
 ### `@variant.pattern` 匹配模式
 
-`@variant.pattern` 是匹配模式形式的变体，例如 `Shape::Circle(r)`、`Shape::Pending` 或 `Shape::Click { x: x1, y: y1 }`。`r`、`x1`、`y1` 位置上的绑定是编译器生成的名字（卫生性，[6.9.9](#hygiene)），其值在 `@for_variant_fields` 内部用 `@field` 取得。模板不能直接使用这些绑定名。
+`@variant.pattern` 是匹配模式形式的变体，例如 `Shape::Circle(r)`、`Shape::Pending` 或 `Shape::Click { x: x1, y: y1 }`。`r`、`x1`、`y1` 位置上的绑定是编译器生成的名字（卫生性，[6.9.9](#卫生性)），其值在 `@for_variant_fields` 内部用 `@field` 取得。模板不能直接使用这些绑定名。
 
 ```nabi
 match self {
@@ -299,7 +299,7 @@ let made: @Self = @Self.pattern;
 }
 ```
 
-这里的 `Same` 是用户 trait（`Eq` 这样的内置 derive 不能被重新定义，[6.8.11](608-meta-blocks.md#6811-combination-with-registrationvisibility)）。于是，生成的 `impl` 会为目标类型的每个类型参数加上 `T: Same`。对于具体的字段类型不添加子句；这些字段是否实现了 `Same`，由对生成主体的类型检查来检验。目标类型的泛型参数放在模板的 `impl` 之后，唯一的约束就是 `@where_all` 添加的那些。
+这里的 `Same` 是用户 trait（`Eq` 这样的内置 derive 不能被重新定义，[6.8.11](608-meta-blocks.md#6811-与注册和可见性的配合)）。于是，生成的 `impl` 会为目标类型的每个类型参数加上 `T: Same`。对于具体的字段类型不添加子句；这些字段是否实现了 `Same`，由对生成主体的类型检查来检验。目标类型的泛型参数放在模板的 `impl` 之后，唯一的约束就是 `@where_all` 添加的那些。
 
 ## 6.9.6. derive_attribute 记号
 
@@ -315,7 +315,7 @@ let made: @Self = @Self.pattern;
 
 ### `@Self.has_derive_key(k)`
 
-表示类型自身的 `#[attr(..)]` 中是否列出了键 `k`。`k` 必须用 `#[impl_derive_attribute(Trait, attr(k, ..))]` 声明（[6.8.4](608-meta-blocks.md#684-impl_derive_attributetrait-attr-per-field-derive-attribute)）；未声明的键是错误。`#[derive(Nabion)]` 就是这样读取 `#[nabion(deny_unknown_fields)]` 的。
+表示类型自身的 `#[attr(..)]` 中是否列出了键 `k`。`k` 必须用 `#[impl_derive_attribute(Trait, attr(k, ..))]` 声明（[6.8.4](608-meta-blocks.md#684-impl_derive_attributetrait-attr-逐字段-derive-属性)）；未声明的键是错误。`#[derive(Nabion)]` 就是这样读取 `#[nabion(deny_unknown_fields)]` 的。
 
 ```nabi
 #[impl_derive_attribute(Serialize, rename)] pub @derive {
@@ -388,7 +388,7 @@ fn run() { ... }
 
 ## 6.9.8. 调用处（宏）记号
 
-上述记号绑定的是定义所附加的类型或项。宏（[6.8.12](608-meta-blocks.md#6812-the-macro-form)）则通过匹配器绑定调用方的词法单元，并使用以下记号；`@for` 也只用于宏：在 `@attribute` 或 `@derive` 块中使用它是错误（它们用 `@for_fields` / `@for_variants` 重复）。`@concat` 在三种形式中都可以使用。反过来，形状记号（`@apply_if` 及其所检测的 `@Self` / `@field` / `@variant` 记号）在宏中是错误：宏没有可供检测的类型形状。
+上述记号绑定的是定义所附加的类型或项。宏（[6.8.12](608-meta-blocks.md#6812-宏形式)）则通过匹配器绑定调用方的词法单元，并使用以下记号；`@for` 也只用于宏：在 `@attribute` 或 `@derive` 块中使用它是错误（它们用 `@for_fields` / `@for_variants` 重复）。`@concat` 在三种形式中都可以使用。反过来，形状记号（`@apply_if` 及其所检测的 `@Self` / `@field` / `@variant` 记号）在宏中是错误：宏没有可供检测的类型形状。
 
 | 记号                                   | 在匹配器 / 模板中                                              | 节      |
 |----------------------------------------|----------------------------------------------------------------|---------|
@@ -400,15 +400,15 @@ fn run() { ... }
 
 ### `@name: <fragment>` 片段捕获
 
-在匹配器中，`@name: <fragment>` 把调用的一部分作为原始词法单元捕获；匹配时不做任何解析，因此选择的是第一条字面词法单元和词法单元数量都吻合的规则（[6.8.12](608-meta-blocks.md#matchers-and-fragments)）。`ident`、`literal` 和 `tt` 分别捕获一个标识符、一个字面量词法单元和一棵词法单元树（一个词法单元或一个配对平衡的组）；其他片段捕获直到匹配器下一个字面词法单元为止的一段词法单元。展开结果在转写之后作为普通代码解析，因此捕获的代码在那里进行类型检查和其他检查，工具也会解析其中的名字；如果某个实参放在模板所放的位置上并不合适，就是在调用处报告的语法错误。`tt` 是用于非 Nabi DSL 的片段。匹配器中其他位置的字面词法单元必须原样出现。在模板中，`@name` 替换为捕获的内容，并保留调用处的卫生性（[6.9.9](#699-expansion-mechanism)）。
+在匹配器中，`@name: <fragment>` 把调用的一部分作为原始词法单元捕获；匹配时不做任何解析，因此选择的是第一条字面词法单元和词法单元数量都吻合的规则（[6.8.12](608-meta-blocks.md#匹配器与片段)）。`ident`、`literal` 和 `tt` 分别捕获一个标识符、一个字面量词法单元和一棵词法单元树（一个词法单元或一个配对平衡的组）；其他片段捕获直到匹配器下一个字面词法单元为止的一段词法单元。展开结果在转写之后作为普通代码解析，因此捕获的代码在那里进行类型检查和其他检查，工具也会解析其中的名字；如果某个实参放在模板所放的位置上并不合适，就是在调用处报告的语法错误。`tt` 是用于非 Nabi DSL 的片段。匹配器中其他位置的字面词法单元必须原样出现。在模板中，`@name` 替换为捕获的内容，并保留调用处的卫生性（[6.9.9](#699-展开机制)）。
 
 ### `@rep` / `@for` 重复
 
-`@rep[sep = ",", trailing] { <sub-pattern> }` 匹配子模式零次或多次；在其内部捕获的元变量绑定的是一个序列。`@for @name { <body> }` 与 `@for_fields`（[6.9.3](#693-field-iteration)）是同一个迭代器，这里作用于该序列；来自同一个 `@rep` 的元变量同步迭代，长度必须相等。`@rep` 和 `@for` 可以嵌套。
+`@rep[sep = ",", trailing] { <sub-pattern> }` 匹配子模式零次或多次；在其内部捕获的元变量绑定的是一个序列。`@for @name { <body> }` 与 `@for_fields`（[6.9.3](#693-字段迭代)）是同一个迭代器，这里作用于该序列；来自同一个 `@rep` 的元变量同步迭代，长度必须相等。`@rep` 和 `@for` 可以嵌套。
 
 ### `@concat(..)` 名字合成
 
-`@concat(..)` 把名字词法单元（`@name`、不带修饰的标识符）和字符串字面量连接成单个标识符，只能用于定义位置或路径位置。它构成的标识符会被记录，因此符号搜索和跳转到定义都能找到生成的项（[6.8.12](608-meta-blocks.md#tooling-and-hygiene)）；非名字的组成部分，或在名字位置之外使用，都是错误。
+`@concat(..)` 把名字词法单元（`@name`、不带修饰的标识符）和字符串字面量连接成单个标识符，只能用于定义位置或路径位置。它构成的标识符会被记录，因此符号搜索和跳转到定义都能找到生成的项（[6.8.12](608-meta-blocks.md#工具与卫生性)）；非名字的组成部分，或在名字位置之外使用，都是错误。
 
 在 `@derive` 或 `@attribute` 块中，它的组成部分还可以是目标的名字记号和索引记号（`@Self.name`、`@field.name`、`@variant.name`、`@field.index`、`@variant.index`、`@item.name`），因此 derive 可以声明一个具名的伴随项。结果不以字母或 `_` 开头时是错误。
 
@@ -429,10 +429,10 @@ struct Point { x: f32; y: f32; }    // also declares `PointColumns { x: List<f32
 
 元展开按以下步骤进行。
 
-1. 解析之前的预处理从库和用户包的每个文件中收集元块（[6.8.11](608-meta-blocks.md#6811-combination-with-registrationvisibility)）。
+1. 解析之前的预处理从库和用户包的每个文件中收集元块（[6.8.11](608-meta-blocks.md#6811-与注册和可见性的配合)）。
 2. 解析器遇到带有 `#[derive(X)]` 或 `#[x]` 的项时，用该项的值替换对应元块主体中的模板记号，并再次解析结果。
 3. 生成的项会再次进行元处理，如此重复，直到到达不动点。
-4. 循环（`A → B → A`）是错误（[6.8.8](608-meta-blocks.md#688-fixed-point-expansion)）。
+4. 循环（`A → B → A`）是错误（[6.8.8](608-meta-blocks.md#688-不动点展开)）。
 
 ### 与 `cfg` 的关系
 
@@ -504,7 +504,7 @@ pub(pkg) fn combine(h: u64, x: u64) -> u64 { .. }
 
 ## 6.9.10. 调试
 
-`nabic build --emit=expansions`（[9.9.10](../009-tools/909-debug-tools.md#9910-meta-block-debugging)）把用户包的展开结果作为源文本写入 `target/<profile>/build/<name>.expanded.nabi`（或 `-o` 指定的路径）。每个展开结果都是一条 ``// expanded from this `#[derive(X)]` (file:line:col)`` 注释，后跟生成的源代码；如果输出再次被展开，它会跟在外层展开之后。
+`nabic build --emit=expansions`（[9.9.10](../009-tools/909-debug-tools.md#9910-元块调试)）把用户包的展开结果作为源文本写入 `target/<profile>/build/<name>.expanded.nabi`（或 `-o` 指定的路径）。每个展开结果都是一条 ``// expanded from this `#[derive(X)]` (file:line:col)`` 注释，后跟生成的源代码；如果输出再次被展开，它会跟在外层展开之后。
 
 ## 6.9.11. 小结
 

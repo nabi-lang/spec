@@ -32,11 +32,11 @@ reactor 线程在第一次异步 I/O 等待时启动。
 5. Some worker takes that task and retries the read.
 ```
 
-这一流程与 `async` `fn` 中的 `await` 结合（见[异步](../004-functions/412-async.md)）。注册是边沿触发的，因此每次等待都要重新注册。标准库的就绪 future 在驻留之后会再检查一次 fd，以免错过期间经过的边沿。被唤醒的任务可能发现 fd 尚未就绪，因此由调用方重试操作。这些 future（`task::readable` / `task::writable`）是 `#[internal]` 的（[标准库 2.18](../../refs-standard-libraries/200-core/218-task.md)）：手写的 future 通过 `nabi_io_register` 等待 fd（[8.5.5](../008-abi/805-extern-symbols.md#855-io--timer-area)）。
+这一流程与 `async` `fn` 中的 `await` 结合（见[异步](../004-functions/412-async.md)）。注册是边沿触发的，因此每次等待都要重新注册。标准库的就绪 future 在驻留之后会再检查一次 fd，以免错过期间经过的边沿。被唤醒的任务可能发现 fd 尚未就绪，因此由调用方重试操作。这些 future（`task::readable` / `task::writable`）是 `#[internal]` 的（[标准库 2.18](../../refs-standard-libraries/200-core/218-task.md)）：手写的 future 通过 `nabi_io_register` 等待 fd（[8.5.5](../008-abi/805-extern-symbols.md#855-io--定时器区域)）。
 
-阻塞调用（`TcpStream::read` 等）不使用这条路径；它们阻塞调用方的操作系统线程。挂起任务的 I/O 由标准库的 `*_async` 方法提供（[标准库 3.2.0](../../refs-standard-libraries/300-std/302-net.md#320-common-rules)）。
+阻塞调用（`TcpStream::read` 等）不使用这条路径；它们阻塞调用方的操作系统线程。挂起任务的 I/O 由标准库的 `*_async` 方法提供（[标准库 3.2.0](../../refs-standard-libraries/300-std/302-net.md#320-通用规则)）。
 
-普通文件无法用就绪模型等待（在 epoll / kqueue 下它们总是就绪的）。因此，普通文件上的异步 I/O（`fs::*_async`，[标准库 3.1.4a](../../refs-standard-libraries/300-std/301-fs.md#314a-asynchronous-file-io-_async)）在另一个操作系统线程上执行阻塞的系统调用（`task::spawn_blocking`），并在此期间挂起任务。
+普通文件无法用就绪模型等待（在 epoll / kqueue 下它们总是就绪的）。因此，普通文件上的异步 I/O（`fs::*_async`，[标准库 3.1.4a](../../refs-standard-libraries/300-std/301-fs.md#314a-异步文件-io_async)）在另一个操作系统线程上执行阻塞的系统调用（`task::spawn_blocking`），并在此期间挂起任务。
 
 ## 7.7.3. I/O 驱动抽象
 
@@ -49,7 +49,7 @@ trait IODriver {
 }
 ```
 
-这个接口是概念性的；确切的签名由运行时实现决定。驱动不持有唤醒器。要唤醒的任务通过由 fd 和方向（读 / 写）决定的驻留键，在 `core::task` 的驻留表中查找。运行时符号见 [8.5.5](../008-abi/805-extern-symbols.md#855-io--timer-area)。
+这个接口是概念性的；确切的签名由运行时实现决定。驱动不持有唤醒器。要唤醒的任务通过由 fd 和方向（读 / 写）决定的驻留键，在 `core::task` 的驻留表中查找。运行时符号见 [8.5.5](../008-abi/805-extern-symbols.md#855-io--定时器区域)。
 
 ## 7.7.4. 定时器结构
 
@@ -104,11 +104,11 @@ loop {
 
 默认情况下，N 固定为 CPU 核心数。
 
-启用后（`NABIR_DYNAMIC_WORKERS=1`），过于空闲的工作线程会驻留，推送任务时优先唤醒其他工作线程；当所有活动的工作线程都繁忙时，它会被重新启用。在调用中阻塞的工作线程在所有模式下都会被替换（[7.6.7](706-scheduler.md#767-automatic-detection-of-blocking-syscalls)）。
+启用后（`NABIR_DYNAMIC_WORKERS=1`），过于空闲的工作线程会驻留，推送任务时优先唤醒其他工作线程；当所有活动的工作线程都繁忙时，它会被重新启用。在调用中阻塞的工作线程在所有模式下都会被替换（[7.6.7](706-scheduler.md#767-自动检测阻塞系统调用)）。
 
 ## 7.7.9. 取消
 
-`Task::cancel` **请求**取消（[标准库 2.18.4](../../refs-standard-libraries/200-core/218-task.md#2184-cooperative-cancellation---taskcancel)）。运行时设置一个标志并唤醒该任务。
+`Task::cancel` **请求**取消（[标准库 2.18.4](../../refs-standard-libraries/200-core/218-task.md#2184-协作式取消taskcancel)）。运行时设置一个标志并唤醒该任务。
 
 - 每个 `await` 都是取消点。`await` 在进入时以及即将挂起之前检查该标志。在任务被轮询期间到达的取消，会在其下一次轮询时处理，这次轮询由取消引起的唤醒带来：被等待的 future 最先看到它，因此嵌套的协程以及 `task::select` 中每个已启动的子项都会运行其清理。
 - 被等待的 future 返回 `Ready` 之后的检查不是“标志是否已设置”，而是“**被等待的协程是否因取消而离开**”。因此 future 交出的值（收到的消息、获得的锁守卫）会被保留，任务在下一个 `await` 处离开。
@@ -120,7 +120,7 @@ loop {
 - 在套接字 I/O、`sleep` / `timeout`、`lock_async` 或 `recv_async` / `send_async` 中等待的任务，被取消时会被唤醒，并在下一个 `await` 处离开。
 - 任务结束时，它的所有唤醒注册（I/O 就绪等待、定时器、驻留表中的唤醒器）都会被释放。运行中池里的注册数量可以用诊断函数 `task::registrations()` 查看；该值的确切含义由实现定义。
 
-在 `task::timeout` 到期或 `task::race` 决出胜者之后，落败的任务会继续运行。要停止它们，调用 `cancel`。`task::select` 不生成任务，因此它自己取消落败的 future（[标准库 2.18.1](../../refs-standard-libraries/200-core/218-task.md#select---the-first-future-to-finish)）；清理中含有 `await` 的落败者作为独立的任务完成清理。
+在 `task::timeout` 到期或 `task::race` 决出胜者之后，落败的任务会继续运行。要停止它们，调用 `cancel`。`task::select` 不生成任务，因此它自己取消落败的 future（[标准库 2.18.1](../../refs-standard-libraries/200-core/218-task.md#select最先完成的-future)）；清理中含有 `await` 的落败者作为独立的任务完成清理。
 
 ## 7.7.10. 与 reactor 模式的比较
 

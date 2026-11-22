@@ -2,7 +2,7 @@
 
 本节说明 [`if` 表达式](../003-expressions/310-if-expression.md)、[`match`](../003-expressions/312-match-expression.md)、[循环](../003-expressions/313-loop-expressions.md)和[错误控制流](../003-expressions/314-error-control-flow.md)的降级规则，并定义生成 [GC](../000-meta/007-glossary.md#gc-garbage-collector) 分配 / 屏障 / 安全点代码的规则。
 
-nabi-mir 是一张控制流图：由带块参数的基本块组成，每个块以 goto、基于 `bool` 的双路分支、返回或 `unreachable` 结束。代码生成器把它们分别生成为跳转、条件分支、返回或 trap；块参数是在跳转前向目标块的槽中进行的一次存储。在 `-O0` 以上，优化器在这张图上工作（[8.7.3](807-code-generation.md#873-optimization-levels)）。代码为伪代码（[8.7.1](807-code-generation.md#871-translation-flow)）。
+nabi-mir 是一张控制流图：由带块参数的基本块组成，每个块以 goto、基于 `bool` 的双路分支、返回或 `unreachable` 结束。代码生成器把它们分别生成为跳转、条件分支、返回或 trap；块参数是在跳转前向目标块的槽中进行的一次存储。在 `-O0` 以上，优化器在这张图上工作（[8.7.3](807-code-generation.md#873-优化级别)）。代码为伪代码（[8.7.1](807-code-generation.md#871-翻译流程)）。
 
 ## 8.9.1. `if` 表达式
 
@@ -97,7 +97,7 @@ bb_end(result):
     ...
 ```
 
-元组、`struct`、`enum` 变体（[8.8.6](808-lowering-types.md#886-representation-of-enum)）和和类型成员以同样的方式测试其各部分；区间模式是两次比较，字符串模式是一次 `str` 相等比较（[8.7.6](807-code-generation.md#876-extern-functions-runtime-functions)）。match 是穷尽的，因此其最后一次测试之后的块是不可达的（一个 trap）。
+元组、`struct`、`enum` 变体（[8.8.6](808-lowering-types.md#886-enum-的表示)）和和类型成员以同样的方式测试其各部分；区间模式是两次比较，字符串模式是一次 `str` 相等比较（[8.7.6](807-code-generation.md#876-extern-函数运行时函数)）。match 是穷尽的，因此其最后一次测试之后的块是不可达的（一个 trap）。
 
 不构建跳转表：在每个级别，这条链都按所写的样子编译，每个被测试的分支一次比较和分支。优化器会移除它能根据先前分支已证明的事实判定的测试。
 
@@ -151,11 +151,11 @@ for x in xs { body }
 
 ## 8.9.5. `break` / `continue`
 
-`break` 和 `continue` 是跳转到循环出口块或回边块的跳转。标签（`'outer:`）同样跳转到相应的[块](../000-meta/007-glossary.md#block)。
+`break` 和 `continue` 是跳转到循环出口块或回边块的跳转。标签（`'outer:`）同样跳转到相应的[块](../000-meta/007-glossary.md#block块)。
 
 ## 8.9.6. `try` / `catch` / `finally`：基于值的分支
 
-[错误控制流](../003-expressions/314-error-control-flow.md)中的错误通过[调用约定](806-calling-convention.md#865-return-of-throwing-functions-value-based-error-propagation)中定义的 `{ is_err, payload }` 返回值传播。因此 `try` 和 `catch` 都降级为普通分支。
+[错误控制流](../003-expressions/314-error-control-flow.md)中的错误通过[调用约定](806-calling-convention.md#865-抛出函数的返回基于值的错误传播)中定义的 `{ is_err, payload }` 返回值传播。因此 `try` 和 `catch` 都降级为普通分支。
 
 ```nabi
 let v = try f(x);              // f: fn(X) throws (E) -> T
@@ -277,7 +277,7 @@ bb_slow:                               ; placed out of line
 bb_done:
 ```
 
-`t` 是线程的 TLS 基址（[8.7.7](807-code-generation.md#877-tls-access)），`24` 是对象大小（向上取整到 8），`8` 是对齐，`TYPE_ID_ENV` 是 type_id。对象放得下时，快速路径推进 TLAB 游标，并写入头部的 `type_id` 和 `gc_word`（= 大小，[8.1.4](801-object-header-abi.md#814-gc_word-offset-8-u64-or-ptr)）；头部的地址就是对象。否则调用 `nabi_gc_alloc_slow`。`gc_flags` 不写入：TLAB 内存是清零的。大小达到大对象阈值及以上的对象，或对齐超过 8 的对象，直接调用 `nabi_gc_alloc_slow`。
+`t` 是线程的 TLS 基址（[8.7.7](807-code-generation.md#877-tls-访问)），`24` 是对象大小（向上取整到 8），`8` 是对齐，`TYPE_ID_ENV` 是 type_id。对象放得下时，快速路径推进 TLAB 游标，并写入头部的 `type_id` 和 `gc_word`（= 大小，[8.1.4](801-object-header-abi.md#814-gc_word偏移-8u64-或-ptr)）；头部的地址就是对象。否则调用 `nabi_gc_alloc_slow`。`gc_flags` 不写入：TLAB 内存是清零的。大小达到大对象阈值及以上的对象，或对齐超过 8 的对象，直接调用 `nabi_gc_alloc_slow`。
 
 随后字段存储在 16 字节的头之后：
 
@@ -287,7 +287,7 @@ store.i32 [env + 16], n
 
 ## 8.9.10. 写屏障
 
-这里是[屏障与根追踪](../007-runtime/704-barriers-and-roots.md#742-write-barrier-object-remembering)中的对象记忆屏障。
+这里是[屏障与根追踪](../007-runtime/704-barriers-and-roots.md#742-写屏障对象记忆)中的对象记忆屏障。
 
 ```nabi
 *p.field = q;       // write a GC pointer into a GC object
@@ -310,7 +310,7 @@ bb_store:
 ```
 
 - 不读取被存储值 `q` 的头部。`q` 可能是 `any` 槽中的内联整数，也可能是 `str` 的内部指针，因此把它当作头部读取是不安全的。
-- 快速路径是一次加载和一次分支。实际上它同时检查 `UNLOGGED | CARDED`。若为 `CARDED`（大的老对象），它不经调用，直接在卡表（其指针是紧挨在头部之前的那个字）中把被写入槽所跨越的 512 B 卡（`(slot - p) >> 9` ..= `(slot + len - 1 - p) >> 9`）标记为脏；若为 `UNLOGGED`，则如上调用 `nabi_gc_wb_slow`。因此屏障会用到槽地址和被存储值的大小（[7.4.2](../007-runtime/704-barriers-and-roots.md#742-write-barrier-object-remembering)）。
+- 快速路径是一次加载和一次分支。实际上它同时检查 `UNLOGGED | CARDED`。若为 `CARDED`（大的老对象），它不经调用，直接在卡表（其指针是紧挨在头部之前的那个字）中把被写入槽所跨越的 512 B 卡（`(slot - p) >> 9` ..= `(slot + len - 1 - p) >> 9`）标记为脏；若为 `UNLOGGED`，则如上调用 `nabi_gc_wb_slow`。因此屏障会用到槽地址和被存储值的大小（[7.4.2](../007-runtime/704-barriers-and-roots.md#742-写屏障对象记忆)）。
 - `nabi_gc_wb_slow` 不是安全点。屏障与存储之间不会插入回收。
 - 对刚分配对象的初始化、对 `static` 的存储、裸 `Ptr<T>` 内存，以及非引用的原子操作，不插入屏障。
 
@@ -331,11 +331,11 @@ bb_cont:
     ; ... continue ...
 ```
 
-编译器在循环回边上生成这段代码，也在调用环可以不经过循环轮询就重新进入的函数中生成（递归环的成员、通过指针或从 C 调用的函数、导出函数）：对于并非由直接 Nabi 调用进入的函数，在入口处生成；对于其他函数，在每条路径的第一个安全点之前生成（[8.4.7](804-safepoint.md#847-safepoint-invariant)）。其他函数不在入口处轮询：由它们的调用方轮询。
+编译器在循环回边上生成这段代码，也在调用环可以不经过循环轮询就重新进入的函数中生成（递归环的成员、通过指针或从 C 调用的函数、导出函数）：对于并非由直接 Nabi 调用进入的函数，在入口处生成；对于其他函数，在每条路径的第一个安全点之前生成（[8.4.7](804-safepoint.md#847-安全点不变式)）。其他函数不在入口处轮询：由它们的调用方轮询。
 
 ## 8.9.12. 影子栈帧
 
-另请参阅[屏障与根追踪](../007-runtime/704-barriers-and-roots.md#741-root-tracking-a-shadow-stack-emitted-directly-by-the-compiler)。编译器直接生成栈帧的链接 / 解链，不需要平台的任何帮助。
+另请参阅[屏障与根追踪](../007-runtime/704-barriers-and-roots.md#741-根跟踪编译器直接生成的影子栈)。编译器直接生成栈帧的链接 / 解链，不需要平台的任何帮助。
 
 下面是一个含 2 个 GC 引用字（`x`、`y`，栈槽）的函数示例。栈帧持有每个槽的地址，因此变量赋值只是一次向 `x` 的普通存储。
 
@@ -368,7 +368,7 @@ store.ptr [frame + 2p], &desc
 store.ptr [t + 0], &frame
 ```
 
-`t` 是 [8.3.8](803-tls-slots.md#838-form-of-compiler-emission) 中线程局部块 `nabi_tls` 的地址（[8.7.7](807-code-generation.md#877-tls-access)）；影子栈头是其偏移 0 处的槽。错误返回同样是普通的 `return`（[8.9.6](#896-try--catch--finally-value-based-branching)），因此经过同一次解链。链接也可以比示例中更晚，只要在每条路径的第一个安全点之前即可（[8.4.7](804-safepoint.md#847-safepoint-invariant)）；此时只有已链接的路径上的返回才会解链。只有当函数持有 GC 引用且能到达安全点时，才需要栈帧（[8.4.2](804-safepoint.md#842-emission-sites)）。对从不返回的函数（panic）的调用，以及对既不分配也不阻塞的运行时函数（[8.5.2](805-extern-symbols.md#functions-that-are-not-safepoints)）的调用，不计在内。
+`t` 是 [8.3.8](803-tls-slots.md#838-编译器生成的形式) 中线程局部块 `nabi_tls` 的地址（[8.7.7](807-code-generation.md#877-tls-访问)）；影子栈头是其偏移 0 处的槽。错误返回同样是普通的 `return`（[8.9.6](#896-try--catch--finally基于值的分支)），因此经过同一次解链。链接也可以比示例中更晚，只要在每条路径的第一个安全点之前即可（[8.4.7](804-safepoint.md#847-安全点不变式)）；此时只有已链接的路径上的返回才会解链。只有当函数持有 GC 引用且能到达安全点时，才需要栈帧（[8.4.2](804-safepoint.md#842-生成位置)）。对从不返回的函数（panic）的调用，以及对既不分配也不阻塞的运行时函数（[8.5.2](805-extern-symbols.md#不是安全点的函数)）的调用，不计在内。
 
 ## 8.9.13. 索引
 

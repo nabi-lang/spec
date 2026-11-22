@@ -30,7 +30,7 @@ fn name(args) throws (A | B | C) -> R           // typed: sum type of errors
 fn name(f: fn(T) throws -> U) rethrows -> R     // throws only when the function argument throws
 ```
 
-`throws` 和 `rethrows` 是上下文关键字，只在参数右括号 `)` 之后才是关键字（[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)），放在返回类型箭头之前。`throws` 之后可选的括号给出可能抛出的错误类型。
+`throws` 和 `rethrows` 是上下文关键字，只在参数右括号 `)` 之后才是关键字（[1.5.4](../001-lexical/105-keywords.md#154-上下文关键字)），放在返回类型箭头之前。`throws` 之后可选的括号给出可能抛出的错误类型。
 
 ## 4.14.2. 不抛出的函数
 
@@ -46,7 +46,7 @@ fn bad() -> i32 {
 }
 ```
 
-这条规则强制签名写明函数是否可能抛出，从而杜绝错误的静默传播。入口点是唯一的例外：没有返回类型的显式 `fn main()` 不声明也可以抛出（[4.16.4](416-entry-point.md#4164-exit-codes-and-unhandled-exceptions)）。
+这条规则强制签名写明函数是否可能抛出，从而杜绝错误的静默传播。入口点是唯一的例外：没有返回类型的显式 `fn main()` 不声明也可以抛出（[4.16.4](416-entry-point.md#4164-退出码与未处理的异常)）。
 
 ## 4.14.3. 无类型的 `throws`
 
@@ -103,7 +103,7 @@ fn load_config(path: str) throws (ConfigError) -> Config {
 
 ## 4.14.6. 调用方的义务
 
-调用 `throws` 函数的表达式必须位于被 `try` 覆盖的表达式之内。不带 `try` 调用可抛出的函数是编译错误。`try` 覆盖其右侧的整个表达式，因此 `try a(b())` 同时覆盖 `a` 和 `b` 的调用，`try { a(); b(); }` 覆盖块中的所有调用（[3.14.2](../003-expressions/314-error-control-flow.md#3142-try-marking-call-sites)）。
+调用 `throws` 函数的表达式必须位于被 `try` 覆盖的表达式之内。不带 `try` 调用可抛出的函数是编译错误。`try` 覆盖其右侧的整个表达式，因此 `try a(b())` 同时覆盖 `a` 和 `b` 的调用，`try { a(); b(); }` 覆盖块中的所有调用（[3.14.2](../003-expressions/314-error-control-flow.md#3142-try标记调用点)）。
 
 用 `try` 标记的调用产生的错误由最近的 `catch` 处理；未处理的错误传播到外围函数，外围函数的 `throws` 必须接受该错误类型（4.14.5）。
 
@@ -191,7 +191,7 @@ async fn fetch_data() throws (NetworkError) -> Data { ... }
 
 有人会问，调用这个函数得到的是否是一个保存 `Data | NetworkError` 的 Future。
 
-答案是 **`TryAsyncFuture<Data, NetworkError>`**（[4.1.11](401-function-declaration.md#result-types-of-coroutine-functions)）。错误不会混入结果类型；它在 `await` 处通过错误通道交付。因此执行 `await` 的一方要用 `try` 标记它。`TryAsyncFuture` 不实现普通的 `Future` trait。
+答案是 **`TryAsyncFuture<Data, NetworkError>`**（[4.1.11](401-function-declaration.md#协程函数的结果类型)）。错误不会混入结果类型；它在 `await` 处通过错误通道交付。因此执行 `await` 的一方要用 `try` 标记它。`TryAsyncFuture` 不实现普通的 `Future` trait。
 
 ```nabi
 let f = fetch_data();              // f: future::TryAsyncFuture<Data, NetworkError>
@@ -206,7 +206,7 @@ let d = try await f catch e: NetworkError {
 
 ### `try for`
 
-对 `TryIterator`（可抛出生成器的 `TryGenIter`、`io::Bytes` 等）的 `for` 在每次 `next` 时都可能抛出，因此写作 `try for`。这个 `try` 只覆盖迭代本身：被迭代的表达式和每一次 `next`。循环体不被覆盖；其中的可抛出调用要用自己的 `try` 标记（[3.13.3](../003-expressions/313-loop-expressions.md#3133-for-iterator-based-repetition)）。对 `TryStream` 的 `for await` 同理。
+对 `TryIterator`（可抛出生成器的 `TryGenIter`、`io::Bytes` 等）的 `for` 在每次 `next` 时都可能抛出，因此写作 `try for`。这个 `try` 只覆盖迭代本身：被迭代的表达式和每一次 `next`。循环体不被覆盖；其中的可抛出调用要用自己的 `try` 标记（[3.13.3](../003-expressions/313-loop-expressions.md#3133-for基于迭代器的重复)）。对 `TryStream` 的 `for await` 同理。
 
 ```nabi
 fn total(path: str) throws (IoError | ParseError) -> i64 {
@@ -223,11 +223,11 @@ for line in lines("a.txt") { ... }          // ERROR (E0062): `next` can throw; 
 | 形式 | 某一步出错时 |
 |---|---|
 | `try for` | 传播到最近的 `catch`，否则传出函数 |
-| `try! for` | 触发 panic（[3.14.3](../003-expressions/314-error-control-flow.md#3143-try-and-try)） |
+| `try! for` | 触发 panic（[3.14.3](../003-expressions/314-error-control-flow.md#3143-try-与-try)） |
 | `try? for` | 结束循环；`for` 表达式的值为 `none`（否则为 `()`） |
 | `try for .. catch e: E { .. }` | `catch` 附加在整个 `try for` 表达式上 |
 
-循环体中的 `try` 像任何嵌套的 `try` 一样路由其错误：交给循环之后的 `catch`，或交给循环的 `try?` / `try!`，否则传出函数。要在出错后继续，请对 `.results()` 进行循环，它把每一步作为 `Result` 给出（[标准库 2.7.13](../../refs-standard-libraries/200-core/207-iter.md#2713-tryiterator---fallible-iteration)）。
+循环体中的 `try` 像任何嵌套的 `try` 一样路由其错误：交给循环之后的 `catch`，或交给循环的 `try?` / `try!`，否则传出函数。要在出错后继续，请对 `.results()` 进行循环，它把每一步作为 `Result` 给出（[标准库 2.7.13](../../refs-standard-libraries/200-core/207-iter.md#2713-tryiterator可能失败的迭代)）。
 
 ## 4.14.11. 方法上的 `throws`
 
@@ -243,13 +243,13 @@ impl Database {
 
 实现 trait 的 impl 方法的 `throws` 必须与 trait 方法的 `throws` 相同。如果 impl 增加了 `throws` 或放宽了错误类型，就是编译错误（E0074）。不写 `throws` 的 impl 方法取 trait 方法的 `throws`，其中的错误类型指代它们在 trait 处所指代的类型：`impl Display for P { fn fmt(self, ref f: Formatter) { try f.write_str(..); } }` 抛出 `FmtError`。
 
-运算符 trait 的方法（`Add::add` 等）声明时不带 `throws`，因此运算符不会抛出。可能失败的运算以具名方法提供，或者返回 `Result`（[标准库 2.3](../../refs-standard-libraries/200-core/203-ops.md)）。用户运算符同样如此：在用 `throws` 声明的方法上使用 `#[infix]` / `#[prefix]` / `#[postfix]` 是错误（[6.7.3](../006-meta-system/607-operator-magic.md#673-connection-mechanism)）。
+运算符 trait 的方法（`Add::add` 等）声明时不带 `throws`，因此运算符不会抛出。可能失败的运算以具名方法提供，或者返回 `Result`（[标准库 2.3](../../refs-standard-libraries/200-core/203-ops.md)）。用户运算符同样如此：在用 `throws` 声明的方法上使用 `#[infix]` / `#[prefix]` / `#[postfix]` 是错误（[6.7.3](../006-meta-system/607-operator-magic.md#673-连接机制)）。
 
 ## 4.14.12. 基于值的实现模型
 
 可抛出函数以值的形式返回其结果。返回值是一个成功标志与一个载荷组成的对，载荷保存成功值或错误值之一。错误通道由签名区分，因此成功类型和错误类型可以是同一个类型。调用处的 `try` 检查标志并分支；出错时，它转到最近的 `catch`，或者把错误作为外围函数的错误结果返回。
 
-在这一模型中，无错误路径的开销只是一次分支，进入 `try` 或 `catch` 没有任何开销。不使用栈展开，也不使用运行时的错误交付函数。确切的返回值布局在 [8.6.5](../008-abi/806-calling-convention.md#865-return-of-throwing-functions-value-based-error-propagation) 中定义，降级在 [8.9.6](../008-abi/809-lowering-control.md#896-try--catch--finally-value-based-branching) 中定义。
+在这一模型中，无错误路径的开销只是一次分支，进入 `try` 或 `catch` 没有任何开销。不使用栈展开，也不使用运行时的错误交付函数。确切的返回值布局在 [8.6.5](../008-abi/806-calling-convention.md#865-抛出函数的返回基于值的错误传播) 中定义，降级在 [8.9.6](../008-abi/809-lowering-control.md#896-try--catch--finally基于值的分支) 中定义。
 
 ## 4.14.13. panic 与致命错误
 
@@ -261,6 +261,6 @@ thread '<name>' panicked at <path>:<line>:<col>:
 ```
 
 - `<name>` 是线程名：主线程为 `main`，未命名线程为 `<unnamed>`。
-- 在被 C 调用的函数之下发生的 panic，会在报告之后中止（abort）进程而不是退出，或者把该函数的 `#[on_panic]` 值返回给 C（[5.9.12](../005-modules/509-extern-block.md#5912-responsibility-for-ffi-safety)）。用 `std::panic::set_hook` 设置的钩子在任何情况下都在报告之后运行（[标准库 3.12](../../refs-standard-libraries/300-std/312-panic.md)）。
-- 位置是失败的表达式。在 [`#[track_caller]`](../006-meta-system/602-built-in-attributes.md#6212-track_caller-passing-the-call-site) 函数链内部，位置是该链之外的第一个调用位置。
-- 环境中设置了 `NABI_BACKTRACE=1` 时，后面跟着一段 `stack backtrace:`：发生 panic 的线程调用栈中的函数，从最内层开始，每行一个，以 Nabi 路径表示（`   0: geom::distance`）。顶部的标准库 panic 函数被省略，最后一行 `note:` 说明如何查看它们。`NABI_BACKTRACE=full` 列出每一个栈帧及其返回地址（`   0: 0x000000010000a4f0 - geom::distance`），一直到第一个不是 Nabi 代码的栈帧（`<unknown>`）。未设置、为空或为 `0`：不输出栈回溯。[9.9.6](../009-tools/909-debug-tools.md#panic-backtraces) 说明栈回溯如何生成以及在哪里可用。
+- 在被 C 调用的函数之下发生的 panic，会在报告之后中止（abort）进程而不是退出，或者把该函数的 `#[on_panic]` 值返回给 C（[5.9.12](../005-modules/509-extern-block.md#5912-ffi-安全的责任)）。用 `std::panic::set_hook` 设置的钩子在任何情况下都在报告之后运行（[标准库 3.12](../../refs-standard-libraries/300-std/312-panic.md)）。
+- 位置是失败的表达式。在 [`#[track_caller]`](../006-meta-system/602-built-in-attributes.md#6212-track_caller-传递调用位置) 函数链内部，位置是该链之外的第一个调用位置。
+- 环境中设置了 `NABI_BACKTRACE=1` 时，后面跟着一段 `stack backtrace:`：发生 panic 的线程调用栈中的函数，从最内层开始，每行一个，以 Nabi 路径表示（`   0: geom::distance`）。顶部的标准库 panic 函数被省略，最后一行 `note:` 说明如何查看它们。`NABI_BACKTRACE=full` 列出每一个栈帧及其返回地址（`   0: 0x000000010000a4f0 - geom::distance`），一直到第一个不是 Nabi 代码的栈帧（`<unknown>`）。未设置、为空或为 `0`：不输出栈回溯。[9.9.6](../009-tools/909-debug-tools.md#panic-栈回溯) 说明栈回溯如何生成以及在哪里可用。

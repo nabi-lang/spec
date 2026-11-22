@@ -1,6 +1,6 @@
 # 8.8. 降级：数据类型与表达式
 
-本节定义 Nabi 的值、类型和表达式在 `nabic` 生成的代码中如何表示。布局用 Nabi 类型书写：`(A, B)` 是位于各自自然偏移处的一对字段，`[T; n]` 是数组，`ptr` 是指针宽度的地址，`p` 是以字节计的指针宽度。代码为伪代码（[8.7.1](807-code-generation.md#871-translation-flow)）。
+本节定义 Nabi 的值、类型和表达式在 `nabic` 生成的代码中如何表示。布局用 Nabi 类型书写：`(A, B)` 是位于各自自然偏移处的一对字段，`[T; n]` 是数组，`ptr` 是指针宽度的地址，`p` 是以字节计的指针宽度。代码为伪代码（[8.7.1](807-code-generation.md#871-翻译流程)）。
 
 ## 8.8.1. 基本整数 / 浮点数
 
@@ -16,7 +16,7 @@
 | `char`            | 4 字节（一个 Unicode 标量值）                                           |
 | `c_char`          | 一个字节                                                                |
 
-`str` 是按值传递的不可变对 `(ptr, usize)`（一个指针和一个字节长度）。字面量指向永生的常量；运行时创建的字符串指向某个 GC 对象的载荷（类型 id `1`，[8.2.12](802-scan-table.md#8212-runtime-reserved-type-ids)）。
+`str` 是按值传递的不可变对 `(ptr, usize)`（一个指针和一个字节长度）。字面量指向永生的常量；运行时创建的字符串指向某个 GC 对象的载荷（类型 id `1`，[8.2.12](802-scan-table.md#8212-运行时保留的类型-id)）。
 
 - `s[a:b]` 是 `(ptr + a, b - a)`，与原字符串共享字节（O(1)）。
 - `ptr` 可以指向 GC 对象的任意字节（包括末尾的 NUL），并使整个对象保持存活。GC 把它视为内部指针，疏散时会保持偏移不变地重写它。
@@ -32,17 +32,17 @@ a / b       ->  div.s32 a, b            ; after the checks for b == 0 and MIN / 
 a < b       ->  lt.s32 a, b             ; lt.u32 for unsigned, lt.f64 (ordered) for floats
 ```
 
-带检查的运算在结果放不下时分支到其 panic（`-C overflow-checks`，[9.1.2](../009-tools/901-nabic-cli.md#nabic-build-aot-build)）；优化构建会去掉它能证明不会失败的检查（[8.7.3](807-code-generation.md#873-optimization-levels)）。用户定义的 trait 实现在泛型单态化之后是函数调用。
+带检查的运算在结果放不下时分支到其 panic（`-C overflow-checks`，[9.1.2](../009-tools/901-nabic-cli.md#nabic-buildaot-构建)）；优化构建会去掉它能证明不会失败的检查（[8.7.3](807-code-generation.md#873-优化级别)）。用户定义的 trait 实现在泛型单态化之后是函数调用。
 
 ## 8.8.3. `struct` 的表示
 
-`struct` 是值类型（[2.3.8](../002-types/203-struct.md#238-value-semantics)），没有对象头。
+`struct` 是值类型（[2.3.8](../002-types/203-struct.md#238-值语义)），没有对象头。
 
 ```nabi
 struct Point { x: f64; y: f64; }
 ```
 
-它的表示就是按 [2.3.6](../002-types/203-struct.md#236-memory-layout) 的布局排列的字段，包括 `#[repr]` 的对齐和偏移。
+它的表示就是按 [2.3.6](../002-types/203-struct.md#236-内存布局) 的布局排列的字段，包括 `#[repr]` 的对齐和偏移。
 
 ```
 (f64, f64)        ; x at 0, y at 8; size 16, align 8
@@ -119,7 +119,7 @@ store.i32 [v + 0], 0        ; tag: Ok
 store.i32 [v + 8], 42       ; the payload in its own type
 ```
 
-由较短变体的载荷构建的 union 值，在该载荷之后的字节中为零，因此从中复制出的根字要么为 null，要么是引用，绝不会是陈旧的栈内容（[8.9.12](809-lowering-control.md#8912-shadow-stack-frame)）。
+由较短变体的载荷构建的 union 值，在该载荷之后的字节中为零，因此从中复制出的根字要么为 null，要么是引用，绝不会是陈旧的栈内容（[8.9.12](809-lowering-control.md#8912-影子栈帧)）。
 
 ### 变体匹配
 
@@ -247,7 +247,7 @@ fn(i32, i32) -> i32
 (ptr, ptr)        ; code, env
 ```
 
-`code` 把 `env` 作为第一个实参，然后是声明的实参，不接收 TLS 地址（[8.6.11](806-calling-convention.md#8611-function-pointer-abi)）。作为值使用的具名函数，其 `env` 为 null，代码指针指向一个丢弃 `env` 的 thunk。只有 C 函数类型（`extern "C" fn(..)`）是裸代码指针。
+`code` 把 `env` 作为第一个实参，然后是声明的实参，不接收 TLS 地址（[8.6.11](806-calling-convention.md#8611-函数指针-abi)）。作为值使用的具名函数，其 `env` 为 null，代码指针指向一个丢弃 `env` 的 thunk。只有 C 函数类型（`extern "C" fn(..)`）是裸代码指针。
 
 ## 8.8.12. 闭包的表示
 
@@ -288,7 +288,7 @@ c2 = add.i32 c, 1
 store.i32 [counter], c2
 ```
 
-在 `-O0`，每个值都留在其槽中。在 `-O0` 以上，从不被取地址、从不被整体复制、也不向调试器描述的局部变量可以改为放在寄存器中，优化器会把已知的值转发给对它的读取（[8.7.3](807-code-generation.md#873-optimization-levels)）。持有 GC 引用的局部变量总是保留其槽：影子栈帧持有该槽的地址（8.9.12）。
+在 `-O0`，每个值都留在其槽中。在 `-O0` 以上，从不被取地址、从不被整体复制、也不向调试器描述的局部变量可以改为放在寄存器中，优化器会把已知的值转发给对它的读取（[8.7.3](807-code-generation.md#873-优化级别)）。持有 GC 引用的局部变量总是保留其槽：影子栈帧持有该槽的地址（8.9.12）。
 
 ## 8.8.14. 字面量脱糖
 

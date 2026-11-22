@@ -36,7 +36,7 @@ _Y3f8a1c2b_std_vec_push_a7c91d8e44b2f190
 
 ### `_Y`：Nabi 符号前缀
 
-每个 Nabi 符号都以 `_Y` 开头。在 C 中，以下划线加大写字母开头的名称保留给实现，因此它们不会与普通 C 符号冲突；选择 `_Y` 也是为了不与广泛使用的修饰方案重叠（C++ Itanium 的 `_Z`、Rust v0 的 `_R`、D 的 `_D`、Swift 的 `$s`）。它还使 Nabi 生成的符号在 `nm` 或链接器错误输出中容易辨认。前缀之后紧跟小写十六进制的 `<pkg_hash_8>`，因此仅凭第一个字符就能把它与后跟大写字母的保留前缀（`_YK` 等，[9.5.5](#955-reserved-prefixes)）区分开。
+每个 Nabi 符号都以 `_Y` 开头。在 C 中，以下划线加大写字母开头的名称保留给实现，因此它们不会与普通 C 符号冲突；选择 `_Y` 也是为了不与广泛使用的修饰方案重叠（C++ Itanium 的 `_Z`、Rust v0 的 `_R`、D 的 `_D`、Swift 的 `$s`）。它还使 Nabi 生成的符号在 `nm` 或链接器错误输出中容易辨认。前缀之后紧跟小写十六进制的 `<pkg_hash_8>`，因此仅凭第一个字符就能把它与后跟大写字母的保留前缀（`_YK` 等，[9.5.5](#955-保留前缀)）区分开。
 
 ### `<pkg_hash_8>`
 
@@ -80,7 +80,7 @@ fn α             → _Y<pkg>___13b1__
 
 ### 方法名
 
-方法以 `<type>.<method>` 作为名称、以定义该类型的模块作为路径进行修饰。如果多个 trait 为同一类型提供了同名方法，则追加 `__by_<trait>`。依赖包（[9.2.3](902-aot-pipeline.md#923-dependency-resolution)）的方法也按这一稳定路径 `<module>::<type>.<method>[__by_<trait>]` 修饰，因此分别构建的包与程序生成相同的符号。`.` 和 `_` 按上表转义。
+方法以 `<type>.<method>` 作为名称、以定义该类型的模块作为路径进行修饰。如果多个 trait 为同一类型提供了同名方法，则追加 `__by_<trait>`。依赖包（[9.2.3](902-aot-pipeline.md#923-依赖解析)）的方法也按这一稳定路径 `<module>::<type>.<method>[__by_<trait>]` 修饰，因此分别构建的包与程序生成相同的符号。`.` 和 `_` 按上表转义。
 
 ### 嵌套函数
 
@@ -169,7 +169,7 @@ _Y + 8 + _ + path (tens) + _ + name (a few to tens) + _ + 16
 ≈ 30 ~ 80 characters
 ```
 
-很长的路径与深层[泛型](../000-meta/007-glossary.md#generic)组合时可能超过 100 个字符。调试器和工具可以毫无问题地处理这样的长度（一般建议不超过 2KB）。
+很长的路径与深层[泛型](../000-meta/007-glossary.md#generic泛型)组合时可能超过 100 个字符。调试器和工具可以毫无问题地处理这样的长度（一般建议不超过 2KB）。
 
 ## 9.5.7. 避免冲突：typehash 的稳定性
 
@@ -204,7 +204,7 @@ extern "C" {
 }
 ```
 
-在另一个方向上，把 `extern "C"` 函数对外暴露时，`#[export_name("name")]` 直接指定名称，`#[export]` 以函数自身的名称导出它（见 [`extern` 块（[FFI](../000-meta/007-glossary.md#ffi-foreign-function-interface) 声明）](../005-modules/509-extern-block.md)）。这样的项是不可达函数消除的根，总会被生成（[9.2.8](902-aot-pipeline.md#928-specialize-monomorphization)）。
+在另一个方向上，把 `extern "C"` 函数对外暴露时，`#[export_name("name")]` 直接指定名称，`#[export]` 以函数自身的名称导出它（见 [`extern` 块（[FFI](../000-meta/007-glossary.md#ffi-foreign-function-interface) 声明）](../005-modules/509-extern-block.md)）。这样的项是不可达函数消除的根，总会被生成（[9.2.8](902-aot-pipeline.md#928-specialize单态化)）。
 
 ```nabi
 #[export_name("nabi_compute")]
@@ -231,9 +231,9 @@ _initialize, then main              (wasm32-unknown-unknown; reactor exports cal
 
 在 Windows 上，Nabi 自己的启动目标文件提供 `mainCRTStartup`（控制台）或 `WinMainCRTStartup` 和 `WinMain`（GUI），它们调用 nabic 生成的包装函数 `nabi_main`；Windows 可执行文件没有 `main` 符号。在调试信息（DWARF 和 CodeView）中，包装函数在每个目标上都是 `nabi_main`，在由 C 库调用它的地方其符号仍为 `main`，因此在栈回溯中只有程序自己的 `main` 名为 `main`。
 
-平台入口点在 nabic 生成的包装函数中调用用户定义的 main 函数。包装函数依次调用 `nabi_runtime_init` 和类型注册函数 `nabi.register_types`（[8.2.13](../008-abi/802-scan-table.md#8213-registration-time)），然后调用入口函数，按 [4.16.4](../004-functions/416-entry-point.md#4164-exit-codes-and-unhandled-exceptions) 的规则确定退出码，并经由 `nabi_runtime_shutdown` 返回。
+平台入口点在 nabic 生成的包装函数中调用用户定义的 main 函数。包装函数依次调用 `nabi_runtime_init` 和类型注册函数 `nabi.register_types`（[8.2.13](../008-abi/802-scan-table.md#8213-注册时机)），然后调用入口函数，按 [4.16.4](../004-functions/416-entry-point.md#4164-退出码与未处理的异常) 的规则确定退出码，并经由 `nabi_runtime_shutdown` 返回。
 
-当 `main.nabi` 由顶层语句组成时（[4.16.2](../004-functions/416-entry-point.md#4162-meaning-of-top-level-statements-implicit-main)），编译器合成的隐式 `main` 就是入口函数。隐式 `main` 按与普通函数相同的规则修饰，但用户代码不能按名称引用它；只有包装函数调用它。
+当 `main.nabi` 由顶层语句组成时（[4.16.2](../004-functions/416-entry-point.md#4162-顶层语句的含义隐式-main)），编译器合成的隐式 `main` 就是入口函数。隐式 `main` 按与普通函数相同的规则修饰，但用户代码不能按名称引用它；只有包装函数调用它。
 
 ## 9.5.10. 调试信息
 

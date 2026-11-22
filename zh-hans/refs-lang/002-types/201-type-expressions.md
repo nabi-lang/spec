@@ -43,7 +43,7 @@ tuple_type  ::= "(" ")"
 array_type  ::= "[" type_expr ";" const_expr "]"
 ```
 
-`extern "C" fn(A, B) -> R` 是 C 函数指针类型（[5.9.4](../005-modules/509-extern-block.md#c-function-pointer-types)）。ABI 字符串只能是 `"C"` 或 `"system"`（[5.9](../005-modules/509-extern-block.md)）；其他任何值都是错误。
+`extern "C" fn(A, B) -> R` 是 C 函数指针类型（[5.9.4](../005-modules/509-extern-block.md#c-函数指针类型)）。ABI 字符串只能是 `"C"` 或 `"system"`（[5.9](../005-modules/509-extern-block.md)）；其他任何值都是错误。
 
 各种形式汇总如下。
 
@@ -61,7 +61,7 @@ array_type  ::= "[" type_expr ";" const_expr "]"
 | `none` / never    | `none`、`!`                                 |
 | `Self` 及其项     | `Self`、`Self::Item`                     |
 | 限定路径          | `<T as Iterator>::Item`                     |
-| 宏调用            | `name!(..)`，展开为一个类型（[6.8.12](../006-meta-system/608-meta-blocks.md#6812-the-macro-form)） |
+| 宏调用            | `name!(..)`，展开为一个类型（[6.8.12](../006-meta-system/608-meta-blocks.md#6812-宏形式)） |
 | 常量实参          | `Buf<16>`、`Buf<-1>`、`Buf<{ N + 1 }>`      |
 
 下文依次定义每种形式的确切含义。
@@ -135,7 +135,7 @@ A | B | C | D
 
 ## 2.1.5a. 可选类型（`T?`）
 
-后缀 `?` 构成可选类型。`T?` 的行为与 `Maybe<T>`（`type Maybe<T> = T | none;`）完全相同。也就是说，`?` 的操作数是一个泛型项，适用[和类型的分层规则](206-sum-types.md#264-set-semantics)。
+后缀 `?` 构成可选类型。`T?` 的行为与 `Maybe<T>`（`type Maybe<T> = T | none;`）完全相同。也就是说，`?` 的操作数是一个泛型项，适用[和类型的分层规则](206-sum-types.md#264-集合语义)。
 
 ```nabi
 i32?                // i32 | none
@@ -202,7 +202,7 @@ any Iterator<Item = i32>
 any Future<Output = User>
 ```
 
-`any` 是[关键字](../001-lexical/105-keywords.md)中保留的类型名槽关键字；其含义在 [`any` 槽](202-any-slot.md)中定义。在 `any` 之后跟一个 trait 路径，或跟用括号括起、以 `+` 连接的多个 trait 路径，就构成受约束的动态槽，它只持有实现了这些 trait 的值（[2.2.10](202-any-slot.md#2210-constrained-any-any-trait)）。在 trait 路径的 `<...>` 中，除类型实参外，还可以出现固定关联类型的绑定，例如 `Item = T`（`trait_arg`）。两个或更多 trait 路径必须加括号；`any` 只绑定紧随其后的那一个 trait，所以 `any Error | none` 是 `(any Error) | none`。trait 路径只能在 `any` 之后出现在类型位置中（[trait 不能作类型](212-trait-as-type-banned.md)）。
+`any` 是[关键字](../001-lexical/105-keywords.md)中保留的类型名槽关键字；其含义在 [`any` 槽](202-any-slot.md)中定义。在 `any` 之后跟一个 trait 路径，或跟用括号括起、以 `+` 连接的多个 trait 路径，就构成受约束的动态槽，它只持有实现了这些 trait 的值（[2.2.10](202-any-slot.md#2210-受约束的-anyany-trait)）。在 trait 路径的 `<...>` 中，除类型实参外，还可以出现固定关联类型的绑定，例如 `Item = T`（`trait_arg`）。两个或更多 trait 路径必须加括号；`any` 只绑定紧随其后的那一个 trait，所以 `any Error | none` 是 `(any Error) | none`。trait 路径只能在 `any` 之后出现在类型位置中（[trait 不能作类型](212-trait-as-type-banned.md)）。
 
 ## 2.1.10. 优先级与结合
 

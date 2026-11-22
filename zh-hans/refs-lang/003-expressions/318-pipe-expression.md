@@ -33,7 +33,7 @@ let words = text
 
 ## 3.18.2. 优先级
 
-`|>` 的结合比其他所有运算符（包括区间）都松，比赋值紧（[3.2.3](302-precedence-and-associativity.md#323-precedence-and-associativity-table)）；它是左结合的。因此其左侧的整个计算就是被传递的值：
+`|>` 的结合比其他所有运算符（包括区间）都松，比赋值紧（[3.2.3](302-precedence-and-associativity.md#323-优先级与结合性表)）；它是左结合的。因此其左侧的整个计算就是被传递的值：
 
 ```nabi
 a + b |> f          // f(a + b)
@@ -50,4 +50,4 @@ a |> f |> g         // g(f(a))
 
 右侧是指向函数（或任何可调用之物）的路径、一个调用，或者括在圆括号中的闭包。其他任何东西都是编译错误，错误信息会说明应该写什么：`x |> 2` 和 `x |> a + b` 是错误；由于 `|>` 结合最松，`x |> f + 1` 也是错误（应写 `(x |> f) + 1`）。
 
-`|>` 是固定词法单元（[1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-fixed-token-table)）：它不能用 `#[infix]` 注册，`a|>b` 总是管道。
+`|>` 是固定词法单元（[1.10.3](../001-lexical/110-punctuation-and-operator-tokens.md#1103-固定词法单元表)）：它不能用 `#[infix]` 注册，`a|>b` 总是管道。

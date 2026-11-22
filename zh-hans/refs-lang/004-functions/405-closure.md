@@ -63,7 +63,7 @@ capture_list   ::= "[" capture_item ("," capture_item)* "]"
 |x| x * 2                          // inferred
 ```
 
-推断由闭包所在的上下文决定，例如它被传入的实参位置的函数类型，或者变量声明的类型。没有上下文时，由后续调用确定参数类型（`let f = |x| x * 2; f(4);` 中为 `x: i32`，[2.10.2](../002-types/210-generics.md#type-argument-inference)）。
+推断由闭包所在的上下文决定，例如它被传入的实参位置的函数类型，或者变量声明的类型。没有上下文时，由后续调用确定参数类型（`let f = |x| x * 2; f(4);` 中为 `x: i32`，[2.10.2](../002-types/210-generics.md#类型实参推断)）。
 
 ```nabi
 let f: fn(i32) -> i32 = |x| x * 2;   // x: i32 inferred from context

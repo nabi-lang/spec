@@ -85,7 +85,7 @@ enum Status {
 }
 ```
 
-指定的值必须是 `const` 整数表达式。两个变体不得具有相同的值，并且每个值都必须能放入标签类型（[6.2.2](../006-meta-system/602-built-in-attributes.md#622-repr-explicit-memory-representation)）。
+指定的值必须是 `const` 整数表达式。两个变体不得具有相同的值，并且每个值都必须能放入标签类型（[6.2.2](../006-meta-system/602-built-in-attributes.md#622-repr-显式内存表示)）。
 
 这种形式用于 C [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) 兼容、映射外部协议、位标志等。值变体不能与其他种类的变体混用：只要有一个变体是值变体，整个 `enum` 就必须只由值变体组成。
 
@@ -113,7 +113,7 @@ enum Result {
 
 ## 2.4.4. 可见性
 
-变体没有自己的可见性；它们遵循 `enum` 的可见性。`pub enum` 的所有变体都是公开的（[5.6.9](../005-modules/506-visibility.md#569-visibility-of-enum-variants)）。
+变体没有自己的可见性；它们遵循 `enum` 的可见性。`pub enum` 的所有变体都是公开的（[5.6.9](../005-modules/506-visibility.md#569-enum-变体的可见性)）。
 
 ## 2.4.5. 内存布局
 
@@ -139,7 +139,7 @@ enum Result {
 
 ## 2.4.8. 由期望类型确定的裸变体
 
-变体可以带其枚举的路径书写（`Ordering::Less`、`Shape::Circle`），当所在位置的期望类型能选出该枚举时，也可以裸写。普通查找无法解析的裸名称（[5.7.1](../005-modules/507-paths.md#571-starting-identifier-of-a-path)），在期望类型是带有变体 `V` 的枚举 `E`，或是恰好只有一个枚举成员带有变体 `V` 的和类型时，表示变体 `V`。这适用于任何枚举，无论是用户的还是标准库的，都不需要 `use`。
+变体可以带其枚举的路径书写（`Ordering::Less`、`Shape::Circle`），当所在位置的期望类型能选出该枚举时，也可以裸写。普通查找无法解析的裸名称（[5.7.1](../005-modules/507-paths.md#571-路径的起始标识符)），在期望类型是带有变体 `V` 的枚举 `E`，或是恰好只有一个枚举成员带有变体 `V` 的和类型时，表示变体 `V`。这适用于任何枚举，无论是用户的还是标准库的，都不需要 `use`。
 
 期望类型来自：
 

@@ -18,7 +18,7 @@ match expr {
 }
 ```
 
-`match` 表达式由 `match` 关键字、被匹配值和 `{ ... }` 主体组成。结构体字面量不能出现在被匹配值的顶层（[3.10.3](310-if-expression.md#struct-literals-in-condition-position)）。主体包含零个或多个以逗号分隔的分支；每个分支由一个模式、`=>` 词法单元（[标点与运算符词法单元](../001-lexical/110-punctuation-and-operator-tokens.md)）和一个表达式组成。允许尾随逗号。
+`match` 表达式由 `match` 关键字、被匹配值和 `{ ... }` 主体组成。结构体字面量不能出现在被匹配值的顶层（[3.10.3](310-if-expression.md#条件位置中的结构体字面量)）。主体包含零个或多个以逗号分隔的分支；每个分支由一个模式、`=>` 词法单元（[标点与运算符词法单元](../001-lexical/110-punctuation-and-operator-tokens.md)）和一个表达式组成。允许尾随逗号。
 
 ## 3.12.2. 分支主体
 

@@ -15,7 +15,7 @@
 
 ## 7.9.2. 原子内存序
 
-`Atomic<T>`（[标准库 2.16.2](../../refs-standard-libraries/200-core/216-sync.md#2162-atomict---lock-free-atomics)）接受 C++20 的五种内存序，含义与 C++20 相同：
+`Atomic<T>`（[标准库 2.16.2](../../refs-standard-libraries/200-core/216-sync.md#2162-atomict无锁原子操作)）接受 C++20 的五种内存序，含义与 C++20 相同：
 
 | 内存序    | C++20                        | 含义 |
 |-----------|------------------------------|------|
@@ -40,7 +40,7 @@ Nabi 没有独立的内存栅栏：每个内存序都附着在一个原子操作
 | `RwLock` 读解锁 | 下一次 `write` 获取 |
 | `Condvar::wait` 释放其锁 | 视同 `Mutex` 解锁；其重新加锁视同 `Mutex` 加锁 |
 | `Once::call_once` 的 `f` 返回 | 该 `Once` 的每次 `call_once` 返回，以及返回 `true` 的 `is_completed` |
-| 惰性初始化的 `static` 的初始化表达式完成 | 对该 `static` 的每次访问（[5.3.9](../005-modules/503-static.md#539-initializers-compile-time-or-first-use)） |
+| 惰性初始化的 `static` 的初始化表达式完成 | 对该 `static` 的每次访问（[5.3.9](../005-modules/503-static.md#539-初始化式编译期或首次使用时)） |
 | 在通道上 `send` / `try_send` / `send_async` 一个值 | 接收该值的 `recv`（[标准库 2.17](../../refs-standard-libraries/200-core/217-channel.md)） |
 | `thread::spawn` / `Builder::spawn` | 新线程的第一步 |
 | 线程的最后一步 | 返回其结果的 `join`（或对其 `JoinHandle` 的 `await`）（[标准库 3.4](../../refs-standard-libraries/300-std/304-thread.md)） |
@@ -51,24 +51,24 @@ Nabi 没有独立的内存栅栏：每个内存序都附着在一个原子操作
 
 在参考库中，锁、`Once` 和通道都建立在 `SeqCst` 原子操作之上，因此上述顺序也属于 `SeqCst` 全序。`Atomic<i32>::wait` / `wake` 只负责阻塞和唤醒：它们本身不同步任何东西，`wait` 比较的值以该原子对象自身的内存序读取。
 
-回收器、其写屏障（[7.4.2](704-barriers-and-roots.md#742-write-barrier-object-remembering)）以及 stop-the-world 停顿只与回收器同步。它们不为用户代码提供任何先行发生边，即使它们恰好在硬件层面起到了栅栏作用。
+回收器、其写屏障（[7.4.2](704-barriers-and-roots.md#742-写屏障对象记忆)）以及 stop-the-world 停顿只与回收器同步。它们不为用户代码提供任何先行发生边，即使它们恰好在硬件层面起到了栅栏作用。
 
 ## 7.9.4. 数据竞争
 
-对同一内存位置的两次访问，如果至少一次是写入，并且两者不都是原子的，就称为**冲突**。如果两次冲突的访问发生在不同线程中，并且两者都不先行发生于对方，程序就存在**数据竞争**。数据竞争是未定义行为（[4.15.8](../004-functions/415-unsafe.md#4158-undefined-behavior)）。
+对同一内存位置的两次访问，如果至少一次是写入，并且两者不都是原子的，就称为**冲突**。如果两次冲突的访问发生在不同线程中，并且两者都不先行发生于对方，程序就存在**数据竞争**。数据竞争是未定义行为（[4.15.8](../004-functions/415-unsafe.md#4158-未定义行为)）。
 
 数据竞争只能经由 `unsafe` 放行的代码发生。安全的 Nabi 中没有数据竞争，原因如下：
 
-- `static` 可从每个线程访问，因此其类型必须是 `Sync`（[5.3.1](../005-modules/503-static.md#531-basic-form)）；`static mut` 只存在于 `extern "C"` 块中，访问它需要 `unsafe`。
-- 集合类型（`List`、`Dict`、`StrBuf` 等）是 `!Sync` 的，`Cell<T>`、裸指针和守卫也是如此（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）。共享的可变状态只能放在 `Mutex`、`RwLock`、`Atomic` 或通道中跨越线程。冻结的集合（`xs.freeze()`，[标准库 2.9.7b](../../refs-standard-libraries/200-core/209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s---read-only-collections)）是 `Sync` 的，因为没有任何东西写入它：没有可变的句柄能到达它的存储。
+- `static` 可从每个线程访问，因此其类型必须是 `Sync`（[5.3.1](../005-modules/503-static.md#531-基本形式)）；`static mut` 只存在于 `extern "C"` 块中，访问它需要 `unsafe`。
+- 集合类型（`List`、`Dict`、`StrBuf` 等）是 `!Sync` 的，`Cell<T>`、裸指针和守卫也是如此（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)）。共享的可变状态只能放在 `Mutex`、`RwLock`、`Atomic` 或通道中跨越线程。冻结的集合（`xs.freeze()`，[标准库 2.9.7b](../../refs-standard-libraries/200-core/209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s只读集合类型)）是 `Sync` 的，因为没有任何东西写入它：没有可变的句柄能到达它的存储。
 - 把值交给另一个所有者（`Mutex::new`、`send`、`task::spawn`、`[move x]`、线程的结果等）时，新所有者会得到该值所能到达的每个集合的独立副本，此后再使用发送方的值是编译错误（2.13.9）。被生成的闭包的普通捕获必须是 `Send + Sync`。
-- `par` 在运行时检查两个条目不会到达同一个非 `Sync` 的集合，并逐个运行这样的条目（[标准库 2.19.1](../../refs-standard-libraries/200-core/219-par.md#2191-core-api)）。只有在其他条目的视图或切片都不与所写部分重叠时，条目才可以通过视图（`chunks_mut`）写入同一个列表。
+- `par` 在运行时检查两个条目不会到达同一个非 `Sync` 的集合，并逐个运行这样的条目（[标准库 2.19.1](../../refs-standard-libraries/200-core/219-par.md#2191-核心-api)）。只有在其他条目的视图或切片都不与所写部分重叠时，条目才可以通过视图（`chunks_mut`）写入同一个列表。
 
 使数据竞争成为可能、因而需要作者留意的情形：
 
 - 通过 `Ptr<T>`、`ManyPtr<T>`、`CPtr<T>` 和 `GcBuf<T>` 进行的读写（[标准库 1.1](../../refs-standard-libraries/100-bare/101-ptr.md)、[标准库 1.3](../../refs-standard-libraries/100-bare/103-mem.md)）；
-- 在其共享实际上并未受到保护的类型上的 `unsafe impl Send` 或 `unsafe impl Sync`（[4.15.4](../004-functions/415-unsafe.md#4154-in-traits)）；
-- 对仍被其他东西引用的值使用 `Mutex::new_unshared`（[标准库 2.16.3](../../refs-standard-libraries/200-core/216-sync.md#2163-mutext---exclusive-lock)）；
+- 在其共享实际上并未受到保护的类型上的 `unsafe impl Send` 或 `unsafe impl Sync`（[4.15.4](../004-functions/415-unsafe.md#4154-在-trait-中)）；
+- 对仍被其他东西引用的值使用 `Mutex::new_unshared`（[标准库 2.16.3](../../refs-standard-libraries/200-core/216-sync.md#2163-mutext互斥锁)）；
 - 在 `unsafe` 内部跳过的移交检查（2.13.9）；
 - `extern static mut` 以及通过 FFI 到达的外部代码（[5.9](../005-modules/509-extern-block.md)），包括在 `env::set_var` 运行期间调用 `getenv` / `setenv` 的 C 代码（[标准库 3.5](../../refs-standard-libraries/300-std/305-env.md)）。
 

@@ -4,7 +4,7 @@
 
 ## 9.4.1. 动机
 
-[AOT 构建流水线](902-aot-pipeline.md)中的单态化按调用处的具体类型进行[特化](../000-meta/007-glossary.md#specialize)。因此，当另一个包调用某个包的[泛型](../000-meta/007-glossary.md#generic) `fn` 时，特化必须在该调用处进行。只有[具体 fn](../000-meta/007-glossary.md#concrete-fn--generic-fn) 的目标代码是不够的，所以另外提供一个供下游读取的接口。
+[AOT 构建流水线](902-aot-pipeline.md)中的单态化按调用处的具体类型进行[特化](../000-meta/007-glossary.md#specialize)。因此，当另一个包调用某个包的[泛型](../000-meta/007-glossary.md#generic泛型) `fn` 时，特化必须在该调用处进行。只有[具体 fn](../000-meta/007-glossary.md#concrete-fn--generic-fn) 的目标代码是不够的，所以另外提供一个供下游读取的接口。
 
 单态化的输入是 AST。因此 NABIHIR 的主体是**剥离后的包源代码**，由下游的解析器读取。
 
@@ -79,7 +79,7 @@ PrefixVarInt 是 LEB128 的一种变体。第一个字节开头 1 位的个数�
 | 字段            | 含义                                                                           |
 |------------------|-----------------------------------------------------------------------------------|
 | name             | 包的挂载名。它出现在符号中，因此必须等于 `--extern <name>=` |
-| hash             | 包哈希（[0.3.3](../000-meta/003-source-units.md#033-package-identifier)）。用于符号修饰的值。对于标准库包 `nabi`，它是一个 `pkg=hash;...` 列表，每个层级一项 |
+| hash             | 包哈希（[0.3.3](../000-meta/003-source-units.md#033-包标识符)）。用于符号修饰的值。对于标准库包 `nabi`，它是一个 `pkg=hash;...` 列表，每个层级一项 |
 | source dir       | 构建时存放包源代码的目录。是主体中文件路径的基准；下游读取主体，而不是磁盘 |
 | gc type offset / count | 本包的 GC 类型 id 范围 `[offset, offset + count)`（9.4.8）          |
 | features         | 构建该包时使用的 `feature` cfg 值。下游用构建的其他 cfg 和这些特性解析主体 |
@@ -95,7 +95,7 @@ PrefixVarInt 是 LEB128 的一种变体。第一个字节开头 1 位的个数�
 
 源文件之后是包的 `ffi::wit` 项所读取的 `.wit` 文件（[标准库 1.8](../../refs-standard-libraries/100-bare/108-wit.md)），连同其 `deps/` 整个保存。它们的路径相对于 source dir，可以通过 `..` 离开该目录。下游从主体读取 WIT，而不是从磁盘读取。
 
-主体之后是包中各函数的移交摘要（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）。摘要由若干行以制表符分隔的字段组成：
+主体之后是包中各函数的移交摘要（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)）。摘要由若干行以制表符分隔的字段组成：
 
 - `g <root> <mutex|rwlock|channel> <line> <function> <file>`：移交 `<root>`；
 - `s <root> <root>`：同一个对象；
@@ -122,14 +122,14 @@ PrefixVarInt 是 LEB128 的一种变体。第一个字节开头 1 位的个数�
 - **`any` 标签**。`any` 槽的标签是类型名的 31 位哈希，因此分别构建的包对同一类型使用同一个标签。
 - **`any` 种子**。为了让程序知道库放入 `any` 的类型，库会在主体末尾追加一个使用这些类型的小型 Nabi 函数。程序的封闭世界 `any` 分派器也包括这些类型。
 - **分派器符号**。`any` 分派器是符号 `nabi.any.<hash>`，在库中定义为弱符号，在程序中定义为强符号。链接时程序的定义生效。
-- **和类型成员的顺序**。和类型的各项按结构键排序，而不是按内部类型编号排序（[2.6.4](../002-types/206-sum-types.md#canonical-order)），因此标签在各个包之间一致。
+- **和类型成员的顺序**。和类型的各项按结构键排序，而不是按内部类型编号排序（[2.6.4](../002-types/206-sum-types.md#规范顺序)），因此标签在各个包之间一致。
 - **GC 类型 id**。每个包都有自己的 GC 类型 id 范围（9.4.6）。同一程序中两个包的范围重叠是错误。
 - **方法符号**。依赖包的方法按稳定路径 `<module>::<type>.<method>[__by_<trait>]` 修饰（[9.5](905-symbol-mangling.md)）。
 - **调用摘要**。下游构建的代码依赖于它所调用函数的调用摘要（9.4.7）。增量构建的代码生成单元以其在其他单元和包中的被调用者的摘要作为键，因此摘要发生变化的依赖在重新构建后，只重新编译调用了变化函数的那些单元。
 
 ## 9.4.9. 读取与拒绝
 
-`--extern name=<name>.nabihir` 或 `--extern name=lib<name>.a` 都会找到另一个同级文件（[9.2.3](902-aot-pipeline.md#923-dependency-resolution)）。下游把主体作为源代码覆盖层解析以获得声明，把被剥离的函数声明为预构建符号，就地单态化泛型，然后链接归档文件。
+`--extern name=<name>.nabihir` 或 `--extern name=lib<name>.a` 都会找到另一个同级文件（[9.2.3](902-aot-pipeline.md#923-依赖解析)）。下游把主体作为源代码覆盖层解析以获得声明，把被剥离的函数声明为预构建符号，就地单态化泛型，然后链接归档文件。
 
 以下任何一项不同时，NABIHIR 会被拒绝，并报告“需要重新构建”的错误。
 
@@ -139,10 +139,10 @@ PrefixVarInt 是 LEB128 的一种变体。第一个字节开头 1 位的个数�
 
 ## 9.4.10. NABIHIR 检查
 
-`nabi inspect --dump <file>` 打印 NABIHIR 的版本、生成者、元数据（包括 `features:`）、接口文件的路径和文本、摘要以及调用摘要（`--- calls`：每个函数一行，给出其名称和已设置的事实）（[9.9.2](909-debug-tools.md#992-nabihir-inspection)）。`nabi inspect`（[9.9.14](909-debug-tools.md#9914-package-inspection)）把摘要与归档文件一起显示。
+`nabi inspect --dump <file>` 打印 NABIHIR 的版本、生成者、元数据（包括 `features:`）、接口文件的路径和文本、摘要以及调用摘要（`--- calls`：每个函数一行，给出其名称和已设置的事实）（[9.9.2](909-debug-tools.md#992-nabihir-检查)）。`nabi inspect`（[9.9.14](909-debug-tools.md#9914-包检查)）把摘要与归档文件一起显示。
 
 ## 9.4.11. 稳定性
 
 只读取由同一个 `nabic` 生成的 NABIHIR（9.4.9）。格式改变时，`version` 递增，不同的版本需要重新构建。适用[概述](../008-abi/README.md)中的稳定性策略。
 
-标准库不以 NABIHIR 形式分发（[9.3.6](903-package-archive.md#936-standard-library)）。
+标准库不以 NABIHIR 形式分发（[9.3.6](903-package-archive.md#936-标准库)）。

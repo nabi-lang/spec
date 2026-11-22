@@ -50,9 +50,9 @@ let d = p.distance(other);
 同名方法可以定义在多处。编译器按以下顺序查找候选：
 
 1. 首先是固有 `impl`（[`impl`](../002-types/209-impl.md)）中定义的方法。
-2. 然后是 trait `impl` 的方法，限于左侧类型所满足、且在当前模块的作用域内的 trait：`core` 的 trait（其中包括 prelude 的 trait：它们就是内置类型自身的方法）、用 `use` 导入的 trait（在模块中或外围块中）、在同一模块中定义的 trait，以及类型参数接收者的约束。`std` 或包中的 trait 需要 `use`（对 `(0..6).outcomes()` 要写 `use std::random::SampleRange;`），与 Rust 相同。通过类型书写的关联函数（`Point::origin()`）能看到这些 trait 以及其他所有标准库 trait。元模板写出的方法名，按模板所在模块作用域内的 trait 查找（[6.9.9](../006-meta-system/609-template-tokens.md#names-in-an-expansion)）。
+2. 然后是 trait `impl` 的方法，限于左侧类型所满足、且在当前模块的作用域内的 trait：`core` 的 trait（其中包括 prelude 的 trait：它们就是内置类型自身的方法）、用 `use` 导入的 trait（在模块中或外围块中）、在同一模块中定义的 trait，以及类型参数接收者的约束。`std` 或包中的 trait 需要 `use`（对 `(0..6).outcomes()` 要写 `use std::random::SampleRange;`），与 Rust 相同。通过类型书写的关联函数（`Point::origin()`）能看到这些 trait 以及其他所有标准库 trait。元模板写出的方法名，按模板所在模块作用域内的 trait 查找（[6.9.9](../006-meta-system/609-template-tokens.md#展开中的名字)）。
 
-3. 当两者都没有该方法，而接收者的类型有一个无参数的方法 `iter()` 时，若 `iter()` 返回的类型有 `m`，则 `x.m(args)` 即 `x.iter().m(args)`。零参数的 `x.min()` / `x.max()` 也以同样方式转发，尽管存在 `Ord::min` / `max`（它们接受一个参数）。因此集合可以响应迭代器方法：`xs.map(f).sum()`（[stdlib 2.7.14](../../refs-standard-libraries/200-core/207-iter.md#2714-collections-answer-iterator-methods)）。
+3. 当两者都没有该方法，而接收者的类型有一个无参数的方法 `iter()` 时，若 `iter()` 返回的类型有 `m`，则 `x.m(args)` 即 `x.iter().m(args)`。零参数的 `x.min()` / `x.max()` 也以同样方式转发，尽管存在 `Ord::min` / `max`（它们接受一个参数）。因此集合可以响应迭代器方法：`xs.map(f).sum()`（[stdlib 2.7.14](../../refs-standard-libraries/200-core/207-iter.md#2714-集合类型响应迭代器方法)）。
 
 类型为类型参数的接收者（`x: T`，`T: Root`）只拥有其约束所给出的东西，所以在泛型主体中，`x.sqrt()` 对每个实例都是 `Root::sqrt`，对带有固有 `sqrt` 的类型（`T = Complex<f64>`）的实例也是如此。
 
@@ -126,9 +126,9 @@ let add = i32::add;                // fn(i32, i32) -> i32
 xs.map(Point::norm);               // fn(Point) -> f64
 ```
 
-- 带 `ref self` 或 `ref` 参数的方法不能作为值（[4.7.6](../004-functions/407-ref-keyword.md#476-ref-and-types)）。
+- 带 `ref self` 或 `ref` 参数的方法不能作为值（[4.7.6](../004-functions/407-ref-keyword.md#476-ref-与类型)）。
 - 会抛出错误的方法给出会抛出错误的函数类型（`fn(..) throws (E) -> R`）。
-- 对于 `Tr::m`，或 `Self` 未确定的泛型类型的方法，函数类型由期望类型确定。没有期望类型时，由之后的调用确定（`let f = Box::get; f(b)`，[2.10.2](../002-types/210-generics.md#type-argument-inference)）；若仍未确定，则是 “type annotations needed” 错误。
+- 对于 `Tr::m`，或 `Self` 未确定的泛型类型的方法，函数类型由期望类型确定。没有期望类型时，由之后的调用确定（`let f = Box::get; f(b)`，[2.10.2](../002-types/210-generics.md#类型实参推断)）；若仍未确定，则是 “type annotations needed” 错误。
 - 泛型方法的类型实参由 turbofish 或期望的函数类型确定。
 - `#[intrinsic]` 方法也可以作为值。
 

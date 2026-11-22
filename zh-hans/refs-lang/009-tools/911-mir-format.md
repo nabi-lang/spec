@@ -1,9 +1,9 @@
 # 9.11. nabi-mir 文件格式
 
-本节定义 `<unit>.nabimir`。`nabic` 通过这个文件把一个代码生成单元优化后的 nabi-mir 交给单独安装的代码生成器（[8.11.13](../008-abi/811-backend-contract.md#81113-separately-installed-code-generators)）。代码生成器契约（[8.11](../008-abi/811-backend-contract.md)）留给 `nabic` 决定的一切都在这个文件中：符号及其链接属性、类型布局、GC 类型、安全点信息和目标。
+本节定义 `<unit>.nabimir`。`nabic` 通过这个文件把一个代码生成单元优化后的 nabi-mir 交给单独安装的代码生成器（[8.11.13](../008-abi/811-backend-contract.md#81113-单独安装的代码生成器)）。代码生成器契约（[8.11](../008-abi/811-backend-contract.md)）留给 `nabic` 决定的一切都在这个文件中：符号及其链接属性、类型布局、GC 类型、安全点信息和目标。
 
 > [!NOTE]
-> 0.2 的草案。0.1 的 `nabic` 不写也不读这种格式；下文是一份设计，在某个版本实现它之前会不断变化。`--emit=mir` 仍然以文本形式打印 nabi-mir，供人阅读（[9.9.1](909-debug-tools.md#991-intermediate-output---emit)）。
+> 0.2 的草案。0.1 的 `nabic` 不写也不读这种格式；下文是一份设计，在某个版本实现它之前会不断变化。`--emit=mir` 仍然以文本形式打印 nabi-mir，供人阅读（[9.9.1](909-debug-tools.md#991-中间输出--emit)）。
 
 ## 9.11.1. 二进制而非文本
 
@@ -80,13 +80,13 @@ sections         at their offsets, in any order
 
 | 字段 | 编码 | 含义 |
 |-------|----------|---------|
-| producer | `str` | `nabic <version> (<compiler id>)`，与 NABIHIR 中相同（[9.4.4](904-nabihir-bytecode.md#944-header-and-producer)） |
-| name | `str` | 单元的名称：它所属的模块（包根为 `<root>`），或者对于库实例的分桶，为 `<module>#k`（[9.2.16](902-aot-pipeline.md#codegen-units)） |
+| producer | `str` | `nabic <version> (<compiler id>)`，与 NABIHIR 中相同（[9.4.4](904-nabihir-bytecode.md#944-头部与生成者)） |
+| name | `str` | 单元的名称：它所属的模块（包根为 `<root>`），或者对于库实例的分桶，为 `<module>#k`（[9.2.16](902-aot-pipeline.md#代码生成单元)） |
 | opt | `u8` | `0` `-O0`、`1` `-O1`、`2` `-O2`、`3` `-O3`、`4` `-Os`、`5` `-Oz` |
 | flags | `u` | 位 0：开启溢出检查；位 1：`-g`；位 2：按代码范围描述变量（高于 `-O0` 的 `-g`，非 wasm32） |
 | source directory | `str` | `files` 中相对路径所相对的目录（调试信息用） |
 
-**target**：目标（[0.6.5](../000-meta/006-platform-targets.md#065-target-specifications)），先是代码生成器读取的各字段，然后是完整的规格：
+**target**：目标（[0.6.5](../000-meta/006-platform-targets.md#065-目标规格)），先是代码生成器读取的各字段，然后是完整的规格：
 
 | 字段 | 编码 |
 |-------|----------|
@@ -123,7 +123,7 @@ sections         at their offsets, in any order
 | 2 | 未解析的字 | |
 | 3 | 元组 | `list<ty>` 字段 |
 | 4 | 结构体 | `u` 结构体编号，`list<ty>` 字段 |
-| 5 | `any Tr` 值 | （[8.8.9](../008-abi/808-lowering-types.md#889-representation-of-any-slots) 的 `(u32 tag, payload)` 对） |
+| 5 | `any Tr` 值 | （[8.8.9](../008-abi/808-lowering-types.md#889-any-槽的表示) 的 `(u32 tag, payload)` 对） |
 | 6 | 数组 | `ty` 元素，`u` 长度 |
 | 7 | 函数指针 | `list<ty>` 参数，`ty` 结果 |
 | 8 | GC 引用 | |
@@ -131,13 +131,13 @@ sections         at their offsets, in any order
 
 原始类型：`0` `i8`、`1` `i16`、`2` `i32`、`3` `i64`、`4` `isize`、`5` `u8`、`6` `u16`、`7` `u32`、`8` `u64`、`9` `usize`、`10` `f32`、`11` `f64`、`12` `bool`、`13` `c_char`、`14` `char`、`15` `str`。
 
-每条记录在标签和操作数之后是它的布局，即 `nabic` 为目标计算出的布局（[8.11.5](../008-abi/811-backend-contract.md#8115-data-layout)）：
+每条记录在标签和操作数之后是它的布局，即 `nabic` 为目标计算出的布局（[8.11.5](../008-abi/811-backend-contract.md#8115-数据布局)）：
 
 | 字段 | 编码 | 含义 |
 |-------|----------|---------|
 | size、align | `u`、`u` | 以字节为单位 |
 | offsets | `list<u>` | 元组和结构体：各字段的偏移；其他类型为空 |
-| roots | `list<u>` | 对于该类型的局部变量，影子栈帧所登记的各个字的偏移，升序排列（[8.11.6](../008-abi/811-backend-contract.md#8116-gc-allocation-roots-and-barriers)）；类型不含 GC 引用时为空 |
+| roots | `list<u>` | 对于该类型的局部变量，影子栈帧所登记的各个字的偏移，升序排列（[8.11.6](../008-abi/811-backend-contract.md#8116-gc分配根和屏障)）；类型不含 GC 引用时为空 |
 | barrier | `b` | 把该类型的值存入 GC 对象时需要写屏障 |
 
 函数值是由函数指针和 GC 引用组成的元组 `(code, env)`；会抛出错误的函数的载体是元组 `(is_err, payload)`；和类型是种类为 0 的元组 `(i32, union)`。类型表没有其他种类。
@@ -149,8 +149,8 @@ sections         at their offsets, in any order
 | 字段 | 编码 | 含义 |
 |-------|----------|---------|
 | id | `u` | 当代码可以把类型 id 当作常量使用时为该 id；否则为 `0` |
-| symbol | `str` | 在单元构建中，保存该 id 的 `_Y<pkg>_gctype.<hash>` 符号（[8.11.3](../008-abi/811-backend-contract.md#8113-symbols-and-linkage)）；否则为空 |
-| table | `list<u>` | ScanTable 的 `u32` 字（[8.2.3](../008-abi/802-scan-table.md#823-serialization-format)），仅供读取：由共享单元生成并登记 |
+| symbol | `str` | 在单元构建中，保存该 id 的 `_Y<pkg>_gctype.<hash>` 符号（[8.11.3](../008-abi/811-backend-contract.md#8113-符号与链接属性)）；否则为空 |
+| table | `list<u>` | ScanTable 的 `u32` 字（[8.2.3](../008-abi/802-scan-table.md#823-序列化格式)），仅供读取：由共享单元生成并登记 |
 
 进行分配的右值通过 GC 类型在此列表中的索引来指称它。
 
@@ -177,9 +177,9 @@ sections         at their offsets, in any order
 | 字段 | 编码 | 含义 |
 |-------|----------|---------|
 | name | `str` | 它的项路径 |
-| symbol | `str` | 它的链接器符号（[8.11.3](../008-abi/811-backend-contract.md#8113-symbols-and-linkage)） |
+| symbol | `str` | 它的链接器符号（[8.11.3](../008-abi/811-backend-contract.md#8113-符号与链接属性)） |
 | type | `ty` | |
-| flags | `u` | 位 0：`mut`；位 1：在程序外部定义（`extern`）；位 2：通过 `__imp_<symbol>` 访问（DLL 中的，Windows）；位 3：延迟初始化（[8.11.10](../008-abi/811-backend-contract.md#81110-statics)）；位 4：在本程序自己的目标文件中定义（否则在格式有 GOT 时通过 GOT 访问） |
+| flags | `u` | 位 0：`mut`；位 1：在程序外部定义（`extern`）；位 2：通过 `__imp_<symbol>` 访问（DLL 中的，Windows）；位 3：延迟初始化（[8.11.10](../008-abi/811-backend-contract.md#81110-静态变量)）；位 4：在本程序自己的目标文件中定义（否则在格式有 GOT 时通过 GOT 访问） |
 | init | `opt<const>` | 初始值，仅供读取：由共享单元定义存储 |
 
 ## 9.11.9. 函数
@@ -196,7 +196,7 @@ sections         at their offsets, in any order
 | define | `u8` | `0` 声明、`1` 局部、`2` 全局、`3` 弱全局 |
 | flags | `u` | 见下 |
 | ABI | `u8`，后跟 | `0` Nabi；`1` C：`b` 可变参数、`b` `extern "system"` |
-| C 分类 | `opt<cabi>` | 用于 C ABI 函数，以及需要分类的 `extern "nabi"` 声明（[8.11.4](../008-abi/811-backend-contract.md#8114-calling-conventions)） |
+| C 分类 | `opt<cabi>` | 用于 C ABI 函数，以及需要分类的 `extern "nabi"` 声明（[8.11.4](../008-abi/811-backend-contract.md#8114-调用约定)） |
 | wasm 导入 | `opt<(str, str)>` | wasm32 导入的模块和名称 |
 | 位置 | `pos` | 声明的位置 |
 | 参数 | `list<local>` | |
@@ -211,7 +211,7 @@ sections         at their offsets, in any order
 | 位 | 含义 |
 |-----|---------|
 | 0 | 接受 `nabi_tls` 地址作为隐藏的最后一个实参 |
-| 1 | 从不到达安全点：没有栈帧、没有轮询，对它的调用也不是安全点（[8.11.7](../008-abi/811-backend-contract.md#8117-safepoints-and-polls)） |
+| 1 | 从不到达安全点：没有栈帧、没有轮询，对它的调用也不是安全点（[8.11.7](../008-abi/811-backend-contract.md#8117-安全点与轮询)） |
 | 2 | 可重入：在第一个安全点之前轮询 |
 | 3 | 以直接 Nabi 调用以外的方式进入：在入口处轮询 |
 | 4 | `#[track_caller]`：最后一个参数是调用者的位置（`str`） |
@@ -298,8 +298,8 @@ debug 节保存 `list<(u struct, list<dty>)>`，即按结构体列出的各字�
 头部中的 `major` 和 `minor` 是格式的版本。
 
 - 读取方接受其能读取的 `major` 的文件。在同一个 `major` 内，更高的 `minor` 只会增加节的种类，旧的读取方会跳过它们；已有节的编码，因而每个语句、右值、类型和常量的标签，都保持不变。
-- 对已有节的任何改动都是新的 `major`：新的语句、右值或类型种类，新的字段，改变的含义。读取方拒绝它不能读取的 `major`，并指出两个版本（[8.11.13](../008-abi/811-backend-contract.md#81113-separately-installed-code-generators) 的退出状态 2）。
+- 对已有节的任何改动都是新的 `major`：新的语句、右值或类型种类，新的字段，改变的含义。读取方拒绝它不能读取的 `major`，并指出两个版本（[8.11.13](../008-abi/811-backend-contract.md#81113-单独安装的代码生成器) 的退出状态 2）。
 - 当 `major` 为 `0` 时（即本草案），读取方只接受它所针对构建的那个确切的 `major.minor`。
-- 组件的版本就是其工具链的版本（[8.11.13](../008-abi/811-backend-contract.md#81113-separately-installed-code-generators)），因此同一工具链的 `nabic` 与其组件总是一致；版本规则对在工具链之外构建的组件才有意义。
+- 组件的版本就是其工具链的版本（[8.11.13](../008-abi/811-backend-contract.md#81113-单独安装的代码生成器)），因此同一工具链的 `nabic` 与其组件总是一致；版本规则对在工具链之外构建的组件才有意义。
 
 写出是确定性的：同一个单元产生相同的字节。字符串、类型和函数按写出方首次遇到它们的顺序编号，遍历顺序为单元中函数的 nabi-mir 顺序；映射按键排序写出。

@@ -17,7 +17,7 @@ nabic build --emit=expansions    # meta expansion result (9.9.10)
 nabic build --emit=c-header      # C header for the package's exports (9.3.3)
 ```
 
-`mir` 是代码生成器所编译的 nabi-mir：在 `-O0` 以上的级别，是优化之后的结果（[9.2.10](902-aot-pipeline.md#9210-optimization-levels)）。`obj` 是它写出的目标文件。`objdump -d` 这样的反汇编器可以显示 `obj` 的机器码。
+`mir` 是代码生成器所编译的 nabi-mir：在 `-O0` 以上的级别，是优化之后的结果（[9.2.10](902-aot-pipeline.md#9210-优化级别)）。`obj` 是它写出的目标文件。`objdump -d` 这样的反汇编器可以显示 `obj` 的机器码。
 
 `asm` 是以汇编源代码形式表示的目标文件，与 `clang -S` 写出的形式相同：为目标汇编它（`clang -c`、`llvm-mc -filetype=obj`）得到的目标文件，与 `obj` 有相同的代码字节、在相同偏移处指向相同位置的同类型重定位以及相同的符号，因此链接和运行的结果也相同。它从 `nabic` 写出的目标文件读回，采用目标的 GNU / LLVM 语法（在 x86_64 和 x86 上是 `.intel_syntax noprefix` 下的 Intel 语法）。每个节都带有按目标文件格式命名的 `.section` 指令（ELF 的 `.text.<symbol>`、`.rodata.<symbol>`；Mach-O 的 `__TEXT,__text`；COFF 带有选择方式和 leader 的 `.text` COMDAT，以及与其函数关联的 `.pdata`）和它的 `.p2align`。符号带有其绑定和可见性（`.globl`、`.weak`、`.hidden`；ELF 上的 `.type` 和 `.size`；Mach-O 上的 `.private_extern` 和 `.weak_definition`；COFF 上的 `.def`；powerpc64 上的 `.localentry`）。每个函数就是代码生成器所编码的那些指令：分支目标是局部标签（`.LBB0_3`；在 Mach-O 和 x86 Windows 上是 `LBB0_3`），每个被重定位的字段都是让汇编器发出该重定位的表达式（`call nabi_panic_at@PLT`、`[rip + x@GOTPCREL]`、`[rip + x@GOTTPOFF]`、`[rcx + x@SECREL32]`、`[ebx + s@GOTOFF]`、`adrp x0, s@PAGE` / `:lo12:s`、`x@TLVPPAGE`、`#:lower16:(s-(.+16))`、`.word x(GOT_PREL)+0x1c`、`%pcrel_hi(s)` 配合 `%pcrel_lo(.Lpcrel_hi0)`、`s@toc@ha`、`x@got@tprel@l`、`brasl %r14, f@PLT`、`x@INDNTPOFF`、..）。如果某种编码不是汇编器根据指令文本会选择的编码，则在语法允许处强制指定（长分支上的 `{disp32}`、`{disp8}`、`{rex}`，以及表示另一种 `mov` 形式的 `mov.s`）；否则该指令写成它的字节，文本放在注释中（x86 的栈帧建立指令 `sub rsp, imm32`，其立即数可以放进 8 位）。数据（字符串字面量、静态变量、GC 类型描述符、扫描表、虚表）是 `.asciz`、`.byte`、`.zero` 以及指明其目标的指针大小指令（`.quad`、`.long s-.`、`.rva`、`.secrel32`、`.secidx`）。展开表是汇编器据以构建它们的指令，每条紧跟在它所描述的指令之后：ELF 的 `.eh_frame`（汇编器的 CIE 即 `nabic` 的 CIE）以及 Mach-O arm64 的 compact unwind（汇编器根据这些指令所描述的帧记录和寄存器对推导出它）使用 `.cfi_startproc`、`.cfi_def_cfa_offset`、`.cfi_def_cfa_register`、`.cfi_offset` 和 `.cfi_endproc`；x64 COFF 的 `.pdata` / `.xdata` 使用 `.seh_proc`、`.seh_pushreg`、`.seh_stackalloc`、`.seh_setframe`、`.seh_savereg`、`.seh_savexmm`、`.seh_endprologue` 和 `.seh_endproc`；32 位 ARM 的 `.ARM.exidx` 使用 `.fnstart`、`.save`、`.setfp`（或 `.cantunwind`）和 `.fnend`。汇编器生成的表解码结果相同（`llvm-dwarfdump --eh-frame`、`llvm-readobj --unwind`、`llvm-objdump --unwind-info`）。arm64 Windows 把它的 `.pdata` / `.xdata` 作为带重定位的数据保留：在 `nabic` 逐条写出展开代码的地方，汇编器会把它们打包（打包的 `.pdata` 条目、与序言共享代码的尾声）。`-g` 的调试节（DWARF、CodeView）同样是数据，32 位 ARM 的构建属性是 `.eabi_attribute` 指令。RISC-V 源代码以 `.option arch`、`.option norvc` 和 `.option norelax` 开头；16 位压缩形式的指令（`-O0` 以上）写成其 `c.` 助记符（`c.addi sp, -0x10`、`c.beqz a0, .LBB0_3`），位于 `.option rvc` 之下，并在下一条 32 位指令之前切回 `.option norvc`；它的 ELF 标志仍来自汇编器的选项（`clang --target=riscv64-linux-gnu`，或 `llvm-mc -mattr=+m,+a,+f,+d,+c -target-abi=lp64d`）。汇编器可能写得不同、但含义相同的部分有：针对局部符号所在节、带该符号偏移的重定位；它总会添加的节符号、映射符号（`$x`、`$d`）和 Mach-O `ltmp` 符号；作为符号保留的 RISC-V 局部标签；x86_64 `.eh_frame` 的 `SHT_X86_64_UNWIND` 类型；在节内解析的 Mach-O 函数对自身的调用及其 compact unwind 条目；32 位 ARM 的硬浮点 ELF 标志，它没有指令可以设置（由构建属性表明）；COFF 弱外部符号的默认符号名称（`.weak.<symbol>.default`，带汇编器添加的后缀）；展开表的布局：在 `nabic` 共享一个 `UNWIND_INFO` 的地方，汇编器为每个函数生成一个 x64 `UNWIND_INFO`，以及 32 位 ARM 短形式的 `pop {r4-r11, lr}`。
 
@@ -86,7 +86,7 @@ target/debug/build/foo.expanded.nabi
 nabi inspect --dump path/to/foo.nabihir   # or libfoo.a; reads the sibling foo.nabihir
 ```
 
-该命令以人类可读的形式打印预构建库的 [NABIHIR](904-nabihir-bytecode.md)。在版本、生成者和元信息之后，每个接口文件依次以 `--- <path>` 和它的文本（具体函数体被删减为 `;` 的源代码）给出。移交摘要列在 `--- summaries` 下，调用摘要列在 `--- calls` 下，每个函数一行，列出成立的事实（[9.4.7](904-nabihir-bytecode.md#947-body)）。
+该命令以人类可读的形式打印预构建库的 [NABIHIR](904-nabihir-bytecode.md)。在版本、生成者和元信息之后，每个接口文件依次以 `--- <path>` 和它的文本（具体函数体被删减为 `;` 的源代码）给出。移交摘要列在 `--- summaries` 下，调用摘要列在 `--- calls` 下，每个函数一行，列出成立的事实（[9.4.7](904-nabihir-bytecode.md#947-主体)）。
 
 ```
 nabihir 1
@@ -174,27 +174,27 @@ nabic build --message-format=json
 | 字段       | 含义                                                               |
 |------------|--------------------------------------------------------------------|
 | `type`     | `error` / `fatal` / `warning` / `note`                             |
-| `code`     | 错误码，如 `E0040`（[错误码](#error-codes)）                       |
+| `code`     | 错误码，如 `E0040`（[错误码](#错误码)）                       |
 | `kind`     | 该错误码所属的领域（`type`、`parse`、..）                          |
 | `message`  | 消息                                                               |
 | `spans`    | 位置列表。第一个元素是主要位置（`is_primary: true`），其余是次要位置 |
 | `notes`    | note 字符串列表，不含 help 条目                                    |
 | `fixes`    | 修正代码的编辑，每项是某个文件中的一个范围，带有替换它的 `text` 和一个 `title`（见下文）；常为空 |
 | `help`     | help 条目（人类可读格式中的 `= help:` 行），不带 `help: ` 前缀     |
-| `lint`     | 警告或 lint 错误所属的 lint（`unused_variables`），即 `#[allow(..)]` 和 `-A` 接受的名称（[6.2.9](../006-meta-system/602-built-in-attributes.md#629-allow--deny--warn-lint-control)）；其他情况为 `null` |
+| `lint`     | 警告或 lint 错误所属的 lint（`unused_variables`），即 `#[allow(..)]` 和 `-A` 接受的名称（[6.2.9](../006-meta-system/602-built-in-attributes.md#629-allow--deny--warn-lint-控制)）；其他情况为 `null` |
 | `schema`   | 此格式的版本，目前为 `1`                                           |
 
-范围包含 `file_name`、`line_start`、`col_start`、`byte_start`、`byte_end`、`is_primary`、`label`、`line_end` 和 `col_end`。`line_end` / `col_end` 是范围结束的位置（紧接其最后一个字符之后的位置），与 `line_start` / `col_start` 一样以码位计数；手头没有源文本时，它们为 `null`。只知道文件而不知道位置的诊断只有 `{"file_name": .., "is_primary": true}`。修正包含 `file_name`、`line_start`、`col_start`、`byte_start`、`byte_end`、`text`、`title`（``convert with `as i32` ``）、`line_end` 和 `col_end`；语言服务器把它作为快速修复提供（[9.9.13](#9913-lsp-server)）。
+范围包含 `file_name`、`line_start`、`col_start`、`byte_start`、`byte_end`、`is_primary`、`label`、`line_end` 和 `col_end`。`line_end` / `col_end` 是范围结束的位置（紧接其最后一个字符之后的位置），与 `line_start` / `col_start` 一样以码位计数；手头没有源文本时，它们为 `null`。只知道文件而不知道位置的诊断只有 `{"file_name": .., "is_primary": true}`。修正包含 `file_name`、`line_start`、`col_start`、`byte_start`、`byte_end`、`text`、`title`（``convert with `as i32` ``）、`line_end` 和 `col_end`；语言服务器把它作为快速修复提供（[9.9.13](#9913-lsp-服务器)）。
 
-在同一个 `schema` 内，字段只会增加，不会删除、改名或改变含义，因此读取方应当忽略它不认识的字段。测试、基准测试和 `nabi deps` 的记录（[9.9.12](#9912-ci--test-integration)、[9.10.4](910-nabi-frontend.md#9104-dependencies-nabi-add--remove--update--deps)）遵循同样的规则，各有自己的 `schema`，目前为 `1`。
+在同一个 `schema` 内，字段只会增加，不会删除、改名或改变含义，因此读取方应当忽略它不认识的字段。测试、基准测试和 `nabi deps` 的记录（[9.9.12](#9912-ci--测试集成)、[9.10.4](910-nabi-frontend.md#9104-依赖nabi-add--remove--update--deps)）遵循同样的规则，各有自己的 `schema`，目前为 `1`。
 
 借助这一格式，IDE 和 CI 系统可以机械地读取诊断。
 
 ### 错误码
 
-每一种错误都有自己的代码，由 `E` 和四位数字组成：类型不匹配是 `E0040`，找不到名称是 `E0027`。代码从 `E0001` 开始连续编号，没有空缺，按添加的顺序而不是按领域编号；领域由 `kind` 字段给出。lint（[6.2.9](../006-meta-system/602-built-in-attributes.md#629-allow--deny--warn-lint-control)）的诊断不论由编译器的哪个部分产生，都使用 lint 代码 `E0131`，并在其 note 和 `lint` 中写出该 lint 的名称。
+每一种错误都有自己的代码，由 `E` 和四位数字组成：类型不匹配是 `E0040`，找不到名称是 `E0027`。代码从 `E0001` 开始连续编号，没有空缺，按添加的顺序而不是按领域编号；领域由 `kind` 字段给出。lint（[6.2.9](../006-meta-system/602-built-in-attributes.md#629-allow--deny--warn-lint-控制)）的诊断不论由编译器的哪个部分产生，都使用 lint 代码 `E0131`，并在其 note 和 `lint` 中写出该 lint 的名称。
 
-`nabic --explain <code>`（`nabi --explain` 同样可用）打印该代码的说明页：标题、含义以及应当改写成什么（[9.1.5](901-nabic-cli.md#915-global-options)）。`E0040`、`e0040` 和 `40` 指同一个代码；不存在的代码是用法错误（退出码 2）。文档中的错误页面就是这些页面，每个代码一页。
+`nabic --explain <code>`（`nabi --explain` 同样可用）打印该代码的说明页：标题、含义以及应当改写成什么（[9.1.5](901-nabic-cli.md#915-全局选项)）。`E0040`、`e0040` 和 `40` 指同一个代码；不存在的代码是用法错误（退出码 2）。文档中的错误页面就是这些页面，每个代码一页。
 
 标题与 `nabic --explain` 打印的完全一致。
 
@@ -349,7 +349,7 @@ nabic build --message-format=json
 | `E0147` | `lexical` | invisible character in code |
 | `E0148` | `lexical` | character that only looks like a token |
 
-`kind` 的取值有 `lexical`、`parse`、`resolve`、`visibility`、`module`、`type`、`pattern`、`handoff`（值的所有权和生存期：移交之后的使用，见[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)；资源在被移动或关闭之后使用，或没有关闭，见[标准库 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)；线程局部值保留到 `with` 之后；流视图在其流之外使用，见[标准库 2.23.1](../../refs-standard-libraries/200-core/223-io.md#2231-read)；`SliceMut` 在其列表调整大小之后使用，见[标准库 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt---writable-view)）、`meta`、`linkage`、`unsupported`、`internal`、`other` 和 `lint`。
+`kind` 的取值有 `lexical`、`parse`、`resolve`、`visibility`、`module`、`type`、`pattern`、`handoff`（值的所有权和生存期：移交之后的使用，见[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)；资源在被移动或关闭之后使用，或没有关闭，见[标准库 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop释放时的清理)；线程局部值保留到 `with` 之后；流视图在其流之外使用，见[标准库 2.23.1](../../refs-standard-libraries/200-core/223-io.md#2231-read)；`SliceMut` 在其列表调整大小之后使用，见[标准库 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可写视图)）、`meta`、`linkage`、`unsupported`、`internal`、`other` 和 `lint`。
 
 ## 9.9.5. 日志 / 进度显示
 
@@ -363,7 +363,7 @@ nabic build --message-format=json
     Finished in 1.23s
 ```
 
-进度行写到标准错误；动词列表见 [9.1.8](901-nabic-cli.md#918-output-format)。
+进度行写到标准错误；动词列表见 [9.1.8](901-nabic-cli.md#918-输出格式)。
 
 ### `--verbose` / `-v`
 
@@ -394,14 +394,14 @@ nabic build --message-format=json
 
 ### DWARF 调试信息
 
-`debug` 构建配置的构建，以及带 `-g` 的 `release` 构建（[9.2.15](902-aot-pipeline.md#9215-output)），会生成具有以下性质的 DWARF 调试信息。Windows 目标则以 CodeView 形式得到相同的信息（[见下文](#codeview-and-pdb-windows)）。
+`debug` 构建配置的构建，以及带 `-g` 的 `release` 构建（[9.2.15](902-aot-pipeline.md#9215-输出)），会生成具有以下性质的 DWARF 调试信息。Windows 目标则以 CodeView 形式得到相同的信息（[见下文](#codeview-与-pdbwindows)）。
 
-- 函数的 `DW_AT_name` 是它的 Nabi 路径（`geom::distance`）；不生成链接名称（修饰后的符号），因为调试器不理解 `_Y` 修饰。调用程序 `main` 的包装函数（[9.5.9](905-symbol-mangling.md#959-symbol-of-the-main-function)）命名为 `nabi_main`，因此栈回溯中只有一个 `main` 帧，即程序自己的。
+- 函数的 `DW_AT_name` 是它的 Nabi 路径（`geom::distance`）；不生成链接名称（修饰后的符号），因为调试器不理解 `_Y` 修饰。调用程序 `main` 的包装函数（[9.5.9](905-symbol-mangling.md#959-main-函数的符号)）命名为 `nabi_main`，因此栈回溯中只有一个 `main` 帧，即程序自己的。
 - 行号指向原始 .nabi 文件中的行。
 - 局部变量以其原始名称和类型出现。除基本类型（整数、浮点数、`bool`、`char`）之外，还为结构体（字段名；泛型结构体的实例以源代码中书写的类型实参命名，如 `core::collections::list::List<i64>`）、元组、`str`、`any`、和类型和数组生成 DWARF 类型。和类型或枚举是一个 DWARF variant part：一个人工的判别成员，以及每个变体（包括不带数据的变体）一个带 `DW_AT_discr_value` 的 `DW_TAG_variant`，每个都包含一个名为 `<Sum>::<Variant>` 的结构体。编译单元使用 `DW_LANG_Rust`，以便调试器读取 variant part（DWARF 没有 Nabi 的语言代码）。`GcBuf<T>` 引用描述为指向其对象（对象头，然后是 `T` 元素）的指针。`any` 值是一个覆盖存入其中各类型的 variant part，以存储的标签作为判别值。判别值是一个人工的 `i32`（存储的标签；`throws` 载体的 `bool` 标签是一个字节）。函数值（`fn` 类型或闭包）是一个以其类型命名的结构（`fn(i32) -> i32`），成员为 `code`（指向 `DW_TAG_subroutine_type` 的指针，先是环境，再是参数）和 `env`（它的环境；闭包类型已知时是指向环境对象的指针），因此调试器会显示目标函数。按引用捕获的变量显示为它的值。编译器生成的函数（C 的 `main`、静态变量初始化守卫）也有子程序。编译器生成的局部变量（名称以 `#` 或 `__` 开头）被省略。
 - 每个块生成一个词法块作用域，因此被遮蔽的名称只在其块内可见。
 - 在 `-O0` 下，每个局部变量都保有自己的栈槽，其位置就是该栈槽。
-- 在 `-O0` 以上，`-g` 不改变代码（[9.2.10](902-aot-pipeline.md#9210-optimization-levels)）；调试信息描述的是优化后的代码。变量的位置是按代码范围给出的位置列表（`.debug_loc`）：保存其值的寄存器、它的栈槽、一个常量，或者对于原地构建的结构体或闭包，是这些的若干片段（`DW_OP_piece`）。在其值已不存在的地方，它没有位置，调试器把它显示为已被优化掉。跨越安全点持有 GC 引用的变量始终位于其栈槽中，即回收时读取并更新的根。
+- 在 `-O0` 以上，`-g` 不改变代码（[9.2.10](902-aot-pipeline.md#9210-优化级别)）；调试信息描述的是优化后的代码。变量的位置是按代码范围给出的位置列表（`.debug_loc`）：保存其值的寄存器、它的栈槽、一个常量，或者对于原地构建的结构体或闭包，是这些的若干片段（`DW_OP_piece`）。在其值已不存在的地方，它没有位置，调试器把它显示为已被优化掉。跨越安全点持有 GC 引用的变量始终位于其栈槽中，即回收时读取并更新的根。
 - 在 `-O0` 以上，被内联的函数体是一个抽象 `DW_TAG_subprogram`（带 `DW_AT_inline`）的 `DW_TAG_inlined_subroutine`（带 `DW_AT_call_file`、`DW_AT_call_line`、`DW_AT_call_column`），其中包含被调用方的参数和局部变量，因此调试器可以停在其中，并把它显示为单独的一帧。内联代码的行表行指明被调用方的文件，只有在行号变化处，行才是语句（`is_stmt`），序言之后的第一行带有 `prologue_end`。在 Apple 目标上，编译单元带有 `DW_AT_APPLE_optimized`。wasm32 以同样的方式描述内联函数体和变量。在 `-O0` 以上，保存在 wasm 局部变量中的变量有一个位置列表，在它持有该值的代码范围内指明该局部变量（`DW_OP_WASM_location 0x0 <local>, DW_OP_stack_value`；结构体则每个局部变量一个片段）；位于线性内存中的变量，在其帧槽持有其值期间，位置是该帧槽（`DW_OP_fbreg`；帧基址本身是一个 wasm 局部变量）。在 `-O0` 下，每个变量都位于其帧槽中。
 
 ### CodeView 与 PDB（Windows）
@@ -469,7 +469,7 @@ cdb -c ".nvload $(nabic --print natvis)" my_binary.exe
 
 ### panic 栈回溯
 
-`NABI_BACKTRACE=1` 或 `full` 使 panic 打印调用栈（[4.14.13](../004-functions/414-throws.md#41413-panics-and-fatal-errors)）。它不需要 `-g`：运行时从对运行时 panic 入口点（`nabi_panic`、`nabi_panic_at`、`nabi_panic_str`、`nabi_try_failed`）的调用开始，沿着 nabic 生成的每个函数都保留的帧指针遍历，并根据 Nabi 的链接器写入每个可执行文件的函数表（`.nabi_symbols`、`__TEXT,__nabi_symbols`，或在 Windows 上作为 `.rdata` 的一部分）为每个返回地址命名：该表按地址排序，记录每个存活 Nabi 函数的地址范围和 Nabi 路径。运行时的字 `nabi_backtrace_symbols` 保存该表相对于自身的偏移，因此该表不需要重定位。
+`NABI_BACKTRACE=1` 或 `full` 使 panic 打印调用栈（[4.14.13](../004-functions/414-throws.md#41413-panic-与致命错误)）。它不需要 `-g`：运行时从对运行时 panic 入口点（`nabi_panic`、`nabi_panic_at`、`nabi_panic_str`、`nabi_try_failed`）的调用开始，沿着 nabic 生成的每个函数都保留的帧指针遍历，并根据 Nabi 的链接器写入每个可执行文件的函数表（`.nabi_symbols`、`__TEXT,__nabi_symbols`，或在 Windows 上作为 `.rdata` 的一部分）为每个返回地址命名：该表按地址排序，记录每个存活 Nabi 函数的地址范围和 Nabi 路径。运行时的字 `nabi_backtrace_symbols` 保存该表相对于自身的偏移，因此该表不需要重定位。
 
 - 被内联到调用方中的函数没有自己的帧，因此优化构建显示的帧更少。被折叠的副本（[9.2](902-aot-pipeline.md)）显示保留下来的那个副本的名称。
 - 遍历在第一个不是 Nabi 代码的帧处停止：C 代码和运行时不保留可供遍历的帧指针。
@@ -487,7 +487,7 @@ perf record ./target/release/my_binary
 perf report --stdio | nabi demangle
 ```
 
-`perf report` 根据符号表为函数命名，而 Nabi 函数在其中是 `_Y` 符号（[9.5](905-symbol-mangling.md)）；不带实参的 `nabi demangle`（[9.9.3](#993-symbol-demangle)）把每个符号替换为它的 Nabi 名称。根据 `-g` 构建的调试信息为函数命名的性能分析器会直接显示 Nabi 路径（`geom::distance`）。
+`perf report` 根据符号表为函数命名，而 Nabi 函数在其中是 `_Y` 符号（[9.5](905-symbol-mangling.md)）；不带实参的 `nabi demangle`（[9.9.3](#993-符号还原demangle)）把每个符号替换为它的 Nabi 名称。根据 `-g` 构建的调试信息为函数命名的性能分析器会直接显示 Nabi 路径（`geom::distance`）。
 
 ### Tracy / Chrome trace（可选）
 
@@ -500,16 +500,16 @@ perf report --stdio | nabi demangle
 | 变量                      | 作用                                                                         |
 |---------------------------|------------------------------------------------------------------------------|
 | `NABIR_GC_LOG=1`           | 每次回收在标准错误上打印一行：种类（minor / full）、停顿时间、标记数和清除结果（存活字节数，前 -> 后），然后是以微秒为单位的停顿各部分（到达安全点的时间、标记、清除、疏散）、线程数以及自回收器启动以来的时间。并发的完全回收分别记录其开始停顿（一次 minor 回收；其标记数为该 minor 回收的）和结束停顿。到达安全点的时间是从发出停止请求到其他所有线程都停下来的等待时间：该值较大意味着有线程拖延了停止，而不是回收本身慢 |
-| `NABIR_GC_STATS=1`         | 退出时在标准错误上打印回收次数（minor / full）、停顿时间和回收器 CPU 时间。第二行给出块数 / 常驻大小 / 疏散次数 / 移动的字节数，第三行给出完全停顿次数、并发标记次数（以及其中由分配在停顿中完成的次数）、标记器的 CPU 时间和标记协助（[7.5.4](../007-runtime/705-concurrent-collection.md#754-allocation-and-collection)）。然后，对运行过的每种停顿（minor、full、concurrent start、concurrent finish）各打印一行：次数、p50 / p90 / p99（基于直方图，误差在八分之一以内）、最长和总停顿时间、最长和总的到达安全点时间 |
+| `NABIR_GC_STATS=1`         | 退出时在标准错误上打印回收次数（minor / full）、停顿时间和回收器 CPU 时间。第二行给出块数 / 常驻大小 / 疏散次数 / 移动的字节数，第三行给出完全停顿次数、并发标记次数（以及其中由分配在停顿中完成的次数）、标记器的 CPU 时间和标记协助（[7.5.4](../007-runtime/705-concurrent-collection.md#754-分配与回收)）。然后，对运行过的每种停顿（minor、full、concurrent start、concurrent finish）各打印一行：次数、p50 / p90 / p99（基于直方图，误差在八分之一以内）、最长和总停顿时间、最长和总的到达安全点时间 |
 | `NABIR_GC_CONCURRENT=auto\|always\|off` | 完全回收的并发标记。`auto` 在老对象达到 32 MiB 或以上，或者设置了停顿目标时生效（[7.5](../007-runtime/705-concurrent-collection.md)） |
 | `NABIR_GC_EVAC=always`     | 用于测试。每次完全回收都进行疏散（[7.3.1](../007-runtime/703-gc-algorithm.md#731-immix-mark-region)） |
-| `NABIR_GC_YOUNG=<bytes>`   | 年轻代预算：两次回收之间分配出去的字节数，精确值（默认：每个进行分配的线程 8 MiB，范围 32 MiB 到 128 MiB；如果老年代字节更多，则与老年代字节数相同，最多 128 MiB）（[7.2.8](../007-runtime/702-allocation.md#728-gc-trigger)） |
-| `NABIR_GC_WORKERS=<n>`     | 在全停顿（stop-the-world）期间与回收器一起标记的辅助线程数（默认：除第一个之外每个在线 CPU 一个，最多 7 个；`0`：不使用）（[7.3.3](../007-runtime/703-gc-algorithm.md#733-mark-procedure)） |
+| `NABIR_GC_YOUNG=<bytes>`   | 年轻代预算：两次回收之间分配出去的字节数，精确值（默认：每个进行分配的线程 8 MiB，范围 32 MiB 到 128 MiB；如果老年代字节更多，则与老年代字节数相同，最多 128 MiB）（[7.2.8](../007-runtime/702-allocation.md#728-gc-触发)） |
+| `NABIR_GC_WORKERS=<n>`     | 在全停顿（stop-the-world）期间与回收器一起标记的辅助线程数（默认：除第一个之外每个在线 CPU 一个，最多 7 个；`0`：不使用）（[7.3.3](../007-runtime/703-gc-algorithm.md#733-标记过程)） |
 | `NABIR_GC_STRESS=N`        | 用于测试。每 N 次分配回收一次；自上次完全回收以来分配量达到老年代的十六分之一后，其中每第 8 次为完全回收 |
 | `NABIR_HEAP_DUMP=on_oom`   | OOM 时在标准错误上打印总量、按字节数排列的前 32 种类型以及最大的 32 个大对象。尽力而为：它不分配内存，也不获取锁。格式由运行时定义 |
-| `NABIR_WORKERS=<n>`        | 执行器工作线程数 N（默认：在线 CPU 数）（[7.6.8](../007-runtime/706-scheduler.md#768-thread-per-core-option)） |
+| `NABIR_WORKERS=<n>`        | 执行器工作线程数 N（默认：在线 CPU 数）（[7.6.8](../007-runtime/706-scheduler.md#768-每核一线程选项)） |
 | `NABIR_THREAD_PER_CORE=1`  | 每核一线程：任务固定在其工作线程上，不进行窃取（7.6.8） |
-| `NABIR_DYNAMIC_WORKERS=1`  | 空闲的工作线程驻留，在所有活跃工作线程都繁忙时被重新启用（[7.7.8](../007-runtime/707-io-and-timer.md#778-dynamic-adjustment-of-worker-count)） |
+| `NABIR_DYNAMIC_WORKERS=1`  | 空闲的工作线程驻留，在所有活跃工作线程都繁忙时被重新启用（[7.7.8](../007-runtime/707-io-and-timer.md#778-动态调整工作线程数)） |
 
 未设置或为空的变量取其默认值。取值不在所列范围内时，在标准错误上打印一行警告，指明该变量、该值以及可接受的取值，该变量取其默认值。
 
@@ -517,23 +517,23 @@ perf report --stdio | nabi demangle
 
 | 辅助手段             | 作用                                                                 |
 |----------------------|----------------------------------------------------------------------|
-| `<expr>?`            | 对表达式求值并打印其 `Debug` 形式（[9.7.7](907-jit-cells.md#977-visualization--output)） |
-| `it`                 | 最后一个表达式单元显示的值；用户自己定义的 `it` 优先（[9.7.7](907-jit-cells.md#977-visualization--output)） |
+| `<expr>?`            | 对表达式求值并打印其 `Debug` 形式（[9.7.7](907-jit-cells.md#977-可视化--输出)） |
+| `it`                 | 最后一个表达式单元显示的值；用户自己定义的 `it` 优先（[9.7.7](907-jit-cells.md#977-可视化--输出)） |
 | `:type <expr>`、`:t` | 打印表达式的静态类型（不运行它）                                      |
-| `:doc <name>`        | 打印该名称的签名和文档注释，即 Jupyter `inspect_request` 的文本（[9.8.6](908-jupyter-integration.md#986-inspect_request-help)）；方法写作 `:doc xs.len` |
+| `:doc <name>`        | 打印该名称的签名和文档注释，即 Jupyter `inspect_request` 的文本（[9.8.6](908-jupyter-integration.md#986-inspect_request帮助)）；方法写作 `:doc xs.len` |
 | `:time <expr>`       | 把表达式作为一个单元求值，并在标准错误上打印每个阶段的耗时（与 `NABI_REPL_TIME=1` 相同）以及总耗时 |
 | `:vars`              | 以 `name: type` 形式列出绑定，然后列出各项的签名                     |
-| `:load <file>`       | 把程序加载到正在运行的会话中（[9.7.10](907-jit-cells.md#9710-loading-a-program-repl-path)）；其中的项替换同名的项。由 `:save` 写出的脚本会逐个重新运行其单元 |
+| `:load <file>`       | 把程序加载到正在运行的会话中（[9.7.10](907-jit-cells.md#9710-加载程序repl-path)）；其中的项替换同名的项。由 `:save` 写出的脚本会逐个重新运行其单元 |
 | `:reload`            | 重新加载上次加载的程序                                               |
 | `:edit`              | 用 `$VISUAL` 或 `$EDITOR`（否则用 `vi`；Windows 上用 `notepad`）打开一个临时文件，然后把其中的内容作为单元运行；某个单元失败后，下一次 `:edit` 会再次打开该文本 |
-| `:save <file>`       | 把会话写成脚本：先是各项，然后是运行过的单元，保持输入时的原样；再次声明的名称在脚本中也是重新声明（[5.1.4](../005-modules/501-variable-declaration.md#514-redeclaration-in-the-same-scope)）。只在后面的单元读取 `it` 的地方声明 `it`。第一行是 `// nabi repl session (:save); :load replays it cell by cell`，每个单元之前有一行 `// :cell`：用 `:load` 加载该脚本会逐个重新运行其单元，因此再次声明的名称保留其最后的绑定；`nabi run` 把它作为程序运行 |
+| `:save <file>`       | 把会话写成脚本：先是各项，然后是运行过的单元，保持输入时的原样；再次声明的名称在脚本中也是重新声明（[5.1.4](../005-modules/501-variable-declaration.md#514-在同一作用域中重新声明)）。只在后面的单元读取 `it` 的地方声明 `it`。第一行是 `// nabi repl session (:save); :load replays it cell by cell`，每个单元之前有一行 `// :cell`：用 `:load` 加载该脚本会逐个重新运行其单元，因此再次声明的名称保留其最后的绑定；`nabi run` 把它作为程序运行 |
 | `:opt [<level>]`     | 打印优化级别，或为之后的单元设置优化级别（`0`、`1`、`2`、`3`、`s`，与 `-O` 相同） |
 | `:reset`             | 把会话重置为初始状态（库路径的 `use` 会重新插入）                    |
-| `:add <dep> ..`      | 添加依赖（在当前环境中执行 `nabi install`，或在包的会话中执行 `nabi add`），并把它们挂接到会话上（[9.10.5](910-nabi-frontend.md#9105-environments)） |
+| `:add <dep> ..`      | 添加依赖（在当前环境中执行 `nabi install`，或在包的会话中执行 `nabi add`），并把它们挂接到会话上（[9.10.5](910-nabi-frontend.md#9105-环境)） |
 | `:help`、`:h`        | 列出所有命令和别名                                                   |
 | `:quit`、`:q`、`:exit` | 退出（输入结束也会退出）                                           |
 | `exit`、`quit`、`exit()`、`quit()` | 单独位于一个单元中时退出；除非会话定义了该名称（绑定、项或 `use`），此时以该定义为准 |
-| `NABI_REPL_TIME=1`    | 对每个单元显示各阶段的耗时，以及新编译的函数数 / 从之前单元复用的函数数（[9.6.4](906-jit-engine.md#964-reuse-of-library-code)） |
+| `NABI_REPL_TIME=1`    | 对每个单元显示各阶段的耗时，以及新编译的函数数 / 从之前单元复用的函数数（[9.6.4](906-jit-engine.md#964-库代码的复用)） |
 
 要查看某个单元的 nabi-mir，把同样的代码放进 `main.nabi`，然后使用 `nabic build --emit=mir`（9.9.1）。
 
@@ -562,7 +562,7 @@ impl MyHash for Point { ... }
 nabi bench
 ```
 
-`nabic bench` 构建基准测试框架，`nabi bench`（[9.10](910-nabi-frontend.md)）运行它（[9.1.2](901-nabic-cli.md#nabic-bench-benchmarks)），在 `-O2` 构建中逐个测量标有 `#[bench]` 的函数。每个函数接收一个 `Bench` 句柄，并通过 `b.iter` 为一个闭包计时，因此闭包之外的准备工作不计入测量。测量过程如下：
+`nabic bench` 构建基准测试框架，`nabi bench`（[9.10](910-nabi-frontend.md)）运行它（[9.1.2](901-nabic-cli.md#nabic-bench基准测试)），在 `-O2` 构建中逐个测量标有 `#[bench]` 的函数。每个函数接收一个 `Bench` 句柄，并通过 `b.iter` 为一个闭包计时，因此闭包之外的准备工作不计入测量。测量过程如下：
 
 1. **时钟**。使用单调的纳秒时钟。通过每个样本对 `iters` 次调用计时（而从不对单次调用计时）来分摊其固定开销。
 2. **校准**。除非给出 `--iters`，否则不断增大 `iters`，直到一个样本耗时约 100 ms，使时钟量化误差和开销可以忽略。
@@ -573,7 +573,7 @@ nabi bench
 
 `black_box(x)` 是优化器无法看穿的恒等函数；把它应用于被计时闭包的输入和结果，使工作既不会被提升到外面，也不会被折叠掉。`b.set_bytes(n)` / `b.set_items(n)` 把每次调用的时间换算为吞吐量（`MiB/s`、`Melem/s`）。
 
-无论是否输出到终端，输出都经过对齐并使用人类可读的单位；`--format=nabibench` 为回归工具提供稳定的、每个基准测试一行的机器可读形式（[9.1.2](901-nabic-cli.md#nabic-bench-benchmarks)），`--format=json` 提供 JSON 记录（[9.9.12](#9912-ci--test-integration)）。从未调用 `b.iter` 的基准测试被报告为什么也没有测量，这是警告而不是失败。`--iters` / `--samples` 可以调整采样。
+无论是否输出到终端，输出都经过对齐并使用人类可读的单位；`--format=nabibench` 为回归工具提供稳定的、每个基准测试一行的机器可读形式（[9.1.2](901-nabic-cli.md#nabic-bench基准测试)），`--format=json` 提供 JSON 记录（[9.9.12](#9912-ci--测试集成)）。从未调用 `b.iter` 的基准测试被报告为什么也没有测量，这是警告而不是失败。`--iters` / `--samples` 可以调整采样。
 
 ## 9.9.12. CI / 测试集成
 
@@ -600,11 +600,11 @@ nabic build --message-format=json --no-color > build.log
 
 | `type`    | 字段                                                                |
 |-----------|---------------------------------------------------------------------|
-| `case`    | `name`；`result`：`ok`、`failed`、`ignored`（带 `#[ignore]` 的测试或文档块、什么也没有测量的基准测试）或 `timeout`（因超出时间限制而被终止的测试）；`ms`，其进程的墙钟时间；`reason`，有原因时给出（失败原因或忽略原因）。`result` 为 `ok` 的基准测试还有 `median_ns`、`mad_ns`、`samples`、`outliers`、`gc`、`bytes` 和 `items`，与 `#nabibench` 行相同（[9.1.2](901-nabic-cli.md#nabic-bench-benchmarks)） |
+| `case`    | `name`；`result`：`ok`、`failed`、`ignored`（带 `#[ignore]` 的测试或文档块、什么也没有测量的基准测试）或 `timeout`（因超出时间限制而被终止的测试）；`ms`，其进程的墙钟时间；`reason`，有原因时给出（失败原因或忽略原因）。`result` 为 `ok` 的基准测试还有 `median_ns`、`mad_ns`、`samples`、`outliers`、`gc`、`bytes` 和 `items`，与 `#nabibench` 行相同（[9.1.2](901-nabic-cli.md#nabic-bench基准测试)） |
 | `summary` | `result`（`ok` 或 `failed`）、`ms` 以及计数：测试为 `passed`、`failed`、`ignored`、`filtered_out`；基准测试为 `run`、`failed`、`ignored`、`filtered_out` |
-| `listed`  | `--list` 保留的每个用例的 `name`，被忽略的测试还有 `ignored`（`true`）；其后没有摘要（[9.10.1](910-nabi-frontend.md#9101-subcommands-and-global-options)） |
+| `listed`  | `--list` 保留的每个用例的 `name`，被忽略的测试还有 `ignored`（`true`）；其后没有摘要（[9.10.1](910-nabi-frontend.md#9101-子命令与全局选项)） |
 
-每个测试框架的用例之后都有一条摘要，因此同时具有两个根文件的包，在其库的运行通过时会有两条摘要。记录遵循 JSON 诊断的 `schema` 规则（[9.9.4](#994-diagnostics--error-messages)），使用自己的编号，目前为 `1`：读取方忽略它不认识的字段。使用 `--message-format=json` 时，构建的诊断是同一标准输出上的 JSON 行；它们的 `type`（`error`、`warning`、..）可以把它们与记录区分开。
+每个测试框架的用例之后都有一条摘要，因此同时具有两个根文件的包，在其库的运行通过时会有两条摘要。记录遵循 JSON 诊断的 `schema` 规则（[9.9.4](#994-诊断--错误消息)），使用自己的编号，目前为 `1`：读取方忽略它不认识的字段。使用 `--message-format=json` 时，构建的诊断是同一标准输出上的 JSON 行；它们的 `type`（`error`、`warning`、..）可以把它们与记录区分开。
 
 ### 退出码
 
@@ -623,7 +623,7 @@ CI 可以对每个代码采取不同的处理（重试、通知等）。
 
 ## 9.9.13. LSP 服务器
 
-`nabi lsp` 是 LSP（Language Server Protocol）服务器（[9.10.8](910-nabi-frontend.md#nabi-lsp-lsp-server)）。同一个服务器也以独立的二进制文件 `nabils` 提供。它通过标准输入输出通信，提供诊断、悬停提示（包括成员）、跳转到定义（返回定义名称的范围）、引用、重命名、文档符号、成员 / 路径补全、签名帮助、快速修复、格式化和语义标记（宏调用、用户定义的关键字、字面量后缀、运算符和属性，这些是静态语法无法识别的）。引用和重命名限于当前缓冲区。
+`nabi lsp` 是 LSP（Language Server Protocol）服务器（[9.10.8](910-nabi-frontend.md#nabi-lsplsp-服务器)）。同一个服务器也以独立的二进制文件 `nabils` 提供。它通过标准输入输出通信，提供诊断、悬停提示（包括成员）、跳转到定义（返回定义名称的范围）、引用、重命名、文档符号、成员 / 路径补全、签名帮助、快速修复、格式化和语义标记（宏调用、用户定义的关键字、字面量后缀、运算符和属性，这些是静态语法无法识别的）。引用和重命名限于当前缓冲区。
 
 ```
 nabi lsp
@@ -632,14 +632,14 @@ nabils
 
 在这种模式下，VS Code、Vim、Emacs 等 LSP 客户端可以获得补全、悬停提示、跳转到定义、诊断等功能。它在内部使用链接进 `nabi` 的编译器增量前端，即 `nabic check` 运行的那个前端。
 
-- **补全**。在 `x.` 之后，补全 `x` 的类型的字段和方法。对于来自标准库或其他包的类型，只提供 `pub` 的成员，不包括 `#[doc(hidden)]` 成员，也不包括运算符 trait 的方法（写作 `a + b`、`xs[i]` 等的那些）。在 `a::` 之后（也包括 `use a::b::` 中），补全 `a` 之下的模块和项。在其他位置，补全光标处作用域中的局部变量、缓冲区中的项、无需路径即在作用域中的名称（核心库的名称以及 `use` 项导入的名称）和关键字。REPL 和 Jupyter 内核使用同一引擎进行补全（[9.7.8](907-jit-cells.md#978-input-unit-repl-recognition)）。
+- **补全**。在 `x.` 之后，补全 `x` 的类型的字段和方法。对于来自标准库或其他包的类型，只提供 `pub` 的成员，不包括 `#[doc(hidden)]` 成员，也不包括运算符 trait 的方法（写作 `a + b`、`xs[i]` 等的那些）。在 `a::` 之后（也包括 `use a::b::` 中），补全 `a` 之下的模块和项。在其他位置，补全光标处作用域中的局部变量、缓冲区中的项、无需路径即在作用域中的名称（核心库的名称以及 `use` 项导入的名称）和关键字。REPL 和 Jupyter 内核使用同一引擎进行补全（[9.7.8](907-jit-cells.md#978-输入单位repl-识别)）。
 - **悬停提示与定义**。悬停在函数、方法或字段（包括标准库中的）上时，先显示其签名，再显示其文档注释。在 `x.name` 上跳转到定义时，在 `x` 的类型中查找 `name`；在标准库的项上，跳转到库源代码中的该项。
 - **签名帮助**。在调用的括号内（在 `(` 和 `,` 处请求），显示被调用方的签名和文档注释，光标所在的参数处于激活状态。方法在其接收者的类型中查找，其 `self` 不计入。
 - **快速修复**。带有编辑的诊断（例如 ``convert with `as i32` ``）把该编辑作为 `quickfix` 代码操作提供。没有编辑时，说明应当写什么的 help 行会变成快速修复：``add `;` `` 在诊断范围的末尾插入 `;`，``add `use pkg::a::b;` `` 在文件最后一个顶层 `use` 之后插入该行（没有 `use` 时，插在开头的 `//!` 行和内部属性之后），``nabi add <name>`` 变成命令 `nabi.add`。收到 `workspace/executeCommand` 时，服务器在包目录中以 `nabi add <name>` 运行 `nabi.add`（对于脚本，在文件所在目录中运行 `nabi add <name> <file>`），使用 `$NABI` 指定的 `nabi`，否则使用服务器旁边的那个；然后重新解析依赖并重新检查打开的缓冲区，因此无需重启即可找到新包。它不运行其他命令，也不接受任何标志。
 - **重命名**。当重命名会作用于光标下的名称时，`prepareRename` 返回该名称的范围。对于在缓冲区之外声明的名称，它会失败，并给出说明声明位置的消息，例如 ``cannot rename `println`: it is defined in the standard library``；对于关键字，消息为 `` `let` is a keyword ``。
 - **文档符号**。符号的范围覆盖整个项，从其修饰符（`pub`、`const`、..）到其结尾的 `}` 或 `;`；其选择范围是名称。
 - **边输入边诊断**。每次缓冲区变化（`didOpen`、`didChange`）之后都会发布诊断，而不仅仅在保存时。检查在后台进行，一次一个，在 30 ms 内没有新的编辑时开始；在此期间到达的编辑会基于最新文本一并检查，而在运行期间其缓冲区发生变化的检查，其诊断不会发布（它们会指向旧的文本）。这些诊断就是编译器自己的诊断，文本和代码相同，因此词法问题（不可见字符或形似字符、孤立的组合标记、注释中的双向控制字符、格式错误的数字、错误的转义）以及没有处理器接受的字面量（`10Hz`、`95%`、`dat"..."`）会在输入时就显示出来，每个都带有其诊断所携带的快速修复。
-- **依赖**。每个缓冲区都使用其所属包的依赖进行检查：其上方最近的、包含 `nabi.nabion`、`src/main.nabi` 或 `src/lib.nabi` 的目录，根据其清单和锁文件解析，并按在该处启动的 `nabi lsp` 会构建的方式构建。不属于任何包、但位于某个工作区文件夹（`workspaceFolders`，否则为 `rootUri`）内的缓冲区，使用环境的库（[9.10.5](910-nabi-frontend.md#9105-environments)）；不在这些文件夹内的，使用服务器启动目录的依赖。每个包只解析一次；保存清单或锁文件（`didSave`）、编辑器报告它们发生了变化（`workspace/didChangeWatchedFiles`，客户端允许时服务器为此注册 `**/nabi.nabion` 和 `**/nabi.lock`）以及工作区文件夹发生变化时，会重新解析并重新检查打开的缓冲区。依赖无法解析的包会在没有依赖的情况下检查，服务器会说明一次原因（`window/showMessage`）。
+- **依赖**。每个缓冲区都使用其所属包的依赖进行检查：其上方最近的、包含 `nabi.nabion`、`src/main.nabi` 或 `src/lib.nabi` 的目录，根据其清单和锁文件解析，并按在该处启动的 `nabi lsp` 会构建的方式构建。不属于任何包、但位于某个工作区文件夹（`workspaceFolders`，否则为 `rootUri`）内的缓冲区，使用环境的库（[9.10.5](910-nabi-frontend.md#9105-环境)）；不在这些文件夹内的，使用服务器启动目录的依赖。每个包只解析一次；保存清单或锁文件（`didSave`）、编辑器报告它们发生了变化（`workspace/didChangeWatchedFiles`，客户端允许时服务器为此注册 `**/nabi.nabion` 和 `**/nabi.lock`）以及工作区文件夹发生变化时，会重新解析并重新检查打开的缓冲区。依赖无法解析的包会在没有依赖的情况下检查，服务器会说明一次原因（`window/showMessage`）。
 - **检查运行期间的应答**。悬停提示、跳转到定义、补全、签名帮助、文档符号和格式化不等待对编辑的检查：它们根据最近一次完成类型检查的结果作答，并通过此后的编辑映射位置。位于该次检查之后被编辑过的文本上的位置（包括光标下的名称）则等待对当前文本的检查，引用和重命名也一样，因为它们按缓冲区的当前状态进行编辑。在 `x.` 之后补全时，如果只有正在输入的这一行发生了变化，且 `x` 在其中的写法与之前相同，则从该次检查中取得 `x` 的类型；否则检查缓冲区直到 `.` 为止。客户端在应答之前取消的请求（`$/cancelRequest`）会得到错误 `RequestCancelled`（-32800）。
 - **诊断范围**。范围为空的诊断报告在该位置的词法单元上，或者在行末时报告在其前一个词法单元上。
 - **手动启动**。在终端上，服务器首先向标准错误打印 ``nabils speaks the language server protocol on stdin; start it from an editor (see `nabi help lsp`)``。如果在客户端发送 `initialize` 之前输入就结束了，它打印 ``nabils: input ended before the editor sent `initialize` `` 并以 1 退出。在 `initialize` 之后，按照 LSP 标准的规定，`shutdown` 之后退出码为 0，否则为 1。

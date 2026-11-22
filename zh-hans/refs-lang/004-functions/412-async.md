@@ -19,11 +19,11 @@ async { ... await expr; ... }                        // inline block (value)
 async || { ... await expr; ... }                     // closure modifier
 ```
 
-在这三种形式中，结果都是库类型 `AsyncFuture<T>`（实现 `Future<Output = T>`）的值；带 `throws (E)` 时是 `TryAsyncFuture<T, E>`（[4.1.11](401-function-declaration.md#result-types-of-coroutine-functions)）。这一结构与[生成器](411-generators.md)的 `yield` 以同样三种形式使用的模式一致。
+在这三种形式中，结果都是库类型 `AsyncFuture<T>`（实现 `Future<Output = T>`）的值；带 `throws (E)` 时是 `TryAsyncFuture<T, E>`（[4.1.11](401-function-declaration.md#协程函数的结果类型)）。这一结构与[生成器](411-generators.md)的 `yield` 以同样三种形式使用的模式一致。
 
 ## 4.12.2. `await` 运算符
 
-`await` 是前缀一元运算符（[3.2.3](../003-expressions/302-precedence-and-associativity.md#323-precedence-and-associativity-table)，prec=13a），作用于实现 `Future<Output = T>` 的值；其结果是 `T`。`await f() == x` 即 `(await f()) == x`。
+`await` 是前缀一元运算符（[3.2.3](../003-expressions/302-precedence-and-associativity.md#323-优先级与结合性表)，prec=13a），作用于实现 `Future<Output = T>` 的值；其结果是 `T`。`await f() == x` 即 `(await f()) == x`。
 
 ```nabi
 await expr
@@ -49,7 +49,7 @@ async fn fetch_user(id: i64) -> User {
 }
 ```
 
-在函数体内，`await` 等待其他异步结果；`-> R` 的位置给出完成时产生的值的类型。调用结果是 `AsyncFuture<R>`。`-> R` 可以省略；此时 `R` 遵循 [4.1.3](401-function-declaration.md#413-omitting-the-return-type)：从函数体推断，或者在 `pub` 或 `pub(pkg)` 函数上为 `()`。
+在函数体内，`await` 等待其他异步结果；`-> R` 的位置给出完成时产生的值的类型。调用结果是 `AsyncFuture<R>`。`-> R` 可以省略；此时 `R` 遵循 [4.1.3](401-function-declaration.md#413-省略返回类型)：从函数体推断，或者在 `pub` 或 `pub(pkg)` 函数上为 `()`。
 
 ```nabi
 let f = fetch_user(42i64);        // f: `AsyncFuture<User>`
@@ -203,7 +203,7 @@ impl Database {
 let r = await db.query("SELECT ...");
 ```
 
-`async` 方法可以接收 `ref self`（[4.7.5](407-ref-keyword.md#475-exception-for-method-receivers)）。它的 future 操作接收者的值，并在完成时把该值写回接收者所在的位置：无论是带着值完成、带着错误完成，还是被取消。因此值类型的接收者能看到方法所做的修改，与同步的 `ref self` 方法相同。
+`async` 方法可以接收 `ref self`（[4.7.5](407-ref-keyword.md#475-方法接收者的例外)）。它的 future 操作接收者的值，并在完成时把该值写回接收者所在的位置：无论是带着值完成、带着错误完成，还是被取消。因此值类型的接收者能看到方法所做的修改，与同步的 `ref self` 方法相同。
 
 ```nabi
 struct Reader { pos: usize; data: List<u8>; }
@@ -227,7 +227,7 @@ future 在完成之前一直持有接收者，因此调用必须在发起处被�
 let f = r.read_one();               // ERROR: its future holds `r` until it completes
 ```
 
-临时接收者，或通过 `any` 访问的接收者（其值是副本），会丢弃写回，与同步 `ref self` 调用相同。其他 `ref` 参数在所有协程函数上仍然是错误（[4.7.7](407-ref-keyword.md#477-references-cannot-be-first-class-values)）。
+临时接收者，或通过 `any` 访问的接收者（其值是副本），会丢弃写回，与同步 `ref self` 调用相同。其他 `ref` 参数在所有协程函数上仍然是错误（[4.7.7](407-ref-keyword.md#477-引用不能是一等值)）。
 
 ## 4.12.14. 错误处理
 

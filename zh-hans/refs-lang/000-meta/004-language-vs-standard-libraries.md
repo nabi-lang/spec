@@ -72,7 +72,7 @@
 | 限制 | Nabi |
 |-------|-----|
 | 解析器嵌套深度 | 256 |
-| 运算符 / 后缀链的环节数（[3.2.6a](../003-expressions/302-precedence-and-associativity.md#326a-implementation-limits)） | 4096 |
+| 运算符 / 后缀链的环节数（[3.2.6a](../003-expressions/302-precedence-and-associativity.md#326a-实现限制)） | 4096 |
 | 值类型大小（[2.6.3](../002-types/206-sum-types.md)） | 65536 个展平后的标量槽或 4 GiB |
 | `const` 求值（[5.2.4](../005-modules/502-const.md)） | 4,000,000 步，调用深度 128 |
 

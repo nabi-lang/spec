@@ -1,15 +1,15 @@
 # 9.13. `nabicc`：C 编译器
 
-工具链用自己的 C 编译器编译 C 代码。它用与 `nabi bindgen`（[9.10.8](910-nabi-frontend.md#nabi-bindgen-c-header-bindings)）相同的前端读取 C，将其降级为 nabi-mir，再用 `nabic` 所用的代码生成器和链接器进行编译和链接（[0.2.4](../000-meta/002-pipeline.md#024-code-generation)）。不涉及任何其他 C 编译器、汇编器或链接器，也无需安装它们。
+工具链用自己的 C 编译器编译 C 代码。它用与 `nabi bindgen`（[9.10.8](910-nabi-frontend.md#nabi-bindgenc-头文件绑定)）相同的前端读取 C，将其降级为 nabi-mir，再用 `nabic` 所用的代码生成器和链接器进行编译和链接（[0.2.4](../000-meta/002-pipeline.md#024-代码生成)）。不涉及任何其他 C 编译器、汇编器或链接器，也无需安装它们。
 
-该前端也读取 Objective-C 头文件，供 `ffi::objc::import` 和 `nabi bindgen -x objective-c` 使用（[标准库 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-headers-ffiobjcimport)）：只读取声明（`@interface`、`@protocol`、方法、属性），预定义 `__OBJC__`、`__OBJC2__` 和 ARC 的特性，且每个文件的 `#import` 只读取一次。`nabicc` 本身只编译 C；`.m` 文件不是 C 源文件。
+该前端也读取 Objective-C 头文件，供 `ffi::objc::import` 和 `nabi bindgen -x objective-c` 使用（[标准库 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-头文件ffiobjcimport)）：只读取声明（`@interface`、`@protocol`、方法、属性），预定义 `__OBJC__`、`__OBJC2__` 和 ARC 的特性，且每个文件的 `#import` 只读取一次。`nabicc` 本身只编译 C；`.m` 文件不是 C 源文件。
 
 ## 9.13.1. `nabicc` 与 `nabi cc`
 
 C 编译器有两种形式，行为相同：
 
 - `nabicc`，一个独立的可执行文件。它安装在工具链的 `bin/` 中，并作为代理安装在 `$NABI_HOME/bin/` 中，与 `nabi`、`nabic` 和 `nabils` 并列（[9.10.6](910-nabi-frontend.md#9106-toolchain)）。
-- `nabi cc`。`nabi` 运行其自身工具链中的 `nabicc`，原样传入 `cc` 之后的参数，正如它把工作委派给 `nabic` 一样（[9.10.1](910-nabi-frontend.md#9101-subcommands-and-global-options)）。`nabi` 的全局选项可以写在 `cc` 之前；`cc` 之后的每个词都属于 C 编译器。
+- `nabi cc`。`nabi` 运行其自身工具链中的 `nabicc`，原样传入 `cc` 之后的参数，正如它把工作委派给 `nabic` 一样（[9.10.1](910-nabi-frontend.md#9101-子命令与全局选项)）。`nabi` 的全局选项可以写在 `cc` 之前；`cc` 之后的每个词都属于 C 编译器。
 
 ```
 nabicc [options] <file>...
@@ -23,7 +23,7 @@ make CC="nabi cc"
 cmake -DCMAKE_C_COMPILER=nabicc -B build
 ```
 
-消息会写出所运行的形式：`nabi cc: error: ..` 或 `nabicc: error: ..`。成功时退出码为 `0`；源文件编译失败、选项错误或链接失败时为 `1`。编译器内部错误以 [9.1.6](901-nabic-cli.md#916-exit-codes) 中的退出码退出。
+消息会写出所运行的形式：`nabi cc: error: ..` 或 `nabicc: error: ..`。成功时退出码为 `0`；源文件编译失败、选项错误或链接失败时为 `1`。编译器内部错误以 [9.1.6](901-nabic-cli.md#916-退出码) 中的退出码退出。
 
 ## 9.13.2. 语言
 
@@ -142,11 +142,11 @@ C89、C99、C11、C17 和 C23 作为同一种方言读取：为其中任何一�
 
 ## 9.13.6. 代码生成
 
-每个 C 函数都作为 C 函数降级为 nabi-mir：一个以其 C 名称、采用 C ABI 的函数体，与带 `#[export_name]` 的 `extern "C" fn` 相同（[5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-definitions-exposed-externally)）。Nabi 的原生代码生成器编译它，在 `-O1` 及以上级别使用 nabi-mir 优化器和代码生成器的优化（[9.2.10](902-aot-pipeline.md#9210-optimization-levels)）。整数运算遵循 C：没有溢出检查。
+每个 C 函数都作为 C 函数降级为 nabi-mir：一个以其 C 名称、采用 C ABI 的函数体，与带 `#[export_name]` 的 `extern "C" fn` 相同（[5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-定义对外暴露)）。Nabi 的原生代码生成器编译它，在 `-O1` 及以上级别使用 nabi-mir 优化器和代码生成器的优化（[9.2.10](902-aot-pipeline.md#9210-优化级别)）。整数运算遵循 C：没有溢出检查。
 
 调用约定是目标的 C ABI，与 Nabi 的 `extern "C"` 所用的相同（[8.6](../008-abi/806-calling-convention.md)），因此从 Nabi 调用由 `nabicc` 编译的 C，或从这些 C 调用 Nabi 的 `extern "C" fn`，在构造上就是匹配的。浮点运算不做收缩：`a * b + c` 是一次乘法和一次加法，绝不会是融合乘加，与 Nabi 代码相同。
 
-`-g` 生成 DWARF（Linux、Apple、wasm32）或 CodeView（Windows）的行表和类型。在 Apple 目标上，链接会把 DWARF 收集到可执行文件旁边的 `.dSYM` bundle 中；在 Windows 上，链接器写出 PDB（[9.2.14](902-aot-pipeline.md#9214-linking-for-executables)）。
+`-g` 生成 DWARF（Linux、Apple、wasm32）或 CodeView（Windows）的行表和类型。在 Apple 目标上，链接会把 DWARF 收集到可执行文件旁边的 `.dSYM` bundle 中；在 Windows 上，链接器写出 PDB（[9.2.14](902-aot-pipeline.md#9214-链接可执行文件)）。
 
 可执行文件由 Nabi 的链接器针对目标的 C 库链接（9.13.7）。在 ELF 目标上总是添加 `-lm`。`-lc`、`-lpthread`、`-ldl` 和 `-lrt` 指的是链接中已有的 C 库组成部分，因而被丢弃，`-nostdlib`、`-nodefaultlibs` 和 `-nostartfiles` 也一样。在 Windows 上，工具链的启动代码调用 C 的 `main(argc, argv, envp)`（不调用 `wmain`），并由链接提供 `atexit`。在 32 位 Arm 和 wasm32 上，链接从工具链为该目标提供的运行时归档文件中获取编译器辅助函数（`__aeabi_idiv`、`__multi3` 等）。
 
@@ -157,7 +157,7 @@ C89、C99、C11、C17 和 C23 作为同一种方言读取：为其中任何一�
 | 目标 | 头文件 | C 库 |
 |--------|---------|-----------|
 | Apple | macOS SDK：`SDKROOT`，否则为 Xcode 或 Command Line Tools 的 SDK | libSystem |
-| Linux，glibc | 工具链为该目标提供的 sysroot，`lib/nabi/targets/<target>/sysroot`：glibc 2.36 头文件，取自与其链接的 C 运行时相同的固定版本 Debian 包（[9.2.14](902-aot-pipeline.md#9214-linking-for-executables)） | 随附的 glibc 链接桩 |
+| Linux，glibc | 工具链为该目标提供的 sysroot，`lib/nabi/targets/<target>/sysroot`：glibc 2.36 头文件，取自与其链接的 C 运行时相同的固定版本 Debian 包（[9.2.14](902-aot-pipeline.md#9214-链接可执行文件)） | 随附的 glibc 链接桩 |
 | Linux，musl | 尚无随附的 sysroot：在 musl 主机上使用主机自己的，否则使用 `--sysroot <dir>` | 随附的 musl |
 | Windows | 在 Windows 主机上，使用 Windows SDK 的 UCRT 头文件和 Visual Studio 的 C 头文件：`INCLUDE`，否则使用 `vswhere` 找到的最新 Visual Studio 和 Windows SDK | UCRT，通过工具链自己的导入库和启动代码；不链接任何 MSVC 库 |
 | wasm32 | wasi-libc 的头文件，作为该目标的 sysroot 随附 | 随附的 wasi-libc |
@@ -166,7 +166,7 @@ C89、C99、C11、C17 和 C23 作为同一种方言读取：为其中任何一�
 
 当目标就是主机且工具链没有为其随附 sysroot 时，使用主机的 `/usr/include`。对于以上都不具备的目标，会报错并指出缺失的目录和 `--sysroot <dir>`。`--sysroot <dir>`（或 `-isysroot <dir>`）覆盖上表：改为搜索其下的头文件（`usr/include`，在 Linux 上加上目标的 multiarch 目录；在 wasm32 上为 `include`）。
 
-在 C 库的头文件之前是内置头文件，即代替 clang 自带头文件的独立环境头文件：`stddef.h`、`stdint.h`、`stdarg.h`、`stdbool.h`、`stdalign.h`、`stdnoreturn.h`、`stdatomic.h`、`limits.h`、`float.h`、`inttypes.h`、`iso646.h`，以及 [std 1.7.6](../../refs-standard-libraries/100-bare/107-ffi.md#the-c-bindgen-reads) 中的内建函数头文件，其中的函数在这里没有定义。`-nobuiltininc` 不使用它们；`-nostdinc` 不使用任何系统目录。
+在 C 库的头文件之前是内置头文件，即代替 clang 自带头文件的独立环境头文件：`stddef.h`、`stdint.h`、`stdarg.h`、`stdbool.h`、`stdalign.h`、`stdnoreturn.h`、`stdatomic.h`、`limits.h`、`float.h`、`inttypes.h`、`iso646.h`，以及 [std 1.7.6](../../refs-standard-libraries/100-bare/107-ffi.md#bindgen-读取的-c) 中的内建函数头文件，其中的函数在这里没有定义。`-nobuiltininc` 不使用它们；`-nostdinc` 不使用任何系统目录。
 
 ## 9.13.8. 包的 C 源文件
 

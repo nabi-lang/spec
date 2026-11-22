@@ -28,7 +28,7 @@ Immix 块是 GC 的内存单位，即堆中一块 32 KiB 的区域。在 Immix �
 
 ## dispatch（分派）
 
-分派是确定一个名称、运算符或方法调用绑定到哪个实现的过程。除了 `any` 槽中的值在运行时按其标签分派（[2.2.3](../002-types/202-any-slot.md#223-dynamic-dispatch)）以外，分派都是静态的；由于 trait 不能作类型，任何值都不携带虚表指针。
+分派是确定一个名称、运算符或方法调用绑定到哪个实现的过程。除了 `any` 槽中的值在运行时按其标签分派（[2.2.3](../002-types/202-any-slot.md#223-动态分派)）以外，分派都是静态的；由于 trait 不能作类型，任何值都不携带虚表指针。
 
 ## extern "C" 符号
 
@@ -88,11 +88,11 @@ scan_table 是 GC 用来查找对象中哪些槽是 GC 指针的元表。它按 
 
 ## specialize
 
-特化（specialize）是[单态化](#monomorphization)的另一个名称。它用作 AOT / JIT 流水线中某个阶段的名称。
+特化（specialize）是[单态化](#monomorphization单态化)的另一个名称。它用作 AOT / JIT 流水线中某个阶段的名称。
 
 ## registry package（注册表包）
 
-发布到注册表的 Nabi 包。它的名称是 `[a-z0-9_-]+`（以字母开头），在代码中 `-` 写作 `_`。注册表把 `-` / `_` 以及大小写不同的名称视为同一个名称。在 `nabi.nabion` 中用 `Dep::version("req")` 或字符串 `"req"` 声明对它的依赖（[9.10.4a](../009-tools/910-nabi-frontend.md#9104a-registry-packages)）。
+发布到注册表的 Nabi 包。它的名称是 `[a-z0-9_-]+`（以字母开头），在代码中 `-` 写作 `_`。注册表把 `-` / `_` 以及大小写不同的名称视为同一个名称。在 `nabi.nabion` 中用 `Dep::version("req")` 或字符串 `"req"` 声明对它的依赖（[9.10.4a](../009-tools/910-nabi-frontend.md#9104a-注册表包)）。
 
 ## sticky mark-bit
 
@@ -116,7 +116,7 @@ TLAB 是每个工作线程拥有的线程局部内存缓冲区。快速路径的
 
 ## nabic / nabi / nabils / nabir
 
-构成工具链的可执行文件和运行时。`nabic` 是编译器（相当于 rustc，[9.1](../009-tools/901-nabic-cli.md)），带有自己的代码生成器和链接器；`nabi` 是类似 cargo 的前端，负责处理清单、依赖、环境和工具链固定，调用 `nabic`，并以链接了编译器的方式运行各种工具（run、lint、REPL、Jupyter、LSP、格式化工具……）（[9.10](../009-tools/910-nabi-frontend.md)）；`nabicc` 是 C 编译器（`nabi cc`，[9.13](../009-tools/913-c-compiler.md)）；`nabils` 是供编辑器使用的 LSP 服务器可执行文件（`nabi lsp`）；`nabir` 是运行时（`libnabir.a`）。`$NABI_HOME/bin/` 中的可执行文件是指向当前工具链（`$NABI_HOME/toolchains/<version>-<triple>/`）的代理，`nabic` 在相对于其自身可执行文件的 sysroot 中查找标准库和运行时（[9.2.19](../009-tools/902-aot-pipeline.md#9219-installation-layout)）。
+构成工具链的可执行文件和运行时。`nabic` 是编译器（相当于 rustc，[9.1](../009-tools/901-nabic-cli.md)），带有自己的代码生成器和链接器；`nabi` 是类似 cargo 的前端，负责处理清单、依赖、环境和工具链固定，调用 `nabic`，并以链接了编译器的方式运行各种工具（run、lint、REPL、Jupyter、LSP、格式化工具……）（[9.10](../009-tools/910-nabi-frontend.md)）；`nabicc` 是 C 编译器（`nabi cc`，[9.13](../009-tools/913-c-compiler.md)）；`nabils` 是供编辑器使用的 LSP 服务器可执行文件（`nabi lsp`）；`nabir` 是运行时（`libnabir.a`）。`$NABI_HOME/bin/` 中的可执行文件是指向当前工具链（`$NABI_HOME/toolchains/<version>-<triple>/`）的代理，`nabic` 在相对于其自身可执行文件的 sysroot 中查找标准库和运行时（[9.2.19](../009-tools/902-aot-pipeline.md#9219-安装布局)）。
 
 ## NABION
 
@@ -124,14 +124,14 @@ Nabi Object Notation。一种使用 Nabi 字面量语法的子集来书写值的
 
 ## packages.nabi-lang.org
 
-Nabi 的默认包注册表，地址为 `https://packages.nabi-lang.org`。它的索引是独立的 git 仓库 `packages-index`（[9.10.4a](../009-tools/910-nabi-frontend.md#9104a-registry-packages)）。
+Nabi 的默认包注册表，地址为 `https://packages.nabi-lang.org`。它的索引是独立的 git 仓库 `packages-index`（[9.10.4a](../009-tools/910-nabi-frontend.md#9104a-注册表包)）。
 
 ## nabi.nabion / nabi.lock
 
-位于包根目录的清单和锁文件。文件名的拼写必须完全如此（全部小写），两者都使用 [NABION](#nabion) 格式。没有依赖的包不需要它们（[0.3.4](003-source-units.md#034-the-manifest-nabinabion-is-optional)）。`nabi.nabion` 以单个 `Package { .. }` 值声明依赖和工具链固定，`nabi.lock` 固定 `nabi update` 解析出的结果。
+位于包根目录的清单和锁文件。文件名的拼写必须完全如此（全部小写），两者都使用 [NABION](#nabion) 格式。没有依赖的包不需要它们（[0.3.4](003-source-units.md#034-清单nabinabion是可选的)）。`nabi.nabion` 以单个 `Package { .. }` 值声明依赖和工具链固定，`nabi.lock` 固定 `nabi update` 解析出的结果。
 
 ## environment（环境）
 
-`nabi` 保存依赖集合的单位。每个包含 `nabi.nabion` 的目录都是一个环境，不需要激活步骤。在项目之外，使用 `$NABI_HOME/envs/` 中的具名环境（默认为 `default`）（[9.10.5](../009-tools/910-nabi-frontend.md#9105-environments)）。
+`nabi` 保存依赖集合的单位。每个包含 `nabi.nabion` 的目录都是一个环境，不需要激活步骤。在项目之外，使用 `$NABI_HOME/envs/` 中的具名环境（默认为 `default`）（[9.10.5](../009-tools/910-nabi-frontend.md#9105-环境)）。
 
 这里收集的条目不只是单词的翻译；它们也构成了 Nabi 所依托基础的简明索引：编译流水线、内存管理、类型系统、并发模型等。阅读正文时每当某个概念变得模糊，回到本章就能弄清每个术语在整个规范中所处的位置。

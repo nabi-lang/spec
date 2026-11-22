@@ -19,7 +19,7 @@ yield { ... yield expr; ... }                         // inline block (value)
 yield || { ... yield expr; ... }                      // closure modifier
 ```
 
-在这三种形式中，结果都是库类型 `GenIter<T>`（实现 `Iterator<Item = T>`）的值；带 `throws (E)` 时是 `TryGenIter<T, E>`。这条规则在 [4.1.11](401-function-declaration.md#result-types-of-coroutine-functions) 中定义。
+在这三种形式中，结果都是库类型 `GenIter<T>`（实现 `Iterator<Item = T>`）的值；带 `throws (E)` 时是 `TryGenIter<T, E>`。这条规则在 [4.1.11](401-function-declaration.md#协程函数的结果类型) 中定义。
 
 ## 4.11.2. `yield` 语句：产出值
 
@@ -110,7 +110,7 @@ yield expr;                         // statement
 | `yield` 之后的词法单元 | 含义                                                                       |
 |---------------------|----------------------------------------------------------------------------|
 | `fn`                | 声明修饰符                                                                 |
-| `{`                 | [块](../000-meta/007-glossary.md#block)标记（表达式位置）                   |
+| `{`                 | [块](../000-meta/007-glossary.md#block块)标记（表达式位置）                   |
 | `\|\|` 或 `\|`      | 闭包修饰符                                                                 |
 | 表达式起始词法单元  | `yield` 语句                                                               |
 

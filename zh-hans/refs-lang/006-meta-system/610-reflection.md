@@ -44,8 +44,8 @@ v.type_name_of_val()              // "i32" or "f64" (sum type variant check)
 
 - 手写 `impl Reflect for T` 是错误。约束 `T: Reflect` 始终成立。
 - 如果类型自身有同名方法，例如 `size()` / `type_name()`，该方法会隐藏反射方法。
-- 名字（`type_name`）不带模块路径（`List<i64>`、`Config`）。和类型的静态名字按规范顺序（[2.6.4](../002-types/206-sum-types.md#264-set-semantics)）书写（`f64 | i32`，`none` 排在最后）。`type_name_of_val(self)` 等实例形式报告运行时所持有的成员（对和类型而言）或 `any` 的内容。
-- `core::reflect::cast<T>(value: any) -> T | none` 按与 `set_field` 相同的规则把 `any` 取出为 `T`。类型的方法和字段通过 `T::methods()` / `T::fields()` 获取（[6.10.2](#6102-inspect---opt-in-trait)）；没有对应的自由函数。
+- 名字（`type_name`）不带模块路径（`List<i64>`、`Config`）。和类型的静态名字按规范顺序（[2.6.4](../002-types/206-sum-types.md#264-集合语义)）书写（`f64 | i32`，`none` 排在最后）。`type_name_of_val(self)` 等实例形式报告运行时所持有的成员（对和类型而言）或 `any` 的内容。
+- `core::reflect::cast<T>(value: any) -> T | none` 按与 `set_field` 相同的规则把 `any` 取出为 `T`。类型的方法和字段通过 `T::methods()` / `T::fields()` 获取（[6.10.2](#6102-inspect选择启用的-trait)）；没有对应的自由函数。
 
 ## 6.10.2. `Inspect`：选择启用的 trait
 
@@ -106,11 +106,11 @@ Config::fields()[1].type_name      // "i32"
 
 `Inspect` 之所以需要选择启用，是因为其元数据必须存储在二进制文件中。如果自动附加到每个类型上，二进制文件大小的代价会过高。即使有了 derive，在程序请求之前也不会存储任何内容：从不调用 `type_info()`、`info::<T>()` 或基于它们的方法的程序，构建出的代码与没有 derive 时相同。
 
-`#[derive(Inspect)]` 由 `core::reflect` 中的[元块](608-meta-blocks.md) `#[impl_derive(Inspect)]` 实现，这是由元系统本身实现标准库 trait 的一种模式（[标准库 2.12.3](../../refs-standard-libraries/200-core/212-reflect.md#2123-inspect---opt-in-fields--methods)）。
+`#[derive(Inspect)]` 由 `core::reflect` 中的[元块](608-meta-blocks.md) `#[impl_derive(Inspect)]` 实现，这是由元系统本身实现标准库 trait 的一种模式（[标准库 2.12.3](../../refs-standard-libraries/200-core/212-reflect.md#2123-inspect显式选择的字段--方法)）。
 
 ## 6.10.3. REPL / Jupyter 自动打印
 
-REPL 打印单独的最后一个表达式时，使用 `Display`，否则使用 `Debug`；末尾带 `?` 时使用 `Debug`；`:type` 打印表达式的静态类型，它通过类型检查得到，不会运行该表达式（[9.7.7](../009-tools/907-jit-cells.md#977-visualization--output)）。
+REPL 打印单独的最后一个表达式时，使用 `Display`，否则使用 `Debug`；末尾带 `?` 时使用 `Debug`；`:type` 打印表达式的静态类型，它通过类型检查得到，不会运行该表达式（[9.7.7](../009-tools/907-jit-cells.md#977-可视化--输出)）。
 
 ```
 >>> let x = 42i32;
@@ -200,7 +200,7 @@ hp.get(e)                          // 100 inside an any
 - `TypeInfo::build(fields: Dict<str, any>)` 根据具名字段构造一个值；省略的字段取其 `= expr` 默认值，没有默认值的字段是错误，报错会指出该字段。`Variant::build` 对枚举做同样的事。`new_default()` 是每个字段都取默认值的值，或 `none`。
 - 列表、数组或字典的 `TypeInfo` 可以访问其元素：`list_items`、`list_len`、`list_get`、`list_from`、`dict_items`、`dict_from`；`element()` 和 `key()` 是元素的类型。
 - `info_of(value: any)` 是 `value` 所持有类型的描述，`find(path)` 是位于 `"game::Player"` 这类路径上的类型的描述；当程序没有描述这样的类型时，两者都为 `none`。当程序请求某个类型或由它构成的类型时，该类型才会被描述。
-- 两个 `TypeInfo` 描述同一类型时（按键判定，[8.13.2](../008-abi/813-type-descriptor.md#8132-keys)）相等，即使来自不同的模块。
+- 两个 `TypeInfo` 描述同一类型时（按键判定，[8.13.2](../008-abi/813-type-descriptor.md#8132-键)）相等，即使来自不同的模块。
 - 字段上的 `#[inspect(skip)]` 把它从描述以及 `field_names`、`get_field` 和 `set_field` 中排除。
 
 ## 6.10.8. 运行时属性

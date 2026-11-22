@@ -6,7 +6,7 @@
 
 Jupyter 把 Nabi 内核作为独立进程运行，并通过基于 ZeroMQ 的 Jupyter 线路协议与之通信。内核宣告的 `protocol_version` 为 `"5.3"`（`jupyter_client` 期望的值；适用于 5.3 及更高版本的客户端）。在这种形式下，所有操作系统资源，即文件、网络和外部进程，都可以使用。
 
-内核与终端 REPL 运行在**同一种单元会话**上，并遵循 [9.7.0](907-jit-cells.md#970-rules-of-the-cell-session) 的规则：每个单元恰好运行一次，绑定和项延续到之后的单元，失败的单元不在绑定中留下任何痕迹。内核的引擎与 REPL 是同一个 [JIT 会话](906-jit-engine.md)：顶层 `await` 和 `it` 的行为与 REPL 中相同（[9.7.1](907-jit-cells.md#971-kinds-of-cell)、[9.7.7](907-jit-cells.md#977-visualization--output)）。
+内核与终端 REPL 运行在**同一种单元会话**上，并遵循 [9.7.0](907-jit-cells.md#970-单元会话的规则) 的规则：每个单元恰好运行一次，绑定和项延续到之后的单元，失败的单元不在绑定中留下任何痕迹。内核的引擎与 REPL 是同一个 [JIT 会话](906-jit-engine.md)：顶层 `await` 和 `it` 的行为与 REPL 中相同（[9.7.1](907-jit-cells.md#971-单元的种类)、[9.7.7](907-jit-cells.md#977-可视化--输出)）。
 
 ### 输入
 
@@ -16,7 +16,7 @@ Jupyter 把 Nabi 内核作为独立进程运行，并通过基于 ZeroMQ 的 Jup
 
 一个笔记本单元按终端 REPL 拆分输入时所用的相同规则拆分为多个 REPL 单元，并按顺序运行。与 IPython 一样，**只有最后一个值**作为结果显示。如果笔记本单元的后面部分失败，前面部分（之前的 REPL 单元）的效果仍然保留。
 
-REPL 单元在运行时位置（`<repl cell N>`，[9.7.5](907-jit-cells.md#locations)）中的编号取自执行计数：只构成一个 REPL 单元的笔记本单元编号为 `N`，拆分为多个 REPL 单元的笔记本单元把它们编号为 `N.1`、`N.2` 等。不推进计数的请求（`silent`，或 `store_history: false`）把它的 REPL 单元接着当前计数下的最后一个编号继续编号。
+REPL 单元在运行时位置（`<repl cell N>`，[9.7.5](907-jit-cells.md#位置)）中的编号取自执行计数：只构成一个 REPL 单元的笔记本单元编号为 `N`，拆分为多个 REPL 单元的笔记本单元把它们编号为 `N.1`、`N.2` 等。不推进计数的请求（`silent`，或 `store_history: false`）把它的 REPL 单元接着当前计数下的最后一个编号继续编号。
 
 ## 9.8.2. 本地原生内核：运行方式
 
@@ -28,7 +28,7 @@ nabi jupyter --connection-file <path>        # resolves dependencies; also accep
 
 内核从连接文件中读取 ZMQ 端口和密钥，然后绑定并监听它的五个套接字。五个套接字都能接受连接后，它在开始捕获输出之前向自己的 stderr 写入一行 `nabi jupyter: ready`。只支持 `tcp` 传输（不支持 `ipc`），不使用 CURVE 加密。消息用连接文件中的密钥进行 HMAC 签名。
 
-内核像 `nabi repl .` 那样（[9.7.10](907-jit-cells.md#9710-loading-a-program-repl-path)）加载它启动时所在的包（当前目录，或其上方最近的含有 `src/main.nabi` 或 `src/lib.nabi` 的目录）：库包作为依赖，并以 `use <name>::*;` 作为第一个单元；程序包则被加载并运行。这发生在开始捕获输出之后；它打印的内容与第一个被执行的单元的输出一起发送。在包之外，会话以空状态开始。
+内核像 `nabi repl .` 那样（[9.7.10](907-jit-cells.md#9710-加载程序repl-path)）加载它启动时所在的包（当前目录，或其上方最近的含有 `src/main.nabi` 或 `src/lib.nabi` 的目录）：库包作为依赖，并以 `use <name>::*;` 作为第一个单元；程序包则被加载并运行。这发生在开始捕获输出之后；它打印的内容与第一个被执行的单元的输出一起发送。在包之外，会话以空状态开始。
 
 ### 套接字通道
 
@@ -61,7 +61,7 @@ nabi jupyter --connection-file <path>        # resolves dependencies; also accep
 
 | 请求                | 回复                                                                                  |
 |------------------------|----------------------------------------------------------------------------------------|
-| `kernel_info_request`  | `language_info`：name 为 `nabi`，mimetype 为 `text/x-nabi`，file_extension 为 `.nabi`，codemirror_mode 和 pygments_lexer 为 `rust`（在前端认识 Nabi 之前用于高亮）；`help_links` 指向文档（`https://docs.nabi-lang.org/latest/`）和本 REPL 章节；`banner` 为 REPL 的工具链行（[9.7.8](907-jit-cells.md#line-editing)）；`protocol_version` 为 `"5.3"` |
+| `kernel_info_request`  | `language_info`：name 为 `nabi`，mimetype 为 `text/x-nabi`，file_extension 为 `.nabi`，codemirror_mode 和 pygments_lexer 为 `rust`（在前端认识 Nabi 之前用于高亮）；`help_links` 指向文档（`https://docs.nabi-lang.org/latest/`）和本 REPL 章节；`banner` 为 REPL 的工具链行（[9.7.8](907-jit-cells.md#行编辑)）；`protocol_version` 为 `"5.3"` |
 | `execute_request`      | 见下文“执行”                                                                  |
 | `is_complete_request`  | 按 REPL 的续行规则判定为 `complete` / `incomplete`；`indent` 为每个仍未闭合的括号四个空格 |
 | `complete_request`     | REPL 的补全候选项（9.8.5）                                               |
@@ -118,7 +118,7 @@ kernelspec 是下列目录下的 `kernels/nabi/kernel.json`。用 `--env <name>`
 
 ### 中断
 
-由于 `interrupt_mode` 为 `"message"`，中断以 control 套接字上的 `interrupt_request` 到达。正在运行的单元被终止，会话从该单元之前的状态继续（与失败的单元相同，[9.7.0](907-jit-cells.md#970-rules-of-the-cell-session)）。正在等待 `input_reply` 的单元同样会结束。仍在编译中的单元无法被中断。
+由于 `interrupt_mode` 为 `"message"`，中断以 control 套接字上的 `interrupt_request` 到达。正在运行的单元被终止，会话从该单元之前的状态继续（与失败的单元相同，[9.7.0](907-jit-cells.md#970-单元会话的规则)）。正在等待 `input_reply` 的单元同样会结束。仍在编译中的单元无法被中断。
 
 ### 关闭（内核重启）
 
@@ -126,7 +126,7 @@ kernelspec 是下列目录下的 `kernels/nabi/kernel.json`。用 `--env <name>`
 
 ## 9.8.5. 代码补全
 
-`complete_request` 把光标前的片段与终端 REPL 的 Tab 补全候选项（[9.7.8](907-jit-cells.md#line-editing)）进行匹配：会话的绑定和项、core 库的名称、会话的 `use` 项导入的名称，以及关键字；`.` 之后为成员，`::` 之后为项。它以 `{ matches, cursor_start, cursor_end }` 回复。
+`complete_request` 把光标前的片段与终端 REPL 的 Tab 补全候选项（[9.7.8](907-jit-cells.md#行编辑)）进行匹配：会话的绑定和项、core 库的名称、会话的 `use` 项导入的名称，以及关键字；`.` 之后为成员，`::` 之后为项。它以 `{ matches, cursor_start, cursor_end }` 回复。
 
 ## 9.8.6. inspect_request：帮助
 
@@ -134,7 +134,7 @@ kernelspec 是下列目录下的 `kernels/nabi/kernel.json`。用 `--env <name>`
 
 ## 9.8.7. REPL 与 Jupyter 之间的代码共享
 
-在 REPL 中编写的代码可以原样移到 Jupyter 单元中，反之亦然，因为两者遵循相同的单元会话和相同的语义（[9.7.0](907-jit-cells.md#970-rules-of-the-cell-session)）。
+在 REPL 中编写的代码可以原样移到 Jupyter 单元中，反之亦然，因为两者遵循相同的单元会话和相同的语义（[9.7.0](907-jit-cells.md#970-单元会话的规则)）。
 
 ### 差异
 

@@ -55,7 +55,7 @@ a..b..c             // ERROR: range operators are non-associative
 
 ### 调用实参中的 `..x`
 
-在调用实参位置，`..x` 不是区间而是展开（[4.2.6](../004-functions/402-parameters.md#426-spread-args)）。所以 `f(..5)` 是展开 `5` 的调用；要传递 `RangeTo`，把它包在括号中（`f((..5))`）。`..=x` 不是展开，所以即使在实参位置它也是区间（`f(..=5)` 传递一个 `RangeToInclusive`）。
+在调用实参位置，`..x` 不是区间而是展开（[4.2.6](../004-functions/402-parameters.md#426-展开args)）。所以 `f(..5)` 是展开 `5` 的调用；要传递 `RangeTo`，把它包在括号中（`f((..5))`）。`..=x` 不是展开，所以即使在实参位置它也是区间（`f(..=5)` 传递一个 `RangeToInclusive`）。
 
 ## 3.7.4. 用途
 

@@ -1,6 +1,6 @@
 # 8.13. 类型描述符 ABI
 
-*类型描述符*（`TypeDesc`）是一个类型的只读记录。反射读取它（[6.10](../006-meta-system/610-reflection.md)），模块加载器用它检查两个模块对某个类型的理解是否一致（[8.12](812-module-abi.md)）。布局只在 `nabir_abi::typedesc` 中定义一次；[8.12.2](812-module-abi.md#8122-layout-rules) 的布局规则同样适用。
+*类型描述符*（`TypeDesc`）是一个类型的只读记录。反射读取它（[6.10](../006-meta-system/610-reflection.md)），模块加载器用它检查两个模块对某个类型的理解是否一致（[8.12](812-module-abi.md)）。布局只在 `nabir_abi::typedesc` 中定义一次；[8.12.2](812-module-abi.md#8122-布局规则) 的布局规则同样适用。
 
 ## 8.13.1. 描述符何时存在
 
@@ -27,7 +27,7 @@
 | `version` | `u16` | 1 |
 | `kind` | `u16` | `STRUCT` 1、`TUPLE_STRUCT` 2、`UNIT` 3、`ENUM` 4、`UNION` 5、`SUM` 6、`PRIM` 7、`STR` 8、`LIST` 9、`DICT` 10、`ARRAY` 11、`TUPLE` 12、`FN` 13、`ANY` 14、`OPAQUE` 15 |
 | `flags` | `u32` | `INSPECT` 1（已填充字段、属性和 `ops`）、`LAYOUT_ONLY` 2、`INSTANCE` 4、`HAS_DEFAULT` 8 |
-| `tag_index` | `u32` | 模块 `Tags` 中的索引（[8.12.5](812-module-abi.md#8125-tags)）；没有时为 `u32::MAX` |
+| `tag_index` | `u32` | 模块 `Tags` 中的索引（[8.12.5](812-module-abi.md#8125-标签)）；没有时为 `u32::MAX` |
 | `key_hash` | `u64` | 8.13.2 |
 | `layout_hash` | `u64` | 大小、对齐、字段偏移与类型键、变体标签以及 GC 字的哈希 |
 | `size` | `u64` | 同 `T::size()` |
@@ -39,7 +39,7 @@
 | `fields` | `Slice<FieldDesc>` | 结构体按声明顺序排列的字段；枚举为空 |
 | `variants` | `Slice<VariantDesc>` | 枚举按声明顺序排列的变体 |
 | `generics` | `Slice<TypeRef>` | 实例的类型实参；和类型的成员；元组的各部分；列表或数组的元素；字典的键，然后是值 |
-| `attrs` | `Slice<AttrDesc>` | 类型上的运行时属性（[6.10.8](../006-meta-system/610-reflection.md#6108-runtime-attributes)） |
+| `attrs` | `Slice<AttrDesc>` | 类型上的运行时属性（[6.10.8](../006-meta-system/610-reflection.md#6108-运行时属性)） |
 | `ops` | `*const TypeOps` | 动态访问（8.13.5），或 null |
 | `reserved1` | `usize` | 0 |
 

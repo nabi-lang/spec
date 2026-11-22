@@ -1,6 +1,6 @@
 # 5.2. `const`
 
-`const` 关键字（一个上下文关键字，只在项的开头才是关键字，[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)）声明在编译期确定的值。语法如下：
+`const` 关键字（一个上下文关键字，只在项的开头才是关键字，[1.5.4](../001-lexical/105-keywords.md#154-上下文关键字)）声明在编译期确定的值。语法如下：
 
 ```
 const_decl      ::= "const" identifier ":" type_expr "=" const_expr ";"
@@ -45,7 +45,7 @@ trait Numbers {
 }
 ```
 
-函数体中的 `const` 是其所在块的一个项（[3.9.1](../003-expressions/309-block-expressions.md#391-form)）：在整个块以及块中声明的项中都可见。它不读取周围代码的任何局部变量或参数；此时的错误提示改写为 `let`（`let half = n / 2;`）。它可以读取所在泛型函数或 `impl` 的常量参数，以及其类型参数的关联常量和 `T::size()`：这时它每个实例各有一个值（5.2.7）。
+函数体中的 `const` 是其所在块的一个项（[3.9.1](../003-expressions/309-block-expressions.md#391-形式)）：在整个块以及块中声明的项中都可见。它不读取周围代码的任何局部变量或参数；此时的错误提示改写为 `let`（`let half = n / 2;`）。它可以读取所在泛型函数或 `impl` 的常量参数，以及其类型参数的关联常量和 `T::size()`：这时它每个实例各有一个值（5.2.7）。
 
 ```nabi
 fn mid<const N: usize>(xs: [i32; N]) -> i32 {
@@ -77,7 +77,7 @@ Nabi 没有 `&` 运算符，所以没有任何表达式能取 `const` 的地址�
 
 ## 5.2.4. 常量表达式与求值器
 
-`const` 项、数组长度、常量泛型实参、`struct` 字段默认值、`static` 初始化式，以及接收常量实参的 `const fn` 字面量处理器（[6.5.8](../006-meta-system/605-literal-magic.md#658-const-compatibility-of-literal-handlers)），都使用同一个编译期求值器。
+`const` 项、数组长度、常量泛型实参、`struct` 字段默认值、`static` 初始化式，以及接收常量实参的 `const fn` 字面量处理器（[6.5.8](../006-meta-system/605-literal-magic.md#658-字面量处理函数的-const-兼容性)），都使用同一个编译期求值器。
 
 可以求值的内容：
 
@@ -166,7 +166,7 @@ fn chunk<const N: usize>(xs: [i32; N]) -> usize {
 ```
 
 - 它读取的内容与函数体 `const` 相同：常量、`const fn` 调用、周围代码的常量参数，以及其类型参数的关联常量和 `T::size()` / `T::align()`。读取 `let` 变量是错误，帮助信息提示去掉 `const`。
-- 在泛型函数中，它在实例的实参已知后，每个实例求值一次。在定义处对泛型主体进行的检查（[2.10.9](../002-types/210-generics.md#2109-body-checking)）对该块做类型检查，但不求值。
+- 在泛型函数中，它在实例的实参已知后，每个实例求值一次。在定义处对泛型主体进行的检查（[2.10.9](../002-types/210-generics.md#2109-主体检查)）对该块做类型检查，但不求值。
 - 求值时发生 panic 或 `assert` 失败，是在生成该实例的调用处报告的编译错误，并指明实例（`` const block failed in `chunk::<0>`: chunk needs at least one element ``），`assert` 作为次要位置。`nabi check` 同样会报告它：它与 `nabi build` 一样，实例化程序所能到达的内容。
 - 通过检查的块在运行时没有任何开销；它的值像任何 `const` 一样被嵌入。
 - 对于简单类型（数字、`bool`、`char`、`str`、`()` 或由它们构成的数组），求值器知道 `T::size()`；对于其他类型，这是错误，提示改用常量参数或 `List`。

@@ -59,16 +59,16 @@ impl ops::Add for Point {
 
 这种形式是 `impl Trait for Type { ... }`。主体包含 [`trait`](208-trait.md) 要求的方法的主体，以及关联类型的具体定义。trait 提供了默认方法的项可以在主体中省略，此时使用默认主体。trait 声明的没有默认值的关联类型或常量必须定义；遗漏属于错误（E0072），其帮助信息会写出要添加的行，在 impl 的签名中提到了该类型时还会带上签名给出的类型（`type Item = i32;`）。
 
-impl 方法必须满足以下条件：参数个数与 trait 声明相同；除接收者外的每个参数上的 `ref` 相同；`unsafe` 相同（[4.15.4](../004-functions/415-unsafe.md#4154-in-traits)）；在它写出类型的每个参数上，类型与声明的类型（经下述替换）相同（未写类型的参数取该类型，[4.1](../004-functions/401-function-declaration.md)）；当且仅当声明返回值时返回值，且返回类型是把声明类型中的 `Self`、trait 的参数及其关联类型替换为 impl 的对应类型后的类型（没有更窄的返回或协变返回）。否则在 impl 处报错，错误信息会显示该声明。impl 方法的 `throws` 必须与 trait 方法的 `throws` 相同；没有 `throws` 的 impl 方法取 trait 方法的 `throws`。impl 不能添加 `throws`，也不能扩大错误类型（[4.14.11](../004-functions/414-throws.md#41411-throws-on-methods)）。
+impl 方法必须满足以下条件：参数个数与 trait 声明相同；除接收者外的每个参数上的 `ref` 相同；`unsafe` 相同（[4.15.4](../004-functions/415-unsafe.md#4154-在-trait-中)）；在它写出类型的每个参数上，类型与声明的类型（经下述替换）相同（未写类型的参数取该类型，[4.1](../004-functions/401-function-declaration.md)）；当且仅当声明返回值时返回值，且返回类型是把声明类型中的 `Self`、trait 的参数及其关联类型替换为 impl 的对应类型后的类型（没有更窄的返回或协变返回）。否则在 impl 处报错，错误信息会显示该声明。impl 方法的 `throws` 必须与 trait 方法的 `throws` 相同；没有 `throws` 的 impl 方法取 trait 方法的 `throws`。impl 不能添加 `throws`，也不能扩大错误类型（[4.14.11](../004-functions/414-throws.md#41411-方法上的-throws)）。
 
-`Send` / `Sync` 是自动的标记 trait，有两种手动声明（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）。
+`Send` / `Sync` 是自动的标记 trait，有两种手动声明（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)）。
 
-- 选择加入：`unsafe impl Send for X {}`。`unsafe impl` 只能用于 `Send` / `Sync` 和 `unsafe trait`（[4.15.4](../004-functions/415-unsafe.md#4154-in-traits)），且手动实现这些 trait 时必须使用它。
+- 选择加入：`unsafe impl Send for X {}`。`unsafe impl` 只能用于 `Send` / `Sync` 和 `unsafe trait`（[4.15.4](../004-functions/415-unsafe.md#4154-在-trait-中)），且手动实现这些 trait 时必须使用它。
 - 选择退出：`impl !Send for X {}`、`impl<T> !Send for Cell<T> {}`。它阻止自动实现，且主体必须为空。`!` 只能与 `Send` / `Sync` 一起使用。
 
 ### `impl` 中的常量
 
-`impl` 块中的 `const N: T = v;` 是该类型的关联常量。从外部读作 `Type::N`，在 `impl` 内部读作 `Self::N`。trait 声明的关联常量（[2.8.3a](208-trait.md#283a-associated-constants)）在 trait `impl` 中获得其值。
+`impl` 块中的 `const N: T = v;` 是该类型的关联常量。从外部读作 `Type::N`，在 `impl` 内部读作 `Self::N`。trait 声明的关联常量（[2.8.3a](208-trait.md#283a-关联常量)）在 trait `impl` 中获得其值。
 
 ```nabi
 impl Circle {
@@ -171,7 +171,7 @@ impl Add<List<Matrix>> for i32 { ... }   // ERROR: `List<Matrix>` is `core`'s ty
 
 ### 一致性
 
-一个（trait，类型）对只有一个 `impl`，并且没有特化。针对某一类型的快速路径以类型测试的形式写在泛型 `impl` 中：`if Self is f32 { .. }`（[2.10.13](210-generics.md#21013-type-tests-on-type-parameters)）。
+一个（trait，类型）对只有一个 `impl`，并且没有特化。针对某一类型的快速路径以类型测试的形式写在泛型 `impl` 中：`if Self is f32 { .. }`（[2.10.13](210-generics.md#21013-对类型参数的类型测试)）。
 
 - 泛型 `impl` 针对使用它的每个类型进行单态化。
 - 具体 `impl` 只有在该具体类型满足泛型 `impl` 的约束时，才与泛型 `impl` 重叠。
@@ -211,8 +211,8 @@ trait `impl` 的方法遵循 trait 的可见性，不能单独标注。
 
 ## 2.9.7. 固有 `impl` 与 trait `impl` 之间的方法冲突
 
-如果同一个方法名同时存在于固有 `impl` 和 trait `impl` 中，调用处必须无歧义地选择。确切的解析规则在[方法](../004-functions/409-method.md#name-conflicts-between-traits)中定义。
+如果同一个方法名同时存在于固有 `impl` 和 trait `impl` 中，调用处必须无歧义地选择。确切的解析规则在[方法](../004-functions/409-method.md#trait-之间的名称冲突)中定义。
 
 ## 2.9.8. 不得两次定义同一方法
 
-为同一类型定义两个同名的方法是编译错误，无论是在一个 `impl` 块中，还是在多个固有 `impl` 块中（[2.9.3](#293-multiple-impl-blocks-for-one-type)），在一个 trait `impl` 中也是如此（没有重载）。允许来自不同 trait 的同名方法（[2.9.7](#297-method-conflicts-between-inherent-and-trait-impls)）。
+为同一类型定义两个同名的方法是编译错误，无论是在一个 `impl` 块中，还是在多个固有 `impl` 块中（[2.9.3](#293-一个类型的多个-impl-块)），在一个 trait `impl` 中也是如此（没有重载）。允许来自不同 trait 的同名方法（[2.9.7](#297-固有-impl-与-trait-impl-之间的方法冲突)）。

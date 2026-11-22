@@ -80,7 +80,7 @@ pub(pkg)             within the same package only
 pub                  also from external packages
 ```
 
-`#[internal] pub` 项是工具链自己的包之间共享的 `pub` 项；其他包不能使用它们（[5.6](506-visibility.md)、[6.2.16](../006-meta-system/602-built-in-attributes.md#6216-internal-shared-by-the-toolchains-packages)）。
+`#[internal] pub` 项是工具链自己的包之间共享的 `pub` 项；其他包不能使用它们（[5.6](506-visibility.md)、[6.2.16](../006-meta-system/602-built-in-attributes.md#6216-internal-由工具链的各个包共用)）。
 
 ## 名称解析规则
 

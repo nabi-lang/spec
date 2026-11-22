@@ -69,7 +69,7 @@ let x = 1;       // new declaration, 'let' required
 x = 2;           // reassignment, without 'let'
 ```
 
-创建新变量需要 `let`；再次写入现有变量的槽时不写 `let`。对未声明的名字不带 `let` 赋值是编译错误。对同一作用域中已声明的名字使用 `let` 是重新声明：它创建一个新绑定，类型可以不同，并保持旧槽原样（[5.1.4](../005-modules/501-variable-declaration.md#514-redeclaration-in-the-same-scope)）。确切规则定义于[变量声明](../005-modules/501-variable-declaration.md)。
+创建新变量需要 `let`；再次写入现有变量的槽时不写 `let`。对未声明的名字不带 `let` 赋值是编译错误。对同一作用域中已声明的名字使用 `let` 是重新声明：它创建一个新绑定，类型可以不同，并保持旧槽原样（[5.1.4](../005-modules/501-variable-declaration.md#514-在同一作用域中重新声明)）。确切规则定义于[变量声明](../005-modules/501-variable-declaration.md)。
 
 ```nabi
 let n = "42";
@@ -95,7 +95,7 @@ x *= 2;
 arr[i] += 1;
 ```
 
-[标点与运算符词法单元](../001-lexical/110-punctuation-and-operator-tokens.md)中的所有复合赋值词法单元（`+=`、`-=`、`*=`、`**=`、`/=`、`%=`、`%%=`、`&=`、`|=`、`^=`、`<<=`、`>>=`）都遵循同一模式。复合赋值是语句，以 `;` 结束（在 `}` 之前可省略，[1.3.4](../001-lexical/103-statement-terminator.md#134-block-like-expression-statements)）；它没有值，不能出现在表达式位置（`let y = (x += 1);` 无法解析）。原地广播形式 `.=` `.+=` `.-=` `.*=` `./=` `.%=` `.%%=` `.**=` `.&=` `.|=` `.^=` `.<<=` `.>>=` 是同类语句，有其自身含义（[3.3.7](303-broadcast-operators.md#337-in-place-broadcast)）。
+[标点与运算符词法单元](../001-lexical/110-punctuation-and-operator-tokens.md)中的所有复合赋值词法单元（`+=`、`-=`、`*=`、`**=`、`/=`、`%=`、`%%=`、`&=`、`|=`、`^=`、`<<=`、`>>=`）都遵循同一模式。复合赋值是语句，以 `;` 结束（在 `}` 之前可省略，[1.3.4](../001-lexical/103-statement-terminator.md#134-类块表达式语句)）；它没有值，不能出现在表达式位置（`let y = (x += 1);` 无法解析）。原地广播形式 `.=` `.+=` `.-=` `.*=` `./=` `.%=` `.%%=` `.**=` `.&=` `.|=` `.^=` `.<<=` `.>>=` 是同类语句，有其自身含义（[3.3.7](303-broadcast-operators.md#337-原地广播)）。
 
 ### 脱糖与左值求值
 
@@ -115,7 +115,7 @@ arr[expensive_index()] += 1;
 
 如果左值是普通变量或字段，就原样引用两次；如果它包含调用或计算，该部分会绑定到一个临时值并只求值一次。这一保证防止带副作用的索引或方法被无意中调用两次。先求值左值还是 `rhs`，取决于操作数类型（3.4.7）。
 
-左值必须是一个位置（3.4.1）。`f() += 1` 和 `d.entry(k).or_insert(0) += 1` 是错误（E0140）：它们各自会更新一个临时值。通过锁守卫的 `get()` 写入（`g.get().total += 1`）也是如此，因为它返回副本；帮助信息会给出 `g.update(|v| { v.total += 1; v })`，整体替换时则给出 `g.set(v)`。要在字典中计数，使用带默认值的索引（[3.6.1](306-indexing-and-slicing.md#361-indexing-arri)）：
+左值必须是一个位置（3.4.1）。`f() += 1` 和 `d.entry(k).or_insert(0) += 1` 是错误（E0140）：它们各自会更新一个临时值。通过锁守卫的 `get()` 写入（`g.get().total += 1`）也是如此，因为它返回副本；帮助信息会给出 `g.update(|v| { v.total += 1; v })`，整体替换时则给出 `g.set(v)`。要在字典中计数，使用带默认值的索引（[3.6.1](306-indexing-and-slicing.md#361-索引arri)）：
 
 ```nabi
 counts[w, default: 0] += 1;
@@ -207,7 +207,7 @@ for _ in 0..n {
 | `place op= value`，两个操作数都是基本类型（整数、浮点数、`bool`、`char`、`str`） | `value`，然后 `place` |
 | `place op= value`，其他任何操作数 | `place`，然后 `value` |
 | `(p0, p1) = value`（3.4.6） | 完整的 `value`，然后 `p0`，然后 `p1` |
-| `place .= value`（[3.3.7](303-broadcast-operators.md#337-in-place-broadcast)） | `value` 的各操作数按源代码顺序，然后 `place` |
+| `place .= value`（[3.3.7](303-broadcast-operators.md#337-原地广播)） | `value` 的各操作数按源代码顺序，然后 `place` |
 | `place .op= value` | `place`，然后 `value` 的各操作数 |
 
 ```nabi
@@ -217,7 +217,7 @@ ms[f()] += g();         // ms: List<Money> with AddAssign: f(), then g()
 (xs[f()], ys[h()]) = (g(), k());   // g(), k(), then f(), then h()
 ```
 
-其他操作数的复合赋值是对该位置调用 `OpAssign` 方法（3.4.3），所以其位置先求值，正如任何方法调用中的接收者那样（[4.2.8](../004-functions/402-parameters.md#428-parameter-evaluation-order)）；`.op=` 把目标作为 `target .op value` 的第一个操作数读取。值先求值时，触发 panic 或抛出错误的值不会求值位置的任何部分，而改变了位置所读取变量的值（通过 `[ref]` 捕获改变的索引、通过 `ref self` 方法改变的字段）会被位置看到：
+其他操作数的复合赋值是对该位置调用 `OpAssign` 方法（3.4.3），所以其位置先求值，正如任何方法调用中的接收者那样（[4.2.8](../004-functions/402-parameters.md#428-参数求值顺序)）；`.op=` 把目标作为 `target .op value` 的第一个操作数读取。值先求值时，触发 panic 或抛出错误的值不会求值位置的任何部分，而改变了位置所读取变量的值（通过 `[ref]` 捕获改变的索引、通过 `ref self` 方法改变的字段）会被位置看到：
 
 ```nabi
 let i = 0;

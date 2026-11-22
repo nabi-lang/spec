@@ -7,7 +7,7 @@
 
 ## 7.2.1. TLAB（线程局部分配缓冲区）
 
-每个调度器工作线程（= 操作系统线程）都有自己的 TLAB。TLAB 由从 [Immix](../000-meta/007-glossary.md#immix) 空间获得的一个[块](../000-meta/007-glossary.md#block)（或其一部分）构成，通过 bump 指针快速分配。
+每个调度器工作线程（= 操作系统线程）都有自己的 TLAB。TLAB 由从 [Immix](../000-meta/007-glossary.md#immix) 空间获得的一个[块](../000-meta/007-glossary.md#block块)（或其一部分）构成，通过 bump 指针快速分配。
 
 ```
 TLAB structure:
@@ -86,11 +86,11 @@ TLAB 是 Immix 块内一段连续的空闲行。补充时，这段区间在交�
 
 ## 7.2.8. GC 触发
 
-在以下情况下，慢速路径会发起回收。条件以及在 minor 与 full 之间的选择遵循 [7.3.2](703-gc-algorithm.md#732-sticky-mark-bit-generational-collection)。
+在以下情况下，慢速路径会发起回收。条件以及在 minor 与 full 之间的选择遵循 [7.3.2](703-gc-algorithm.md#732-sticky-mark-bit-分代回收)。
 
 - 无法交出新的 TLAB 或块时。
-- 自上次回收以来的分配量超过下一周期的预算时。块在被线程取走时就按整块计入。年轻代预算为上一周期中每个进行过分配的线程 8 MiB，最少 32 MiB，最多 128 MiB；较大的堆获得与老年代字节数相同的年轻代字节数，最多 128 MiB。`NABIR_GC_YOUNG` 可以精确设置它（[9.9.8](../009-tools/909-debug-tools.md#998-memory--gc-tools)）；设置了停顿目标时，它遵循该目标（[bare 1.6.12](../../refs-standard-libraries/100-bare/106-gc-pin.md#1612-set_pause_goal---a-pause-goal)）。
-- 堆上限会限制预算（[bare 1.6.14](../../refs-standard-libraries/100-bare/106-gc-pin.md#1614-set_heap_limit---a-heap-limit)）。在不回收区间打开期间，任何分配都不会触发回收：超出预算时改为扩展堆（[bare 1.6.13](../../refs-standard-libraries/100-bare/106-gc-pin.md#1613-no_collect---a-region-without-collections)）。
+- 自上次回收以来的分配量超过下一周期的预算时。块在被线程取走时就按整块计入。年轻代预算为上一周期中每个进行过分配的线程 8 MiB，最少 32 MiB，最多 128 MiB；较大的堆获得与老年代字节数相同的年轻代字节数，最多 128 MiB。`NABIR_GC_YOUNG` 可以精确设置它（[9.9.8](../009-tools/909-debug-tools.md#998-内存--gc-工具)）；设置了停顿目标时，它遵循该目标（[bare 1.6.12](../../refs-standard-libraries/100-bare/106-gc-pin.md#1612-set_pause_goal停顿目标)）。
+- 堆上限会限制预算（[bare 1.6.14](../../refs-standard-libraries/100-bare/106-gc-pin.md#1614-set_heap_limit堆上限)）。在不回收区间打开期间，任何分配都不会触发回收：超出预算时改为扩展堆（[bare 1.6.13](../../refs-standard-libraries/100-bare/106-gc-pin.md#1613-no_collect不发生回收的区域)）。
 
 `nabi_gc_collect` 显式执行一次完整回收，`nabi_gc_collect_young` 执行一次 minor 回收。
 
@@ -101,11 +101,11 @@ TLAB 是 Immix 块内一段连续的空闲行。补充时，这段区间在交�
 对每个 8 KiB 或更大的对象，有两项保证：
 
 - **对齐**。其载荷（紧跟在 16 字节头之后的地址）按 64 字节（`LOS_ALIGN`）对齐，即一条缓存行，足以满足所有 SIMD 宽度。要求更大对齐（`align > 64`）的缓冲区获得它自己要求的对齐。
-- **地址稳定**。回收器永远不会移动它：只要对象可达，其载荷地址就保持不变。从它取得的指针（`Array::as_ptr`、`List::as_ptr`，[标准库 2.9.12](../../refs-standard-libraries/200-core/209-collections.md#2912-gcbuft---raw-gc-buffer)）可以不经固定就交给向量代码或 C（BLAS、LAPACK），前提是所有者在使用期间保持可达。较小的对象可能被移动（疏散，7.3.1）；当它的地址必须固定时，固定它（[7.2.10](#7210-pinned-objects)）。
+- **地址稳定**。回收器永远不会移动它：只要对象可达，其载荷地址就保持不变。从它取得的指针（`Array::as_ptr`、`List::as_ptr`，[标准库 2.9.12](../../refs-standard-libraries/200-core/209-collections.md#2912-gcbuft原始-gc-缓冲区)）可以不经固定就交给向量代码或 C（BLAS、LAPACK），前提是所有者在使用期间保持可达。较小的对象可能被移动（疏散，7.3.1）；当它的地址必须固定时，固定它（[7.2.10](#7210-固定对象)）。
 
 ## 7.2.10. 固定对象
 
-在接收 GC 指针的 `extern "C"` 调用期间，无需单独固定（[7.4.1](704-barriers-and-roots.md#objects-pointed-to-by-roots-are-not-moved)）。如果 C 在调用之后保留该指针，就用 `nabi_gc_pin` 固定它。固定只设置 `PINNED` 位，不复制对象。`nabi_gc_unpin` 解除固定。
+在接收 GC 指针的 `extern "C"` 调用期间，无需单独固定（[7.4.1](704-barriers-and-roots.md#根指向的对象不会被移动)）。如果 C 在调用之后保留该指针，就用 `nabi_gc_pin` 固定它。固定只设置 `PINNED` 位，不复制对象。`nabi_gc_unpin` 解除固定。
 
 ## 7.2.11. 分配时间与堆使用量
 

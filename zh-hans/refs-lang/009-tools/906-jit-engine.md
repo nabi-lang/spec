@@ -1,6 +1,6 @@
 # 9.6. JIT 引擎
 
-本节定义 REPL 和 Jupyter 使用的 JIT 执行引擎。它是[执行引擎与用户界面](../000-meta/001-execution-modes.md)中所定义的 JIT 引擎的实现。单元会话的规则由 [9.7.0](907-jit-cells.md#970-rules-of-the-cell-session) 定义。
+本节定义 REPL 和 Jupyter 使用的 JIT 执行引擎。它是[执行引擎与用户界面](../000-meta/001-execution-modes.md)中所定义的 JIT 引擎的实现。单元会话的规则由 [9.7.0](907-jit-cells.md#970-单元会话的规则) 定义。
 
 ## 9.6.1. 结构：nabic 与 JIT 宿主
 
@@ -14,7 +14,7 @@ nabic (front end)                         JIT host (one per session)
                                              → run the cell entry function once
 ```
 
-- 单元是代码生成器（[9.2.11](902-aot-pipeline.md#9211-code-generator)）生成的目标文件，由宿主映射并链接，优化级别由 `:opt` 设置；它的 nabi-mir 不做优化，因为之后的单元可能会重新定义它本来要内联的内容（[9.2.10](902-aot-pipeline.md#9210-optimization-levels)）。REPL 在其规格声明支持 REPL 的目标上运行（[0.6.5](../000-meta/006-platform-targets.md#065-target-specifications)，`repl`）：`x86_64` 和 `aarch64` 的 Linux（glibc）、macOS 和 Windows。
+- 单元是代码生成器（[9.2.11](902-aot-pipeline.md#9211-代码生成器)）生成的目标文件，由宿主映射并链接，优化级别由 `:opt` 设置；它的 nabi-mir 不做优化，因为之后的单元可能会重新定义它本来要内联的内容（[9.2.10](902-aot-pipeline.md#9210-优化级别)）。REPL 在其规格声明支持 REPL 的目标上运行（[0.6.5](../000-meta/006-platform-targets.md#065-目标规格)，`repl`）：`x86_64` 和 `aarch64` 的 Linux（glibc）、macOS 和 Windows。
 - 宿主把代码放入可执行内存，针对运行时、libc 和之前的单元解析其重定位，并运行该单元的入口函数一次。
 - 宿主导出运行时（`libnabir.a`）的每个符号，单元代码在宿主进程中找到运行时和 libc 的符号。
 
@@ -27,7 +27,7 @@ nabic (front end)                         JIT host (one per session)
 一个会话使用一张符号表。所有单元的定义都累积在其中。
 
 - 当某个单元重新定义一个已定义的符号时，宿主把该定义重命名为 `<name>.r<cell>`。之后的单元中的引用链接到最新的名称。
-- 重新定义从下一个单元起生效（[9.7.0](907-jit-cells.md#970-rules-of-the-cell-session) 规则 3）。
+- 重新定义从下一个单元起生效（[9.7.0](907-jit-cells.md#970-单元会话的规则) 规则 3）。
 - 依赖于被重新定义符号的函数由 `nabic` 重新编译。因此，即使是在重新定义之前编译的代码，当之后的单元再次到达它时，也会使用新的定义（调用被重新定义的 `f` 的 `g`）。
 - 单元代码和旧定义在会话结束之前不会被释放。
 

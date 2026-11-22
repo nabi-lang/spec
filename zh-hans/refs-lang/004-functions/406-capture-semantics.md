@@ -22,7 +22,7 @@ capture_item    ::= "ref" capture_name | "move" capture_name | capture_name
 capture_name    ::= identifier | "self"
 ```
 
-`self` 指方法的接收者。`[ref self]` 只允许用在 `ref self` 方法中，此时它共享接收者（[4.7.4](407-ref-keyword.md#474-closure-capture-lists)）；按值的 `self` 按值捕获。
+`self` 指方法的接收者。`[ref self]` 只允许用在 `ref self` 方法中，此时它共享接收者（[4.7.4](407-ref-keyword.md#474-闭包捕获列表)）；按值的 `self` 按值捕获。
 
 ## 4.6.2. 引用捕获：`[ref x]` 捕获列表
 
@@ -105,7 +105,7 @@ fns[4]();                          // 4
 
 值捕获把值复制进闭包。[`struct`](../002-types/203-struct.md) 是值类型，所以闭包持有它自己的副本；闭包内的字段写入不会影响外部变量。要影响外部变量，使用 `[ref p]`。对值捕获的字段写入是编译错误（E0057），与重新绑定捕获相同，帮助信息为 ``add `[ref p]` to the closure's capture list``。对普通数据（数字、`bool`、`str`，以及由它们构成且没有 `Drop` 的结构体、元组、数组和枚举）的值捕获或其字段调用 `ref self` 方法也是如此：闭包的每次调用都从自己的副本开始，所以修改会丢失（对带种子的生成器 `g`，`List::from_fn(4, |_| g.uniform(0.0, 1.0))` 会四次给出同一个值）。共享其状态的句柄和资源（`Cell`、`File`、套接字）不受影响。应写 `[ref g] |_| g.uniform(0.0, 1.0)`；如果只想在闭包内修改一个副本，先把它复制到一个局部变量中。
 
-集合类型（`List`、`Dict`、`Set`、`StrBuf` 等）是引用句柄（[标准库 2.9](../../refs-standard-libraries/200-core/209-collections.md#reference-handles)）。值捕获复制的是句柄，所以对象是共享的。
+集合类型（`List`、`Dict`、`Set`、`StrBuf` 等）是引用句柄（[标准库 2.9](../../refs-standard-libraries/200-core/209-collections.md#引用句柄)）。值捕获复制的是句柄，所以对象是共享的。
 
 ```nabi
 let xs = [1, 2, 3];
@@ -144,7 +144,7 @@ let g = [ref xs] || {
 
 ## 4.6.9. 并行与并发上下文中的附加约束
 
-`fn() + Send` 闭包（传给 `task::spawn_blocking`、`par::for_each`、`thread::spawn` 等的闭包）的每个普通捕获都必须是 `Send + Sync`（[4.4](404-function-type.md#send--sync-bounds)）：闭包与创建它的代码共享该捕获。`[move x]` 捕获只属于闭包，只需要 `Send`（[4.6.11](#4611-move-capture-the-move-x-capture-list)）；`+ Sync` 闭包（`par::for_each` 的闭包，每个工作线程都会调用它）要求每个捕获都是 `Sync`。`[ref x]` 单元会被闭包和创建它的代码同时写入，所以无论 `x` 是什么类型，它都绝不是 `Send` 或 `Sync`：带 `[ref]` 捕获的闭包（或捕获了这种闭包的闭包，或由 `async [ref x] ||` 闭包产生的 future）不适用于任何 `+ Send` / `+ Sync` 槽。同一线程内的使用（`spawn_local`、普通调用）不受影响。集合类型是 `!Sync`（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)），同样不能以这种方式按值捕获。
+`fn() + Send` 闭包（传给 `task::spawn_blocking`、`par::for_each`、`thread::spawn` 等的闭包）的每个普通捕获都必须是 `Send + Sync`（[4.4](404-function-type.md#send--sync-约束)）：闭包与创建它的代码共享该捕获。`[move x]` 捕获只属于闭包，只需要 `Send`（[4.6.11](#4611-移动捕获move-x-捕获列表)）；`+ Sync` 闭包（`par::for_each` 的闭包，每个工作线程都会调用它）要求每个捕获都是 `Sync`。`[ref x]` 单元会被闭包和创建它的代码同时写入，所以无论 `x` 是什么类型，它都绝不是 `Send` 或 `Sync`：带 `[ref]` 捕获的闭包（或捕获了这种闭包的闭包，或由 `async [ref x] ||` 闭包产生的 future）不适用于任何 `+ Send` / `+ Sync` 槽。同一线程内的使用（`spawn_local`、普通调用）不受影响。集合类型是 `!Sync`（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)），同样不能以这种方式按值捕获。
 
 ```nabi
 let buf: List<i32> = [];
@@ -154,7 +154,7 @@ par::for_each(xs, [ref buf] |x| { buf.push(x) });
 
 应改用折叠（`par::fold(xs, 0, |a, b| a + b)`），通过 `Mutex` / `RwLock` / `Atomic` / 通道共享，或者从线程返回值（`join()`）。只有被派生的代码需要的值，就把它移入：`thread::spawn([move buf] || buf.len())`。
 
-以这种方式共享的值属于它的新所有者：在 `Mutex::new(buf)` 或 `tx.send(buf)` 之后使用 `buf` 是编译错误（E0105，[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）。应通过锁使用它，或者交出 `buf.clone()`。
+以这种方式共享的值属于它的新所有者：在 `Mutex::new(buf)` 或 `tx.send(buf)` 之后使用 `buf` 是编译错误（E0105，[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)）。应通过锁使用它，或者交出 `buf.clone()`。
 
 ```nabi
 let m = Mutex::new(buf);
@@ -165,7 +165,7 @@ buf.push(1);
 
 详细的并行与并发规则由标准库规范定义；本章只涉及语言层面的捕获机制。
 
-被捕获的 `Drop` 资源（`File`、套接字、通道 `Sender`）不会被复制：捕获把它移入闭包或 `async` 块，之后在外部使用它是错误（[标准库 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)）。对释放不会失败的值（`Sender`），`async` 块的任务结束时释放其捕获的内容；关闭可能失败的被捕获值（`File`）必须在块内关闭（`try f.close()` 或 `using`），否则该块是错误（E0134）。如果外部也要保留该值，就捕获一个副本：`x.clone()`，对 `File` 则用 `try x.try_clone()`。
+被捕获的 `Drop` 资源（`File`、套接字、通道 `Sender`）不会被复制：捕获把它移入闭包或 `async` 块，之后在外部使用它是错误（[标准库 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop释放时的清理)）。对释放不会失败的值（`Sender`），`async` 块的任务结束时释放其捕获的内容；关闭可能失败的被捕获值（`File`）必须在块内关闭（`try f.close()` 或 `using`），否则该块是错误（E0134）。如果外部也要保留该值，就捕获一个副本：`x.clone()`，对 `File` 则用 `try x.try_clone()`。
 
 ## 4.6.10. 被捕获变量的生命周期
 
@@ -198,8 +198,8 @@ rows.push("x");
 //   help: the closure owns it now; use it inside the closure, ...
 ```
 
-- 创建闭包时移交 `x` 的方式与通道发送相同（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）：闭包得到 `x` 所能到达的每个集合的副本，之后使用 `x`（或指向其内容的其他句柄）是编译错误（`E0105`）。`Sync` 值（数字、`str`、由它们构成的数组）例外：闭包的副本与 `x` 相等，两者都可以使用。
-- 移动捕获只需要 `Send` 就能让闭包跨线程：没有其他代码能访问它。所以集合、`Command` 或 `Child` 可以交给 `thread::spawn`、`task::spawn_blocking` 或 `par::Scope::spawn`。普通捕获仍遵循 [4.6.9](#469-additional-constraints-in-parallel-and-concurrent-contexts) 的 `Send + Sync` 规则，`+ Sync` 槽（`par::for_each`，每个工作线程都会调用它）要求每个捕获都是 `Sync`。
+- 创建闭包时移交 `x` 的方式与通道发送相同（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)）：闭包得到 `x` 所能到达的每个集合的副本，之后使用 `x`（或指向其内容的其他句柄）是编译错误（`E0105`）。`Sync` 值（数字、`str`、由它们构成的数组）例外：闭包的副本与 `x` 相等，两者都可以使用。
+- 移动捕获只需要 `Send` 就能让闭包跨线程：没有其他代码能访问它。所以集合、`Command` 或 `Child` 可以交给 `thread::spawn`、`task::spawn_blocking` 或 `par::Scope::spawn`。普通捕获仍遵循 [4.6.9](#469-并行与并发上下文中的附加约束) 的 `Send + Sync` 规则，`+ Sync` 槽（`par::for_each`，每个工作线程都会调用它）要求每个捕获都是 `Sync`。
 - 拥有非 `Sync` 移动捕获的闭包只能移交一次。把它传给类型为 `fn(..) + Send` 且不带 `Sync` 的参数，无论是什么函数，都会移交它：这种参数是被调用者可能在另一线程上运行的参数（`thread::spawn`、`thread::Builder::spawn`、`task::spawn_blocking`、`task::spawn_blocking_with_arg` 的 `f`、`par::join`、`par::Scope::spawn`、`par::TryScope::spawn`，以及程序自身中带这种参数的任何函数）。此后再次使用它，无论以何种方式传递（变量、结构体或元组字段、列表元素、参数、`if` / `match` 分支、返回其实参的函数的结果），都是编译错误（`E0133`）；把它两次传给同一调用（`par::join(f, f)`）也是如此。类型未写明 `Sync` 的 `fn(..) + Send` 值可能拥有这种捕获，所以同样只能移交一次；`+ Send + Sync` 值，以及所有捕获都是 `Send + Sync` 的闭包，可以再次传递。调用闭包不会移交它：它可以被调用任意多次。要在其他线程上把同样的工作运行两次，就创建两个闭包，各自移入自己的 `.clone()`。
 - 调用 `async [move ..]` 闭包同样不会移交它，但调用产生的 future 运行在闭包移入的内容之上：闭包和它的每个 future 是同一个所有者。它的 future 可以在这里依次等待（`await f(); await f();`）；移交闭包或其中一个 future（交给 `task::spawn`，或放进另一个闭包的 `[move f]`）会把其余的一并带走，之后使用它们是编译错误（`E0105` / `E0133`）。
 
@@ -212,7 +212,7 @@ let b = await f();
 // ERROR (E0133): a future of `f` was spawned as a task at line 4, and every future
 //   of an `async [move ..]` closure shares what it moved in
 ```
-- 必须关闭的值（`File`、套接字）移入闭包的方式与普通捕获已有的方式相同（[4.6.9](#469-additional-constraints-in-parallel-and-concurrent-contexts)）；由闭包关闭它。
+- 必须关闭的值（`File`、套接字）移入闭包的方式与普通捕获已有的方式相同（[4.6.9](#469-并行与并发上下文中的附加约束)）；由闭包关闭它。
 - `move` 和 `ref` 可以在一个列表中混用（`[move xs, ref n]`）；同一个名字不能两者兼是。列表中主体未使用的名字不会被捕获。
 
 ```nabi
@@ -222,4 +222,4 @@ let f = [move xs, ref n] || { n += 1; xs.push(n) };   // OK, on this thread
 let g = [ref n, move n] || n;                    // ERROR (E0058): both ref and move
 ```
 
-同一个值也可以作为实参传入：`task::spawn_blocking_with_arg(xs, |xs| xs.len())`（[标准库 2.18.1](../../refs-standard-libraries/200-core/218-task.md#2181-core-api)）。
+同一个值也可以作为实参传入：`task::spawn_blocking_with_arg(xs, |xs| xs.len())`（[标准库 2.18.1](../../refs-standard-libraries/200-core/218-task.md#2181-核心-api)）。

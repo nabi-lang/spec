@@ -18,7 +18,7 @@ TLS 槽是由运行时定义并导出的一个 `thread_local` 块 `nabi_tls`；�
 | 5p       | `nabi_tls_satb_cursor`       | ptr  | SATB 缓冲区中的位置（并发标记期间）     |
 | 6p       | `nabi_tls_satb_limit`        | ptr  | SATB 缓冲区的末尾                       |
 | 7p       | `nabi_tls_task_worker`       | ptr  | 本线程的执行器工作线程（GC 对象，没有则为 0） |
-| 8p       | `nabi_tls_stack_guard`       | [usize; 2] | `[lo, hi)`：在此范围内的故障是本线程的栈溢出（`[0, 0)` 表示未知，[8.5.7](805-extern-symbols.md#stack-overflow)） |
+| 8p       | `nabi_tls_stack_guard`       | [usize; 2] | `[lo, hi)`：在此范围内的故障是本线程的栈溢出（`[0, 0)` 表示未知，[8.5.7](805-extern-symbols.md#栈溢出)） |
 | 10p      | `nabi_tls_worker_id`         | u64  | 工作线程 id                             |
 | 10p+8    | `nabi_tls_yield_flag`        | u8   | 是否在安全点 `yield`                    |
 | 10p+9    | `nabi_tls_mutator_state`     | u8   | mutator 状态                              |
@@ -30,7 +30,7 @@ TLS 槽是由运行时定义并导出的一个 `thread_local` 块 `nabi_tls`；�
 > [!NOTE]
 > Nabi 的运行时把下列槽放在 ABI 部分之后。整个块为 16p+16 字节。
 >
-> - 10p+10：`no_safepoint`（`u8`）。调试版 nabic 用 `nabi_nosp_enter` / `nabi_nosp_leave` 包围的 `#[no_safepoint]` 调用的深度（[8.4.10](804-safepoint.md#8410-native-calls)）。
+> - 10p+10：`no_safepoint`（`u8`）。调试版 nabic 用 `nabi_nosp_enter` / `nabi_nosp_leave` 包围的 `#[no_safepoint]` 调用的深度（[8.4.10](804-safepoint.md#8410-原生调用)）。
 > - 10p+11：`attached`（`u8`）。线程加入运行时的方式：0 表示尚未加入或已不再加入，1 表示通过 `nabi_thread_init` 或是运行时启动的线程，2 表示在 `extern "C"` 定义的 C 入口处接入（8.3.8）。
 > - 10p+16：`task_lane`
 > - 11p+16：`static_inits`
@@ -102,7 +102,7 @@ write_barrier(p, q):
 
 大多数操作是非原子的，并且是线程局部的。
 
-这两个槽指向每线程一个、大小为 512 字的日志块（64 位目标上为 4 KiB，32 位上为 2 KiB）。写满的块被推入一个由回收器取空的无锁栈（[7.4.2](../007-runtime/704-barriers-and-roots.md#742-write-barrier-object-remembering)）。
+这两个槽指向每线程一个、大小为 512 字的日志块（64 位目标上为 4 KiB，32 位上为 2 KiB）。写满的块被推入一个由回收器取空的无锁栈（[7.4.2](../007-runtime/704-barriers-and-roots.md#742-写屏障对象记忆)）。
 
 ### `nabi_tls_mutator_state`（u8）
 
@@ -164,7 +164,7 @@ nabi_thread_shutdown():
 
 该块是由运行时定义并导出的 `thread_local` 全局变量。编译器以外部声明引用它，并按相对于块地址的偏移读取各槽。Nabi 函数从调用者处以隐藏的最后一个实参接收该地址（8.6.6），因此 Nabi 函数之间的调用不读取 TLS。从 Nabi 之外进入的代码自己获取一次该地址并继续传递：C 的 `main`、`extern "C"` 定义的 C 入口、`#[export_name]` Nabi 函数、`any` 分派器、惰性 `static` 的初始化器，以及函数值所经过的 thunk（8.6.11）。
 
-`extern "C"` 定义的 C 入口可能运行在由 C 代码启动、运行时并不知道的线程上。在这样的线程上，它先接入该线程：按 `nabi_thread_init` 的方式初始化各槽（8.3.6），并把该线程注册为 mutator，然后再运行函数体。在两次这样的调用之间回到 C 时，该线程算作 `PARKED`（[8.4.10](804-safepoint.md#8410-native-calls)），因此回收不会等待它；线程结束时，它像 `nabi_thread_shutdown` 那样离开注册表（8.3.7）。无法以这种方式接入线程的目标（WebAssembly）则改为中止，并输出 `nabi: callback on a thread nabi does not know; call nabi_thread_init() first`。
+`extern "C"` 定义的 C 入口可能运行在由 C 代码启动、运行时并不知道的线程上。在这样的线程上，它先接入该线程：按 `nabi_thread_init` 的方式初始化各槽（8.3.6），并把该线程注册为 mutator，然后再运行函数体。在两次这样的调用之间回到 C 时，该线程算作 `PARKED`（[8.4.10](804-safepoint.md#8410-原生调用)），因此回收不会等待它；线程结束时，它像 `nabi_thread_shutdown` 那样离开注册表（8.3.7）。无法以这种方式接入线程的目标（WebAssembly）则改为中止，并输出 `nabi: callback on a thread nabi does not know; call nabi_thread_init() first`。
 
 ```
 ; nabi_tls: defined by the runtime; compiler output refers to it as an undefined symbol
@@ -180,10 +180,10 @@ if flag != 0 then bb_slow else bb_cont
 
 ### 影子栈头
 
-`nabi_tls` 偏移 0 处的槽（`nabi_tls_shadow_stack_top`）是[屏障与根追踪](../007-runtime/704-barriers-and-roots.md#741-root-tracking-a-shadow-stack-emitted-directly-by-the-compiler)中[影子栈](../000-meta/007-glossary.md#shadow-stack)链的头，即最内层 `ShadowFrame` 的地址（没有则为 null）。它是唯一的链头。编译器生成的代码在函数每条路径的第一个安全点之前链接帧，并在链接过帧的路径的每个 `return` 之前立即解除链接（8.4.7）。
+`nabi_tls` 偏移 0 处的槽（`nabi_tls_shadow_stack_top`）是[屏障与根追踪](../007-runtime/704-barriers-and-roots.md#741-根跟踪编译器直接生成的影子栈)中[影子栈](../000-meta/007-glossary.md#shadow-stack)链的头，即最内层 `ShadowFrame` 的地址（没有则为 null）。它是唯一的链头。编译器生成的代码在函数每条路径的第一个安全点之前链接帧，并在链接过帧的路径的每个 `return` 之前立即解除链接（8.4.7）。
 
 ## 8.3.9. 稳定性
 
-8.3.1 表中的偏移、类型和含义属于 [ABI](../000-meta/007-glossary.md#abi-application-binary-interface)；其变更遵循[概述](README.md#stability)中的稳定性策略。改变偏移，或改变已有槽的类型或含义，会破坏 ABI（1.0 之前为 0.x.0 版本，1.0 起为主版本）。新槽使用现有槽之后的偏移，属于兼容变更。
+8.3.1 表中的偏移、类型和含义属于 [ABI](../000-meta/007-glossary.md#abi-application-binary-interface)；其变更遵循[概述](README.md#稳定性)中的稳定性策略。改变偏移，或改变已有槽的类型或含义，会破坏 ABI（1.0 之前为 0.x.0 版本，1.0 起为主版本）。新槽使用现有槽之后的偏移，属于兼容变更。
 
 由实现定义的槽不属于 ABI，可以在任何版本中变更。

@@ -183,7 +183,7 @@ field_kind = ANY_SLOT (3)
 - 标记阶段不跟随弱 `ref`。
 - 清除之后，如果弱 `ref` 所指的对象已被回收，该弱 `ref` 槽被清为 0。
 
-这一机制适用于缓存、观察者模式等场景；其库接口是 `Weak<T>`（[标准库 1.6.9](../../refs-standard-libraries/100-bare/106-gc-pin.md#169-weakt---weak-references)）。
+这一机制适用于缓存、观察者模式等场景；其库接口是 `Weak<T>`（[标准库 1.6.9](../../refs-standard-libraries/100-bare/106-gc-pin.md#169-weakt弱引用)）。
 
 ## 8.2.9. INTERIOR_REF
 
@@ -200,11 +200,11 @@ INTERIOR_REF 指向对象内部的某个位置（而不是对象起点）。
 
 ## 8.2.11. 变更的兼容性
 
-`version` 字段标识格式。对格式的变更遵循[概述](README.md#stability)中的稳定性策略。预构建的包只与构建它的那个 `nabic` 一起使用，因此程序注册的表与读取这些表的运行时总是来自同一工具链。
+`version` 字段标识格式。对格式的变更遵循[概述](README.md#稳定性)中的稳定性策略。预构建的包只与构建它的那个 `nabic` 一起使用，因此程序注册的表与读取这些表的运行时总是来自同一工具链。
 
 ## 8.2.12. 运行时保留的类型 id
 
-以下三个类型 id 由运行时直接定义；编译器不为它们注册 ScanTable（[8.1.2](801-object-header-abi.md#812-type_id-offset-0-u32)）。
+以下三个类型 id 由运行时直接定义；编译器不为它们注册 ScanTable（[8.1.2](801-object-header-abi.md#812-type_id偏移-0u32)）。
 
 | 类型 id | 含义              | 扫描                                                    |
 |---------|-------------------|---------------------------------------------------------|
@@ -212,7 +212,7 @@ INTERIOR_REF 指向对象内部的某个位置（而不是对象起点）。
 | `2`     | 按字追踪的缓冲区  | 载荷的每个字都作为含糊字（`AMBIGUOUS`）扫描             |
 | `3`     | 弱单元（`Weak<T>`） | 一个 `WEAK_REF` 字（8.2.8）；由 `nabi_gc_weak_new` 创建 |
 
-id `1` 和 `2` 通过以类型 id `1` 或 `2` 调用 `nabi_gc_alloc_slow` 来分配（[8.5.1](805-extern-symbols.md#851-gc-area)）。标准库的 [`GcBuf<T>`](../../refs-standard-libraries/200-core/209-collections.md#2912-gcbuft---raw-gc-buffer) 建立在其之上：编译器以 id `1` 分配不含引用的 `T` 的缓冲区，因此无论数值数据多大，回收器都不必为其花费时间（一个存活的 256 MiB `List<f64>` 不会给完整回收带来可测量的开销；同样的字节若作为类型 `2` 缓冲区，每次回收约需 140 ms），其中的任何数值也不会让垃圾保持存活。`T` 含引用的缓冲区会得到 `T` 的数组 `ScanTable`（`version` 的位 15，8.2.3），只扫描引用槽。类型 id `2` 仅用于运行时的字缓冲区。
+id `1` 和 `2` 通过以类型 id `1` 或 `2` 调用 `nabi_gc_alloc_slow` 来分配（[8.5.1](805-extern-symbols.md#851-gc-区域)）。标准库的 [`GcBuf<T>`](../../refs-standard-libraries/200-core/209-collections.md#2912-gcbuft原始-gc-缓冲区) 建立在其之上：编译器以 id `1` 分配不含引用的 `T` 的缓冲区，因此无论数值数据多大，回收器都不必为其花费时间（一个存活的 256 MiB `List<f64>` 不会给完整回收带来可测量的开销；同样的字节若作为类型 `2` 缓冲区，每次回收约需 140 ms），其中的任何数值也不会让垃圾保持存活。`T` 含引用的缓冲区会得到 `T` 的数组 `ScanTable`（`version` 的位 15，8.2.3），只扫描引用槽。类型 id `2` 仅用于运行时的字缓冲区。
 
 ## 8.2.13. 注册时机
 
@@ -235,6 +235,6 @@ main(argc, argv):                // compiler-generated, C ABI
   → user entry point (4.16)
 ```
 
-GC 对象分配的慢速路径是 `nabi_gc_alloc_slow(size, align, type_id)`（[7.2.3](../007-runtime/702-allocation.md#723-slow-path-nabi_gc_alloc_slow)），编译器分配的类型 id 从 `0x10000` 开始（[8.1.2](801-object-header-abi.md#812-type_id-offset-0-u32)）。
+GC 对象分配的慢速路径是 `nabi_gc_alloc_slow(size, align, type_id)`（[7.2.3](../007-runtime/702-allocation.md#723-慢速路径nabi_gc_alloc_slow)），编译器分配的类型 id 从 `0x10000` 开始（[8.1.2](801-object-header-abi.md#812-type_id偏移-0u32)）。
 
 一个表的字节在程序中只出现一次：每个包的 `nabi.register_types` 引用一个以表内容命名的隐藏定义，链接时只保留一份，即使多个包以各自的 id 注册相同的布局也是如此。

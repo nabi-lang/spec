@@ -24,7 +24,7 @@
 
 ## 8.1.2. `type_id`（偏移 0，u32）
 
-`type_id` 是类型的唯一标识符。它是按目标字节序存放的 32 位无符号值（除 `s390x` 外的所有目标均为小端，[8.2.10](802-scan-table.md#8210-endianness-of-the-serialization)）；值 `0` 保留，表示空类型或无效对象。进程启动时，编译器调用 `nabi_gc_register_type` 注册每个 type_id。
+`type_id` 是类型的唯一标识符。它是按目标字节序存放的 32 位无符号值（除 `s390x` 外的所有目标均为小端，[8.2.10](802-scan-table.md#8210-序列化的字节序)）；值 `0` 保留，表示空类型或无效对象。进程启动时，编译器调用 `nabi_gc_register_type` 注册每个 type_id。
 
 ### type_id 的分配
 
@@ -59,29 +59,29 @@ bit  5  : reserved   (unused)
 bit  6 ~ 31 : reserved / GC implementation-defined
 ```
 
-以下各位取自实现保留范围（[7.4.2](../007-runtime/704-barriers-and-roots.md#742-write-barrier-object-remembering)）。
+以下各位取自实现保留范围（[7.4.2](../007-runtime/704-barriers-and-roots.md#742-写屏障对象记忆)）。
 
 | 位   | 名称       | 含义                                                                                       |
 |------|------------|--------------------------------------------------------------------------------------------|
 | 6    | `UNLOGGED` | 在一次回收中存活下来的对象上与 `STICKY` 一同置位。写屏障第一次把该对象记入记忆集时清除 |
 | 7    | `CARDED`   | 在 8 KiB 及以上的老对象上代替 `UNLOGGED` 置位。屏障把一张 512 B 的卡标记为脏。卡表指针位于对象头之前紧邻的字 |
 | 8    | `NOMOVE`   | 地址被当作数值使用的对象。无论生命周期如何都不会被移动。由 `nabi_task_key`（[8.5](805-extern-symbols.md)）置位 |
-| 9    | `NOEVAC`   | 回收器内部使用，作用于一次完整回收：某个不确定字（一个根，或运行时字缓冲区（类型 id `2`）中的一个字）指向该对象，因此该次回收的疏散会把它留在原处（[7.3.1](../007-runtime/703-gc-algorithm.md#opportunistic-evacuation)）。在疏散前对候选块中的此类对象置位，疏散访问到它们时清除 |
-| 10   | `SATB`     | 在并发标记期间，屏障记录该对象的引用时置位。相互竞争的存储会等待它被清除（[7.5.3](../007-runtime/705-concurrent-collection.md#753-satb-barrier)） |
+| 9    | `NOEVAC`   | 回收器内部使用，作用于一次完整回收：某个不确定字（一个根，或运行时字缓冲区（类型 id `2`）中的一个字）指向该对象，因此该次回收的疏散会把它留在原处（[7.3.1](../007-runtime/703-gc-algorithm.md#机会式疏散)）。在疏散前对候选块中的此类对象置位，疏散访问到它们时清除 |
+| 10   | `SATB`     | 在并发标记期间，屏障记录该对象的引用时置位。相互竞争的存储会等待它被清除（[7.5.3](../007-runtime/705-concurrent-collection.md#753-satb-屏障)） |
 | 11   | `SCANNED`  | 该对象已在并发标记中被扫描 |
 | 12   | `WIPE`     | 机密缓冲区（`nabi_gc_secret_new`，[8.5.1](805-extern-symbols.md#nabi_gc_secret_new--nabi_gc_secret_wipe)）。释放它的清除先把其载荷清零。永不清除 |
-| 13 ~ 28 | `VISIT_STAMP` | 供 `par` 访问使用（[标准库 2.19.1](../../refs-standard-libraries/200-core/219-par.md#2191-core-api)）：最近一次到达该对象的访问的 16 位纪元。回收器保留这些位 |
+| 13 ~ 28 | `VISIT_STAMP` | 供 `par` 访问使用（[标准库 2.19.1](../../refs-standard-libraries/200-core/219-par.md#2191-核心-api)）：最近一次到达该对象的访问的 16 位纪元。回收器保留这些位 |
 | 29   | `VISIT_OTHERS` | `par` 访问：被不止一个项到达，且每个都经由切片 |
 | 30   | `VISIT_SLICED` | `par` 访问：到目前为止只经由切片到达 |
 | 31   | `VISIT_CUR` | `par` 访问：被当前正在访问的项到达 |
 
 ### 原子性要求
 
-在 STW 回收中，`MARK` / `STICKY` / `FORWARDED` 是非原子的。并发标记期间标记器与 mutator 会同时触及的 `MARK` / `SATB` / `SCANNED`，以及 mutator 之间会竞争的 `UNLOGGED` 清除操作，都是原子的（[7.4.2](../007-runtime/704-barriers-and-roots.md#742-write-barrier-object-remembering)）。
+在 STW 回收中，`MARK` / `STICKY` / `FORWARDED` 是非原子的。并发标记期间标记器与 mutator 会同时触及的 `MARK` / `SATB` / `SCANNED`，以及 mutator 之间会竞争的 `UNLOGGED` 清除操作，都是原子的（[7.4.2](../007-runtime/704-barriers-and-roots.md#742-写屏障对象记忆)）。
 
 ## 8.1.4. `gc_word`（偏移 8，u64 或 ptr）
 
-`gc_word` 是对象的总大小（包括 16 字节的对象头，是 8 的倍数）。它同时适用于 Immix 对象和 LOS 对象，由分配快速路径以内联方式写入（[8.9.9](809-lowering-control.md#899-gc-alloc-fast--slow-path)）。
+`gc_word` 是对象的总大小（包括 16 字节的对象头，是 8 的倍数）。它同时适用于 Immix 对象和 LOS 对象，由分配快速路径以内联方式写入（[8.9.9](809-lowering-control.md#899-gc-分配快速--慢速路径)）。
 
 只有在完整回收的疏散期间，被移动对象的 `FORWARDED` 位才会置位，此时 `gc_word` 指向新地址。所有引用都在同一次回收内修正（[7.3.1](../007-runtime/703-gc-algorithm.md#731-immix-mark-region)），旧位置随后被丢弃，因此 mutator 永远观察不到转发。
 
@@ -111,7 +111,7 @@ bit  6 ~ 31 : reserved / GC implementation-defined
 | payload 起点（偏移 16）  | 8 字节（由于对象头为 16 字节，自动满足） |
 | 每个字段                 | 其类型的对齐                        |
 
-如果 `payload` 中某个字段要求大于 8 字节的对齐（例如 `#[repr(align(16))]`），载荷起点按该值对齐：对象头位于对齐地址之前 16 字节处，其前面的空隙属于回收器（[8.1.4](#814-gc_word-offset-8-u64-or-ptr)）。
+如果 `payload` 中某个字段要求大于 8 字节的对齐（例如 `#[repr(align(16))]`），载荷起点按该值对齐：对象头位于对齐地址之前 16 字节处，其前面的空隙属于回收器（[8.1.4](#814-gc_word偏移-8u64-或-ptr)）。
 
 ## 8.1.7. 对象头 + 载荷的总大小
 
@@ -154,10 +154,10 @@ offset   16:  i64[2048]                 (16384 bytes)
 total: 16 + 16384 = 16400 bytes
 ```
 
-`LARGE` 位已置位，因此这是一个 LOS 对象。`gc_word` 是总大小（8.1.4）。元素不含引用，所以该缓冲区使用运行时类型 id `1`，不会被扫描（[8.2.12](802-scan-table.md#8212-runtime-reserved-type-ids)）。
+`LARGE` 位已置位，因此这是一个 LOS 对象。`gc_word` 是总大小（8.1.4）。元素不含引用，所以该缓冲区使用运行时类型 id `1`，不会被扫描（[8.2.12](802-scan-table.md#8212-运行时保留的类型-id)）。
 
 ## 8.1.10. 对象头变更时的兼容性
 
-这一对象头布局是 ABI 中最核心的部分。它只在允许破坏 ABI 的版本中变更（[概述](README.md#stability)）：1.0 之前为 0.x.0 版本，1.0 起为主版本。0.x.y 版本（1.0 起为次版本或修订版本）保持不变。
+这一对象头布局是 ABI 中最核心的部分。它只在允许破坏 ABI 的版本中变更（[概述](README.md#稳定性)）：1.0 之前为 0.x.0 版本，1.0 起为主版本。0.x.y 版本（1.0 起为次版本或修订版本）保持不变。
 
 得益于这种稳定性，由同一工具链构建的用户包、标准库和运行时彼此兼容。

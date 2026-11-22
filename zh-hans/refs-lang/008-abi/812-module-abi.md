@@ -80,7 +80,7 @@
 |---|---|---|
 | `flags` | `PLUGIN` | `HOST` |
 | `text_lo`、`text_hi` | 指向 `nabi.module.text_lo` / `nabi.module.text_hi` 的重定位，这两个符号由链接器定义；加载器从映射的映像中获取代码范围 | 同左 |
-| `provides` | 它自己的包以及它捆绑的包（[9.12.2](../009-tools/912-plugins.md#9122-building)） | 它链接的除标准库外的每个包 |
+| `provides` | 它自己的包以及它捆绑的包（[9.12.2](../009-tools/912-plugins.md#9122-构建)） | 它链接的除标准库外的每个包 |
 | `needs` | 构建中除标准库外的其他所有包 | 空 |
 | `imports` | 指向 `nabi.module.imports` 的重定位，该表由链接器根据未定义的符号（每个 `nabi_*` 入口和 `_Y` 符号）构建；链接器把其长度写入描述符；`sig` 为 0 | 空 |
 | `exports` | 按 `sym` 排序：其包中每个函数的 `FN`（`pub` 非泛型函数设置 `path`）、它们的值 thunk 的 `FN_VALUE`（设置 `path`、`sig` 和 `sig_text`）、其静态变量的 `DATA`（设置 `path`），以及它从进程中获取的静态变量的自有副本（见下文） | 指向 `nabi.module.exports` 的重定位，该表由链接器构建（每个已定义的 `nabi_*` 入口和 `_Y` 符号，`sig` 为 0）；链接器写入其长度 |

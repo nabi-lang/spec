@@ -146,7 +146,7 @@ let (head, ..tail) = items;             // split
 (a, b) = (b, a + b);             // reassigns a and b
 ```
 
-`let` 声明，裸元组目标重新赋值，与 `let x = ..` 和 `x = ..` 的区分相同。规则见 [3.4.6](304-assignment.md#346-destructuring-assignment)。
+`let` 声明，裸元组目标重新赋值，与 `let x = ..` 和 `x = ..` 的区分相同。规则见 [3.4.6](304-assignment.md#346-解构赋值)。
 
 ## 3.15.13. 参数中的模式
 

@@ -13,7 +13,7 @@ return_type   ::= "->" type_expr
 param_list    ::= param ("," param)* ","?
 ```
 
-其中 `visibility?` 是[可见性](../005-modules/506-visibility.md)中的 `pub`、`pub(pkg)`、`pub(sub)` 之一，或者省略（模块私有）。`fn_modifiers` 是 [unsafe](415-unsafe.md)、[async](412-async.md) 和 [yield（生成器）](411-generators.md)三个修饰符的位置，每个修饰符**按固定顺序写零次或一次**（详细规则见 [4.1.11 fn 修饰符的顺序与组合](#4111-order-and-combination-of-fn-modifiers)）。`throws_clause?` 的含义在 [throws](414-throws.md) 中定义；本文档不涉及可见性、修饰符和 throws 关键字本身的含义。
+其中 `visibility?` 是[可见性](../005-modules/506-visibility.md)中的 `pub`、`pub(pkg)`、`pub(sub)` 之一，或者省略（模块私有）。`fn_modifiers` 是 [unsafe](415-unsafe.md)、[async](412-async.md) 和 [yield（生成器）](411-generators.md)三个修饰符的位置，每个修饰符**按固定顺序写零次或一次**（详细规则见 [4.1.11 fn 修饰符的顺序与组合](#4111-fn-修饰符的顺序与组合)）。`throws_clause?` 的含义在 [throws](414-throws.md) 中定义；本文档不涉及可见性、修饰符和 throws 关键字本身的含义。
 
 非正式地说，整体形状如下：
 
@@ -28,7 +28,7 @@ fn name(parameters) -> ReturnType {
 - 以 `fn` 关键字开头。
 - 函数名遵循[标识符](../001-lexical/104-identifiers.md)的形式。
 - 随后是带括号的参数列表，详细规则在[参数](402-parameters.md)中定义。
-- 返回类型可选：在 `->` 词法单元（[标点与运算符词法单元](../001-lexical/110-punctuation-and-operator-tokens.md)）之后写一个[类型表达式](../002-types/201-type-expressions.md)，或者写不透明的 `some Tr`（[4.1.13](#4113-opaque-return-types-some-trait)）。
+- 返回类型可选：在 `->` 词法单元（[标点与运算符词法单元](../001-lexical/110-punctuation-and-operator-tokens.md)）之后写一个[类型表达式](../002-types/201-type-expressions.md)，或者写不透明的 `some Tr`（[4.1.13](#4113-不透明返回类型some-trait)）。
 - 主体是一个[块表达式](../003-expressions/309-block-expressions.md)。
 
 ## 4.1.2. 最简单的示例
@@ -87,7 +87,7 @@ pub fn double2(x: i32) -> i32 {   // OK
 }
 ```
 
-固有 `impl` 的方法按自身的可见性遵循同样的规则。trait `impl` 的方法按 trait 声明的写法书写 `->`，因为返回类型必须与之一致（[2.9.1](../002-types/209-impl.md)）；只有未写类型的参数从 trait 取得类型（[4.2.2](402-parameters.md#422-omitting-the-type)）。
+固有 `impl` 的方法按自身的可见性遵循同样的规则。trait `impl` 的方法按 trait 声明的写法书写 `->`，因为返回类型必须与之一致（[2.9.1](../002-types/209-impl.md)）；只有未写类型的参数从 trait 取得类型（[4.2.2](402-parameters.md#422-省略类型)）。
 
 如果写了返回类型，但函数主体与之不符，则是编译错误。
 
@@ -110,7 +110,7 @@ let a = id(42i32);                // id<i32>
 let b = id("hi");                 // id<str>
 ```
 
-`pub` 或 `pub(pkg)` 函数要写明每个参数的类型；未写类型的参数是编译错误（[4.2.2](402-parameters.md#422-omitting-the-type)）。
+`pub` 或 `pub(pkg)` 函数要写明每个参数的类型；未写类型的参数是编译错误（[4.2.2](402-parameters.md#422-省略类型)）。
 
 如果参数要作为动态槽，就显式写 `any`。
 
@@ -189,7 +189,7 @@ fn add(x: f64, y: f64) -> f64 { x + y }   // ERROR: duplicate
 
 要按类型改变行为，可以组合 trait 和泛型（[`trait`](../002-types/208-trait.md)）。
 
-模块中的函数、`const` 和 `static` 共享同一个值命名空间：在同一模块中，与其中另一项同名的 `const`、`static` 或函数同样是编译错误。元组结构体或单元结构体的构造器也在这个命名空间中（[2.3.7](../002-types/203-struct.md#237-no-duplicate-definitions-in-the-same-module)）：`struct Point(i32, i32);` 与 `fn Point`、`const Point` 或 `static Point` 并存即为重复定义。参数个数不同、`async` 或类型参数都不能使两个函数成为不同的函数。要接受不同数量的实参，可以为一个函数的尾部参数提供默认值（[4.2.3](402-parameters.md#423-default-values)）。
+模块中的函数、`const` 和 `static` 共享同一个值命名空间：在同一模块中，与其中另一项同名的 `const`、`static` 或函数同样是编译错误。元组结构体或单元结构体的构造器也在这个命名空间中（[2.3.7](../002-types/203-struct.md#237-同一模块中不得重复定义)）：`struct Point(i32, i32);` 与 `fn Point`、`const Point` 或 `static Point` 并存即为重复定义。参数个数不同、`async` 或类型参数都不能使两个函数成为不同的函数。要接受不同数量的实参，可以为一个函数的尾部参数提供默认值（[4.2.3](402-parameters.md#423-默认值)）。
 
 ## 4.1.11. fn 修饰符的顺序与组合
 
@@ -225,7 +225,7 @@ unsafe unsafe fn bad3() { ... }          // ERROR: duplicate unsafe
 | `unsafe yield fn`       | `GenIter<R>`                       | 不安全生成器         | （各修饰符之和）                   |
 | `unsafe async yield fn` | `AsyncStream<R>`                   | 不安全异步流         | （各修饰符之和）                   |
 
-带 `unsafe` 的组合很简单：整个函数主体成为不安全作用域（如 4.15 所定义），结果类型和协程行为遵循其他修饰符（`async` / `yield`）的定义。也就是说，`unsafe` 只是在主体内加入 `unsafe` 块所允许的操作（[4.15.2](415-unsafe.md#4152-unsafe------block-expression)）：调用 `unsafe fn`、解引用裸指针、读取 `union` 字段，以及在值移交之后继续使用它。
+带 `unsafe` 的组合很简单：整个函数主体成为不安全作用域（如 4.15 所定义），结果类型和协程行为遵循其他修饰符（`async` / `yield`）的定义。也就是说，`unsafe` 只是在主体内加入 `unsafe` 块所允许的操作（[4.15.2](415-unsafe.md#4152-unsafe---块表达式)）：调用 `unsafe fn`、解引用裸指针、读取 `union` 字段，以及在值移交之后继续使用它。
 
 ### 协程函数的结果类型
 
@@ -237,7 +237,7 @@ unsafe unsafe fn bad3() { ... }          // ERROR: duplicate unsafe
 | `async fn`       | `AsyncFuture<T>`  | `Future<Output = T>`   | `TryAsyncFuture<T, E>`    |
 | `async yield fn` | `AsyncStream<T>`  | `Stream<Item = T>`     | `TryAsyncStream<T, E>`    |
 
-这些类型位于 `iter`（`GenIter`、`TryGenIter`）、`future`（`AsyncFuture`、`TryAsyncFuture`）和 `stream`（`AsyncStream`、`TryAsyncStream`）中，不在 prelude 里：要通过其模块（`future::AsyncFuture<T>`）或 `use` 来命名。`Try*` 变体在下一个推进点抛出错误。例如，`TryGenIter<T, E>` 的 `next` 是 `next(ref self) throws (E) -> T | none`，`TryAsyncFuture` 在 `try await` 处抛出。这些变体不实现普通的 `Iterator` / `Future` / `Stream` trait（[4.14.10](414-throws.md#41410-effect-of-throws-on-sum-type-signatures)）；`TryGenIter` 实现 `TryIterator`，`TryAsyncStream` 实现 `TryStream`（[标准库 2.7.13](../../refs-standard-libraries/200-core/207-iter.md#2713-tryiterator---fallible-iteration)、[2.8.11](../../refs-standard-libraries/200-core/208-stream.md#2811-trystream---fallible-streams)）。
+这些类型位于 `iter`（`GenIter`、`TryGenIter`）、`future`（`AsyncFuture`、`TryAsyncFuture`）和 `stream`（`AsyncStream`、`TryAsyncStream`）中，不在 prelude 里：要通过其模块（`future::AsyncFuture<T>`）或 `use` 来命名。`Try*` 变体在下一个推进点抛出错误。例如，`TryGenIter<T, E>` 的 `next` 是 `next(ref self) throws (E) -> T | none`，`TryAsyncFuture` 在 `try await` 处抛出。这些变体不实现普通的 `Iterator` / `Future` / `Stream` trait（[4.14.10](414-throws.md#41410-throws-对和类型签名的影响)）；`TryGenIter` 实现 `TryIterator`，`TryAsyncStream` 实现 `TryStream`（[标准库 2.7.13](../../refs-standard-libraries/200-core/207-iter.md#2713-tryiterator可能失败的迭代)、[2.8.11](../../refs-standard-libraries/200-core/208-stream.md#2811-trystream可失败的流)）。
 
 ```nabi
 async fn fetch_user(id: i64) -> User { ... }
@@ -283,18 +283,18 @@ fn adder(k: i32) -> some fn(i32) -> i32 {
 let total = evens(10).map(|x| x * x).sum();
 ```
 
-- 具体类型是主体值的类型，按 [4.1.3](#413-omitting-the-return-type) 推断，在 `pub` 函数上也是如此。调用是静态的：没有标签，也没有装箱，与[泛型](../002-types/210-generics.md)相同。
+- 具体类型是主体值的类型，按 [4.1.3](#413-省略返回类型) 推断，在 `pub` 函数上也是如此。调用是静态的：没有标签，也没有装箱，与[泛型](../002-types/210-generics.md)相同。
 - 每个函数只有一个具体类型：返回路径类型不同是错误（`the return paths of `f` have different types ..`），帮助信息为 `` to return several types, write `-> any Tr` ``。
 - 具体类型必须具有每个约束：否则在约束处报 `` `f` returns `ListIter<i32>`, which is not `Iterator<Item = str>` ``。
 - 调用者只能看到约束：可以调用约束（及其父 trait）的方法；约束是迭代器时可以迭代它；可以把它传给期望具有这些约束的泛型参数的位置；约束是函数类型时可以调用它。命名或使用具体类型是错误：`` no method `contains` on `some Iterator<Item = i32>`: callers see only its bounds ``；`` `let b` expects `Range<i32>`, found `some Iterator<Item = i32>` ``。
 - 同一个函数总是返回同一个类型，所以两次调用的结果属于同一类型。不同函数的结果是不同的类型。
-- `some` 只能作为函数的返回类型、参数的类型（[4.1.14](#4114-some-parameters)）或具名不透明类型的右侧（[4.1.15](#4115-named-opaque-types-type-x--some-trait)）。在其他位置（`let` 注解、字段、类型实参、闭包参数）使用是错误，错误会说明应当写什么：变量不写注解，字段或类型实参写泛型 `<T: Tr>`，多种类型的值写 `any Tr`。
+- `some` 只能作为函数的返回类型、参数的类型（[4.1.14](#4114-some-参数)）或具名不透明类型的右侧（[4.1.15](#4115-具名不透明类型type-x--some-trait)）。在其他位置（`let` 注解、字段、类型实参、闭包参数）使用是错误，错误会说明应当写什么：变量不写注解，字段或类型实参写泛型 `<T: Tr>`，多种类型的值写 `any Tr`。
 - 跨包时，函数主体随包的接口一起传递，所以依赖方的构建知道具体类型；其使用者仍然只能看到约束。
 - 没有 `Fn` trait：函数约束就是函数类型 `fn(A) -> R`。
 
 ## 4.1.14. `some` 参数
 
-参数的类型可以是 `some Tr`（约束同 [4.1.13](#4113-opaque-return-types-some-trait)）：一个匿名类型参数。`fn show(x: some Display)` 就是 `T` 未命名的 `fn show<T: Display>(x: T)`。
+参数的类型可以是 `some Tr`（约束同 [4.1.13](#4113-不透明返回类型some-trait)）：一个匿名类型参数。`fn show(x: some Display)` 就是 `T` 未命名的 `fn show<T: Display>(x: T)`。
 
 ```nabi
 fn show(x: some Display) -> str { f"<{x}>" }
@@ -322,7 +322,7 @@ let t = twice(|x| x * 3, 2);     // x: i32, from the bound
 opaque_alias ::= visibility? "type" identifier "=" opaque_ret ";"
 ```
 
-`type X = some Tr;` 为一个具有 `Tr` 的具体类型命名（约束同 [4.1.13](#4113-opaque-return-types-some-trait)）。与 `-> some Tr` 不同，这个类型有名字，所以可以写在任何能写类型的位置：字段、`let` 注解、类型实参（`List<X>`）、参数和返回类型。
+`type X = some Tr;` 为一个具有 `Tr` 的具体类型命名（约束同 [4.1.13](#4113-不透明返回类型some-trait)）。与 `-> some Tr` 不同，这个类型有名字，所以可以写在任何能写类型的位置：字段、`let` 注解、类型实参（`List<X>`）、参数和返回类型。
 
 ```nabi
 mod nums {
@@ -344,11 +344,11 @@ println(total(s.evens));                  // 20
 ```
 
 - 定义函数是 X 所在模块中返回类型为 `X`（写作 `X` 或 `self::X`）的自由函数。每个定义函数的具体类型是其主体值的类型，推断方式同 `-> some Tr`，并且必须具有每个约束。定义函数必须至少有一个，并且必须都给出同一类型：一个也没有时报 `` `X` has no defining function ``（E0145），帮助信息为 ``a function in this module that returns `X` gives its type``；两个不一致时报 `` `g` returns `B`, but `X` is `A` (from `f`) ``（E0145），帮助信息建议返回同一类型或调用 `f`。
-- 定义函数没有类型参数，`X` 也没有：泛型的定义函数是错误（E0145），其帮助信息给出写法 `fn f<T>(..) -> some Tr`，即每次调用一个隐藏类型（[4.1.13](#4113-opaque-return-types-some-trait)）。
+- 定义函数没有类型参数，`X` 也没有：泛型的定义函数是错误（E0145），其帮助信息给出写法 `fn f<T>(..) -> some Tr`，即每次调用一个隐藏类型（[4.1.13](#4113-不透明返回类型some-trait)）。
 - 方法，以及返回 `List<X>` 或 `X | none` 的函数，不定义 `X`，只是使用它。
 - 在 X 所在模块内部（不含其子模块），`X` 就是其具体类型：模块中的函数可以像对待该类型的任何值一样调用其方法、读取其字段、构建它。
 - 在 X 所在模块外部，`X` 是一个只具有其约束的独立类型：值以 `X` 的身份被存储、传递、返回、放进 `List<X>`，并通过约束（及其父 trait）的方法使用，与 `-> some Tr` 的结果相同。具体类型是隐藏的：约束未提供的方法或字段报 `` no method `len` on `Evens`: outside `nums`, only its bounds are visible ``；在期望其他类型的位置使用 `X` 的值，或在期望 `X` 的位置使用其他类型的值（模块外的函数从自身主体返回 `X`），报 `` `let n` expects `i64`, found `X`: outside `m`, `X` is opaque ``（E0146），帮助信息建议把值保持为 `X`、从 X 的定义函数取得一个值，或者把代码移到 X 所在模块中。
 - 约束为函数类型时（`type Step = some fn(i64) -> i64;`），值只能被调用，所以该类型在任何地方都保持为其具体类型。
 - 调用和存储都是静态的：类型为 `X` 的字段以内联方式容纳具体类型，没有标签，也没有装箱。
-- `pub type X = some Tr;` 导出这个名字。跨包时，定义函数的主体随包的接口一起传递（[4.1.13](#4113-opaque-return-types-some-trait)），所以依赖方的构建能确定 `X` 的布局；依赖方只能看到约束。
-- `type X = any Tr;` 是动态槽 `any Tr` 的普通类型别名（[2.6.9](../002-types/206-sum-types.md#269-combining-with-type-aliases)）：`X` 的每个值的类型可以不同，调用在运行时分派。`type X = some Tr;` 是由其模块确定的一个静态类型。
+- `pub type X = some Tr;` 导出这个名字。跨包时，定义函数的主体随包的接口一起传递（[4.1.13](#4113-不透明返回类型some-trait)），所以依赖方的构建能确定 `X` 的布局；依赖方只能看到约束。
+- `type X = any Tr;` 是动态槽 `any Tr` 的普通类型别名（[2.6.9](../002-types/206-sum-types.md#269-与类型别名组合)）：`X` 的每个值的类型可以不同，调用在运行时分派。`type X = some Tr;` 是由其模块确定的一个静态类型。

@@ -38,9 +38,9 @@ Nabi 不采用 JavaScript 的 ASI（Automatic Semicolon Insertion，自动分号
 
 ## 1.3.4. 类块表达式语句
 
-类块表达式以 `}` 结尾：`if`、`match`、`loop`、`while`、`for`，或者块（`{ }`、`unsafe { }`、带标签的块）。当这样的表达式出现在语句位置时，可以省略末尾的 `;`（与 Rust 规则相同）。此时该表达式的值必须是 unit；要丢弃非 unit 的值，请加上 `;`。在那里出现非 unit 的值是错误（E0067），无论在函数体中还是在入口文件的顶层语句中都是如此（[4.16.2](../004-functions/416-entry-point.md#4162-meaning-of-top-level-statements-implicit-main)）。
+类块表达式以 `}` 结尾：`if`、`match`、`loop`、`while`、`for`，或者块（`{ }`、`unsafe { }`、带标签的块）。当这样的表达式出现在语句位置时，可以省略末尾的 `;`（与 Rust 规则相同）。此时该表达式的值必须是 unit；要丢弃非 unit 的值，请加上 `;`。在那里出现非 unit 的值是错误（E0067），无论在函数体中还是在入口文件的顶层语句中都是如此（[4.16.2](../004-functions/416-entry-point.md#4162-顶层语句的含义隐式-main)）。
 
-带块体[尾随闭包](../004-functions/408-trailing-closure.md)的调用（`retry(3) { .. }`、`xs.each |x| { .. }`），当闭包的 `}` 之后没有任何延续时，同样不需要 `;` 就结束语句（[4.8.8](../004-functions/408-trailing-closure.md)）。这种情况下该调用是一个表达式语句，如同写了 `;`：其值不必是 unit，会被丢弃；与任何表达式语句一样，`()`、`none` 或 `Never` 以外的值会触发 lint `unused_result` 警告（`_ = run { .. };` 或 `#[discardable]` 函数可以消除它，[6.2.11](../006-meta-system/602-built-in-attributes.md#6211-unused-results-unused_result-discardable-must_use)）。当调用位于语句开头时，它像以关键字开头的语句一样在那个 `}` 处结束，所以 `}` 之后的二元运算符开始一条新语句（见下文）。
+带块体[尾随闭包](../004-functions/408-trailing-closure.md)的调用（`retry(3) { .. }`、`xs.each |x| { .. }`），当闭包的 `}` 之后没有任何延续时，同样不需要 `;` 就结束语句（[4.8.8](../004-functions/408-trailing-closure.md)）。这种情况下该调用是一个表达式语句，如同写了 `;`：其值不必是 unit，会被丢弃；与任何表达式语句一样，`()`、`none` 或 `Never` 以外的值会触发 lint `unused_result` 警告（`_ = run { .. };` 或 `#[discardable]` 函数可以消除它，[6.2.11](../006-meta-system/602-built-in-attributes.md#6211-未使用的结果unused_resultdiscardablemust_use)）。当调用位于语句开头时，它像以关键字开头的语句一样在那个 `}` 处结束，所以 `}` 之后的二元运算符开始一条新语句（见下文）。
 
 ```nabi
 if ready { start(); }        // no ;
@@ -73,7 +73,7 @@ let u = { let y = 1 };           // u is unit, as with { let y = 1; }
 let s = { let y = 1; y + 1 };    // s is 2: the last expression is the value
 ```
 
-语法由[块表达式](../003-expressions/309-block-expressions.md#391-form)中的 `stmt` 定义。
+语法由[块表达式](../003-expressions/309-block-expressions.md#391-形式)中的 `stmt` 定义。
 
 ## 1.3.5. 与其他词法单元相邻
 

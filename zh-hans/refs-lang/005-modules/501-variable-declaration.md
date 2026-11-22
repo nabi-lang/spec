@@ -75,7 +75,7 @@ let (a, b) = (b, a);                   // patterns follow the same rule
 - 初始化式在新绑定存在之前检查，所以其中的名称指向旧绑定。新绑定从该语句之后开始。
 - 新绑定有自己的类型，可以是写出的，也可以是推断的（5.1.7）；它不必与旧绑定一致。每个槽保持声明时的类型：旧槽不会改变，不写 `let` 的重新赋值（5.1.2）写入最新的绑定。
 - 旧绑定不会被重新赋值、丢弃或关闭。它照旧存活到其作用域结束（5.1.10），只是无法再通过名称访问。由它创建的闭包、视图和守卫仍然指向它。
-- 必须关闭的值（[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)）不会因重新声明而关闭：在重新声明其名称之前，必须关闭或移动它。把它移动进新值是预期的用法。让它保持未关闭会触发通常的编译错误（E0134），其帮助信息提示在重新声明之前关闭或移动它。
+- 必须关闭的值（[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop释放时的清理)）不会因重新声明而关闭：在重新声明其名称之前，必须关闭或移动它。把它移动进新值是预期的用法。让它保持未关闭会触发通常的编译错误（E0134），其帮助信息提示在重新声明之前关闭或移动它。
 
 ```nabi
 let f = try fs::open(path);
@@ -90,7 +90,7 @@ let g = 1;                             // ERROR (E0134): the first `g` is never 
 
 由旧绑定创建的流视图在旧值被移动处结束，移动进新绑定时也是如此（E0139，[stdlib 2.23.1](../../refs-standard-libraries/200-core/223-io.md#2231-read)）。
 
-要改变某个绑定的值而不是创建新绑定，不写 `let` 直接赋值（5.1.2）。REPL 和 Jupyter 在单元（cell）顶层遵循同样的规则（[9.7.3](../009-tools/907-jit-cells.md#redeclaration-of-the-same-name)）。
+要改变某个绑定的值而不是创建新绑定，不写 `let` 直接赋值（5.1.2）。REPL 和 Jupyter 在单元（cell）顶层遵循同样的规则（[9.7.3](../009-tools/907-jit-cells.md#同名重新声明)）。
 
 ## 5.1.5. 作用域：按块
 
@@ -154,7 +154,7 @@ n = 2i32;                          // OK
 n = "hi";                          // ERROR: n is i32
 ```
 
-如果初始化式不能完全确定类型，推断会根据变量作用域内之后的使用继续进行（即把该值传到类型已确定的位置的使用）（[2.10.2](../002-types/210-generics.md#type-argument-inference)）。如果类型仍然无法确定，就是编译错误，必须标注类型。
+如果初始化式不能完全确定类型，推断会根据变量作用域内之后的使用继续进行（即把该值传到类型已确定的位置的使用）（[2.10.2](../002-types/210-generics.md#类型实参推断)）。如果类型仍然无法确定，就是编译错误，必须标注类型。
 
 ```nabi
 let x = none;                      // ERROR: type cannot be determined
@@ -192,7 +192,7 @@ let a = 1; let b = 2;              // two statements: OK
 
 `let` 是语句（请见[表达式概述](../003-expressions/README.md)中的转换规则）。
 
-模块级不允许 `let`（模块级的值槽必须用 [`const`](502-const.md) 或 [`static`](503-static.md) 声明）。例外是入口文件 `main.nabi`，它的顶层语句（包括 `let`）构成隐式的 `main`（[4.16.2](../004-functions/416-entry-point.md#4162-meaning-of-top-level-statements-implicit-main)）；在其他任何模块中，这些语句都是错误（E0036）。`let` 可以在函数体和块中使用。`if` / `match` / `loop` 等控制结构的主体本身也是块，所以那里也可以使用。`let` 不能直接出现在表达式位置，因为 `let` 是语句，不是表达式。
+模块级不允许 `let`（模块级的值槽必须用 [`const`](502-const.md) 或 [`static`](503-static.md) 声明）。例外是入口文件 `main.nabi`，它的顶层语句（包括 `let`）构成隐式的 `main`（[4.16.2](../004-functions/416-entry-point.md#4162-顶层语句的含义隐式-main)）；在其他任何模块中，这些语句都是错误（E0036）。`let` 可以在函数体和块中使用。`if` / `match` / `loop` 等控制结构的主体本身也是块，所以那里也可以使用。`let` 不能直接出现在表达式位置，因为 `let` 是语句，不是表达式。
 
 ## 5.1.10. 用 `let` 声明的变量的生存期
 

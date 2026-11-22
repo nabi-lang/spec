@@ -40,10 +40,10 @@ let z: f64 = x as f64;        // 256.0
 
 - 任意类型到其自身（无操作）。
 - 整数类型、浮点类型、`bool`、`char` 和 `c_char` 中任意两者之间。有两个限制。目标为 `bool`：只有 `bool` 能强制转换为 `bool`。目标为 `char`：只允许 `u8 as char`（以及 `char as char`），因为更宽的值可能是代理码位，或超出 `U+10FFFF`。其他整数、浮点、`bool` 和 `c_char` → `char` 的强制转换都是类型错误，消息为 ``only `u8` can be cast as `char`, not `u32`; use `char::from_u32(n)` (`char | none`) for a wider value``。
-- 无载荷的 `enum` 到整数类型，得到其标签或值（[2.4.2](204-enum.md#casting-to-an-integer)）。
+- 无载荷的 `enum` 到整数类型，得到其标签或值（[2.4.2](204-enum.md#强制转换为整数)）。
 - 与任意精度的 std 类型 `int` / `float` 之间的互相转换。转换为它们时执行无损的 `From` impl，因此没有该 impl 的类型对（`f64 as int`）是错误；从它们转换出来时执行目标的 `WrappingFrom` impl。
 
-从浮点类型到整数类型，`as` 向零截断并饱和：超出目标范围的值得到最接近的端点（`1e10 as i32` 是 `i32::MAX`，`-1.5 as u8` 是 `0`），NaN 得到 `0`，在每个优化级别下都是如此。`as` 结果的完整表格见 [stdlib 2.11.6](../../refs-standard-libraries/200-core/211-conversion.md#2116-as-t---bit-reinterpretation--numeric-cast)。
+从浮点类型到整数类型，`as` 向零截断并饱和：超出目标范围的值得到最接近的端点（`1e10 as i32` 是 `i32::MAX`，`-1.5 as u8` 是 `0`），NaN 得到 `0`，在每个优化级别下都是如此。`as` 结果的完整表格见 [stdlib 2.11.6](../../refs-standard-libraries/200-core/211-conversion.md#2116-as-t位重新解释--数值强制转换)。
 
 整数、浮点或 `char` 值 `as bool` 是编译错误，``cannot cast `i32` as `bool` ``：应改写为比较，整数写 `x != 0`，浮点值写 `x != 0.0`。该错误附带这一修改作为修复建议。`bool` 强制转换为整数类型时得到 `0` 和 `1`。
 
@@ -80,7 +80,7 @@ let y = x.into::<int>();
 expr.try_into::<Type>()
 ```
 
-它脱糖为 `Target::try_from(expr)`（`Target: TryFrom<typeof(expr)>`）。`try_into` 是 [`throws`](../004-functions/414-throws.md) 方法：成功时返回目标类型的值，失败时抛出错误（目标的 `TryFrom::Error`；对数值转换为 `OverflowError`，[stdlib 2.11.4](../../refs-standard-libraries/200-core/211-conversion.md#2114-tryfromu-trait---fallible-conversion)）。因此该调用必须用 `try` 标注。它用于转换可能失败的情况，例如把大整数转到较小的整数，或把浮点值转到整数。
+它脱糖为 `Target::try_from(expr)`（`Target: TryFrom<typeof(expr)>`）。`try_into` 是 [`throws`](../004-functions/414-throws.md) 方法：成功时返回目标类型的值，失败时抛出错误（目标的 `TryFrom::Error`；对数值转换为 `OverflowError`，[stdlib 2.11.4](../../refs-standard-libraries/200-core/211-conversion.md#2114-tryfromu-trait可失败转换)）。因此该调用必须用 `try` 标注。它用于转换可能失败的情况，例如把大整数转到较小的整数，或把浮点值转到整数。
 
 ```nabi
 let big: i64 = 10_000_000_000i64;
@@ -104,9 +104,9 @@ let m: i32 | none = try? big.try_into::<i32>();
 
 ## 2.14.6. 基于上下文的自动转换
 
-无后缀的数值字面量不会被转换；其类型由期望类型确定。`let x: f64 = 1` 中的 `1` 从一开始就是 `f64`。确切规则在[数值字面量](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals)中定义。
+无后缀的数值字面量不会被转换；其类型由期望类型确定。`let x: f64 = 1` 中的 `1` 从一开始就是 `f64`。确切规则在[数值字面量](../001-lexical/106-numeric-literals.md#163-无后缀字面量)中定义。
 
-与此相对，不允许对运行时变量进行自动转换。必须始终写出上述三种形式之一。唯一的例外是视图而非转换：在期望 `SliceMut<T>` 的地方，`List<T>` 作为整个列表的可写视图传递，`xs[a:b]` 则作为该区间的视图传递（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt---writable-view)）。不复制任何东西。
+与此相对，不允许对运行时变量进行自动转换。必须始终写出上述三种形式之一。唯一的例外是视图而非转换：在期望 `SliceMut<T>` 的地方，`List<T>` 作为整个列表的可写视图传递，`xs[a:b]` 则作为该区间的视图传递（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可写视图)）。不复制任何东西。
 
 ```nabi
 let a: i64 = 100i64;
@@ -119,4 +119,4 @@ let b: i32 = try! a.try_into::<i32>();     // OK: panics on failure
 
 ## 2.14.7. 转换 trait 的位置
 
-`From<U>` / `Into` 和 `TryFrom<U>` / `TryInto` 定义在 `core::convert` 中（[标准库层级](../000-meta/005-standard-libraries-tiers.md)）。哪些 trait 为哪些类型对实现的完整矩阵，在标准库规范中定义。`as` 没有 trait；它的类型对是 [2.14.2](#2142-as-casts) 中的固定集合。
+`From<U>` / `Into` 和 `TryFrom<U>` / `TryInto` 定义在 `core::convert` 中（[标准库层级](../000-meta/005-standard-libraries-tiers.md)）。哪些 trait 为哪些类型对实现的完整矩阵，在标准库规范中定义。`as` 没有 trait；它的类型对是 [2.14.2](#2142-as-强制转换) 中的固定集合。

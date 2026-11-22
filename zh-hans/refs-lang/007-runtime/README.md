@@ -30,7 +30,7 @@ Coroutine   compiler-generated state machine (stackless)
 
 ## 规范地位
 
-GC 各节（7.1 至 7.5）是资料性的：它们描述参考运行时目前如何分配和回收，后续的运行时可以采用其他算法、空间或屏障。规范性的是在 [8.1](../008-abi/801-object-header-abi.md) 中作为 ABI 固定的对象布局：每个 GC 对象的载荷之前有一个 16 字节的头。库代码依赖于它：`Pinned::as_data_ptr` 和 `as_value_ptr`（[标准库 1.6.6](../../refs-standard-libraries/100-bare/106-gc-pin.md#166-extraction-methods)）把对象地址加 16 算作载荷地址。[7.9](709-memory-model.md) 的内存模型同样是规范性的：程序和每个后端都依赖它。
+GC 各节（7.1 至 7.5）是资料性的：它们描述参考运行时目前如何分配和回收，后续的运行时可以采用其他算法、空间或屏障。规范性的是在 [8.1](../008-abi/801-object-header-abi.md) 中作为 ABI 固定的对象布局：每个 GC 对象的载荷之前有一个 16 字节的头。库代码依赖于它：`Pinned::as_data_ptr` 和 `as_value_ptr`（[标准库 1.6.6](../../refs-standard-libraries/100-bare/106-gc-pin.md#166-提取方法)）把对象地址加 16 算作载荷地址。[7.9](709-memory-model.md) 的内存模型同样是规范性的：程序和每个后端都依赖它。
 
 ## 零依赖原则
 
@@ -51,7 +51,7 @@ OS Thread (worker) x N  ──── nabi task / coroutine x M
                                    (typically M >> N)
 ```
 
-N 默认为 CPU 核心数，可以通过运行时配置调整（`NABIR_WORKERS`，[7.6.8](706-scheduler.md#768-thread-per-core-option)）。每个工作线程既是调度器的工作线程，也是 mutator；stop-the-world 回收在发起它的线程上运行（[7.6.10](706-scheduler.md#7610-integrated-gc-worker-role)）。I/O 驱动是一个单独的 reactor 线程（[7.7](707-io-and-timer.md)），并发标记在单独的标记线程上运行（[7.5](705-concurrent-collection.md)）。
+N 默认为 CPU 核心数，可以通过运行时配置调整（`NABIR_WORKERS`，[7.6.8](706-scheduler.md#768-每核一线程选项)）。每个工作线程既是调度器的工作线程，也是 mutator；stop-the-world 回收在发起它的线程上运行（[7.6.10](706-scheduler.md#7610-集成的-gc-工作角色)）。I/O 驱动是一个单独的 reactor 线程（[7.7](707-io-and-timer.md)），并发标记在单独的标记线程上运行（[7.5](705-concurrent-collection.md)）。
 
 ## 单一 .a 输出
 
@@ -66,7 +66,7 @@ thread '<name>' has overflowed its stack
 fatal runtime error: stack overflow, aborting
 ```
 
-`<name>` 是线程的名称：即用 `thread::Builder::name`（[标准库 3.4](../../refs-standard-libraries/300-std/304-thread.md)）指定的名称，它同时被设为操作系统线程名。主线程为 `main`，未命名的线程为 `<unnamed>`。这适用于主线程、`thread::spawn` 线程以及执行器的工作线程（包括很深的 `await` 链）。检测机制（保护区间和 `sigaltstack`）与 TLS 槽见 [8.5.7](../008-abi/805-extern-symbols.md#stack-overflow)。在 wasm 上，模块无法捕获该 trap，由宿主报告（随附的 JS 宿主会打印上述消息）。
+`<name>` 是线程的名称：即用 `thread::Builder::name`（[标准库 3.4](../../refs-standard-libraries/300-std/304-thread.md)）指定的名称，它同时被设为操作系统线程名。主线程为 `main`，未命名的线程为 `<unnamed>`。这适用于主线程、`thread::spawn` 线程以及执行器的工作线程（包括很深的 `await` 链）。检测机制（保护区间和 `sigaltstack`）与 TLS 槽见 [8.5.7](../008-abi/805-extern-symbols.md#栈溢出)。在 wasm 上，模块无法捕获该 trap，由宿主报告（随附的 JS 宿主会打印上述消息）。
 
 ## 与编译器的接口
 
@@ -74,6 +74,6 @@ fatal runtime error: stack overflow, aborting
 
 - 对象布局（16 字节头 + 载荷）。
 - `nabi_gc_alloc_slow`、`nabi_runtime_yield`、`nabi_thread_spawn` 等 `extern "C"` 函数。
-- 协程是编译器生成的状态机（[7.8](708-coroutine.md)）。对于 GC 根，编译器直接生成影子栈帧（[7.4.1](704-barriers-and-roots.md#741-root-tracking-a-shadow-stack-emitted-directly-by-the-compiler)）。
+- 协程是编译器生成的状态机（[7.8](708-coroutine.md)）。对于 GC 根，编译器直接生成影子栈帧（[7.4.1](704-barriers-and-roots.md#741-根跟踪编译器直接生成的影子栈)）。
 
 该 ABI 在 [8. 运行时 ABI / 降级](../008-abi/README.md)中详细定义；本章只涉及内部行为。

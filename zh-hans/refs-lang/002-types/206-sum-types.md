@@ -42,7 +42,7 @@ let y: i32 | f32 = 3.14f32;     // tag is at the f32 position
 ### 值递归与大小限制
 
 - 按值包含自身的递归类型（即使经由结构体、枚举、元组、和类型、数组或泛型实例）在声明处是错误。递归请使用 GC 引用类型（`List<T>` 等）。
-- Nabi 的实现限制（由实现定义，[0.4.4](../000-meta/004-language-vs-standard-libraries.md#044-implementation-limits)）：超过 65536 个展平标量槽或 4 GiB 的值类型是错误。
+- Nabi 的实现限制（由实现定义，[0.4.4](../000-meta/004-language-vs-standard-libraries.md#044-实现限制)）：超过 65536 个展平标量槽或 4 GiB 的值类型是错误。
 
 确切的放置方式由实现决定，但有一点得到保证：零填充的 `T | none` 存储（`GcBuf<T | none>` 和集合类型缓冲区的元素、新分配的 GC 对象的字段）读出为 `none`。
 
@@ -95,7 +95,7 @@ let y: i32 | f32 = 3.14f32;     // tag is at the f32 position
 - 非泛型的类型别名是写出的类型，因此总是被展平。在 `type Opt = i32 | none; type Flat = Opt | none;` 下，`Flat` 是 `i32 | none`。
 - 泛型别名的参数是泛型项，遵循上述规则（见下文“书写嵌套类型”）。
 
-**书写嵌套类型**。可选类型用后缀 `?` 书写（[2.1.5a](201-type-expressions.md#215a-optional-types-t)）。`T?` 等同于 `Maybe<T>`，因此其操作数是泛型项，适用同样的分层规则。其他嵌套（`(E | i32) | E` 等）用泛型别名或 `Self::X` 书写。
+**书写嵌套类型**。可选类型用后缀 `?` 书写（[2.1.5a](201-type-expressions.md#215a-可选类型t)）。`T?` 等同于 `Maybe<T>`，因此其操作数是泛型项，适用同样的分层规则。其他嵌套（`(E | i32) | E` 等）用泛型别名或 `Self::X` 书写。
 
 ```nabi
 type Maybe<T> = T | none;
@@ -138,7 +138,7 @@ match r {
 }
 ```
 
-**关联类型**。在 trait 及其所有实现内部，裸名称 `X` 和 `Self::X` 都表示该关联类型（[2.8.3](208-trait.md#283-associated-types)）。关联类型是泛型项，因此适用同样的规则。当 `Item` 含有 `none` 时，`fn next(ref self) -> Self::Item?` 会嵌套，因此产出 `i32 | none` 元素的用户迭代器也会把存储的 `none` 当作元素进行迭代。
+**关联类型**。在 trait 及其所有实现内部，裸名称 `X` 和 `Self::X` 都表示该关联类型（[2.8.3](208-trait.md#283-关联类型)）。关联类型是泛型项，因此适用同样的规则。当 `Item` 含有 `none` 时，`fn next(ref self) -> Self::Item?` 会嵌套，因此产出 `i32 | none` 元素的用户迭代器也会把存储的 `none` 当作元素进行迭代。
 
 关于 `none` 的情形（嵌套可选类型），见 2.6.5 中的示例。
 
@@ -148,9 +148,9 @@ match r {
 
 - `none` 总是排在最后。
 - 其余各项按结构键排序：基本类型按其名称，结构体或枚举按其完整路径，泛型实例按 `path<arg keys>`。嵌套的和类型会被展平（见上文“规范化”），因此和类型永远不会是和类型的项；泛型实参中的和类型以其按规范顺序排列的各项为键（`List<A | B>` 的键是 `List<key(A)|key(B)>`）。由“泛型和类型的分层”保留下来的一层是单个项，其键是 `(` + 按规范顺序以 `|` 连接的各项键 + `)`。顺序与书写顺序无关。
-- 顺序以及由此确定的标签从不依赖于某次构建的内部类型编号，因此预构建的库与其使用者保持一致（[9.4.8](../009-tools/904-nabihir-bytecode.md#948-rules-for-separate-compilation)）。
+- 顺序以及由此确定的标签从不依赖于某次构建的内部类型编号，因此预构建的库与其使用者保持一致（[9.4.8](../009-tools/904-nabihir-bytecode.md#948-分离编译的规则)）。
 
-规范顺序固定的是表示（标签），而不是值的顺序。只有在除 `none` 外至多一项的和类型中，值才有顺序（[标准库 2.5.7](../../refs-standard-libraries/200-core/205-cmp.md#257-implementation-matrix)）：
+规范顺序固定的是表示（标签），而不是值的顺序。只有在除 `none` 外至多一项的和类型中，值才有顺序（[标准库 2.5.7](../../refs-standard-libraries/200-core/205-cmp.md#257-实现矩阵)）：
 
 - 当 `T` 具有 `PartialOrd` / `Ord` 时，`T | none`（以及内层为单项的嵌套 `(T | none)?`）也具有。与 Rust 和 Haskell 一样，`none` 小于任何 `T` 值；两个 `T` 值按 `T` 的顺序比较。`min` / `max` / `clamp` 和排序都遵循这一顺序。
 - 除 `none` 外有两项或更多的和类型（`i32 | str`、`i32 | str | none`）没有 `PartialOrd` / `Ord`。对这种值使用 `<`、`>`、`<=`、`>=`、`cmp`、`min` / `max` / `clamp`，以及对其集合使用 `sort` 或 `max`，都是编译错误。可以用 `sort_by_key` / `sort_by` / `min_by_key` 按键排序这类值，或对各项进行 `match`。
@@ -266,7 +266,7 @@ match v {
 
 ## 2.6.9. 与类型别名组合
 
-较长的和类型可以用 `type` 起一个别名（`type Num = i32 | f64;`）。循环的类型别名（即使经由泛型实参）是错误。类型别名的 `where` 写在被别名的类型之后（`type A<T> = B<T> where T: X;`）。省略的实参取其参数的默认值，因此所有参数都有默认值的别名可以裸写：在 `type Vel<V = f64> = Q<V, 1, -1>;` 下，`Vel` 就是 `Vel<f64>`。诊断用代码为泛型类型所写的别名来称呼它（`expects Vel, found Len`，而不是 `Q<f64, 1, -1>`）；正在构建的包所写的别名优先于依赖所写的别名。别名的 `where` 在每次使用该别名时检查。当使用处的实参提及类型参数时，由使用处作用域内的约束决定，与泛型主体中一样（[2.10.9](210-generics.md#2109-body-checking)）：外围函数、`impl` 或 trait 的参数约束与 `where` 子句，以及 trait 的父 trait 和关联类型约束。在 `type W<T> = S<T> where T: Num;` 下，`fn get<T: Num>(x: W<T>)` 和 `impl<T: Num> W<T> { .. }` 有效；`fn get<T>(x: W<T>)` 即使从未被调用也是错误。声明中的类型同样如此：`struct`、`enum` 或 `union` 的字段，trait `impl` 的 trait 实参与关联类型，以及 trait 方法的签名，在不满足别名的 `where` 时都会被拒绝，即使没有任何地方使用它们；帮助信息会指出应在哪个泛型中添加约束（``add `T: Num` to `F`'s generics``）。`any Tr` 的别名（`type Shown = any Display;`）也是这样的别名：它代表该动态槽。`type X = some Tr;` 不是别名，而是具名的不透明类型，是由其模块的函数固定的一个静态类型（[4.1.15](../004-functions/401-function-declaration.md#4115-named-opaque-types-type-x--some-trait)）。`type` 是上下文关键字，只在项的开头且后跟标识符和 `=` 或 `<` 时才是关键字（[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)）。确切的别名语法在类型别名规范中定义。
+较长的和类型可以用 `type` 起一个别名（`type Num = i32 | f64;`）。循环的类型别名（即使经由泛型实参）是错误。类型别名的 `where` 写在被别名的类型之后（`type A<T> = B<T> where T: X;`）。省略的实参取其参数的默认值，因此所有参数都有默认值的别名可以裸写：在 `type Vel<V = f64> = Q<V, 1, -1>;` 下，`Vel` 就是 `Vel<f64>`。诊断用代码为泛型类型所写的别名来称呼它（`expects Vel, found Len`，而不是 `Q<f64, 1, -1>`）；正在构建的包所写的别名优先于依赖所写的别名。别名的 `where` 在每次使用该别名时检查。当使用处的实参提及类型参数时，由使用处作用域内的约束决定，与泛型主体中一样（[2.10.9](210-generics.md#2109-主体检查)）：外围函数、`impl` 或 trait 的参数约束与 `where` 子句，以及 trait 的父 trait 和关联类型约束。在 `type W<T> = S<T> where T: Num;` 下，`fn get<T: Num>(x: W<T>)` 和 `impl<T: Num> W<T> { .. }` 有效；`fn get<T>(x: W<T>)` 即使从未被调用也是错误。声明中的类型同样如此：`struct`、`enum` 或 `union` 的字段，trait `impl` 的 trait 实参与关联类型，以及 trait 方法的签名，在不满足别名的 `where` 时都会被拒绝，即使没有任何地方使用它们；帮助信息会指出应在哪个泛型中添加约束（``add `T: Num` to `F`'s generics``）。`any Tr` 的别名（`type Shown = any Display;`）也是这样的别名：它代表该动态槽。`type X = some Tr;` 不是别名，而是具名的不透明类型，是由其模块的函数固定的一个静态类型（[4.1.15](../004-functions/401-function-declaration.md#4115-具名不透明类型type-x--some-trait)）。`type` 是上下文关键字，只在项的开头且后跟标识符和 `=` 或 `<` 时才是关键字（[1.5.4](../001-lexical/105-keywords.md#154-上下文关键字)）。确切的别名语法在类型别名规范中定义。
 
 ```nabi
 type Number = i32 | i64 | f32 | f64;

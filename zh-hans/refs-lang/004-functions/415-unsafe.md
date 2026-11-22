@@ -87,7 +87,7 @@ unsafe {
 - 对裸指针（`Ptr<T>`、`ConstPtr<T>`、`ManyPtr<T>`）解引用（`p.read()`、`p.write(v)`）
 - 直接调用 [`bare::*`](../../refs-standard-libraries/100-bare/README.md) 模块中的危险函数
 - 读取 `union` 字段（位重解释，[联合体](../002-types/205-union.md)）。写入字段不需要 `unsafe`。
-- 在值被交给另一个所有者之后继续使用它（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）：由块的作者保证没有其他线程同时使用它。
+- 在值被交给另一个所有者之后继续使用它（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)）：由块的作者保证没有其他线程同时使用它。
 
 其他所有普通的安全操作在不安全块中照常工作：`unsafe` *增加能力*，而不*改变已有含义*。
 
@@ -163,7 +163,7 @@ let b = unsafe { buf.raw_get(0) };
 
 ### `unsafe trait`
 
-如果一个 trait 的实现要承诺编译器无法检查的事情，就把它声明为 `unsafe trait`。它的每一个实现都是 `unsafe impl`；普通的 `impl` 是编译错误（E0078），错误会给出 `unsafe impl` 的写法。使用该 trait（约束、调用）不需要 `unsafe`。`bare::mem::Pod`（每一种位模式都是一个值）就是这样的 trait（[标准库 1.3.3](../../refs-standard-libraries/100-bare/103-mem.md#133-the-pod-trait)）。
+如果一个 trait 的实现要承诺编译器无法检查的事情，就把它声明为 `unsafe trait`。它的每一个实现都是 `unsafe impl`；普通的 `impl` 是编译错误（E0078），错误会给出 `unsafe impl` 的写法。使用该 trait（约束、调用）不需要 `unsafe`。`bare::mem::Pod`（每一种位模式都是一个值）就是这样的 trait（[标准库 1.3.3](../../refs-standard-libraries/100-bare/103-mem.md#133-pod-trait)）。
 
 ```nabi
 /// Every all-zero bit pattern is a value.
@@ -178,7 +178,7 @@ unsafe impl Zeroable for i32 {
 
 ### `unsafe impl`
 
-`unsafe impl` 用于实现 `unsafe trait`，或手动实现自动标记 trait `Send` / `Sync`。它标明作者保证该 trait 所承诺的内容（对 `Send` / `Sync` 而言，即该类型可以安全地跨越线程边界）。对其他任何 trait 使用 `unsafe impl` 都是编译错误（[2.9.1](../002-types/209-impl.md#291-two-forms)）。
+`unsafe impl` 用于实现 `unsafe trait`，或手动实现自动标记 trait `Send` / `Sync`。它标明作者保证该 trait 所承诺的内容（对 `Send` / `Sync` 而言，即该类型可以安全地跨越线程边界）。对其他任何 trait 使用 `unsafe impl` 都是编译错误（[2.9.1](../002-types/209-impl.md#291-两种形式)）。
 
 ```nabi
 unsafe impl Send for Handle { }
@@ -188,7 +188,7 @@ unsafe impl Send for Handle { }
 
 `unsafe` 并不意味着编译器*放弃*安全检查。它意味着以下两项责任转移给调用方：
 
-1. **内存安全**：不得引发悬垂指针、未对齐访问或数据竞争等未定义行为（[4.15.8](#4158-undefined-behavior)）的责任。
+1. **内存安全**：不得引发悬垂指针、未对齐访问或数据竞争等未定义行为（[4.15.8](#4158-未定义行为)）的责任。
 2. **前置条件**：满足 `unsafe fn` 文档所承诺的使用条件（例如指针指向有效对象、长度在缓冲区之内）的责任。
 
 `unsafe { ... }` 是调用方接受这两项责任的可见信号，因此在代码审查时危险区域一目了然。
@@ -237,7 +237,7 @@ Nabi 原样沿用 Rust 的模型。危险区域的视觉分隔由单一关键字
 
 线程：
 
-12. 数据竞争（[7.9.4](../007-runtime/709-memory-model.md#794-data-races)）：通过裸指针或 `GcBuf`、虚假的 `unsafe impl Send` / `Sync`、对其他东西也能触及的值使用 `Mutex::new_unshared`、在 `unsafe` 中跳过移交检查，或在 `env::set_var` 运行期间访问环境的 C 代码（[标准库 3.5](../../refs-standard-libraries/300-std/305-env.md)）。
+12. 数据竞争（[7.9.4](../007-runtime/709-memory-model.md#794-数据竞争)）：通过裸指针或 `GcBuf`、虚假的 `unsafe impl Send` / `Sync`、对其他东西也能触及的值使用 `Mutex::new_unshared`、在 `unsafe` 中跳过移交检查，或在 `env::set_var` 运行期间访问环境的 C 代码（[标准库 3.5](../../refs-standard-libraries/300-std/305-env.md)）。
 
 外部代码：
 
@@ -246,4 +246,4 @@ Nabi 原样沿用 Rust 的模型。危险区域的视觉分隔由单一关键字
 15. 在声明为 `str` 的位置返回 null 的 `char*`；C 在调用返回之后仍保留 `str` 实参的指针（[5.9.4](../005-modules/509-extern-block.md)）。
 16. 对悬垂指针或指向不含 NUL 的字节的指针使用 `CStr::from_ptr`（[标准库 1.7.2](../../refs-standard-libraries/100-bare/107-ffi.md)）。
 
-其他一切在安全代码和不安全代码中都是有定义的。特别地，以下情况不是未定义行为：整数溢出（启用检查时触发 panic，关闭检查时回绕，[标准库 2.3](../../refs-standard-libraries/200-core/203-ops.md#overflow-behavior)）、集合类型的越界索引或切片（触发 panic）、除以零（触发 panic）、栈溢出（进程中止，[7](../007-runtime/README.md)）、所有浮点运算（包括 NaN 和无穷，[标准库 2.1.4](../../refs-standard-libraries/200-core/201-numbers.md#floating-point-semantics)）、读取 `union` 字段（位重解释；只有它产生的值可能无效，见第 9 项）、不同大小类型之间的 `transmute_unchecked`（缺失的字节读作零）、死锁以及内存泄漏。
+其他一切在安全代码和不安全代码中都是有定义的。特别地，以下情况不是未定义行为：整数溢出（启用检查时触发 panic，关闭检查时回绕，[标准库 2.3](../../refs-standard-libraries/200-core/203-ops.md#溢出行为)）、集合类型的越界索引或切片（触发 panic）、除以零（触发 panic）、栈溢出（进程中止，[7](../007-runtime/README.md)）、所有浮点运算（包括 NaN 和无穷，[标准库 2.1.4](../../refs-standard-libraries/200-core/201-numbers.md#浮点语义)）、读取 `union` 字段（位重解释；只有它产生的值可能无效，见第 9 项）、不同大小类型之间的 `transmute_unchecked`（缺失的字节读作零）、死锁以及内存泄漏。

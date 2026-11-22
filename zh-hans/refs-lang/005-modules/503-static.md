@@ -1,6 +1,6 @@
 # 5.3. `static`
 
-`static` 关键字（一个上下文关键字，只在项的开头才是关键字；其后的 `mut` 同样只在 `static mut` 位置才是关键字，[1.5.4](../001-lexical/105-keywords.md#154-contextual-keywords)）声明在程序整个生存期内持续存在的全局内存。
+`static` 关键字（一个上下文关键字，只在项的开头才是关键字；其后的 `mut` 同样只在 `static mut` 位置才是关键字，[1.5.4](../001-lexical/105-keywords.md#154-上下文关键字)）声明在程序整个生存期内持续存在的全局内存。
 
 ```
 static_decl     ::= "static" "mut"? identifier ":" type_expr "=" expr ";"
@@ -15,9 +15,9 @@ static DEFAULT_CONFIG: Config = Config::default();
 static APP_NAME: str = "nabi";
 ```
 
-基本形式是 `static`、名称、`:` 加类型，以及 `=` 加初始化式。类型必须写出。`const` 初始化式（[`const`](502-const.md)）在编译期求值；其他初始化式在首次访问时运行一次（[5.3.9](#539-initializers-compile-time-or-first-use)）。
+基本形式是 `static`、名称、`:` 加类型，以及 `=` 加初始化式。类型必须写出。`const` 初始化式（[`const`](502-const.md)）在编译期求值；其他初始化式在首次访问时运行一次（[5.3.9](#539-初始化式编译期或首次使用时)）。
 
-`static` 可以从每个线程访问，所以它的类型必须是 `Sync`（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers)）；延迟初始化的 static 也是如此。`static XS: List<i32> = [];` 是编译错误（集合类型、`StrBuf` 和 `Cell<T>` 都是 `!Sync`）；应写作 `static XS: Mutex<List<i32>> = Mutex::new([]);`。每个线程各自的状态使用 `thread::local`（[stdlib 3.4.4](../../refs-standard-libraries/300-std/304-thread.md#344-thread-local-storage)），其 `ThreadLocal<T>` 是 `Sync`。`extern` 块中的 static（[5.3.10](#5310-extern-static-ffi)）不受此限制。
+`static` 可以从每个线程访问，所以它的类型必须是 `Sync`（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)）；延迟初始化的 static 也是如此。`static XS: List<i32> = [];` 是编译错误（集合类型、`StrBuf` 和 `Cell<T>` 都是 `!Sync`）；应写作 `static XS: Mutex<List<i32>> = Mutex::new([]);`。每个线程各自的状态使用 `thread::local`（[stdlib 3.4.4](../../refs-standard-libraries/300-std/304-thread.md#344-线程局部存储)），其 `ThreadLocal<T>` 是 `Sync`。`extern` 块中的 static（[5.3.10](#5310-extern-staticffi)）不受此限制。
 
 ## 5.3.2. 与 `const` 的区别
 
@@ -35,7 +35,7 @@ static X: i32 = 42i32;             // stable memory address (program lifetime)
 
 ## 5.3.3. 允许的位置
 
-`static` 可以在模块级或块中（[3.9.1](../003-expressions/309-block-expressions.md#391-form)）声明，不能在 trait 或 `impl` 中声明（[5.3.8](#538-combination-with-methods--traits)）。
+`static` 可以在模块级或块中（[3.9.1](../003-expressions/309-block-expressions.md#391-形式)）声明，不能在 trait 或 `impl` 中声明（[5.3.8](#538-与方法trait-的组合)）。
 
 ```nabi
 static APP_NAME: str = "nabi";                          // module level: OK
@@ -59,7 +59,7 @@ static CACHE: Mutex<Dict<str, Data>> = Mutex::new(Dict::new());
 
 - `Atomic<T>`：无锁原子操作（整数、`bool`、指针）。
 - `Mutex<T>`：基于锁的保护。
-- `RwLock<T>`：读写锁，用于本身是 `Sync` 的 `T`（[stdlib 2.16.4](../../refs-standard-libraries/200-core/216-sync.md#2164-rwlockt---read-write-split)）。
+- `RwLock<T>`：读写锁，用于本身是 `Sync` 的 `T`（[stdlib 2.16.4](../../refs-standard-libraries/200-core/216-sync.md#2164-rwlockt读写分离)）。
 
 `Cell<T>` 是单线程的且为 `!Sync`，所以不能作为 `static`；每个线程各自的可变全局变量用 `thread::local(..)`。
 
@@ -118,7 +118,7 @@ impl Counter {
 
 ## 5.3.9. 初始化式：编译期或首次使用时
 
-如果初始化式是常量表达式（[5.2.4](502-const.md#524-constant-expressions-and-the-evaluator)），它在编译期初始化。其他初始化式在首次使用时初始化一次（延迟初始化）。延迟初始化是线程安全的，并发访问的线程会等待初始化完成。初始化式中的函数不必是 `const fn`（如 `Mutex::new` 等）。
+如果初始化式是常量表达式（[5.2.4](502-const.md#524-常量表达式与求值器)），它在编译期初始化。其他初始化式在首次使用时初始化一次（延迟初始化）。延迟初始化是线程安全的，并发访问的线程会等待初始化完成。初始化式中的函数不必是 `const fn`（如 `Mutex::new` 等）。
 
 ```nabi
 static PI: f64 = 3.14159f64;             // const: compile time

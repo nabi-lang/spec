@@ -86,9 +86,9 @@ struct Config {
 
 默认值受以下约束。只允许 `const` 表达式：字面量、`const` 变量、`const` 函数调用，以及由这类值组成的 `List` / `Dict` 字面量（`[]`、`[1, 2]`、`{"a": 1}`）。集合类型的默认值在编译期检查，并为每个实例重新构建，因此实例之间从不共享它。`const` 表达式在 [`const`](../005-modules/502-const.md) 中定义。需要运行时调用的表达式（如当前时间或随机数）不能使用；这样的代码是编译错误。引用同一结构体的其他字段也是禁止的。默认值只在实例创建时省略了该字段才求值，并且为每个实例分别求值。由于求值是确定性的，编译器可以施加缓存优化。
 
-这些约束保证了确定性、可预测的开销和语义化版本上的安全。如果需要运行时初始化，使用单独的工厂函数，即 `fn new() -> T` 模式。字段默认值中的名称在声明该结构体的模块的作用域中解析，而不是在构建值的地方解析。派生的 `Default` 也使用声明的默认值（[标准库 2.13.10](../../refs-standard-libraries/200-core/213-marker.md#21310-default---default-values)）。
+这些约束保证了确定性、可预测的开销和语义化版本上的安全。如果需要运行时初始化，使用单独的工厂函数，即 `fn new() -> T` 模式。字段默认值中的名称在声明该结构体的模块的作用域中解析，而不是在构建值的地方解析。派生的 `Default` 也使用声明的默认值（[标准库 2.13.10](../../refs-standard-libraries/200-core/213-marker.md#21310-default默认值)）。
 
-结构体所在模块之外的字面量，只有在私有字段有默认值时才可以省略它（[5.6.8](../005-modules/506-visibility.md#568-visibility-of-struct-fields)）。`#[non_exhaustive]` 结构体为首次发布之后添加的每个字段提供默认值，这样其他包中的字面量可以继续编译（[6.2.10](../006-meta-system/602-built-in-attributes.md#6210-non_exhaustive-opting-out-of-external-exhaustiveness)）。
+结构体所在模块之外的字面量，只有在私有字段有默认值时才可以省略它（[5.6.8](../005-modules/506-visibility.md#568-struct-字段的可见性)）。`#[non_exhaustive]` 结构体为首次发布之后添加的每个字段提供默认值，这样其他包中的字面量可以继续编译（[6.2.10](../006-meta-system/602-built-in-attributes.md#6210-non_exhaustive-退出外部穷尽性)）。
 
 ## 2.3.4. 字段展开
 
@@ -115,15 +115,15 @@ struct Account {
 }
 ```
 
-元组结构体的字段也各有自己的可见性（`struct S(pub i32, i32);`，默认私有）。关于构造、`x.N` 访问和模式的规则，以及各可见性级别的含义，见 [5.6.8](../005-modules/506-visibility.md#568-visibility-of-struct-fields)。
+元组结构体的字段也各有自己的可见性（`struct S(pub i32, i32);`，默认私有）。关于构造、`x.N` 访问和模式的规则，以及各可见性级别的含义，见 [5.6.8](../005-modules/506-visibility.md#568-struct-字段的可见性)。
 
 ## 2.3.6. 内存布局
 
-字段按声明顺序以自然对齐布局，与 `#[repr(C)]` 相同（[6.2.2](../006-meta-system/602-built-in-attributes.md#622-repr-explicit-memory-representation)）。`packed` 和 `align(N)` 会改变这一点。
+字段按声明顺序以自然对齐布局，与 `#[repr(C)]` 相同（[6.2.2](../006-meta-system/602-built-in-attributes.md#622-repr-显式内存表示)）。`packed` 和 `align(N)` 会改变这一点。
 
 ## 2.3.7. 同一模块中不得重复定义
 
-在同一模块中声明两个同名结构体是编译错误。同一结构体内的字段名重复也是错误。这条规则与可见性级别无关。元组结构体或单元结构体的构造器是一个值，位于函数、`const` 和 `static` 的命名空间中（[4.1.10](../004-functions/401-function-declaration.md#4110-no-duplicate-definitions-in-the-same-module)）：同一模块中的 `struct Point(i32, i32);` 与名为 `Point` 的 `fn`、`const` 或 `static` 构成重复定义（`E0026`）。
+在同一模块中声明两个同名结构体是编译错误。同一结构体内的字段名重复也是错误。这条规则与可见性级别无关。元组结构体或单元结构体的构造器是一个值，位于函数、`const` 和 `static` 的命名空间中（[4.1.10](../004-functions/401-function-declaration.md#4110-同一模块内不得重复定义)）：同一模块中的 `struct Point(i32, i32);` 与名为 `Point` 的 `fn`、`const` 或 `static` 构成重复定义（`E0026`）。
 
 ## 2.3.8. 值语义
 
@@ -140,7 +140,7 @@ q.x = 9.0;                        // ps[0].x unchanged
 ps[0] = q;                        // written back
 ```
 
-对之后没有任何读取的副本进行字段写入是编译错误 `E0057`：这个修改会丢失。受检查的副本有：按值传递的参数或 `self`、闭包的按值参数（`xs.for_each(|p| { p.x = 0.0; })`）、`for` 绑定，以及对元素的 `let`（`let q = xs[i];`）。当之后没有任何读取、循环迭代、返回或调用能看到该修改时，这次写入就是错误；只为同一变量的另一次写入提供数据的读取不算，被闭包或协程块捕获的变量不受检查。帮助信息会指出应当改写成什么：`ref self` 或 `ref` 参数（[4.7](../004-functions/407-ref-keyword.md)）、`for ref`（[3.13.3](../003-expressions/313-loop-expressions.md#for-ref-elements-as-places)）、返回闭包的实参并使用其结果，或者把元素写回。
+对之后没有任何读取的副本进行字段写入是编译错误 `E0057`：这个修改会丢失。受检查的副本有：按值传递的参数或 `self`、闭包的按值参数（`xs.for_each(|p| { p.x = 0.0; })`）、`for` 绑定，以及对元素的 `let`（`let q = xs[i];`）。当之后没有任何读取、循环迭代、返回或调用能看到该修改时，这次写入就是错误；只为同一变量的另一次写入提供数据的读取不算，被闭包或协程块捕获的变量不受检查。帮助信息会指出应当改写成什么：`ref self` 或 `ref` 参数（[4.7](../004-functions/407-ref-keyword.md)）、`for ref`（[3.13.3](../003-expressions/313-loop-expressions.md#for-ref作为位置的元素)）、返回闭包的实参并使用其结果，或者把元素写回。
 
 ```nabi
 impl Counter {
@@ -153,7 +153,7 @@ let qs = ps.map(|p| { p.x = 0.0; p }).to_list();  // returned: kept
 let c = self;                     // a local copy on purpose: change `c`, then read or return it
 ```
 
-共享通过引用句柄进行：集合类型（`List`、`Dict`、`Set`、`StrBuf`、`Deque` 等，[标准库 2.9](../../refs-standard-libraries/200-core/209-collections.md#reference-handles)）、`Mutex`、`RwLock`、原子类型、通道，以及 `[ref x]` 捕获单元。复制句柄会共享对象。
+共享通过引用句柄进行：集合类型（`List`、`Dict`、`Set`、`StrBuf`、`Deque` 等，[标准库 2.9](../../refs-standard-libraries/200-core/209-collections.md#引用句柄)）、`Mutex`、`RwLock`、原子类型、通道，以及 `[ref x]` 捕获单元。复制句柄会共享对象。
 
 |                         | 值类型（`struct`、`enum`、元组、基本类型）      | 引用句柄（`List`、`Dict`、`Mutex` 等）        |
 |-------------------------|-------------------------------------------------|-----------------------------------------------|

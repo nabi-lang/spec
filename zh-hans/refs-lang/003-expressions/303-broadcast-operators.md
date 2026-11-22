@@ -78,10 +78,10 @@ g.(a, b)     →   a.iter().zip(b.iter()).map(|(x, y)| g(x, y))     // collected
 sin.(a) .+ cos.(b) .* 2.0f64
 ```
 
-当容器操作数全部是 core 的 `List`、`Slice` 或定长数组，或者全部是 `Broadcastable`（[stdlib 2.6.6](../../refs-standard-libraries/200-core/206-broadcast.md#266-loop-fusion)），且点运算符的其他每个操作数都是基本类型、元素类型或（与自定义 `Broadcastable` 类型并列时）`BroadcastScalar` 时，保证融合：结果在一趟中构建，没有中间集合。每个操作数在循环之前按源代码顺序求值一次。
+当容器操作数全部是 core 的 `List`、`Slice` 或定长数组，或者全部是 `Broadcastable`（[stdlib 2.6.6](../../refs-standard-libraries/200-core/206-broadcast.md#266-循环融合)），且点运算符的其他每个操作数都是基本类型、元素类型或（与自定义 `Broadcastable` 类型并列时）`BroadcastScalar` 时，保证融合：结果在一趟中构建，没有中间集合。每个操作数在循环之前按源代码顺序求值一次。
 
 - 对 core 集合，长度在第一个元素之前检查（定长数组在编译期检查）。结果是 `List`，或者当每个容器操作数都是数组时为数组。
-- 对 `Broadcastable` 操作数（`Array` 或自定义类型），每个操作数被视为一个数组，这些视图在第一个元素之前按广播规则（[stdlib 2.6.8](../../refs-standard-libraries/200-core/206-broadcast.md#268-numpy-style-broadcasting-rules)）拉伸为同一形状。结果通过 `Materialize` 构建：对 `Array` 是主导操作数（最高秩中的第一个）的，对自定义类型是点 trait 所给出的类型的，因此融合循环的类型与逐个应用运算符所得的类型相同（stdlib 2.6.6）。
+- 对 `Broadcastable` 操作数（`Array` 或自定义类型），每个操作数被视为一个数组，这些视图在第一个元素之前按广播规则（[stdlib 2.6.8](../../refs-standard-libraries/200-core/206-broadcast.md#268-numpy-风格的广播规则)）拉伸为同一形状。结果通过 `Materialize` 构建：对 `Array` 是主导操作数（最高秩中的第一个）的，对自定义类型是点 trait 所给出的类型的，因此融合循环的类型与逐个应用运算符所得的类型相同（stdlib 2.6.6）。
 - 混合这两类的树是错误，其帮助信息会转换列表（`Array::from_list(xs, [xs.len()])`）。
 
 其他任何树，即含有既非容器、也非基本类型或元素类型的操作数的树，不会融合：每个运算符调用自己的点 trait（3.3.1）并产生自己的结果。
@@ -126,7 +126,7 @@ m[:, 0] .= 0.0;            // a view is a target: the column of m
 xs .*= ys;                 // a List, lengths equal
 ```
 
-- `.=` 先按源代码顺序求值各操作数，再求值目标；`.op=` 先求值目标（它是第一个操作数），再求值其他操作数（[3.4.7](304-assignment.md#347-evaluation-order)）。
+- `.=` 先按源代码顺序求值各操作数，再求值目标；`.op=` 先求值目标（它是第一个操作数），再求值其他操作数（[3.4.7](304-assignment.md#347-求值顺序)）。
 - `List` 或定长数组目标接受与其长度相同的操作数（在第一个元素之前检查，定长数组在编译期检查）；每个元素通过 `IndexSet` 存储。`Slice` 是只读视图，不能作为目标。
 - `Broadcastable` 目标保持其形状：操作数拉伸到该形状（stdlib 2.6.8），秩更高的操作数是编译错误；结果形状不同时触发 panic（`broadcast: the result has shape [2, 3], which does not fit the destination of shape [1, 3]; the destination is not stretched`）。元素通过目标的视图写入，因此数组的切片（`a[1:]`）会写入该数组。
 - 与目标在其他位置共享缓冲区的操作数（`v .= v[::-1]`）从循环前制作的副本中读取；同一视图（`v .+= v`）或与之分离的缓冲区则就地读取。结果如同所有元素在存储任何元素之前都已计算完毕。

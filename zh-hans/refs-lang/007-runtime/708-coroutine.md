@@ -25,9 +25,9 @@ Frame {
 ```
 
 - 帧是普通的 GC 对象，由分配的快速 / 慢速路径创建（[7.2](702-allocation.md)）。每个类型都有一个帧 [ScanTable](../008-abi/802-scan-table.md)。
-- 挂起期间，帧中的 GC 引用由 ScanTable 跟踪；恢复函数运行期间，其局部变量由影子栈跟踪（[7.4.1](704-barriers-and-roots.md#741-root-tracking-a-shadow-stack-emitted-directly-by-the-compiler)）。
-- 长期存在的任务的帧会通过 sticky mark-bit 成为老对象（[7.3.2](703-gc-algorithm.md#732-sticky-mark-bit-generational-collection)）。
-- 调用结果（`GenIter<T>`、`AsyncFuture<T>`、`AsyncStream<T>` 及其 `Try*` 变体）是包装帧的值（[4.1.11](../004-functions/401-function-declaration.md#result-types-of-coroutine-functions)）。
+- 挂起期间，帧中的 GC 引用由 ScanTable 跟踪；恢复函数运行期间，其局部变量由影子栈跟踪（[7.4.1](704-barriers-and-roots.md#741-根跟踪编译器直接生成的影子栈)）。
+- 长期存在的任务的帧会通过 sticky mark-bit 成为老对象（[7.3.2](703-gc-algorithm.md#732-sticky-mark-bit-分代回收)）。
+- 调用结果（`GenIter<T>`、`AsyncFuture<T>`、`AsyncStream<T>` 及其 `Try*` 变体）是包装帧的值（[4.1.11](../004-functions/401-function-declaration.md#协程函数的结果类型)）。
 
 ## 7.8.3. 生成器
 
@@ -37,7 +37,7 @@ Frame {
 3. Next next() → continues from the saved state. When finished, none.
 ```
 
-由调用方推动进展（`for x in g { .. }`）。提前离开生成器的 `for` 会关闭它：生成器以关闭模式恢复，并在它所等待的 `yield` 处像执行 `return` 一样离开，同时运行其清理（[4.11.10](../004-functions/411-generators.md#41110-generator-termination)）。
+由调用方推动进展（`for x in g { .. }`）。提前离开生成器的 `for` 会关闭它：生成器以关闭模式恢复，并在它所等待的 `yield` 处像执行 `return` 一样离开，同时运行其清理（[4.11.10](../004-functions/411-generators.md#41110-生成器的终止)）。
 
 ## 7.8.4. Async
 
@@ -55,7 +55,7 @@ Frame {
 
 ## 7.8.6. 分配消除
 
-每次协程调用都会分配一个帧。对于由调用方运行至完成的协程，没有专门的消除；从不逃逸的帧可以像任何分配一样被移除（[7.2.12](702-allocation.md#7212-allocation-elision)）。
+每次协程调用都会分配一个帧。对于由调用方运行至完成的协程，没有专门的消除；从不逃逸的帧可以像任何分配一样被移除（[7.2.12](702-allocation.md#7212-分配消除)）。
 
 ## 7.8.7. `yield` / `await` 的降级
 
@@ -67,11 +67,11 @@ Frame {
 
 ## 7.8.8. 运行时符号
 
-`await` 的等待与唤醒由 `core::task` 的驻留注册表处理（`core::task` 通过 `nabi_task_hooks_install` 安装的钩子，[8.5.4](../008-abi/805-extern-symbols.md#854-scheduler-area)）。运行时的 `nabi_coro_frame_alloc` / `nabi_coro_park` / `nabi_coro_unpark` 供 C 和底层代码使用；编译器不使用它们（[8.5](../008-abi/805-extern-symbols.md)）。
+`await` 的等待与唤醒由 `core::task` 的驻留注册表处理（`core::task` 通过 `nabi_task_hooks_install` 安装的钩子，[8.5.4](../008-abi/805-extern-symbols.md#854-调度器区域)）。运行时的 `nabi_coro_frame_alloc` / `nabi_coro_park` / `nabi_coro_unpark` 供 C 和底层代码使用；编译器不使用它们（[8.5](../008-abi/805-extern-symbols.md)）。
 
 ## 7.8.9. 栈深度
 
-嵌套的 `await` 通过原生调用进行，由外层的恢复函数调用内层 future 的 poll。因此 `await` 递归的深度受原生栈限制，极深的递归会导致栈溢出（[运行时错误](README.md#runtime-error-stack-overflow)）。如果需要深度递归，就把它拆分成多个任务。
+嵌套的 `await` 通过原生调用进行，由外层的恢复函数调用内层 future 的 poll。因此 `await` 递归的深度受原生栈限制，极深的递归会导致栈溢出（[运行时错误](README.md#运行时错误栈溢出)）。如果需要深度递归，就把它拆分成多个任务。
 
 ## 7.8.10. 协程帧的生命周期
 
