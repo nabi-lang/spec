@@ -163,7 +163,7 @@ trait 槽指明把用户编写的语法脱糖为标准库 trait 调用时，编�
 
 ### 层级共享的项：`#[internal]`
 
-有几个 `pub` 项不是由编译器调用，而是由工具链的另一个层级调用：`std` 使用 `core` 中的这些项，`core` 使用 `bare` 中的这些项。它们标记为 `#[internal]`（[refs-lang 6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-由工具链的各个包共用)）：`bare`、`core` 和 `std` 可以使用它们，其他任何包都会得到错误“internal to the Nabi toolchain”，文档和语言服务器也会略去它们。
+有几个 `pub` 项不是由编译器调用，而是由工具链的另一个层级调用：`std` 使用 `core` 中的这些项，`core` 使用 `bare` 中的这些项。它们标记为 `#[internal]`（[refs-lang 6.2.15](../../refs-lang/006-meta-system/602-built-in-attributes.md#6215-internal-由工具链的各个包共用)）：`bare`、`core` 和 `std` 可以使用它们，其他任何包都会得到错误“internal to the Nabi toolchain”，文档和语言服务器也会略去它们。
 
 | 项                                     | 使用者                                                    | 参见 |
 |----------------------------------------|-----------------------------------------------------------|------|

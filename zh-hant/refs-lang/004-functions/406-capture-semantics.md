@@ -144,7 +144,7 @@ let g = [ref xs] || {
 
 ## 4.6.9. 平行與並行上下文中的額外限制
 
-`fn() + Send` 閉包（傳給 `task::spawn_blocking`、`par::for_each`、`thread::spawn` 等的閉包）的每個一般擷取都必須是 `Send + Sync`（[4.4](404-function-type.md#send--sync-約束)）：閉包與建立它的程式碼共享它。`[move x]` 擷取只屬於閉包，只需要 `Send`（[4.6.11](#4611-移動擷取move-x-擷取清單)）；`+ Sync` 閉包（`par::for_each`，由每個工作者呼叫）需要每個擷取都是 `Sync`。`[ref x]` 儲存格會被閉包與建立它的程式碼同時寫入，因此無論 `x` 的型別為何，它都絕不是 `Send` 或 `Sync`：帶有 `[ref]` 擷取的閉包（或擷取了這種閉包的閉包，或由 `async [ref x] ||` 閉包產生的 future）不適合任何 `+ Send` / `+ Sync` 槽位。同一執行緒內的使用（`spawn_local`、一般呼叫）不受影響。集合型別是 `!Sync`（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)），也不能以這種方式依值擷取。
+`fn() + Send` 閉包（傳給 `task::spawn_blocking`、`par::for_each`、`thread::spawn` 等的閉包）的每個一般擷取都必須是 `Send + Sync`（[4.4.6](404-function-type.md#send--sync-約束)）：閉包與建立它的程式碼共享它。`[move x]` 擷取只屬於閉包，只需要 `Send`（[4.6.11](#4611-移動擷取move-x-擷取清單)）；`+ Sync` 閉包（`par::for_each`，由每個工作者呼叫）需要每個擷取都是 `Sync`。`[ref x]` 儲存格會被閉包與建立它的程式碼同時寫入，因此無論 `x` 的型別為何，它都絕不是 `Send` 或 `Sync`：帶有 `[ref]` 擷取的閉包（或擷取了這種閉包的閉包，或由 `async [ref x] ||` 閉包產生的 future）不適合任何 `+ Send` / `+ Sync` 槽位。同一執行緒內的使用（`spawn_local`、一般呼叫）不受影響。集合型別是 `!Sync`（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)），也不能以這種方式依值擷取。
 
 ```nabi
 let buf: List<i32> = [];

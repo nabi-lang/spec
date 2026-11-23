@@ -163,7 +163,7 @@
 
 ### 계층끼리 공유하는 항목: `#[internal]`
 
-컴파일러가 아니라 toolchain의 다른 계층이 부르는 `pub` 항목이 몇 있습니다. `std`가 `core`의 항목을, `core`가 `bare`의 항목을 씁니다. 이 항목에는 `#[internal]`([refs-lang 6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-toolchain-패키지끼리-공유))이 붙습니다. `bare`, `core`, `std`는 쓸 수 있고, 다른 패키지가 쓰면 "internal to the Nabi toolchain" 에러입니다. 문서와 언어 서버에서도 빠집니다.
+컴파일러가 아니라 toolchain의 다른 계층이 부르는 `pub` 항목이 몇 있습니다. `std`가 `core`의 항목을, `core`가 `bare`의 항목을 씁니다. 이 항목에는 `#[internal]`([refs-lang 6.2.15](../../refs-lang/006-meta-system/602-built-in-attributes.md#6215-internal-toolchain-패키지끼리-공유))이 붙습니다. `bare`, `core`, `std`는 쓸 수 있고, 다른 패키지가 쓰면 "internal to the Nabi toolchain" 에러입니다. 문서와 언어 서버에서도 빠집니다.
 
 | 항목                                   | 쓰는 곳                                                   | 참조 |
 |----------------------------------------|-----------------------------------------------------------|------|

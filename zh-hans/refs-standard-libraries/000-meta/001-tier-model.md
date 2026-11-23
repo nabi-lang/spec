@@ -78,7 +78,7 @@ prelude 是 `core` 唯一指称 `std` 项的地方：在相应目标上，`core:
 
 三个层级的稳定性策略也不同。`bare` API 不稳定，与编译器和运行时一同演进，因此建议用户代码固定版本。基础层级（`core`）API 以 SemVer 稳定性为目标，不兼容的变更要等到破坏性版本（1.0 之前为 `0.x.0`）。`std` API 的变动程度与其各目标可用性的差异相当，但签名本身保持稳定。
 
-在一个版本系列内，项不会被移除，也不会发生不兼容的变更。被取代的项继续可用，并标记为 `#[deprecated(since = "..", note = "..")]`（[6.2.7](../../refs-lang/006-meta-system/602-built-in-attributes.md#627-deprecated-不推荐使用的标记)），note 指出应改用什么。必须变为 `unsafe` 的安全函数标记为 `#[deprecated_safe]`（[6.2.14](../../refs-lang/006-meta-system/602-built-in-attributes.md#6214-deprecated_safe-现在安全以后-unsafe)）。下一个破坏性版本会移除该项，或把它改为 `unsafe`。
+在一个版本系列内，项不会被移除，也不会发生不兼容的变更。被取代的项继续可用，并标记为 `#[deprecated(since = "..", note = "..")]`（[6.2.7](../../refs-lang/006-meta-system/602-built-in-attributes.md#627-deprecated-不推荐使用的标记)），note 指出应改用什么。必须变为 `unsafe` 的安全函数标记为 `#[deprecated_safe]`（[6.2.13](../../refs-lang/006-meta-system/602-built-in-attributes.md#6213-deprecated_safe-现在安全以后-unsafe)）。下一个破坏性版本会移除该项，或把它改为 `unsafe`。
 
 ## 0.1.6. 每个项只有一条路径
 

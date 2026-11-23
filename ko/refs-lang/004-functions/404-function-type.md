@@ -23,7 +23,7 @@ fn(str) throws (ParseError) -> i32  // typed
 fn(Path) throws (IoError)           // 반환 타입 생략: unit
 ```
 
-`unsafe fn(..) -> R`은 호출할 때 `unsafe`가 필요한 함수의 타입입니다. `unsafe fn`과 C 함수를 값으로 쓰면 이 타입이 됩니다. 안전한 `fn` 값은 `unsafe fn` 자리에 들어갈 수 있지만 반대는 안 됩니다([4.15](415-unsafe.md#unsafe-fn-타입)).
+`unsafe fn(..) -> R`은 호출할 때 `unsafe`가 필요한 함수의 타입입니다. `unsafe fn`과 C 함수를 값으로 쓰면 이 타입이 됩니다. 안전한 `fn` 값은 `unsafe fn` 자리에 들어갈 수 있지만 반대는 안 됩니다([4.15.3](415-unsafe.md#unsafe-fn-타입)).
 
 `throws`는 함수 타입의 일부입니다. 그래서 에러를 던지는 함수 타입의 값을 호출할 때도 `try`로 표시해야 합니다. `rethrows`는 함수 선언에만 쓰며 함수 타입에는 쓰지 않습니다.
 

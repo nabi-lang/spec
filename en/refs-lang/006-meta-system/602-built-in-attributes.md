@@ -228,7 +228,7 @@ The inner form `#![doc]` likewise has the same effect as `//!`.
 pub const fn spread_misfit<V>(d: Dict<str, V>, key: str, why: str) { .. }
 ```
 
-`#[doc(hidden)]` keeps a public item out of the API docs (`nabi doc`) and out of the language server's completion. It is for items that are `pub` only so code the compiler generates can call them; the item is still public and compiles and resolves as before. On a module it hides everything inside. It may stand beside the item's doc comment, which still serves hover. Any other `#[doc(..)]` form is an error: write `#[doc = ".."]` or `#[doc(hidden)]`. An item the toolchain's packages share but users may not call is `#[internal]` ([6.2.16](#6216-internal-shared-by-the-toolchains-packages)), not `#[doc(hidden)]`.
+`#[doc(hidden)]` keeps a public item out of the API docs (`nabi doc`) and out of the language server's completion. It is for items that are `pub` only so code the compiler generates can call them; the item is still public and compiles and resolves as before. On a module it hides everything inside. It may stand beside the item's doc comment, which still serves hover. Any other `#[doc(..)]` form is an error: write `#[doc = ".."]` or `#[doc(hidden)]`. An item the toolchain's packages share but users may not call is `#[internal]` ([6.2.15](#6215-internal-shared-by-the-toolchains-packages)), not `#[doc(hidden)]`.
 
 ## 6.2.9. `#[allow(...)]` / `#[deny(...)]` / `#[warn(...)]` lint control
 
@@ -262,7 +262,7 @@ The default level of every lint is `warn`, except `nan_comparison` and `self_ass
 | `while_true`             | 0.1.0   | `while true` instead of `loop`                                      |
 | `closed_type_switch`     | 0.1.0   | an `if T is ..` chain whose fallback panics: a trait fits a closed set of types |
 | `deprecated`             | 0.1.0   | Use of a `#[deprecated]` function, method, field, type, constant or static ([6.2.7](#627-deprecated-discouraged-use-marker)) |
-| `deprecated_safe`        | 0.1.0   | A call of a `#[deprecated_safe]` function, or a use of such a static, outside `unsafe` ([6.2.14](#6214-deprecated_safe-safe-today-unsafe-later)) |
+| `deprecated_safe`        | 0.1.0   | A call of a `#[deprecated_safe]` function, or a use of such a static, outside `unsafe` ([6.2.13](#6213-deprecated_safe-safe-today-unsafe-later)) |
 | `redundant_cast`         | 0.1.0   | `x as T` where `x` is already `T`                                   |
 | `redundant_clone`        | 0.1.0   | `.clone()` on a value of a primitive type                           |
 | `non_snake_case`         | 0.1.0   | Function, local variable, parameter, or module names not in snake_case |
@@ -367,7 +367,50 @@ fn expect_positive(n: i32) -> i32 {
 
 Standard library functions that panic on invalid input (`panic`, `unreachable`, `assert*`, indexing, slicing, `unwrap`, `List::insert` / `remove`, etc.) are `#[track_caller]`.
 
-## 6.2.13. Summary
+## 6.2.13. `#[deprecated_safe]` safe today, `unsafe` later
+
+```nabi
+#[deprecated_safe("`ptr` must point at a NUL-terminated string")]
+pub fn from_ptr(ptr: Ptr<u8>) -> CStr { ... }
+```
+
+`#[deprecated_safe("note")]` marks a library function, method, extern function or static that a later release makes `unsafe`. A call of it, or a use of the static, outside an `unsafe` block or `unsafe fn` warns with lint `deprecated_safe` and the note: wrap the call in `unsafe { .. }`, which compiles now and stays correct when the item becomes `unsafe`. Inside `unsafe` there is no warning.
+
+It is for the standard library and library packages. On a function of the program being built it is an error: make that function `unsafe fn` instead. On an item other than a function, method, extern function or static it is an error.
+
+## 6.2.14. `#[sealed]` impls only in the defining package
+
+```nabi
+/// The element types `Atomic<T>` supports.
+#[sealed]
+pub trait AtomicPrimitive {}
+```
+
+`#[sealed]` on a trait means that only the package defining the trait implements it. An `impl` of the trait in any other package is an error that names the trait as sealed and the package that owns it. Everything else works as for any trait: other packages use it in bounds (`T: AtomicPrimitive`), call its methods, and name it in `use`.
+
+Seal a trait when the library depends on knowing every type that implements it: for soundness (the atomic operations exist only for those types) or because other impls would be ignored. The standard library seals `AtomicPrimitive` ([stdlib 2.16](../../refs-standard-libraries/200-core/216-sync.md)).
+
+Each tier of the toolchain is its own package ([5.6.4](../005-modules/506-visibility.md#564-pubpkg-within-the-package)): a trait `core` seals has its impls in `core`. `#[sealed]` takes no arguments; on anything other than a trait it is an error.
+
+## 6.2.15. `#[internal]` shared by the toolchain's packages
+
+```nabi
+/// Wake every task waiting on `fd`'s readiness.
+#[internal]
+pub fn wake_io(fd: i32) { .. }
+```
+
+`#[internal]` marks a `pub` item that the toolchain's own packages, `bare`, `core` and `std`, share with one another but that is not part of their API. It may be attached to a function, method, `const`, `static` or field.
+
+- A use from any other package (a call, a function value, a read) is an error: "internal to the Nabi toolchain". The item still resolves, so the error names it.
+- `#[internal("..")]` names what to write instead, and the error shows it (`Int::from_literal` names `s.parse::<Int>()`). With no note, the error says the item is compiler-only.
+- It is left out of the API docs (`nabi doc`), the language server's completion and hover lists, and "did you mean" suggestions, as `#[doc(hidden)]` items are.
+- It is no new visibility level ([5.6.1](../005-modules/506-visibility.md#561-four-levels)): the item is `pub`, and the check is separate from visibility.
+- Only the toolchain's packages may write it. On an item of any other package it is an error; to keep an item inside a package, make it `pub(pkg)`.
+
+The items that carry it are listed in [stdlib 0.4.4](../../refs-standard-libraries/000-meta/004-lang-slot-table.md). An item used inside one tier only is `pub(pkg)`, and a function the compiler calls from lowered code is reached through a lang slot, so neither needs `#[internal]`.
+
+## 6.2.16. Summary
 
 The attributes above are built-in attributes recognized directly by the compiler and tools; they need no user definition through meta blocks.
 
@@ -392,53 +435,10 @@ The compiler also recognizes the following attributes. Each is specified where i
 | `#[display("text")]`          | `struct`, `enum`, enum variant | Implements `Display` by writing `f"text"` ([stdlib 2.10.14](../../refs-standard-libraries/200-core/210-fmt.md#21014-derive-policy-summary)) |
 | `#[intrinsic("nabi.OP.TYPE")]`  | standard library only         | Binds a function or method to a compiler operation; an error in user code ([stdlib 0.3](../../refs-standard-libraries/000-meta/003-intrinsics.md)) |
 | `#[no_safepoint]`              | `extern "nabi"` block          | Toolchain-internal: the block's functions neither allocate nor block, so calls to them are not safepoints; an error on other blocks ([5.9.2](../005-modules/509-extern-block.md#592-abi-specifiers)) |
-| `#[sealed]`                    | `trait`                       | Only the defining package implements the trait ([6.2.15](#6215-sealed-impls-only-in-the-defining-package)) |
-| `#[internal]`                  | function, method, `const`, `static`, field | Shared by `bare`, `core` and `std` only ([6.2.16](#6216-internal-shared-by-the-toolchains-packages)) |
+| `#[sealed]`                    | `trait`                       | Only the defining package implements the trait ([6.2.14](#6214-sealed-impls-only-in-the-defining-package)) |
+| `#[internal]`                  | function, method, `const`, `static`, field | Shared by `bare`, `core` and `std` only ([6.2.15](#6215-internal-shared-by-the-toolchains-packages)) |
 | `#[runtime_attribute(name)]`   | `struct`                      | Declares the runtime attribute `#[name(..)]`, kept in `Inspect` descriptions ([6.10.8](610-reflection.md#6108-runtime-attributes)) |
 | `#[inspect(skip)]`             | field                         | Leaves the field out of its type's `Inspect` description ([6.10.7](610-reflection.md#6107-typeinfo---the-types-description)) |
 | `#[renamed_from("old")]`       | field                         | Records the field's earlier name in its description ([6.10.8](610-reflection.md#6108-runtime-attributes)) |
 | `#[available(macos = "13.0")]` | function, method, method of an `extern "objc"` block | The macOS the API needs: a call is an error unless the deployment target or an enclosing `if objc::available(macos: "13.0")` covers it ([stdlib 1.10.13](../../refs-standard-libraries/100-bare/110-objc.md#11013-availability-and-the-deployment-target)) |
 | `#[objc::class(..)]`, `#[objc::protocol(..)]`, `#[objc::category(..)]`, `#[selector("..")]`, `#[returns_retained]`, `#[returns_not_retained]` | `extern "objc"` block, its methods | Objective-C classes and their methods ([stdlib 1.10.2](../../refs-standard-libraries/100-bare/110-objc.md#1102-extern-objc-blocks)) |
-
-## 6.2.14. `#[deprecated_safe]` safe today, `unsafe` later
-
-```nabi
-#[deprecated_safe("`ptr` must point at a NUL-terminated string")]
-pub fn from_ptr(ptr: Ptr<u8>) -> CStr { ... }
-```
-
-`#[deprecated_safe("note")]` marks a library function, method, extern function or static that a later release makes `unsafe`. A call of it, or a use of the static, outside an `unsafe` block or `unsafe fn` warns with lint `deprecated_safe` and the note: wrap the call in `unsafe { .. }`, which compiles now and stays correct when the item becomes `unsafe`. Inside `unsafe` there is no warning.
-
-It is for the standard library and library packages. On a function of the program being built it is an error: make that function `unsafe fn` instead. On an item other than a function, method, extern function or static it is an error.
-
-## 6.2.15. `#[sealed]` impls only in the defining package
-
-```nabi
-/// The element types `Atomic<T>` supports.
-#[sealed]
-pub trait AtomicPrimitive {}
-```
-
-`#[sealed]` on a trait means that only the package defining the trait implements it. An `impl` of the trait in any other package is an error that names the trait as sealed and the package that owns it. Everything else works as for any trait: other packages use it in bounds (`T: AtomicPrimitive`), call its methods, and name it in `use`.
-
-Seal a trait when the library depends on knowing every type that implements it: for soundness (the atomic operations exist only for those types) or because other impls would be ignored. The standard library seals `AtomicPrimitive` ([stdlib 2.16](../../refs-standard-libraries/200-core/216-sync.md)).
-
-Each tier of the toolchain is its own package ([5.6.4](../005-modules/506-visibility.md#564-pubpkg-within-the-package)): a trait `core` seals has its impls in `core`. `#[sealed]` takes no arguments; on anything other than a trait it is an error.
-
-## 6.2.16. `#[internal]` shared by the toolchain's packages
-
-```nabi
-/// Wake every task waiting on `fd`'s readiness.
-#[internal]
-pub fn wake_io(fd: i32) { .. }
-```
-
-`#[internal]` marks a `pub` item that the toolchain's own packages, `bare`, `core` and `std`, share with one another but that is not part of their API. It may be attached to a function, method, `const`, `static` or field.
-
-- A use from any other package (a call, a function value, a read) is an error: "internal to the Nabi toolchain". The item still resolves, so the error names it.
-- `#[internal("..")]` names what to write instead, and the error shows it (`Int::from_literal` names `s.parse::<Int>()`). With no note, the error says the item is compiler-only.
-- It is left out of the API docs (`nabi doc`), the language server's completion and hover lists, and "did you mean" suggestions, as `#[doc(hidden)]` items are.
-- It is no new visibility level ([5.6.1](../005-modules/506-visibility.md#561-four-levels)): the item is `pub`, and the check is separate from visibility.
-- Only the toolchain's packages may write it. On an item of any other package it is an error; to keep an item inside a package, make it `pub(pkg)`.
-
-The items that carry it are listed in [stdlib 0.4.4](../../refs-standard-libraries/000-meta/004-lang-slot-table.md). An item used inside one tier only is `pub(pkg)`, and a function the compiler calls from lowered code is reached through a lang slot, so neither needs `#[internal]`.

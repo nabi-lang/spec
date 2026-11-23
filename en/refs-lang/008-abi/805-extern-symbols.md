@@ -24,7 +24,7 @@ Each symbol definition carries a **Thread-safety** annotation. It is part of the
 
 ## 8.5.0a. `NabiFn` - C ABI form of function values
 
-The C representation used when passing a Nabi function value `{code, env}` ([4.4](../004-functions/404-function-type.md#representation-of-function-values)) to a runtime symbol.
+The C representation used when passing a Nabi function value `{code, env}` ([4.4.8](../004-functions/404-function-type.md#representation-of-function-values)) to a runtime symbol.
 
 ```c
 typedef struct {

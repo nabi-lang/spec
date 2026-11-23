@@ -200,7 +200,7 @@ let s = p.describe();       // Point's Describe implementation is called statica
 
 trait 的項目沒有自己的可見性：它的方法、關聯型別與常數跟隨 trait 的可見性，就像 `enum` 的變體跟隨 `enum` 一樣。在 trait 項目上寫 `pub` 是錯誤（E0016），在 trait `impl` 的方法上寫 `pub` 也是（[2.9.6](209-impl.md#296-方法的可見性)）。`fn_modifiers` 與函式宣告的相同（[4.1](../004-functions/401-function-declaration.md)）；`unsafe trait` 在 [4.15.4](../004-functions/415-unsafe.md#4154-在-trait-中) 中說明。可見性的確切規則定義於[可見性](../005-modules/506-visibility.md)。
 
-`#[sealed]` trait 只在其定義套件中實作；其他套件仍可在約束與呼叫中使用它（[6.2.15](../006-meta-system/602-built-in-attributes.md#6215-sealed-只在定義套件中實作)）。
+`#[sealed]` trait 只在其定義套件中實作；其他套件仍可在約束與呼叫中使用它（[6.2.14](../006-meta-system/602-built-in-attributes.md#6214-sealed-只在定義套件中實作)）。
 
 ## 2.8.9. 同一模組內不得重複定義
 

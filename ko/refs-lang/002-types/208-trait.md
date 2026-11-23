@@ -200,7 +200,7 @@ let s = p.describe();       // Point 의 Describe 구현이 정적으로 호출�
 
 트레잇의 항목에는 따로 가시성이 없습니다. 메서드, 연관 타입, 연관 상수는 `enum`의 변형이 `enum`을 따르듯 트레잇의 가시성을 따릅니다. 트레잇 항목에 `pub`을 붙이면 에러(E0016)이고, 트레잇 `impl`의 메서드에 `pub`을 붙여도 에러입니다([2.9.6](209-impl.md#296-메서드-가시성)). `fn_modifiers`는 함수 선언의 것과 같습니다([4.1](../004-functions/401-function-declaration.md)). `unsafe trait`은 [4.15.4](../004-functions/415-unsafe.md#4154-트레잇-안에서)에서 다룹니다. 가시성의 정확한 규칙은 [가시성](../005-modules/506-visibility.md)에서 정의합니다.
 
-`#[sealed]` 트레잇은 정의한 패키지에서만 구현합니다. 다른 패키지도 바운드와 호출에는 그대로 씁니다([6.2.15](../006-meta-system/602-built-in-attributes.md#6215-sealed-정의한-패키지에서만-구현)).
+`#[sealed]` 트레잇은 정의한 패키지에서만 구현합니다. 다른 패키지도 바운드와 호출에는 그대로 씁니다([6.2.14](../006-meta-system/602-built-in-attributes.md#6214-sealed-정의한-패키지에서만-구현)).
 
 ## 2.8.9. 동일 모듈 내 중복 정의 금지
 

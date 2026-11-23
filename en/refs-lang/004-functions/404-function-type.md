@@ -23,7 +23,7 @@ fn(str) throws (ParseError) -> i32  // typed
 fn(Path) throws (IoError)           // return type omitted: unit
 ```
 
-`unsafe fn(..) -> R` is the type of a function whose call requires `unsafe`. `unsafe fn` and C functions have this type as values. A safe `fn` value may be used where an `unsafe fn` is expected, but not the reverse ([4.15](415-unsafe.md#unsafe-fn-types)).
+`unsafe fn(..) -> R` is the type of a function whose call requires `unsafe`. `unsafe fn` and C functions have this type as values. A safe `fn` value may be used where an `unsafe fn` is expected, but not the reverse ([4.15.3](415-unsafe.md#unsafe-fn-types)).
 
 `throws` is part of the function type, so calling a value of a throwing function type must also be marked with `try`. `rethrows` is used only in function declarations, never in function types.
 

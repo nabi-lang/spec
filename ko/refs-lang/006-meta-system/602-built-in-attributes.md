@@ -228,7 +228,7 @@ fn f() { ... }
 pub const fn spread_misfit<V>(d: Dict<str, V>, key: str, why: str) { .. }
 ```
 
-`#[doc(hidden)]`은 공개 항목을 API 문서(`nabi doc`)와 언어 서버의 자동 완성에서 뺍니다. 컴파일러가 생성한 코드에서 부를 수 있도록 `pub`으로 둔 항목에 씁니다. 항목은 여전히 공개입니다. 컴파일과 이름 해석도 달라지지 않습니다. 모듈에 붙이면 그 안의 모든 것을 숨깁니다. 항목의 문서 주석과 함께 둘 수 있고, 문서 주석은 호버 정보에 계속 나옵니다. 그 밖의 `#[doc(..)]` 형태는 에러입니다. `#[doc = ".."]`나 `#[doc(hidden)]`으로 쓰세요. toolchain 패키지끼리 공유하지만 사용자가 부르면 안 되는 항목에는 `#[doc(hidden)]`이 아니라 `#[internal]`([6.2.16](#6216-internal-toolchain-패키지끼리-공유))을 붙입니다.
+`#[doc(hidden)]`은 공개 항목을 API 문서(`nabi doc`)와 언어 서버의 자동 완성에서 뺍니다. 컴파일러가 생성한 코드에서 부를 수 있도록 `pub`으로 둔 항목에 씁니다. 항목은 여전히 공개입니다. 컴파일과 이름 해석도 달라지지 않습니다. 모듈에 붙이면 그 안의 모든 것을 숨깁니다. 항목의 문서 주석과 함께 둘 수 있고, 문서 주석은 호버 정보에 계속 나옵니다. 그 밖의 `#[doc(..)]` 형태는 에러입니다. `#[doc = ".."]`나 `#[doc(hidden)]`으로 쓰세요. toolchain 패키지끼리 공유하지만 사용자가 부르면 안 되는 항목에는 `#[doc(hidden)]`이 아니라 `#[internal]`([6.2.15](#6215-internal-toolchain-패키지끼리-공유))을 붙입니다.
 
 ## 6.2.9. `#[allow(...)]` / `#[deny(...)]` / `#[warn(...)]` 린트 제어
 
@@ -262,7 +262,7 @@ fn strict_zone() { ... }
 | `while_true`             | 0.1.0   | `loop` 대신 `while true`                                           |
 | `closed_type_switch`     | 0.1.0   | 대체 경로가 패닉하는 `if T is ..` 사슬: 닫힌 타입 집합에는 트레잇이 맞음 |
 | `deprecated`             | 0.1.0   | `#[deprecated]` 함수, 메서드, 필드, 타입, 상수, static 사용 ([6.2.7](#627-deprecated-사용-자제-표시)) |
-| `deprecated_safe`        | 0.1.0   | `unsafe` 밖에서 `#[deprecated_safe]` 함수를 호출하거나 그런 static을 씀 ([6.2.14](#6214-deprecated_safe-지금은-안전-나중에-unsafe)) |
+| `deprecated_safe`        | 0.1.0   | `unsafe` 밖에서 `#[deprecated_safe]` 함수를 호출하거나 그런 static을 씀 ([6.2.13](#6213-deprecated_safe-지금은-안전-나중에-unsafe)) |
 | `redundant_cast`         | 0.1.0   | `x`가 이미 `T`인 `x as T`                                         |
 | `redundant_clone`        | 0.1.0   | 원시 타입 값의 `.clone()`                                          |
 | `non_snake_case`         | 0.1.0   | 함수, 지역 변수, 매개변수, 모듈 이름이 snake_case가 아님           |
@@ -274,7 +274,7 @@ fn strict_zone() { ... }
 | `hidden_chars`           | 0.1.0   | 문자열, 문자 리터럴, 주석에 그대로 쓴 보이지 않는 문자나 할당되지 않은 문자. `\u{..}` 이스케이프로 쓰기 ([1.1.2](../001-lexical/101-source-files.md#112-문자-인코딩)) |
 | `missing_f_prefix`       | 0.1.0   | 범위 안의 지역 변수 `name`을 가리키는 `{name}`을 담은 보통 문자열 리터럴: `f` 접두어가 빠짐 |
 | `literal_spread_mismatch` | 0.1.0   | 고정 매개변수에 펼친 `List`나 Dict 리터럴이 자리를 채울 수 없음: 길이가 다르거나 남은 매개변수 어느 것의 이름도 아닌 키가 있음([4.2](../004-functions/402-parameters.md)). 그 호출은 런타임에 panic이 일어남 |
-| `assoc_type_shadowing`   | 0.1.0   | 연관 타입이 바깥 타입과 이름이 같아 트레잇이나 `impl` 안에서 그 타입을 가림 |
+| `assoc_type_shadowing`   | 0.1.0   | 연관 타입이 바깥 타입과 이름이 같아 트레잇이나 `impl` 안에서 그 타입을 가림 (2.8.3) |
 | `plain_module_doc`       | 0.1.0   | 라이브러리의 루트 파일이나 공개 모듈(경로 위 모듈이 모두 `pub`)의 파일이 `//!` 문서 없이 `//` 줄로 시작함. 모듈의 문서처럼 보이지만 문서가 아님([9.10.8](../009-tools/910-nabi-frontend.md#nabi-doc-문서-생성)). 도움말이 써야 할 `//!` 줄을 보여 줌 |
 | `missing_docs`           | 0.1.0   | `///` 문서 주석이 없는 `pub` 항목, 고유 impl의 `pub` 메서드, `pub` 트레잇의 메서드, 인라인 `pub mod`. `#[doc(hidden)]`은 문서가 있는 것으로 보고, 트레잇 impl의 메서드는 검사하지 않음 (allow) |
 | `resize_while_iterating` | 0.1.0   | `List`를 도는 `for x in xs`의 본문이 `xs`의 길이를 바꾸고(`push`, `remove` 등), 같은 블록에서 그 뒤에 `break`, `return`, `throw`가 없음. 루프가 바뀐 길이를 봄 ([3.13.3](../003-expressions/313-loop-expressions.md#3133-for-반복자-기반-반복)) |
@@ -367,7 +367,50 @@ fn expect_positive(n: i32) -> i32 {
 
 잘못된 입력에 panic을 일으키는 표준 라이브러리 함수(`panic`, `unreachable`, `assert*`, 인덱싱, 슬라이싱, `unwrap`, `List::insert` / `remove` 등)는 `#[track_caller]`입니다.
 
-## 6.2.13. 정리
+## 6.2.13. `#[deprecated_safe]` 지금은 안전, 나중에 `unsafe`
+
+```nabi
+#[deprecated_safe("`ptr` must point at a NUL-terminated string")]
+pub fn from_ptr(ptr: Ptr<u8>) -> CStr { ... }
+```
+
+`#[deprecated_safe("note")]`는 나중 릴리스에서 `unsafe`가 될 라이브러리의 함수, 메서드, extern 함수, static을 표시합니다. `unsafe` 블록이나 `unsafe fn` 밖에서 그 함수를 호출하거나 그 static을 쓰면 린트 `deprecated_safe` 경고가 메시지와 함께 납니다. 호출을 `unsafe { .. }`로 감싸면 됩니다. 이 코드는 지금도 컴파일되고, 항목이 `unsafe`가 된 뒤에도 그대로 맞습니다. `unsafe` 안에서는 경고가 나지 않습니다.
+
+이 속성은 표준 라이브러리와 라이브러리 패키지용입니다. 빌드하는 프로그램의 함수에 붙이면 에러입니다. 그 함수는 `unsafe fn`으로 만듭니다. 함수, 메서드, extern 함수, static이 아닌 항목에 붙여도 에러입니다.
+
+## 6.2.14. `#[sealed]` 정의한 패키지에서만 구현
+
+```nabi
+/// `Atomic<T>`가 지원하는 원소 타입.
+#[sealed]
+pub trait AtomicPrimitive {}
+```
+
+트레잇에 `#[sealed]`를 붙이면 그 트레잇을 정의한 패키지만 구현할 수 있습니다. 다른 패키지에서 그 트레잇을 `impl`하면 에러입니다. 에러는 트레잇이 sealed라는 것과 그 트레잇을 가진 패키지를 알려 줍니다. 그 밖에는 다른 트레잇과 똑같이 동작합니다. 다른 패키지도 바운드(`T: AtomicPrimitive`)에 쓰고, 메서드를 부르고, `use`로 가져올 수 있습니다.
+
+라이브러리가 그 트레잇을 구현한 타입을 모두 알아야 할 때 트레잇을 sealed로 만듭니다. 건전성 때문일 수도 있고(원자 연산은 그 타입에만 있습니다), 다른 impl은 무시되기 때문일 수도 있습니다. 표준 라이브러리는 `AtomicPrimitive`를 sealed로 둡니다([stdlib 2.16](../../refs-standard-libraries/200-core/216-sync.md)).
+
+toolchain의 각 계층은 저마다 별개의 패키지입니다([5.6.4](../005-modules/506-visibility.md#564-pubpkg-패키지-내부)). `core`가 sealed로 둔 트레잇의 impl은 `core`에 있습니다. `#[sealed]`는 인자를 받지 않으며, 트레잇이 아닌 곳에 붙이면 에러입니다.
+
+## 6.2.15. `#[internal]` toolchain 패키지끼리 공유
+
+```nabi
+/// `fd`의 준비를 기다리는 task를 모두 깨움.
+#[internal]
+pub fn wake_io(fd: i32) { .. }
+```
+
+`#[internal]`은 toolchain의 패키지인 `bare`, `core`, `std`가 서로 공유하지만 API는 아닌 `pub` 항목을 표시합니다. 함수, 메서드, `const`, `static`, 필드에 붙일 수 있습니다.
+
+- 다른 패키지에서 쓰면(호출, 함수 값, 읽기) "internal to the Nabi toolchain" 에러입니다. 항목은 그대로 해소되므로 에러가 항목 이름을 알려 줍니다.
+- `#[internal("..")]`은 대신 쓸 것을 적고, 에러가 그것을 보여 줍니다(`Int::from_literal`은 `s.parse::<Int>()`를 알려 줍니다). 설명이 없으면 에러는 그 항목이 컴파일러 전용이라고 알려 줍니다.
+- `#[doc(hidden)]` 항목처럼 API 문서(`nabi doc`), 언어 서버의 자동 완성과 호버 목록, "did you mean" 제안에서 빠집니다.
+- 새 가시성 단계가 아닙니다([5.6.1](../005-modules/506-visibility.md#561-네-단계)). 항목은 `pub`이고, 이 검사는 가시성과 따로 이루어집니다.
+- toolchain의 패키지만 이 속성을 쓸 수 있습니다. 다른 패키지의 항목에 붙이면 에러입니다. 항목을 패키지 안에만 두려면 `pub(pkg)`로 만드세요.
+
+이 속성이 붙은 항목은 [stdlib 0.4.4](../../refs-standard-libraries/000-meta/004-lang-slot-table.md)에 있습니다. 한 계층 안에서만 쓰는 항목은 `pub(pkg)`이고, 컴파일러가 lowering한 코드에서 부르는 함수는 lang 슬롯으로 찾으므로 둘 다 `#[internal]`이 필요 없습니다.
+
+## 6.2.16. 정리
 
 위의 속성은 컴파일러와 도구가 직접 인식하는 내장 속성입니다. 메타 블록으로 따로 정의하지 않아도 됩니다.
 
@@ -392,53 +435,10 @@ fn expect_positive(n: i32) -> i32 {
 | `#[display("text")]`          | `struct`, `enum`, enum variant | `f"text"`를 쓰는 `Display`를 구현함 ([stdlib 2.10.14](../../refs-standard-libraries/200-core/210-fmt.md#21014-derive-정책-요약)) |
 | `#[intrinsic("nabi.OP.TYPE")]`  | 표준 라이브러리 전용          | 함수나 메서드를 컴파일러 연산에 묶음. 사용자 코드에서는 에러 ([stdlib 0.3](../../refs-standard-libraries/000-meta/003-intrinsics.md)) |
 | `#[no_safepoint]`              | `extern "nabi"` 블록           | toolchain 내부용. 블록의 함수는 할당도 블로킹도 하지 않으므로 그 호출은 safepoint가 아님. 다른 블록에서는 에러 ([5.9.2](../005-modules/509-extern-block.md#592-abi-명시)) |
-| `#[sealed]`                    | `trait`                       | 정의한 패키지만 그 트레잇을 구현함 ([6.2.15](#6215-sealed-정의한-패키지에서만-구현)) |
-| `#[internal]`                  | 함수, 메서드, `const`, `static`, 필드 | `bare`, `core`, `std`끼리만 공유함 ([6.2.16](#6216-internal-toolchain-패키지끼리-공유)) |
+| `#[sealed]`                    | `trait`                       | 정의한 패키지만 그 트레잇을 구현함 ([6.2.14](#6214-sealed-정의한-패키지에서만-구현)) |
+| `#[internal]`                  | 함수, 메서드, `const`, `static`, 필드 | `bare`, `core`, `std`끼리만 공유함 ([6.2.15](#6215-internal-toolchain-패키지끼리-공유)) |
 | `#[runtime_attribute(name)]`   | `struct`                      | 런타임 속성 `#[name(..)]`을 선언합니다. 값은 `Inspect` 설명에 남습니다 ([6.10.8](610-reflection.md#6108-런타임-속성)) |
 | `#[inspect(skip)]`             | 필드                          | 그 필드를 타입의 `Inspect` 설명에서 뺍니다 ([6.10.7](610-reflection.md#6107-typeinfo-타입의-설명)) |
 | `#[renamed_from("old")]`       | 필드                          | 필드의 예전 이름을 설명에 남깁니다 ([6.10.8](610-reflection.md#6108-런타임-속성)) |
 | `#[available(macos = "13.0")]` | 함수, 메서드, `extern "objc"` 블록의 메서드 | API가 필요로 하는 macOS. 배포 타깃이나 둘러싼 `if objc::available(macos: "13.0")`이 덮지 않으면 호출이 에러 ([stdlib 1.10.13](../../refs-standard-libraries/100-bare/110-objc.md#11013-가용성과-배포-타깃)) |
 | `#[objc::class(..)]`, `#[objc::protocol(..)]`, `#[objc::category(..)]`, `#[selector("..")]`, `#[returns_retained]`, `#[returns_not_retained]` | `extern "objc"` 블록, 그 메서드 | Objective-C 클래스와 그 메서드 ([stdlib 1.10.2](../../refs-standard-libraries/100-bare/110-objc.md#1102-extern-objc-블록)) |
-
-## 6.2.14. `#[deprecated_safe]` 지금은 안전, 나중에 `unsafe`
-
-```nabi
-#[deprecated_safe("`ptr` must point at a NUL-terminated string")]
-pub fn from_ptr(ptr: Ptr<u8>) -> CStr { ... }
-```
-
-`#[deprecated_safe("note")]`는 나중 릴리스에서 `unsafe`가 될 라이브러리의 함수, 메서드, extern 함수, static을 표시합니다. `unsafe` 블록이나 `unsafe fn` 밖에서 그 함수를 호출하거나 그 static을 쓰면 린트 `deprecated_safe` 경고가 메시지와 함께 납니다. 호출을 `unsafe { .. }`로 감싸면 됩니다. 이 코드는 지금도 컴파일되고, 항목이 `unsafe`가 된 뒤에도 그대로 맞습니다. `unsafe` 안에서는 경고가 나지 않습니다.
-
-이 속성은 표준 라이브러리와 라이브러리 패키지용입니다. 빌드하는 프로그램의 함수에 붙이면 에러입니다. 그 함수는 `unsafe fn`으로 만듭니다. 함수, 메서드, extern 함수, static이 아닌 항목에 붙여도 에러입니다.
-
-## 6.2.15. `#[sealed]` 정의한 패키지에서만 구현
-
-```nabi
-/// `Atomic<T>`가 지원하는 원소 타입.
-#[sealed]
-pub trait AtomicPrimitive {}
-```
-
-트레잇에 `#[sealed]`를 붙이면 그 트레잇을 정의한 패키지만 구현할 수 있습니다. 다른 패키지에서 그 트레잇을 `impl`하면 에러입니다. 에러는 트레잇이 sealed라는 것과 그 트레잇을 가진 패키지를 알려 줍니다. 그 밖에는 다른 트레잇과 똑같이 동작합니다. 다른 패키지도 바운드(`T: AtomicPrimitive`)에 쓰고, 메서드를 부르고, `use`로 가져올 수 있습니다.
-
-라이브러리가 그 트레잇을 구현한 타입을 모두 알아야 할 때 트레잇을 sealed로 만듭니다. 건전성 때문일 수도 있고(원자 연산은 그 타입에만 있습니다), 다른 impl은 무시되기 때문일 수도 있습니다. 표준 라이브러리는 `AtomicPrimitive`를 sealed로 둡니다([stdlib 2.16](../../refs-standard-libraries/200-core/216-sync.md)).
-
-toolchain의 각 계층은 저마다 별개의 패키지입니다([5.6.4](../005-modules/506-visibility.md#564-pubpkg-패키지-내부)). `core`가 sealed로 둔 트레잇의 impl은 `core`에 있습니다. `#[sealed]`는 인자를 받지 않으며, 트레잇이 아닌 곳에 붙이면 에러입니다.
-
-## 6.2.16. `#[internal]` toolchain 패키지끼리 공유
-
-```nabi
-/// `fd`의 준비를 기다리는 task를 모두 깨움.
-#[internal]
-pub fn wake_io(fd: i32) { .. }
-```
-
-`#[internal]`은 toolchain의 패키지인 `bare`, `core`, `std`가 서로 공유하지만 API는 아닌 `pub` 항목을 표시합니다. 함수, 메서드, `const`, `static`, 필드에 붙일 수 있습니다.
-
-- 다른 패키지에서 쓰면(호출, 함수 값, 읽기) "internal to the Nabi toolchain" 에러입니다. 항목은 그대로 해소되므로 에러가 항목 이름을 알려 줍니다.
-- `#[internal("..")]`은 대신 쓸 것을 적고, 에러가 그것을 보여 줍니다(`Int::from_literal`은 `s.parse::<Int>()`를 알려 줍니다). 설명이 없으면 에러는 그 항목이 컴파일러 전용이라고 알려 줍니다.
-- `#[doc(hidden)]` 항목처럼 API 문서(`nabi doc`), 언어 서버의 자동 완성과 호버 목록, "did you mean" 제안에서 빠집니다.
-- 새 가시성 단계가 아닙니다([5.6.1](../005-modules/506-visibility.md#561-네-단계)). 항목은 `pub`이고, 이 검사는 가시성과 따로 이루어집니다.
-- toolchain의 패키지만 이 속성을 쓸 수 있습니다. 다른 패키지의 항목에 붙이면 에러입니다. 항목을 패키지 안에만 두려면 `pub(pkg)`로 만드세요.
-
-이 속성이 붙은 항목은 [stdlib 0.4.4](../../refs-standard-libraries/000-meta/004-lang-slot-table.md)에 있습니다. 한 계층 안에서만 쓰는 항목은 `pub(pkg)`이고, 컴파일러가 lowering한 코드에서 부르는 함수는 lang 슬롯으로 찾으므로 둘 다 `#[internal]`이 필요 없습니다.

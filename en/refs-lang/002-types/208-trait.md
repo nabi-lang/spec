@@ -200,7 +200,7 @@ So when polymorphism is needed, use generics ([Generics](210-generics.md)), sum 
 
 A trait's items have no visibility of their own: its methods, associated types and constants follow the trait's visibility, as the variants of an `enum` follow the `enum`. `pub` on a trait item is an error (E0016), and so is `pub` on a method of a trait `impl` ([2.9.6](209-impl.md#296-method-visibility)). `fn_modifiers` is that of a function declaration ([4.1](../004-functions/401-function-declaration.md)); an `unsafe trait` is covered in [4.15.4](../004-functions/415-unsafe.md#4154-in-traits). The exact rules of visibility are defined in [Visibility](../005-modules/506-visibility.md).
 
-A `#[sealed]` trait is implemented only in its defining package; other packages still use it in bounds and calls ([6.2.15](../006-meta-system/602-built-in-attributes.md#6215-sealed-impls-only-in-the-defining-package)).
+A `#[sealed]` trait is implemented only in its defining package; other packages still use it in bounds and calls ([6.2.14](../006-meta-system/602-built-in-attributes.md#6214-sealed-impls-only-in-the-defining-package)).
 
 ## 2.8.9. No duplicate definitions in the same module
 

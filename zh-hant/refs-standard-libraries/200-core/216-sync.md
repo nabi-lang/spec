@@ -120,7 +120,7 @@ fn store_max(cell: Atomic<i64>, x: i64) {
 }
 ```
 
-元素型別必須是 `AtomicPrimitive`：`List<T>` 這類集合型別無法放進 `Atomic`。此 trait 是封閉的（sealed，[refs-lang 6.2.15](../../refs-lang/006-meta-system/602-built-in-attributes.md#6215-sealed-只在定義套件中實作)）：上述型別就是它全部的實作，在其他套件中撰寫 `impl AtomicPrimitive` 是錯誤。共用的集合型別應放進 `Mutex<T>`（2.16.3）。
+元素型別必須是 `AtomicPrimitive`：`List<T>` 這類集合型別無法放進 `Atomic`。此 trait 是封閉的（sealed，[refs-lang 6.2.14](../../refs-lang/006-meta-system/602-built-in-attributes.md#6214-sealed-只在定義套件中實作)）：上述型別就是它全部的實作，在其他套件中撰寫 `impl AtomicPrimitive` 是錯誤。共用的集合型別應放進 `Mutex<T>`（2.16.3）。
 
 ## 2.16.3. `Mutex<T>`：互斥鎖
 

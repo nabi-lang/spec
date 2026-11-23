@@ -118,7 +118,7 @@ API 仍可在每個目標上建置：目標所缺少的操作會在執行時以
 仍可繼續運作，並標記為 `#[deprecated(since = "..", note = "..")]`
 （[6.2.7](../../refs-lang/006-meta-system/602-built-in-attributes.md#627-deprecated-不建議使用的標記)），
 其 note 指出應改用什麼。必須改為 `unsafe` 的安全函式會標記為
-`#[deprecated_safe]`（[6.2.14](../../refs-lang/006-meta-system/602-built-in-attributes.md#6214-deprecated_safe-現在安全之後-unsafe)）。
+`#[deprecated_safe]`（[6.2.13](../../refs-lang/006-meta-system/602-built-in-attributes.md#6213-deprecated_safe-現在安全之後-unsafe)）。
 下一個破壞性版本會移除該項目，或將其改為 `unsafe`。
 
 ## 0.1.6. 每個項目只有一條路徑

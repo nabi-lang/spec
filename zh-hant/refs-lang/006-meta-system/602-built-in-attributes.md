@@ -228,7 +228,7 @@ fn f() { ... }
 pub const fn spread_misfit<V>(d: Dict<str, V>, key: str, why: str) { .. }
 ```
 
-`#[doc(hidden)]` 讓公開的項目不出現在 API 文件（`nabi doc`）與語言伺服器的自動完成中。它用於只是為了讓編譯器產生的程式碼能呼叫才設為 `pub` 的項目；該項目仍然是公開的，編譯與解析照舊。用在模組上時，它隱藏其中的一切。它可以與項目的文件註解並存，後者仍用於滑鼠懸停提示。其他任何 `#[doc(..)]` 形式都是錯誤：請寫 `#[doc = ".."]` 或 `#[doc(hidden)]`。工具鏈的套件之間共用、但使用者不得呼叫的項目是 `#[internal]`（[6.2.16](#6216-internal-由工具鏈的套件共用)），而不是 `#[doc(hidden)]`。
+`#[doc(hidden)]` 讓公開的項目不出現在 API 文件（`nabi doc`）與語言伺服器的自動完成中。它用於只是為了讓編譯器產生的程式碼能呼叫才設為 `pub` 的項目；該項目仍然是公開的，編譯與解析照舊。用在模組上時，它隱藏其中的一切。它可以與項目的文件註解並存，後者仍用於滑鼠懸停提示。其他任何 `#[doc(..)]` 形式都是錯誤：請寫 `#[doc = ".."]` 或 `#[doc(hidden)]`。工具鏈的套件之間共用、但使用者不得呼叫的項目是 `#[internal]`（[6.2.15](#6215-internal-由工具鏈的套件共用)），而不是 `#[doc(hidden)]`。
 
 ## 6.2.9. `#[allow(...)]` / `#[deny(...)]` / `#[warn(...)]` lint 控制
 
@@ -262,7 +262,7 @@ fn strict_zone() { ... }
 | `while_true`             | 0.1.0   | 以 `while true` 取代 `loop`                                         |
 | `closed_type_switch`     | 0.1.0   | 後備路徑會 panic 的 `if T is ..` 鏈：封閉的型別集合適合用 trait     |
 | `deprecated`             | 0.1.0   | 使用 `#[deprecated]` 的函式、方法、欄位、型別、常數或 static（[6.2.7](#627-deprecated-不建議使用的標記)） |
-| `deprecated_safe`        | 0.1.0   | 在 `unsafe` 之外呼叫 `#[deprecated_safe]` 函式，或使用這種 static（[6.2.14](#6214-deprecated_safe-現在安全之後-unsafe)） |
+| `deprecated_safe`        | 0.1.0   | 在 `unsafe` 之外呼叫 `#[deprecated_safe]` 函式，或使用這種 static（[6.2.13](#6213-deprecated_safe-現在安全之後-unsafe)） |
 | `redundant_cast`         | 0.1.0   | `x` 已經是 `T` 時的 `x as T`                                        |
 | `redundant_clone`        | 0.1.0   | 對基本型別的值呼叫 `.clone()`                                       |
 | `non_snake_case`         | 0.1.0   | 不是 snake_case 的函式、區域變數、參數或模組名稱                    |
@@ -367,7 +367,50 @@ fn expect_positive(n: i32) -> i32 {
 
 對無效輸入會 panic 的標準函式庫函式（`panic`、`unreachable`、`assert*`、索引、切片、`unwrap`、`List::insert` / `remove` 等）都是 `#[track_caller]`。
 
-## 6.2.13. 總結
+## 6.2.13. `#[deprecated_safe]` 現在安全，之後 `unsafe`
+
+```nabi
+#[deprecated_safe("`ptr` must point at a NUL-terminated string")]
+pub fn from_ptr(ptr: Ptr<u8>) -> CStr { ... }
+```
+
+`#[deprecated_safe("note")]` 標示之後版本會改為 `unsafe` 的函式庫函式、方法、extern 函式或 static。在 `unsafe` 區塊或 `unsafe fn` 之外呼叫它或使用該 static，會以 lint `deprecated_safe` 及附註發出警告：把呼叫包在 `unsafe { .. }` 中，現在就能編譯，而在該項目變成 `unsafe` 之後也仍然正確。在 `unsafe` 內不會有警告。
+
+它是給標準函式庫與函式庫套件使用的。用在正在建置之程式的函式上是錯誤：請改把該函式設為 `unsafe fn`。用在函式、方法、extern 函式或 static 以外的項目上是錯誤。
+
+## 6.2.14. `#[sealed]` 只在定義套件中實作
+
+```nabi
+/// The element types `Atomic<T>` supports.
+#[sealed]
+pub trait AtomicPrimitive {}
+```
+
+trait 上的 `#[sealed]` 表示只有定義該 trait 的套件能實作它。在其他任何套件中對該 trait 的 `impl` 是錯誤，錯誤訊息會指出該 trait 是 sealed 的以及擁有它的套件。其他一切都與任何 trait 相同：其他套件可以在約束中使用它（`T: AtomicPrimitive`）、呼叫其方法，並在 `use` 中指名它。
+
+當函式庫依賴於知道實作它的每一個型別時，就把 trait 設為 sealed：出於健全性（原子運算只為那些型別存在），或因為其他 impl 會被忽略。標準函式庫把 `AtomicPrimitive` 設為 sealed（[stdlib 2.16](../../refs-standard-libraries/200-core/216-sync.md)）。
+
+工具鏈的每個層級都是自己的套件（[5.6.4](../005-modules/506-visibility.md#564-pubpkg在套件內)）：`core` 設為 sealed 的 trait，其 impl 在 `core` 中。`#[sealed]` 不接受引數；用在 trait 以外的任何東西上都是錯誤。
+
+## 6.2.15. `#[internal]` 由工具鏈的套件共用
+
+```nabi
+/// Wake every task waiting on `fd`'s readiness.
+#[internal]
+pub fn wake_io(fd: i32) { .. }
+```
+
+`#[internal]` 標示一個 `pub` 項目，它由工具鏈自己的套件 `bare`、`core` 與 `std` 彼此共用，但不屬於它們的 API。它可以附加在函式、方法、`const`、`static` 或欄位上。
+
+- 從其他任何套件的使用（呼叫、函式值、讀取）是錯誤：「internal to the Nabi toolchain」。該項目仍會被解析，因此錯誤訊息會指出它。
+- `#[internal("..")]` 指出應改寫成什麼，錯誤訊息會顯示它（`Int::from_literal` 指出 `s.parse::<Int>()`）。沒有附註時，錯誤訊息會說明該項目只供編譯器使用。
+- 它不會出現在 API 文件（`nabi doc`）、語言伺服器的自動完成與懸停清單，以及「did you mean」建議中，與 `#[doc(hidden)]` 項目相同。
+- 它不是新的可見性等級（[5.6.1](../005-modules/506-visibility.md#561-四個等級)）：該項目是 `pub`，而這項檢查與可見性分開。
+- 只有工具鏈的套件可以寫它。用在其他任何套件的項目上是錯誤；要讓項目留在套件內，請把它設為 `pub(pkg)`。
+
+帶有它的項目列於 [stdlib 0.4.4](../../refs-standard-libraries/000-meta/004-lang-slot-table.md)。只在一個層級內使用的項目是 `pub(pkg)`，而編譯器從降階後的程式碼呼叫的函式是透過 lang 槽位存取的，因此兩者都不需要 `#[internal]`。
+
+## 6.2.16. 總結
 
 上述屬性是由編譯器與工具直接辨識的內建屬性；它們不需要使用者透過元區塊定義。
 
@@ -392,53 +435,10 @@ fn expect_positive(n: i32) -> i32 {
 | `#[display("text")]`          | `struct`、`enum`、列舉變體    | 以寫出 `f"text"` 實作 `Display`（[stdlib 2.10.14](../../refs-standard-libraries/200-core/210-fmt.md#21014-衍生政策摘要)） |
 | `#[intrinsic("nabi.OP.TYPE")]`  | 僅限標準函式庫                | 把函式或方法繫結到編譯器運算；在使用者程式碼中是錯誤（[stdlib 0.3](../../refs-standard-libraries/000-meta/003-intrinsics.md)） |
 | `#[no_safepoint]`              | `extern "nabi"` 區塊           | 工具鏈內部：區塊的函式既不配置記憶體也不阻塞，因此對它們的呼叫不是安全點；在其他區塊上是錯誤（[5.9.2](../005-modules/509-extern-block.md#592-abi-指定符)） |
-| `#[sealed]`                    | `trait`                       | 只有定義它的套件能實作該 trait（[6.2.15](#6215-sealed-只在定義套件中實作)） |
-| `#[internal]`                  | 函式、方法、`const`、`static`、欄位 | 只由 `bare`、`core` 與 `std` 共用（[6.2.16](#6216-internal-由工具鏈的套件共用)） |
+| `#[sealed]`                    | `trait`                       | 只有定義它的套件能實作該 trait（[6.2.14](#6214-sealed-只在定義套件中實作)） |
+| `#[internal]`                  | 函式、方法、`const`、`static`、欄位 | 只由 `bare`、`core` 與 `std` 共用（[6.2.15](#6215-internal-由工具鏈的套件共用)） |
 | `#[runtime_attribute(name)]`   | `struct`                      | 宣告執行時屬性 `#[name(..)]`，保留在 `Inspect` 描述中（[6.10.8](610-reflection.md#6108-執行時屬性)） |
 | `#[inspect(skip)]`             | 欄位                          | 讓該欄位不出現在其型別的 `Inspect` 描述中（[6.10.7](610-reflection.md#6107-typeinfo型別的描述)） |
 | `#[renamed_from("old")]`       | 欄位                          | 在其描述中記錄該欄位先前的名稱（[6.10.8](610-reflection.md#6108-執行時屬性)） |
 | `#[available(macos = "13.0")]` | 函式、方法、`extern "objc"` 區塊的方法 | 該 API 需要的 macOS 版本：除非部署目標或外圍的 `if objc::available(macos: "13.0")` 涵蓋它，否則呼叫是錯誤（[stdlib 1.10.13](../../refs-standard-libraries/100-bare/110-objc.md#11013-可用性與部署目標)） |
 | `#[objc::class(..)]`、`#[objc::protocol(..)]`、`#[objc::category(..)]`、`#[selector("..")]`、`#[returns_retained]`、`#[returns_not_retained]` | `extern "objc"` 區塊及其方法 | Objective-C 類別及其方法（[stdlib 1.10.2](../../refs-standard-libraries/100-bare/110-objc.md#1102-extern-objc-區塊)） |
-
-## 6.2.14. `#[deprecated_safe]` 現在安全，之後 `unsafe`
-
-```nabi
-#[deprecated_safe("`ptr` must point at a NUL-terminated string")]
-pub fn from_ptr(ptr: Ptr<u8>) -> CStr { ... }
-```
-
-`#[deprecated_safe("note")]` 標示之後版本會改為 `unsafe` 的函式庫函式、方法、extern 函式或 static。在 `unsafe` 區塊或 `unsafe fn` 之外呼叫它或使用該 static，會以 lint `deprecated_safe` 及附註發出警告：把呼叫包在 `unsafe { .. }` 中，現在就能編譯，而在該項目變成 `unsafe` 之後也仍然正確。在 `unsafe` 內不會有警告。
-
-它是給標準函式庫與函式庫套件使用的。用在正在建置之程式的函式上是錯誤：請改把該函式設為 `unsafe fn`。用在函式、方法、extern 函式或 static 以外的項目上是錯誤。
-
-## 6.2.15. `#[sealed]` 只在定義套件中實作
-
-```nabi
-/// The element types `Atomic<T>` supports.
-#[sealed]
-pub trait AtomicPrimitive {}
-```
-
-trait 上的 `#[sealed]` 表示只有定義該 trait 的套件能實作它。在其他任何套件中對該 trait 的 `impl` 是錯誤，錯誤訊息會指出該 trait 是 sealed 的以及擁有它的套件。其他一切都與任何 trait 相同：其他套件可以在約束中使用它（`T: AtomicPrimitive`）、呼叫其方法，並在 `use` 中指名它。
-
-當函式庫依賴於知道實作它的每一個型別時，就把 trait 設為 sealed：出於健全性（原子運算只為那些型別存在），或因為其他 impl 會被忽略。標準函式庫把 `AtomicPrimitive` 設為 sealed（[stdlib 2.16](../../refs-standard-libraries/200-core/216-sync.md)）。
-
-工具鏈的每個層級都是自己的套件（[5.6.4](../005-modules/506-visibility.md#564-pubpkg在套件內)）：`core` 設為 sealed 的 trait，其 impl 在 `core` 中。`#[sealed]` 不接受引數；用在 trait 以外的任何東西上都是錯誤。
-
-## 6.2.16. `#[internal]` 由工具鏈的套件共用
-
-```nabi
-/// Wake every task waiting on `fd`'s readiness.
-#[internal]
-pub fn wake_io(fd: i32) { .. }
-```
-
-`#[internal]` 標示一個 `pub` 項目，它由工具鏈自己的套件 `bare`、`core` 與 `std` 彼此共用，但不屬於它們的 API。它可以附加在函式、方法、`const`、`static` 或欄位上。
-
-- 從其他任何套件的使用（呼叫、函式值、讀取）是錯誤：「internal to the Nabi toolchain」。該項目仍會被解析，因此錯誤訊息會指出它。
-- `#[internal("..")]` 指出應改寫成什麼，錯誤訊息會顯示它（`Int::from_literal` 指出 `s.parse::<Int>()`）。沒有附註時，錯誤訊息會說明該項目只供編譯器使用。
-- 它不會出現在 API 文件（`nabi doc`）、語言伺服器的自動完成與懸停清單，以及「did you mean」建議中，與 `#[doc(hidden)]` 項目相同。
-- 它不是新的可見性等級（[5.6.1](../005-modules/506-visibility.md#561-四個等級)）：該項目是 `pub`，而這項檢查與可見性分開。
-- 只有工具鏈的套件可以寫它。用在其他任何套件的項目上是錯誤；要讓項目留在套件內，請把它設為 `pub(pkg)`。
-
-帶有它的項目列於 [stdlib 0.4.4](../../refs-standard-libraries/000-meta/004-lang-slot-table.md)。只在一個層級內使用的項目是 `pub(pkg)`，而編譯器從降階後的程式碼呼叫的函式是透過 lang 槽位存取的，因此兩者都不需要 `#[internal]`。

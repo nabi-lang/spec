@@ -163,7 +163,7 @@ The other thirty-nine are **hooks**: functions that code the compiler writes cal
 
 ### Items the tiers share: `#[internal]`
 
-A few `pub` items are called by another tier of the toolchain, not by the compiler: `std` uses them from `core`, `core` from `bare`. They are marked `#[internal]` ([refs-lang 6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-shared-by-the-toolchains-packages)): `bare`, `core` and `std` may use them, any other package gets the error "internal to the Nabi toolchain", and the docs and the language server leave them out.
+A few `pub` items are called by another tier of the toolchain, not by the compiler: `std` uses them from `core`, `core` from `bare`. They are marked `#[internal]` ([refs-lang 6.2.15](../../refs-lang/006-meta-system/602-built-in-attributes.md#6215-internal-shared-by-the-toolchains-packages)): `bare`, `core` and `std` may use them, any other package gets the error "internal to the Nabi toolchain", and the docs and the language server leave them out.
 
 | Item                                   | Used by                                                   | Ref  |
 |----------------------------------------|-----------------------------------------------------------|------|

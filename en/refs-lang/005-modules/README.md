@@ -80,7 +80,7 @@ pub(pkg)             within the same package only
 pub                  also from external packages
 ```
 
-`#[internal] pub` items are `pub` items the toolchain's own packages share; other packages cannot use them ([5.6](506-visibility.md), [6.2.16](../006-meta-system/602-built-in-attributes.md#6216-internal-shared-by-the-toolchains-packages)).
+`#[internal] pub` items are `pub` items the toolchain's own packages share; other packages cannot use them ([5.6](506-visibility.md), [6.2.15](../006-meta-system/602-built-in-attributes.md#6215-internal-shared-by-the-toolchains-packages)).
 
 ## Name resolution rules
 

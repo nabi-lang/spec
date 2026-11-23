@@ -80,7 +80,7 @@ pub(pkg)             같은 패키지 안에서만
 pub                  외부 패키지에서도 가능
 ```
 
-`#[internal] pub` 항목은 툴체인 자신의 패키지끼리 공유하는 `pub` 항목입니다. 다른 패키지는 쓸 수 없습니다([5.6](506-visibility.md), [6.2.16](../006-meta-system/602-built-in-attributes.md#6216-internal-toolchain-패키지끼리-공유)).
+`#[internal] pub` 항목은 툴체인 자신의 패키지끼리 공유하는 `pub` 항목입니다. 다른 패키지는 쓸 수 없습니다([5.6](506-visibility.md), [6.2.15](../006-meta-system/602-built-in-attributes.md#6215-internal-toolchain-패키지끼리-공유)).
 
 ## 이름 해소 규칙
 

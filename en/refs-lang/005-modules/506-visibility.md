@@ -18,7 +18,7 @@ Visibility has four levels:
 | `pub(pkg)` | Within the same package only.                             |
 | `pub`      | Also from external packages.                              |
 
-The narrowest scope is the default, private; the widest is `pub`. The toolchain's own packages also share some `pub` items marked `#[internal]`, which other packages cannot use ([6.2.16](../006-meta-system/602-built-in-attributes.md#6216-internal-shared-by-the-toolchains-packages)); that mark is not a visibility level.
+The narrowest scope is the default, private; the widest is `pub`. The toolchain's own packages also share some `pub` items marked `#[internal]`, which other packages cannot use ([6.2.15](../006-meta-system/602-built-in-attributes.md#6215-internal-shared-by-the-toolchains-packages)); that mark is not a visibility level.
 
 `pkg` and `sub` are contextual keywords that act as qualifiers only inside the `pub(...)` parentheses; elsewhere they are ordinary identifiers (see [1.5.4 Visibility qualifiers](../001-lexical/105-keywords.md#visibility-qualifiers-pkg--sub)).
 

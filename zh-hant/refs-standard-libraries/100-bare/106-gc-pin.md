@@ -73,7 +73,7 @@ impl<T> Drop for Pinned<T> {
 }
 ```
 
-它是一個守衛（guard）。只要 `pin()` 回傳的 `Pinned<T>` 還存活，GC 就不會移動該物件。`Pinned<T>` 是 `Drop` 值，只會釋放一次（[2.13.4](../200-core/213-marker.md#2134-drop釋放時的清理)）：在守衛的擁有者離開作用域之處，或在繫結它的 `using` 區塊結束時，`Pinned::drop` 會執行並解除對物件的固定。固定會計數：物件必須經過同樣次數的解除固定之後才會再次移動。`pin` 會固定 `gc_object` 所指出的物件；當它回傳 `none` 時則不固定任何東西。`GcBuf<u8>` 是 [1.3.9](103-mem.md#139-gcbuft-與-buf_-基本操作) 中抹除型別的 GC 緩衝區。`Pinnable` 是封閉的，`gc_object` 則是工具鏈內部的項目（[6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-由工具鏈的套件共用)）：程式以 `pin(x)` 固定，不呼叫 `gc_object`。
+它是一個守衛（guard）。只要 `pin()` 回傳的 `Pinned<T>` 還存活，GC 就不會移動該物件。`Pinned<T>` 是 `Drop` 值，只會釋放一次（[2.13.4](../200-core/213-marker.md#2134-drop釋放時的清理)）：在守衛的擁有者離開作用域之處，或在繫結它的 `using` 區塊結束時，`Pinned::drop` 會執行並解除對物件的固定。固定會計數：物件必須經過同樣次數的解除固定之後才會再次移動。`pin` 會固定 `gc_object` 所指出的物件；當它回傳 `none` 時則不固定任何東西。`GcBuf<u8>` 是 [1.3.9](103-mem.md#139-gcbuft-與-buf_-基本操作) 中抹除型別的 GC 緩衝區。`Pinnable` 是封閉的，`gc_object` 則是工具鏈內部的項目（[6.2.15](../../refs-lang/006-meta-system/602-built-in-attributes.md#6215-internal-由工具鏈的套件共用)）：程式以 `pin(x)` 固定，不呼叫 `gc_object`。
 
 ### 範例：FFI 呼叫
 

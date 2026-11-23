@@ -24,7 +24,7 @@
 
 ## 8.5.0a. `NabiFn` - 函数值的 C ABI 形式
 
-把 Nabi 函数值 `{code, env}`（[4.4](../004-functions/404-function-type.md#函数值的表示)）传给运行时符号时使用的 C 表示。
+把 Nabi 函数值 `{code, env}`（[4.4.8](../004-functions/404-function-type.md#函数值的表示)）传给运行时符号时使用的 C 表示。
 
 ```c
 typedef struct {

@@ -18,7 +18,7 @@ reach           ::= "pkg" | "sub"
 | `pub(pkg)` | 같은 패키지 안에서만.             |
 | `pub`      | 외부 패키지에서도.                |
 
-가장 좁은 범위는 기본값인 private이고, 가장 넓은 범위는 `pub`입니다. toolchain 패키지끼리는 `#[internal]`을 붙인 `pub` 항목도 공유하며, 다른 패키지는 그 항목을 쓸 수 없습니다([6.2.16](../006-meta-system/602-built-in-attributes.md#6216-internal-toolchain-패키지끼리-공유)). 이 표시는 가시성 단계가 아닙니다.
+가장 좁은 범위는 기본값인 private이고, 가장 넓은 범위는 `pub`입니다. toolchain 패키지끼리는 `#[internal]`을 붙인 `pub` 항목도 공유하며, 다른 패키지는 그 항목을 쓸 수 없습니다([6.2.15](../006-meta-system/602-built-in-attributes.md#6215-internal-toolchain-패키지끼리-공유)). 이 표시는 가시성 단계가 아닙니다.
 
 `pkg`와 `sub`은 `pub(...)` 괄호 안에서만 한정자로 동작하는 문맥 키워드입니다. 다른 위치에서는 일반 식별자입니다([1.5.4 가시성 한정자](../001-lexical/105-keywords.md#가시성-한정자-pkg--sub)).
 

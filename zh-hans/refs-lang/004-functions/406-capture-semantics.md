@@ -144,7 +144,7 @@ let g = [ref xs] || {
 
 ## 4.6.9. 并行与并发上下文中的附加约束
 
-`fn() + Send` 闭包（传给 `task::spawn_blocking`、`par::for_each`、`thread::spawn` 等的闭包）的每个普通捕获都必须是 `Send + Sync`（[4.4](404-function-type.md#send--sync-约束)）：闭包与创建它的代码共享该捕获。`[move x]` 捕获只属于闭包，只需要 `Send`（[4.6.11](#4611-移动捕获move-x-捕获列表)）；`+ Sync` 闭包（`par::for_each` 的闭包，每个工作线程都会调用它）要求每个捕获都是 `Sync`。`[ref x]` 单元会被闭包和创建它的代码同时写入，所以无论 `x` 是什么类型，它都绝不是 `Send` 或 `Sync`：带 `[ref]` 捕获的闭包（或捕获了这种闭包的闭包，或由 `async [ref x] ||` 闭包产生的 future）不适用于任何 `+ Send` / `+ Sync` 槽。同一线程内的使用（`spawn_local`、普通调用）不受影响。集合类型是 `!Sync`（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)），同样不能以这种方式按值捕获。
+`fn() + Send` 闭包（传给 `task::spawn_blocking`、`par::for_each`、`thread::spawn` 等的闭包）的每个普通捕获都必须是 `Send + Sync`（[4.4.6](404-function-type.md#send--sync-约束)）：闭包与创建它的代码共享该捕获。`[move x]` 捕获只属于闭包，只需要 `Send`（[4.6.11](#4611-移动捕获move-x-捕获列表)）；`+ Sync` 闭包（`par::for_each` 的闭包，每个工作线程都会调用它）要求每个捕获都是 `Sync`。`[ref x]` 单元会被闭包和创建它的代码同时写入，所以无论 `x` 是什么类型，它都绝不是 `Send` 或 `Sync`：带 `[ref]` 捕获的闭包（或捕获了这种闭包的闭包，或由 `async [ref x] ||` 闭包产生的 future）不适用于任何 `+ Send` / `+ Sync` 槽。同一线程内的使用（`spawn_local`、普通调用）不受影响。集合类型是 `!Sync`（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)），同样不能以这种方式按值捕获。
 
 ```nabi
 let buf: List<i32> = [];

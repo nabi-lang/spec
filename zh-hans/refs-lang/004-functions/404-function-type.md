@@ -23,7 +23,7 @@ fn(str) throws (ParseError) -> i32  // typed
 fn(Path) throws (IoError)           // return type omitted: unit
 ```
 
-`unsafe fn(..) -> R` 是调用时需要 `unsafe` 的函数的类型。`unsafe fn` 和 C 函数作为值具有这个类型。在期望 `unsafe fn` 的位置可以使用安全的 `fn` 值，反之则不行（[4.15](415-unsafe.md#unsafe-fn-类型)）。
+`unsafe fn(..) -> R` 是调用时需要 `unsafe` 的函数的类型。`unsafe fn` 和 C 函数作为值具有这个类型。在期望 `unsafe fn` 的位置可以使用安全的 `fn` 值，反之则不行（[4.15.3](415-unsafe.md#unsafe-fn-类型)）。
 
 `throws` 是函数类型的一部分，所以调用可抛出错误的函数类型的值时，同样必须用 `try` 标注。`rethrows` 只用于函数声明，从不用于函数类型。
 

@@ -24,7 +24,7 @@
 
 ## 8.5.0a. `NabiFn`：函式值的 C ABI 形式
 
-把 Nabi 函式值 `{code, env}`（[4.4](../004-functions/404-function-type.md#函式值的表示方式)）傳給執行環境符號時所使用的 C 表示方式。
+把 Nabi 函式值 `{code, env}`（[4.4.8](../004-functions/404-function-type.md#函式值的表示方式)）傳給執行環境符號時所使用的 C 表示方式。
 
 ```c
 typedef struct {

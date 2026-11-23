@@ -163,7 +163,7 @@ Trait 槽位指出：使用者撰寫的語法被去語法糖為標準函式庫 t
 
 ### 各層級共用的項目：`#[internal]`
 
-有少數 `pub` 項目不是由編譯器呼叫，而是由工具鏈的另一個層級呼叫：`std` 從 `core` 使用它們，`core` 從 `bare` 使用它們。它們標記為 `#[internal]`（[refs-lang 6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-由工具鏈的套件共用)）：`bare`、`core` 和 `std` 可以使用它們，其他任何套件會得到錯誤「internal to the Nabi toolchain」，而文件和語言伺服器會略過它們。
+有少數 `pub` 項目不是由編譯器呼叫，而是由工具鏈的另一個層級呼叫：`std` 從 `core` 使用它們，`core` 從 `bare` 使用它們。它們標記為 `#[internal]`（[refs-lang 6.2.15](../../refs-lang/006-meta-system/602-built-in-attributes.md#6215-internal-由工具鏈的套件共用)）：`bare`、`core` 和 `std` 可以使用它們，其他任何套件會得到錯誤「internal to the Nabi toolchain」，而文件和語言伺服器會略過它們。
 
 | 項目                                   | 使用者                                                    | 參照 |
 |----------------------------------------|-----------------------------------------------------------|------|

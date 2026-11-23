@@ -73,7 +73,7 @@ impl<T> Drop for Pinned<T> {
 }
 ```
 
-它是一个守卫。只要 `pin()` 返回的 `Pinned<T>` 还活着，GC 就不会移动该对象。`Pinned<T>` 是 `Drop` 值，只释放一次（[2.13.4](../200-core/213-marker.md#2134-drop释放时的清理)）：在守卫的所有者离开作用域的位置，或在绑定它的 `using` 块结束时，`Pinned::drop` 运行并解除对象的固定。固定是计数的：只有经过同样次数的解除固定后，对象才会再次移动。`pin` 固定 `gc_object` 所指出的对象，`gc_object` 返回 `none` 时什么也不固定。`GcBuf<u8>` 是 [1.3.9](103-mem.md#139-gcbuft-与-buf_-原语) 中擦除了类型的 GC 缓冲区。`Pinnable` 是封闭的（sealed），`gc_object` 是工具链内部的（[6.2.16](../../refs-lang/006-meta-system/602-built-in-attributes.md#6216-internal-由工具链的各个包共用)）：程序用 `pin(x)` 固定，不调用 `gc_object`。
+它是一个守卫。只要 `pin()` 返回的 `Pinned<T>` 还活着，GC 就不会移动该对象。`Pinned<T>` 是 `Drop` 值，只释放一次（[2.13.4](../200-core/213-marker.md#2134-drop释放时的清理)）：在守卫的所有者离开作用域的位置，或在绑定它的 `using` 块结束时，`Pinned::drop` 运行并解除对象的固定。固定是计数的：只有经过同样次数的解除固定后，对象才会再次移动。`pin` 固定 `gc_object` 所指出的对象，`gc_object` 返回 `none` 时什么也不固定。`GcBuf<u8>` 是 [1.3.9](103-mem.md#139-gcbuft-与-buf_-原语) 中擦除了类型的 GC 缓冲区。`Pinnable` 是封闭的（sealed），`gc_object` 是工具链内部的（[6.2.15](../../refs-lang/006-meta-system/602-built-in-attributes.md#6215-internal-由工具链的各个包共用)）：程序用 `pin(x)` 固定，不调用 `gc_object`。
 
 ### 示例：FFI 调用
 

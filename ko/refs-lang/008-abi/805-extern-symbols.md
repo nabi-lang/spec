@@ -24,7 +24,7 @@ Nabi 쪽 선언은 런타임 ABI `extern "nabi"`([5.9.2](../005-modules/509-exte
 
 ## 8.5.0a. `NabiFn`: 함수 값의 C ABI 형태
 
-Nabi 함수 값 `{code, env}`([4.4](../004-functions/404-function-type.md#함수-값의-표현))를 런타임 심볼에 넘길 때의 C 표현입니다.
+Nabi 함수 값 `{code, env}`([4.4.8](../004-functions/404-function-type.md#함수-값의-표현))를 런타임 심볼에 넘길 때의 C 표현입니다.
 
 ```c
 typedef struct {

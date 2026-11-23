@@ -228,7 +228,7 @@ fn f() { ... }
 pub const fn spread_misfit<V>(d: Dict<str, V>, key: str, why: str) { .. }
 ```
 
-`#[doc(hidden)]` 让公开项不出现在 API 文档（`nabi doc`）和语言服务器的补全中。它用于那些只是为了让编译器生成的代码能调用才设为 `pub` 的项；该项仍是公开的，编译和解析都与之前一样。用在模块上时，它隐藏模块内的一切。它可以与该项的文档注释并存，文档注释仍用于悬停提示。任何其他 `#[doc(..)]` 形式都是错误：应写 `#[doc = ".."]` 或 `#[doc(hidden)]`。工具链的各个包共用、但用户不得调用的项使用 `#[internal]`（[6.2.16](#6216-internal-由工具链的各个包共用)），而不是 `#[doc(hidden)]`。
+`#[doc(hidden)]` 让公开项不出现在 API 文档（`nabi doc`）和语言服务器的补全中。它用于那些只是为了让编译器生成的代码能调用才设为 `pub` 的项；该项仍是公开的，编译和解析都与之前一样。用在模块上时，它隐藏模块内的一切。它可以与该项的文档注释并存，文档注释仍用于悬停提示。任何其他 `#[doc(..)]` 形式都是错误：应写 `#[doc = ".."]` 或 `#[doc(hidden)]`。工具链的各个包共用、但用户不得调用的项使用 `#[internal]`（[6.2.15](#6215-internal-由工具链的各个包共用)），而不是 `#[doc(hidden)]`。
 
 ## 6.2.9. `#[allow(...)]` / `#[deny(...)]` / `#[warn(...)]` lint 控制
 
@@ -262,7 +262,7 @@ fn strict_zone() { ... }
 | `while_true`             | 0.1.0   | 用 `while true` 代替 `loop`                                         |
 | `closed_type_switch`     | 0.1.0   | 回退分支触发 panic 的 `if T is ..` 链：一组封闭的类型适合用 trait 表达 |
 | `deprecated`             | 0.1.0   | 使用 `#[deprecated]` 的函数、方法、字段、类型、常量或静态变量（[6.2.7](#627-deprecated-不推荐使用的标记)） |
-| `deprecated_safe`        | 0.1.0   | 在 `unsafe` 之外调用 `#[deprecated_safe]` 函数，或使用这样的静态变量（[6.2.14](#6214-deprecated_safe-现在安全以后-unsafe)） |
+| `deprecated_safe`        | 0.1.0   | 在 `unsafe` 之外调用 `#[deprecated_safe]` 函数，或使用这样的静态变量（[6.2.13](#6213-deprecated_safe-现在安全以后-unsafe)） |
 | `redundant_cast`         | 0.1.0   | `x` 已经是 `T` 时的 `x as T`                                        |
 | `redundant_clone`        | 0.1.0   | 对基本类型的值调用 `.clone()`                                       |
 | `non_snake_case`         | 0.1.0   | 不是 snake_case 的函数、局部变量、参数或模块名                      |
@@ -367,7 +367,50 @@ fn expect_positive(n: i32) -> i32 {
 
 在输入无效时触发 panic 的标准库函数（`panic`、`unreachable`、`assert*`、索引、切片、`unwrap`、`List::insert` / `remove` 等）都是 `#[track_caller]`。
 
-## 6.2.13. 小结
+## 6.2.13. `#[deprecated_safe]` 现在安全，以后 `unsafe`
+
+```nabi
+#[deprecated_safe("`ptr` must point at a NUL-terminated string")]
+pub fn from_ptr(ptr: Ptr<u8>) -> CStr { ... }
+```
+
+`#[deprecated_safe("note")]` 标记一个将在后续版本中变为 `unsafe` 的库函数、方法、extern 函数或静态变量。在 `unsafe` 块或 `unsafe fn` 之外调用它或使用该静态变量，会触发 lint `deprecated_safe` 警告并显示附注：把调用包在 `unsafe { .. }` 中，这样现在能编译，在该项变为 `unsafe` 后也依然正确。在 `unsafe` 内部不会产生警告。
+
+它供标准库和库包使用。用在正在构建的程序的函数上是错误：应改为把该函数写成 `unsafe fn`。用在函数、方法、extern 函数或静态变量以外的项上是错误。
+
+## 6.2.14. `#[sealed]` 只在定义它的包中实现
+
+```nabi
+/// The element types `Atomic<T>` supports.
+#[sealed]
+pub trait AtomicPrimitive {}
+```
+
+trait 上的 `#[sealed]` 表示只有定义该 trait 的包实现它。在其他任何包中对该 trait 的 `impl` 都是错误，错误会指出该 trait 是密封的以及拥有它的包。其他方面与任何 trait 相同：其他包可以在约束中使用它（`T: AtomicPrimitive`）、调用它的方法，并在 `use` 中命名它。
+
+当库依赖于知道实现某个 trait 的所有类型时，就密封该 trait：出于健全性（原子操作只为这些类型存在），或因为其他 impl 会被忽略。标准库密封了 `AtomicPrimitive`（[标准库 2.16](../../refs-standard-libraries/200-core/216-sync.md)）。
+
+工具链的每个层级都是各自独立的包（[5.6.4](../005-modules/506-visibility.md#564-pubpkg包内)）：`core` 密封的 trait，其 impl 都在 `core` 中。`#[sealed]` 不带实参；用在 trait 以外的任何东西上都是错误。
+
+## 6.2.15. `#[internal]` 由工具链的各个包共用
+
+```nabi
+/// Wake every task waiting on `fd`'s readiness.
+#[internal]
+pub fn wake_io(fd: i32) { .. }
+```
+
+`#[internal]` 标记一个 `pub` 项，工具链自身的包 `bare`、`core` 和 `std` 彼此共用它，但它不属于它们的 API。它可以附着在函数、方法、`const`、`static` 或字段上。
+
+- 从其他任何包中使用它（调用、函数值、读取）都是错误：“internal to the Nabi toolchain”。该项仍然能被解析，因此错误会指出它。
+- `#[internal("..")]` 指明应改写成什么，错误会显示这一点（`Int::from_literal` 指向 `s.parse::<Int>()`）。没有附注时，错误说明该项仅供编译器使用。
+- 它与 `#[doc(hidden)]` 项一样，不出现在 API 文档（`nabi doc`）、语言服务器的补全和悬停列表以及“did you mean”建议中。
+- 它不是新的可见性级别（[5.6.1](../005-modules/506-visibility.md#561-四个级别)）：该项是 `pub`，这项检查与可见性是分开的。
+- 只有工具链的包可以写它。用在其他任何包的项上是错误；要把项限制在包内，把它设为 `pub(pkg)`。
+
+带有它的项列在[标准库 0.4.4](../../refs-standard-libraries/000-meta/004-lang-slot-table.md) 中。只在一个层级内部使用的项是 `pub(pkg)`，编译器从降级后的代码调用的函数通过 lang 槽访问，因此两者都不需要 `#[internal]`。
+
+## 6.2.16. 小结
 
 上述属性是由编译器和工具直接识别的内置属性；它们不需要用户通过元块来定义。
 
@@ -392,53 +435,10 @@ fn expect_positive(n: i32) -> i32 {
 | `#[display("text")]`          | `struct`、`enum`、枚举变体    | 通过写出 `f"text"` 实现 `Display`（[标准库 2.10.14](../../refs-standard-libraries/200-core/210-fmt.md#21014-派生策略小结)） |
 | `#[intrinsic("nabi.OP.TYPE")]`  | 仅标准库                      | 把函数或方法绑定到编译器操作；在用户代码中是错误（[标准库 0.3](../../refs-standard-libraries/000-meta/003-intrinsics.md)） |
 | `#[no_safepoint]`              | `extern "nabi"` 块             | 工具链内部使用：块中的函数既不分配也不阻塞，因此对它们的调用不是安全点；用在其他块上是错误（[5.9.2](../005-modules/509-extern-block.md#592-abi-说明符)） |
-| `#[sealed]`                    | `trait`                       | 只有定义它的包实现该 trait（[6.2.15](#6215-sealed-只在定义它的包中实现)） |
-| `#[internal]`                  | 函数、方法、`const`、`static`、字段 | 只在 `bare`、`core` 和 `std` 之间共用（[6.2.16](#6216-internal-由工具链的各个包共用)） |
+| `#[sealed]`                    | `trait`                       | 只有定义它的包实现该 trait（[6.2.14](#6214-sealed-只在定义它的包中实现)） |
+| `#[internal]`                  | 函数、方法、`const`、`static`、字段 | 只在 `bare`、`core` 和 `std` 之间共用（[6.2.15](#6215-internal-由工具链的各个包共用)） |
 | `#[runtime_attribute(name)]`   | `struct`                      | 声明运行时属性 `#[name(..)]`，它保留在 `Inspect` 描述中（[6.10.8](610-reflection.md#6108-运行时属性)） |
 | `#[inspect(skip)]`             | 字段                          | 让该字段不出现在其类型的 `Inspect` 描述中（[6.10.7](610-reflection.md#6107-typeinfo类型的描述)） |
 | `#[renamed_from("old")]`       | 字段                          | 在描述中记录该字段以前的名称（[6.10.8](610-reflection.md#6108-运行时属性)） |
 | `#[available(macos = "13.0")]` | 函数、方法、`extern "objc"` 块的方法 | 该 API 所需的 macOS 版本：除非部署目标或外层的 `if objc::available(macos: "13.0")` 覆盖了它，否则调用是错误（[标准库 1.10.13](../../refs-standard-libraries/100-bare/110-objc.md#11013-可用性与部署目标)） |
 | `#[objc::class(..)]`、`#[objc::protocol(..)]`、`#[objc::category(..)]`、`#[selector("..")]`、`#[returns_retained]`、`#[returns_not_retained]` | `extern "objc"` 块及其方法 | Objective-C 类及其方法（[标准库 1.10.2](../../refs-standard-libraries/100-bare/110-objc.md#1102-extern-objc-块)） |
-
-## 6.2.14. `#[deprecated_safe]` 现在安全，以后 `unsafe`
-
-```nabi
-#[deprecated_safe("`ptr` must point at a NUL-terminated string")]
-pub fn from_ptr(ptr: Ptr<u8>) -> CStr { ... }
-```
-
-`#[deprecated_safe("note")]` 标记一个将在后续版本中变为 `unsafe` 的库函数、方法、extern 函数或静态变量。在 `unsafe` 块或 `unsafe fn` 之外调用它或使用该静态变量，会触发 lint `deprecated_safe` 警告并显示附注：把调用包在 `unsafe { .. }` 中，这样现在能编译，在该项变为 `unsafe` 后也依然正确。在 `unsafe` 内部不会产生警告。
-
-它供标准库和库包使用。用在正在构建的程序的函数上是错误：应改为把该函数写成 `unsafe fn`。用在函数、方法、extern 函数或静态变量以外的项上是错误。
-
-## 6.2.15. `#[sealed]` 只在定义它的包中实现
-
-```nabi
-/// The element types `Atomic<T>` supports.
-#[sealed]
-pub trait AtomicPrimitive {}
-```
-
-trait 上的 `#[sealed]` 表示只有定义该 trait 的包实现它。在其他任何包中对该 trait 的 `impl` 都是错误，错误会指出该 trait 是密封的以及拥有它的包。其他方面与任何 trait 相同：其他包可以在约束中使用它（`T: AtomicPrimitive`）、调用它的方法，并在 `use` 中命名它。
-
-当库依赖于知道实现某个 trait 的所有类型时，就密封该 trait：出于健全性（原子操作只为这些类型存在），或因为其他 impl 会被忽略。标准库密封了 `AtomicPrimitive`（[标准库 2.16](../../refs-standard-libraries/200-core/216-sync.md)）。
-
-工具链的每个层级都是各自独立的包（[5.6.4](../005-modules/506-visibility.md#564-pubpkg包内)）：`core` 密封的 trait，其 impl 都在 `core` 中。`#[sealed]` 不带实参；用在 trait 以外的任何东西上都是错误。
-
-## 6.2.16. `#[internal]` 由工具链的各个包共用
-
-```nabi
-/// Wake every task waiting on `fd`'s readiness.
-#[internal]
-pub fn wake_io(fd: i32) { .. }
-```
-
-`#[internal]` 标记一个 `pub` 项，工具链自身的包 `bare`、`core` 和 `std` 彼此共用它，但它不属于它们的 API。它可以附着在函数、方法、`const`、`static` 或字段上。
-
-- 从其他任何包中使用它（调用、函数值、读取）都是错误：“internal to the Nabi toolchain”。该项仍然能被解析，因此错误会指出它。
-- `#[internal("..")]` 指明应改写成什么，错误会显示这一点（`Int::from_literal` 指向 `s.parse::<Int>()`）。没有附注时，错误说明该项仅供编译器使用。
-- 它与 `#[doc(hidden)]` 项一样，不出现在 API 文档（`nabi doc`）、语言服务器的补全和悬停列表以及“did you mean”建议中。
-- 它不是新的可见性级别（[5.6.1](../005-modules/506-visibility.md#561-四个级别)）：该项是 `pub`，这项检查与可见性是分开的。
-- 只有工具链的包可以写它。用在其他任何包的项上是错误；要把项限制在包内，把它设为 `pub(pkg)`。
-
-带有它的项列在[标准库 0.4.4](../../refs-standard-libraries/000-meta/004-lang-slot-table.md) 中。只在一个层级内部使用的项是 `pub(pkg)`，编译器从降级后的代码调用的函数通过 lang 槽访问，因此两者都不需要 `#[internal]`。

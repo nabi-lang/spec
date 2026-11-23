@@ -23,7 +23,7 @@ fn(str) throws (ParseError) -> i32  // typed
 fn(Path) throws (IoError)           // return type omitted: unit
 ```
 
-`unsafe fn(..) -> R` 是呼叫時需要 `unsafe` 之函式的型別。`unsafe fn` 與 C 函式作為值時具有這種型別。安全的 `fn` 值可以用在預期 `unsafe fn` 之處，反之則不行（[4.15](415-unsafe.md#unsafe-fn-型別)）。
+`unsafe fn(..) -> R` 是呼叫時需要 `unsafe` 之函式的型別。`unsafe fn` 與 C 函式作為值時具有這種型別。安全的 `fn` 值可以用在預期 `unsafe fn` 之處，反之則不行（[4.15.3](415-unsafe.md#unsafe-fn-型別)）。
 
 `throws` 是函式型別的一部分，因此呼叫會擲回錯誤之函式型別的值也必須以 `try` 標示。`rethrows` 只用於函式宣告，絕不用於函式型別。
 
