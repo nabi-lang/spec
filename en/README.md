@@ -50,7 +50,7 @@ Every edition follows this structure: `en/refs-lang/`, `ko/refs-lang/`, and so o
 
 ## Editions
 
-The specification exists in two language editions:
+The specification exists in four language editions:
 
 - **English** (`en/`) - the default edition.
 - **한국어** ([`ko/`](../ko/README.md)) - Korean.
@@ -65,11 +65,11 @@ The specification is written to be read from chapter 0 to chapter 9. A new conce
 
 ## Conventions
 
-ASCII and box-drawing diagrams inside code fences use English labels, explained in the text below them. Code examples are identical in both editions apart from translated comments, incidental strings, and the grammar placeholders (metavariables) that stand for user-written parts.
+ASCII and box-drawing diagrams inside code fences use English labels, explained in the text below them. Code examples are identical in all editions apart from translated comments and incidental strings; grammar placeholders (metavariables) that stand for user-written parts stay in English.
 
 ## Terminology
 
-The terms below are used consistently across the English edition (the Korean edition's counterparts are listed for translators). The [glossary](refs-lang/000-meta/007-glossary.md) defines the core terms.
+The terms below are used consistently across the English edition. The table lists the Korean edition's counterparts for translators; each other edition's README has its own table. The [glossary](refs-lang/000-meta/007-glossary.md) defines the core terms.
 
 | English | 한국어 |
 |---|---|
