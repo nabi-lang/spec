@@ -60,9 +60,9 @@ takes_strs(empty());                // T = str, from the parameter type List<str
 
 沒有預期型別的 `let` 由之後的使用推論。在不帶標註的 `let x = f();` 中，若 `f` 的泛型回傳型別無法單靠呼叫決定，就由之後的使用決定。簽章一律是明確的。
 
-- **範圍**：變數的作用域，即區塊的其餘部分，包括其中的閉包與 async 主體。
+- **作用範圍**：變數的作用域，即區塊的其餘部分，包括其中的閉包與 async 主體。
 - **確定型別的使用**：把值傳到型別已固定之位置的使用：函式 / 方法引數、指派、有標註的 `let`、結構欄位、`return`、主體的值。運算子會依其另一個運算元確定開放字面值運算元的型別（`c += x`）；除此之外，運算子、f-string 的洞、模式與欄位讀取都不會確定型別。
-- **空的建構式**：`[]`、`Dict::new()`、`Set::new()`、`channel()`、`Mutex::new([])` 的型別引數以相同方式確定，也可以透過 `d[k] = v` 以及元組 `let`（`let (tx, rx) = channel(); tx.send(1)`）確定。
+- **空的建構子**：`[]`、`Dict::new()`、`Set::new()`、`channel()`、`Mutex::new([])` 的型別引數以相同方式確定，也可以透過 `d[k] = v` 以及元組 `let`（`let (tx, rx) = channel(); tx.send(1)`）確定。
 - **相互確定**：多個開放的 `let` 可以相互確定（`let a = List::new(); let b = List::new(); a.push(b); b.push(1);` → `b: List<i32>`、`a: List<List<i32>>`）。
 - **字面值的預設型別**：`i64` / `f64` 會讓位給之後同類（整數 / 實數）的具體使用。在 `ys.push(1); sum_i32(ys)` 中，`ys` 是 `List<i32>`。由 `let` 本身繫結的字面值（`let c = 0`）也同樣是開放的（[1.6.3](../001-lexical/106-numeric-literals.md#163-無後綴的字面值)）。
 - **衝突**：兩個不同的使用不會形成和型別；那是錯誤（`xs.push(none); xs.push(1)`，與 [5.1.7](../005-modules/501-variable-declaration.md#517-型別標註與型別推論) 的分支規則相同）。單獨的 `let v = none;` 仍然是錯誤。

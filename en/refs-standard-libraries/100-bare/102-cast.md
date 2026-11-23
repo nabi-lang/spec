@@ -71,7 +71,7 @@ if let aligned: Ptr<u32> = bare::align_cast::<u32>(p) {
 }
 ```
 
-`align_cast` returns `T | none`, not `Result`, because the latter of the two forms is lighter.
+`align_cast` returns `T | none`, not `Result`, because the former is lighter.
 
 ### unchecked variant
 

@@ -96,7 +96,7 @@ fn main() throws {          // form of the implicit main (see 4.16.4)
 进程的退出码由入口点的结束方式决定。
 
 - **正常退出**：按 4.16.3 的表格，为 `0` 或返回的 `i32`。
-- **未处理的异常**：在 `throws` main（包括不带 `->` 的 `fn main()`）中，如果错误传播出入口点，运行时向标准错误（stderr）打印 ``error: `main` returned an uncaught error: ``，后接异常值，并以退出码 **`1`** 退出。输出格式：如果该值实现 [`Display`](../../refs-standard-libraries/200-core/210-fmt.md) 则用 `Display`，否则用 `Debug`，两者都没有则打印类型名（[`Error`](../../refs-standard-libraries/200-core/214-error.md) trait 要求 `Display`，因此普通错误类型用 `Display` 打印）。下一行给出错误离开 `main` 的位置，形如 `  --> path:line:col`。当引发它的 `throw` 已知且位于别处时，最后一行给出其位置，形如 `  raised at path:line:col`（指明哪一个 `throw` 遵循失败的 `try!` 的规则，[3.14.8](../003-expressions/314-error-control-flow.md#3148-panic-与致命错误)）。
+- **未处理的异常**：在 `throws` main（包括不带 `->` 的 `fn main()`）中，如果错误传播出入口点，运行时向标准错误（stderr）打印 ``error: `main` returned an uncaught error: ``，后接异常值，并以退出码 **`1`** 退出。输出格式：如果该值实现 [`Display`](../../refs-standard-libraries/200-core/210-fmt.md) 则用 `Display`，否则用 `Debug`，两者都没有则打印类型名（[`Error`](../../refs-standard-libraries/200-core/214-error.md) trait 要求 `Display`，因此普通错误类型用 `Display` 打印）。下一行给出错误离开 `main` 的位置，形如 `  --> path:line:col`。当引发它的 `throw` 已知且位于别处时，最后一行给出其位置，形如 `  raised at path:line:col`（具体指明哪一个 `throw`，遵循失败的 `try!` 的规则，[3.14.8](../003-expressions/314-error-control-flow.md#3148-panic-与致命错误)）。
 - **panic**：panic 和致命错误不会被 `catch` 捕获；运行时把消息打印到标准错误，并以退出码 **`101`** 退出；在被 C 调用的函数之下则改为中止（[4.14.13](414-throws.md#41413-panic-与致命错误)）。
 - **显式退出**：[`std::process::exit(code)`](../../refs-standard-libraries/300-std/306-process.md) 可以从任何位置立即终止进程。这条路径不运行 `finally` 或 `Drop`。
 
@@ -126,7 +126,7 @@ println(body.len());
 
 顶层语句**只允许出现在入口模块 `main.nabi` 中**。`lib.nabi` 和 `main.nabi` 之外的每一个模块文件（以及内联 `mod { ... }` 的主体）只能包含项（`module_file ::= item*`）；在那里出现顶层语句是**编译错误**。对于内联 `mod x { stmt }` 主体中的语句，会给出一条指向本节的专门诊断。
 
-因此，**导入模块（`mod`、`use`）不运行任何代码**。这一点有意与 Python 不同。在 Python 中，`import` 会运行模块文件的顶层代码，因此一个既作为库又作为脚本使用的文件必须用 `if __name__ == "__main__":` 守卫把两种用途分开。Nabi 不需要这样的守卫：作为脚本运行的代码只存在于 `main.nabi` 中，其他每个文件在导入时都不会引发任何事情。
+因此，**导入模块（`mod`、`use`）不运行任何代码**。这一点有意与 Python 不同。在 Python 中，`import` 会运行模块文件的顶层代码，因此一个既作为库又作为脚本使用的文件必须用 `if __name__ == "__main__":` 守卫把两种用途分开。Nabi 不需要这样的守卫：作为脚本运行的代码只存在于 `main.nabi` 中，其他每个文件在导入时都不产生任何效果。
 
 这一决定的理由：
 
@@ -156,10 +156,10 @@ Nabi **没有**用于指定入口点的属性（例如 `#[main]`）。根文件 
 
 ## 4.16.10. 与 JIT / REPL 的关系
 
-REPL 输入和 Jupyter 单元（[JIT 单元](../009-tools/907-jit-cells.md)）的含义等同于**按顺序把顶层语句和项追加到一个隐式 `main.nabi` 的末尾**。单元中的 `let` 是隐式 `main` 的局部变量，在后续单元中可见；单元中的 `fn` / `struct` 成为模块项。4.16.2 的规则原样适用，因此在单元中声明的 `fn` 的函数体不能引用之前单元中的顶层 `let`（可以用闭包捕获）。
+REPL 输入和 Jupyter 单元格（[JIT 单元格](../009-tools/907-jit-cells.md)）的含义等同于**按顺序把顶层语句和项追加到一个隐式 `main.nabi` 的末尾**。单元格中的 `let` 是隐式 `main` 的局部变量，在后续单元格中可见；单元格中的 `fn` / `struct` 成为模块项。4.16.2 的规则原样适用，因此在单元格中声明的 `fn` 的函数体不能引用之前单元格中的顶层 `let`（可以用闭包捕获）。
 
-得益于这一等价关系，[0.1.1](../000-meta/001-execution-modes.md#语义相同) 中“JIT 与 AOT 共享相同语义”的原则对入口点同样成立。把笔记本的各个单元按顺序拼接而成的文件，就是一个产生相同结果的 `main.nabi`。不过，以下三项是只存在于交互式会话中的**会话操作**，而不是语言语义的扩展：
+得益于这一等价关系，[0.1.1](../000-meta/001-execution-modes.md#语义相同) 中“JIT 与 AOT 共享相同语义”的原则对入口点同样成立。把笔记本的各个单元格按顺序拼接而成的文件，就是一个产生相同结果的 `main.nabi`。不过，以下三项是只存在于交互式会话中的**会话操作**，而不是语言语义的扩展：
 
-- 删除和重新运行单元（[9.7.4](../009-tools/907-jit-cells.md#974-撤销--单元重新执行)）。
+- 删除和重新运行单元格（[9.7.4](../009-tools/907-jit-cells.md#974-撤销--单元格重新执行)）。
 - 自动显示不带终止符的最终表达式的值（[9.7.7](../009-tools/907-jit-cells.md#977-可视化--输出)）。在文件中，这等同于在该表达式后追加 `;`。
 - 在该最终表达式后加上 `?`（`xs?`），显示其 `Debug` 形式（[9.7.7](../009-tools/907-jit-cells.md#977-可视化--输出)）。在文件中，末尾的 `?` 是 [`?` 运算符](../003-expressions/314-error-control-flow.md#31410--运算符提前返回-none)。

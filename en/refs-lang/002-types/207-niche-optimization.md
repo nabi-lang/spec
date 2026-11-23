@@ -78,4 +78,4 @@ struct Real { value: f64; }
 | `NonZero<T>`  | 0 (integer T only)                    | [stdlib 2.2.2](../../refs-standard-libraries/200-core/202-non-zero.md#222-nonzerot---zero-forbidden) |
 | `NonNan<F>`   | NaN                                   | [stdlib 2.2.3](../../refs-standard-libraries/200-core/202-non-zero.md#223-nonnanf---nan-forbidden) |
 | `Finite<F>`   | NaN, ±∞                               | [stdlib 2.2.4](../../refs-standard-libraries/200-core/202-non-zero.md#224-finitef---nan-and--forbidden) |
-| `Positive<T>` | Negatives (0 included). Unsigned `T` has no niche (`Positive<u32> \| none` is 8 bytes) | [stdlib 2.2.5](../../refs-standard-libraries/200-core/202-non-zero.md#225-positivet---negative-values-forbidden) |
+| `Positive<T>` | Negatives (0 is a value). Unsigned `T` has no niche (`Positive<u32> \| none` is 8 bytes) | [stdlib 2.2.5](../../refs-standard-libraries/200-core/202-non-zero.md#225-positivet---negative-values-forbidden) |

@@ -94,7 +94,7 @@ for pattern in iter_expr {
 
 `for` 關鍵字之後依序接一個模式、`in`、一個迭代運算式與一個區塊主體。迭代運算式必須是迭代器或可迭代的值。結構字面值不能出現在迭代運算式或 `while` 條件的頂層（[3.10.3](310-if-expression.md#條件位置的結構字面值)）。每次迭代時，下一個元素與模式比對，並在主體中繫結。
 
-### 迭代的去糖
+### 迭代的去語法糖
 
 ```
 for pat in xs { body }
@@ -179,7 +179,7 @@ for i in 0..v.len() {          // the length is read once
 }
 ```
 
-串列透過 `SliceMut` 視圖走訪，因此適用該視圖的規則（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可寫入檢視)）：在主體中改變 `xs` 的大小（`push`、`remove`、`clear`……），若主體中看得到該改變以及之後對 `x` 的使用，就是編譯錯誤 `E0137`；否則（在被呼叫的函式內改變大小）會在下一次使用 `x` 時 panic。請收集要加入或移除的元素，在迴圈之後再改變 `xs`。
+串列透過 `SliceMut` 檢視走訪，因此適用該檢視的規則（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可寫入檢視)）：在主體中改變 `xs` 的大小（`push`、`remove`、`clear`……），若主體中看得到該改變以及之後對 `x` 的使用，就是編譯錯誤 `E0137`；否則（在被呼叫的函式內改變大小）會在下一次使用 `x` 時 panic。請收集要加入或移除的元素，在迴圈之後再改變 `xs`。
 
 閉包或 `async` 區塊不能擷取 `x`；請先複製元素（`let v = x;`）。`if x is T` 不會收窄 `x`，而 `for await` 不能是 `for ref`。
 

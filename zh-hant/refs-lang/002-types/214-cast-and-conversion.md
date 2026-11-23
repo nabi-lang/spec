@@ -57,7 +57,7 @@ let z: f64 = x as f64;        // 256.0
 expr.into()
 ```
 
-這會去糖為 `Into::into::<Target>(expr)`，即 `Target::from(expr)`，並且需要 `Target: From<typeof(expr)>` 的實作。目標型別從上下文推論，例如變數的宣告型別或參數型別。
+這會去語法糖為 `Into::into::<Target>(expr)`，即 `Target::from(expr)`，並且需要 `Target: From<typeof(expr)>` 的實作。目標型別從上下文推論，例如變數的宣告型別或參數型別。
 
 ```nabi
 let x: i64 = 100i64;
@@ -80,7 +80,7 @@ let y = x.into::<int>();
 expr.try_into::<Type>()
 ```
 
-這會去糖為 `Target::try_from(expr)`（`Target: TryFrom<typeof(expr)>`）。`try_into` 是一個 [`throws`](../004-functions/414-throws.md) 方法：成功時回傳目標型別的值，失敗時擲回錯誤（目標的 `TryFrom::Error`；數值轉換為 `OverflowError`，[stdlib 2.11.4](../../refs-standard-libraries/200-core/211-conversion.md#2114-tryfromu-trait可能失敗的轉換)）。因此該呼叫必須以 `try` 標示。它用於轉換可能失敗的情況，例如把大的整數移到較小的整數，或把浮點數值轉成整數。
+這會去語法糖為 `Target::try_from(expr)`（`Target: TryFrom<typeof(expr)>`）。`try_into` 是一個 [`throws`](../004-functions/414-throws.md) 方法：成功時回傳目標型別的值，失敗時擲回錯誤（目標的 `TryFrom::Error`；數值轉換為 `OverflowError`，[stdlib 2.11.4](../../refs-standard-libraries/200-core/211-conversion.md#2114-tryfromu-trait可能失敗的轉換)）。因此該呼叫必須以 `try` 標示。它用於轉換可能失敗的情況，例如把大的整數移到較小的整數，或把浮點數值轉成整數。
 
 ```nabi
 let big: i64 = 10_000_000_000i64;
@@ -106,7 +106,7 @@ let m: i32 | none = try? big.try_into::<i32>();
 
 無後綴的數值字面值不會被轉換；其型別由預期型別決定。`let x: f64 = 1` 中的 `1` 從一開始就是 `f64`。確切規則定義於[數值字面值](../001-lexical/106-numeric-literals.md#163-無後綴的字面值)。
 
-相對地，執行時變數的自動轉換是不允許的。必須一律寫出上述三種形式之一。唯一的例外是視圖而非轉換：在預期 `SliceMut<T>` 之處的 `List<T>`，會以整個串列的可寫視圖傳遞，而在那裡的 `xs[a:b]` 則以該範圍的視圖傳遞（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可寫入檢視)）。不會複製任何東西。
+相對地，執行時變數的自動轉換是不允許的。必須一律寫出上述三種形式之一。唯一的例外是檢視而非轉換：在預期 `SliceMut<T>` 之處的 `List<T>`，會以整個串列的可寫入檢視傳遞，而在那裡的 `xs[a:b]` 則以該範圍的檢視傳遞（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可寫入檢視)）。不會複製任何東西。
 
 ```nabi
 let a: i64 = 100i64;

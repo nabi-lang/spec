@@ -106,7 +106,7 @@ mod inner {
 }
 ```
 
-glob 重新导出（`pub use mod::*`、`pub use mod::**`）的行为不同：原可见性窄于重新导出可见性的项会被悄悄过滤掉，这不是错误（ERROR）（[5.8.12 glob 重新导出](#5812-glob-重新导出与可见性)）。
+glob 重新导出（`pub use mod::*`、`pub use mod::**`）的行为不同：原可见性窄于重新导出可见性的项会被悄悄过滤掉，这不是错误（[5.8.12 glob 重新导出](#5812-glob-重新导出与可见性)）。
 
 ## 5.8.5. 多项重新导出
 
@@ -155,7 +155,7 @@ pub use foo::very_long_name as short_name;
 pub use foo::geom;               // re-exports the module itself
 ```
 
-于是外部用户可以访问 `my_pkg::geom::Point`。经过重新导出的模块的路径，按经过该模块本身来解析。
+于是外部用户可以访问 `my_pkg::geom::Point`。经由重新导出的模块的路径，与经由该模块本身的路径解析方式相同。
 
 ## 5.8.9. `prelude` 模式
 
@@ -187,7 +187,7 @@ mod b { pub use pkg::a::Item; }
 // ERROR: circular dependency
 ```
 
-这样的循环是错误（ERROR），由编译器检测。
+这样的循环是错误，由编译器检测。
 
 ## 5.8.11. 实现
 

@@ -152,7 +152,7 @@ par::for_each(xs, [ref buf] |x| { buf.push(x) });
 // ERROR (E0085): a [ref buf] cell cannot cross threads
 ```
 
-应改用折叠（`par::fold(xs, 0, |a, b| a + b)`），通过 `Mutex` / `RwLock` / `Atomic` / 通道共享，或者从线程返回值（`join()`）。只有被派生的代码需要的值，就把它移入：`thread::spawn([move buf] || buf.len())`。
+应改用折叠（`par::fold(xs, 0, |a, b| a + b)`），通过 `Mutex` / `RwLock` / `Atomic` / 通道共享，或者从线程返回值（`join()`）。只有被启动的代码需要的值，就把它移入：`thread::spawn([move buf] || buf.len())`。
 
 以这种方式共享的值属于它的新所有者：在 `Mutex::new(buf)` 或 `tx.send(buf)` 之后使用 `buf` 是编译错误（E0105，[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)）。应通过锁使用它，或者交出 `buf.clone()`。
 

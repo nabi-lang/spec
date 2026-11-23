@@ -54,7 +54,7 @@ fn bad() -> i32 {
 fn parse(s: str) throws -> i32 { ... }
 ```
 
-未定型的 `throws` 是 `throws (any Error)` 的簡寫。函式可以擲回任何實作了標準函式庫 [`Error`](../../refs-standard-libraries/200-core/214-error.md) trait 之型別的錯誤，而擲回的值以 `any Error` 值，即[受約束的 `any`](../002-types/202-any-slot.md)，交付。呼叫者在 `catch` 中以型別模式收窄為具體型別，或以 `catch e: any Error` 或全收分支捕捉所有錯誤。
+未定型的 `throws` 是 `throws (any Error)` 的簡寫。函式可以擲回任何實作了標準函式庫 [`Error`](../../refs-standard-libraries/200-core/214-error.md) trait 之型別的錯誤，而擲回的值以 `any Error` 值，即[受約束的 `any`](../002-types/202-any-slot.md)，交付。呼叫者在 `catch` 中以型別模式收窄為具體型別，或以 `catch e: any Error` 或全收分支攔截所有錯誤。
 
 當錯誤種類的集合對呼叫者而言並非封閉時，例如公開 API，建議使用未定型的形式。
 
@@ -130,7 +130,7 @@ fn caller4() -> i32 {             // discards the error or turns it into a panic
 }
 ```
 
-因此每個錯誤可能流經之處都以 `try` 在程式碼中可見，而錯誤傳播多遠則由函式簽章的 `throws` 可見。
+因此每個錯誤可能流經之處，都會以 `try` 呈現在程式碼中；而錯誤能傳播多遠，則可從函式簽章的 `throws` 看出。
 
 ## 4.14.7. `rethrows`
 
@@ -253,7 +253,7 @@ impl Database {
 
 ## 4.14.13. panic 與致命錯誤
 
-panic 不是 `throws` 錯誤。panic（標準函式庫的 `panic`、失敗的 `try!`、除以零、整數溢位、邊界檢查失敗）以及[錯誤控制流程](../003-expressions/314-error-control-flow.md)的致命錯誤，不屬於任何 `throws` 簽章，也無法以 `catch` 捕捉。執行環境把下列內容寫到標準錯誤（stderr），並以結束碼 `101` 終止行程。
+panic 不是 `throws` 錯誤。panic（標準函式庫的 `panic`、失敗的 `try!`、除以零、整數溢位、邊界檢查失敗）以及[錯誤控制流程](../003-expressions/314-error-control-flow.md)的致命錯誤，不屬於任何 `throws` 簽章，也無法以 `catch` 攔截。執行環境把下列內容寫到標準錯誤（stderr），並以結束碼 `101` 終止行程。
 
 ```
 thread '<name>' panicked at <path>:<line>:<col>:

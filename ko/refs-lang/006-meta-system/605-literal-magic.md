@@ -99,8 +99,6 @@ fn matrix_literal<const C: usize>(rows: ...[f64; C]) -> Matrix { ... }   // 행�
  └── open token
 ```
 
-> open token은 여는 토큰, close token은 닫는 토큰, expr group은 expr 그룹, separated by comma는 쉼표로 구분, zero or more는 0회 이상 반복을 뜻합니다.
-
 이 패턴은 `[]`, `[1]`, `[1, 2]`, `[1, 2, 3]` 등 쉼표로 구분한 모든 리스트에 매칭됩니다. 구분자 반복은 끝에 구분자 하나를 더 허용합니다(`[1, 2,]`).
 
 따옴표 안은 토큰 하나여야 합니다. `"ab cd"`처럼 여러 토큰이면 에러입니다. 토큰마다 따로 따옴표를 씌우세요.

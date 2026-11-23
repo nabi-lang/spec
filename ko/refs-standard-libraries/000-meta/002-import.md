@@ -118,7 +118,7 @@ let xs: core::collections::List<i32> = [1, 2];   // 경로로 가리킨 core 의
 
 ## 0.2.5. 묵시 적용되지 않는 계층
 
-묵시적으로 적용하는 것은 prelude뿐입니다. unsafe와 std는 **명시해야만** 쓸 수 있습니다.
+묵시적으로 적용하는 것은 prelude뿐입니다. `bare`와 `std`는 **명시해야만** 쓸 수 있습니다.
 
 ```nabi
 use bare::ffi::{CStr, CString};      // unsafe: 위험 시그널

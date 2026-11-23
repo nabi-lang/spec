@@ -78,7 +78,7 @@ fn caller() -> Data {             // non-throwing: all three types handled
 }
 ```
 
-## 4.14.5. `throws` 与函数体的一致
+## 4.14.5. `throws` 与函数体一致
 
 每一个可能离开函数的错误都必须与签名的 `throws` 兼容。错误来源于函数体中的 `throw` 语句，以及用 `try` 标记的可抛出调用；被函数内部 `catch` 处理的错误不参与检查。
 

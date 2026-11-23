@@ -41,11 +41,11 @@ use foo::**;             // recursive glob (foo + all submodules)
 
 下面的名称正好就是 `core::prelude` 中的名称。与 Nabi 的其他地方一样，模块、类型和 trait 共用一个命名空间，函数使用另一个，所以 `channel`、`panic` 和 `print` 各自既是模块又是函数。
 
-**模块（29 个）。** `core` 的顶层模块，`prelude` 本身和 `hash`（用 `use` 导入，[2.5.11](../200-core/205-cmp.md)）除外：
+**模块（29 个）**。`core` 的顶层模块，`prelude` 本身和 `hash`（用 `use` 导入，[2.5.11](../200-core/205-cmp.md)）除外：
 
 `array` `bench` `channel` `cmp` `collections` `convert` `crypto` `encoding` `error` `fmt` `future` `hint` `index` `io` `iter` `marker` `num` `ops` `panic` `par` `print` `range` `reflect` `str` `stream` `sync` `task` `time` `tuple`
 
-**类型（36 个）。**
+**类型（36 个）**。
 
 | 分组 | 名称 |
 |---|---|
@@ -56,7 +56,7 @@ use foo::**;             // recursive glob (foo + all submodules)
 | 格式化 | `Formatter` `FmtError` |
 | 核心错误 | `ParseError` `ValueError` `OverflowError` `ConversionError` `TypeError` `StackOverflowError` `OutOfMemoryError` `InternalError` |
 
-**trait（31 个）。**
+**trait（31 个）**。
 
 | 分组 | 名称 |
 |---|---|
@@ -70,13 +70,13 @@ use foo::**;             // recursive glob (foo + all submodules)
 
 运算符 trait 不在 prelude 中：写 `ops::Add`，或者 `use core::ops::Add;`。运算符本身不需要名称，在任何地方都可用（[refs-lang 6.7.8](../../refs-lang/006-meta-system/607-operator-magic.md#678-映射的可见性)），每个 `core` trait 的方法也是如此（[refs-lang 3.5](../../refs-lang/003-expressions/305-member-access-and-method-call.md)）。
 
-**操作系统扩展 trait。** 在具备它们的目标上，prelude 还会指称 `PermissionsExt`、`CommandExt` 和 `ExitStatusExt`（unix），以及 `ChildExt` 和 `TcpStreamExt`（linux），所以在这些目标上使用它们的方法不需要 `use`（[3.10.1](../300-std/310-os.md#3101-prelude-中的扩展-trait)）。它们不计入上面的数目。
+**操作系统扩展 trait**。在具备它们的目标上，prelude 还会指称 `PermissionsExt`、`CommandExt` 和 `ExitStatusExt`（unix），以及 `ChildExt` 和 `TcpStreamExt`（linux），所以在这些目标上使用它们的方法不需要 `use`（[3.10.1](../300-std/310-os.md#3101-prelude-中的扩展-trait)）。它们不计入上面的数目。
 
-**函数（13 个）。**
+**函数（13 个）**。
 
 `print` `println` `eprint` `eprintln` `dbg` `display` `panic` `assert` `assert_eq` `assert_ne` `unreachable` `channel` `channel_bounded`
 
-**变体。** 无。见 [refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-由期望类型确定的裸变体)。
+**变体**。无。见 [refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-由期望类型确定的裸变体)。
 
 ```nabi
 // user code
@@ -118,7 +118,7 @@ let xs: core::collections::List<i32> = [1, 2];   // the core List, by path
 
 ## 0.2.5. **不**隐式生效的层级
 
-只有 prelude 是隐式的。unsafe 和 std **只能显式导入**。
+只有 prelude 是隐式的。`bare` 和 `std` **只能显式导入**。
 
 ```nabi
 use bare::ffi::{CStr, CString};      // unsafe: danger signal
@@ -152,7 +152,7 @@ use core::prelude::*;   // the same import, written out
 
 它适用于教学或演示代码，可以一眼看出每个项来自哪里。
 
-标准库自身的模块不导入 prelude：每个层级都能以末段名称看到 `core` 的每个公开项（内部的 `use core::**;`），用户代码则没有这种待遇。
+标准库自身的模块不导入 prelude：每个层级都能以末段名称看到 `core` 的每个公开项（内部的 `use core::**;`），而用户代码不能这样看到。
 
 ## 0.2.7. 可见性
 

@@ -22,9 +22,9 @@ fn yield_priority_handler(...) { ... }
 fn with_handler(...) { ... }
 ```
 
-基本形式是 `#[keyword("name")]`，以关键字名（标识符形状的字符串字面量）为实参。处理函数是一个**自由函数**，不能附加在方法或 trait 项上。
+基本形式是 `#[keyword("name")]`，以关键字名（标识符形状的字符串字面量）为实参。处理函数是一个**自由函数**，不能附着在方法或 trait 项上。
 
-`struct` 上的 `#[keyword("name")]` 注册的是**类型关键字**：该名字在类型位置表示这个结构体（`int` → `core::num::bigint::Int`，`float` → `core::num::bigfloat::Float`，[标准库 2.1.2](../../refs-standard-libraries/200-core/201-numbers.md#212-int任意精度整数)）。只有标准库可以注册类型关键字。把它附加在既不是函数也不是结构体的项上是错误。
+`struct` 上的 `#[keyword("name")]` 注册的是**类型关键字**：该名字在类型位置表示这个结构体（`int` → `core::num::bigint::Int`，`float` → `core::num::bigfloat::Float`，[标准库 2.1.2](../../refs-standard-libraries/200-core/201-numbers.md#212-int任意精度整数)）。只有标准库可以注册类型关键字。把它附着在既不是函数也不是结构体的项上是错误。
 
 ## 6.6.3. 注册的效果
 

@@ -284,7 +284,7 @@ let total = evens(10).map(|x| x * x).sum();
 ```
 
 - 구체 타입은 본문 값의 타입이며, `pub` 함수에서도 [4.1.3](#413-반환-타입-생략)처럼 추론합니다. 호출은 정적입니다. [제네릭](../002-types/210-generics.md)처럼 태그도 박싱도 없습니다.
-- 함수마다 구체 타입은 하나입니다. 반환 경로의 타입이 다르면 에러(`the return paths of `f` have different types ..`)이고, 도움말은 `` to return several types, write `-> any Tr` ``입니다.
+- 함수마다 구체 타입은 하나입니다. 반환 경로의 타입이 다르면 에러(`` the return paths of `f` have different types .. ``)이고, 도움말은 `` to return several types, write `-> any Tr` ``입니다.
 - 구체 타입은 모든 바운드를 가져야 합니다. 아니면 바운드 자리에 `` `f` returns `ListIter<i32>`, which is not `Iterator<Item = str>` `` 에러가 납니다.
 - 호출자는 바운드만 봅니다. 바운드(와 그 슈퍼트레잇)의 메서드를 부르고, 바운드가 반복자면 반복하고, 같은 바운드의 제네릭 매개변수 자리에 넘기고, 바운드가 함수 타입이면 호출할 수 있습니다. 구체 타입을 이름 붙이거나 쓰면 에러입니다: `` no method `contains` on `some Iterator<Item = i32>`: callers see only its bounds ``, `` `let b` expects `Range<i32>`, found `some Iterator<Item = i32>` ``.
 - 같은 함수는 늘 같은 타입을 반환하므로 두 호출의 결과는 한 타입입니다. 다른 함수의 결과는 다른 타입입니다.

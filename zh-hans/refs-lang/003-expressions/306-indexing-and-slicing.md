@@ -42,7 +42,7 @@ d[k, default: v].f op= e;         →   the same, with t[i].f op= e
 d[k, default: v].m(args)          →   d.get_or_insert(k, v).m(args)
 ```
 
-`d` 和 `k` 只求值一次；`v` 在表达式每次执行时求值。一个类型只要有 `get_or` 和 `get_or_insert`，就支持这种形式（`Dict`，[stdlib 2.9.13](../../refs-standard-libraries/200-core/209-collections.md#2913-默认值运算符与构造函数)）。
+`d` 和 `k` 只求值一次；`v` 在表达式每次执行时求值。一个类型只要有 `get_or` 和 `get_or_insert`，就支持这种形式（`Dict`，[标准库 2.9.13](../../refs-standard-libraries/200-core/209-collections.md#2913-默认值运算符与构造函数)）。
 
 读和写映射到不同的 trait，所以试图写入只读数据是编译错误。多维索引脱糖为单个索引 trait 调用，各索引被打包为一个元组：`g[i, j]` 即通过 `Index<(I, J)>` 的 `g[(i, j)]`。当一个类型有多个 `Index<K>` impl 时，由实参类型选出一个。
 
@@ -133,7 +133,7 @@ xs[::0];               // panic: step 0
 
 ### 脱糖
 
-切片脱糖为一个区间和对 `Sliceable` trait 的调用（[stdlib 2.3.4](../../refs-standard-libraries/200-core/203-ops.md#234-索引-trait)）。
+切片脱糖为一个区间和对 `Sliceable` trait 的调用（[标准库 2.3.4](../../refs-standard-libraries/200-core/203-ops.md#234-索引-trait)）。
 
 ```
 arr[a : b]            →   arr.slice(a..b)                       // unsigned bounds, no step
@@ -156,14 +156,14 @@ arr[a : b]            →   slice_mut(arr, a..b)                  // a List wher
 
 ### `Slice` 结果的种类
 
-结果类型由 `Sliceable` 的关联类型确定。在标准库中如下（[stdlib 2.9.7](../../refs-standard-libraries/200-core/209-collections.md#297-slicet视图)）。
+结果类型由 `Sliceable` 的关联类型确定。在标准库中如下（[标准库 2.9.7](../../refs-standard-libraries/200-core/209-collections.md#297-slicet视图)）。
 
 | 目标                 | 结果                                                                 |
 |----------------------|----------------------------------------------------------------------|
 | `List<T>`            | `Slice<T>`：列表缓冲区的视图（元素写入可见）                         |
 | `Slice<T>`           | `Slice<T>`：视图的视图                                               |
 | `[T; N]`             | `Slice<T>`：数组副本的视图（数组是值）                               |
-| 期望 `SliceMut<T>` 处的 `List<T>` | `SliceMut<T>`：列表的可写视图（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可写视图)）；无步长 |
+| 期望 `SliceMut<T>` 处的 `List<T>` | `SliceMut<T>`：列表的可写视图（[标准库 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可写视图)）；无步长 |
 | `SliceMut<T>`        | `SliceMut<T>`：视图的可写视图                                        |
 | `str`、`StrBuf`      | 新的 `str`：字节副本（因为 `str` 必须保持为 C 字符串），带 UTF-8 边界检查 |
 
@@ -192,11 +192,11 @@ m[1:3, :] = x       →   IndexSet::index_set(m, (SliceArg::new(1, 3, none), Sli
 
 `SliceArg::indices(len)` 对一个轴应用 3.6.2 的规则，返回 `(first, count, step)`。
 
-实现标记 trait `core::index::AxisIndexed` 的类型（`Array` 实现了它，[stdlib 2.9.14](../../refs-standard-libraries/200-core/209-collections.md#2914-arrayt-const-n-usizen-维数组)）把每个部分作为一个*轴实参*接收，因此一组基于 `isize` 的 impl 就能服务于索引的所有写法：
+实现标记 trait `core::index::AxisIndexed` 的类型（`Array` 实现了它，[标准库 2.9.14](../../refs-standard-libraries/200-core/209-collections.md#2914-arrayt-const-n-usizen-维数组)）把每个部分作为一个*轴实参*接收，因此一组基于 `isize` 的 impl 就能服务于索引的所有写法：
 
 | 部分                        | 轴实参                           | 含义（对 `Array`）                             |
 |-----------------------------|----------------------------------|-----------------------------------------------|
-| 任意类型的整数              | `isize`（字面量就是它；类型仅由字面量给出的变量，如 `for i in 0..4` 的 `i`，是其 `i64`；`usize`、`u64`、`i64` 和 `u32` 会被检查，其他类型会被拓宽） | 一个位置；该轴被去掉；负值从末尾计数（3.6.1） |
+| 任意类型的整数              | `isize`（字面量就是它；类型仅由字面量给出的变量，如 `for i in 0..4` 的 `i`，按其 `i64` 处理；`usize`、`u64`、`i64` 和 `u32` 会被检查，其他类型会被拓宽） | 一个位置；该轴被去掉；负值从末尾计数（3.6.1） |
 | `a:b:k`                     | `SliceArg`                       | 该轴上带步长的区间（3.6.2 的规则）             |
 | 与其他部分并列的 `..`       | `core::index::Rest`         | 其他部分剩下的每个轴，整个保留                 |
 | `none`                      | `core::index::NewAxis`      | 一个长度为 1 的新轴                            |

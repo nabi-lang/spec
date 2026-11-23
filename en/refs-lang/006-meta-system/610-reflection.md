@@ -127,7 +127,7 @@ Config { host: "h", port: 80 }
 Opaque
 ```
 
-A bare expression uses `Display`, else `Debug`, and a trailing `?` uses `Debug`. A value without either (`Debug` for a trailing `?`) prints only its type name. This behavior is used by REPL and Jupyter cell sessions ([9.7](../009-tools/907-jit-cells.md)).
+A value without either (`Debug` for a trailing `?`) prints only its type name. This behavior is used by REPL and Jupyter cell sessions ([9.7](../009-tools/907-jit-cells.md)).
 
 ## 6.10.4. No global `typeof` / `sizeof` functions
 

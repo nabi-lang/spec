@@ -1,6 +1,6 @@
 # 1.2. 強制轉型操作：明確命名的強制轉型
 
-指標與型別之間的轉換只以**具名函式**存在。沒有 `cast` 模組：`ptr_cast`、`align_cast`、`align_cast_unchecked` 和 `const_cast` 定義在 `bare::ptr`，`reinterpret` 和 `transmute_unchecked` 定義在 `bare::mem`，而 `bare` 根部重新匯出這六個（`bare::ptr_cast`）以及 `Pod`（[1.2.5](#125-reinterpreta-pod-b-pod位元強制轉型安全)）。C 和 Rust 中的 `as` 強制轉型之所以如此危險，是因為轉換會無聲地發生；為了避開這個陷阱，Nabi 要求每一次強制轉型都帶有**明確的名稱**。
+指標與型別之間的轉換只以**具名函式**存在。沒有 `cast` 模組：`ptr_cast`、`align_cast`、`align_cast_unchecked` 和 `const_cast` 定義在 `bare::ptr`，`reinterpret` 和 `transmute_unchecked` 定義在 `bare::mem`，而 `bare` 根模組重新匯出這六個（`bare::ptr_cast`）以及 `Pod`（[1.2.5](#125-reinterpreta-pod-b-pod位元強制轉型安全)）。C 和 Rust 中的 `as` 強制轉型之所以如此危險，是因為轉換會在不知不覺中發生；為了避開這個陷阱，Nabi 要求每一次強制轉型都帶有**明確的名稱**。
 
 ## 1.2.1. 4 個強制轉型函式
 
@@ -19,7 +19,7 @@
 |---------------------------------------|-------------------------------------------------|---------|
 | `transmute_unchecked<A,B>(a: A) -> B` | **不做 Pod 檢查**的位元強制轉型（由呼叫端負責） | 最高 |
 
-編譯器拒絕對指標使用 `as` 關鍵字，因此使用者必然使用具名的強制轉型。
+編譯器拒絕對指標使用 `as` 關鍵字，因此使用者只能使用具名的強制轉型。
 
 ## 1.2.2. `ptr_cast<U>`：指標型別轉換
 
@@ -27,7 +27,7 @@
 fn ptr_cast<U, T>(p: Ptr<T>) -> Ptr<U>;
 ```
 
-這個函式完整保留位址與來源，只變更型別標記。**因此對齊由呼叫端負責。**它只接受 `Ptr`（Nabi 沒有多載）；`ConstPtr` 和 `ManyPtr` 以各自的 `cast` 方法用同樣方式變更型別（[1.1](101-ptr.md)）：`p.cast::<U>()`。
+這個函式完整保留位址與來源，只變更型別標記。**因此對齊由呼叫端負責**。它只接受 `Ptr`（Nabi 沒有多載）；`ConstPtr` 和 `ManyPtr` 以各自的 `cast` 方法用同樣方式變更型別（[1.1](101-ptr.md)）：`p.cast::<U>()`。
 
 ```nabi
 let p: Ptr<u32> = ...;        // 4-byte aligned
@@ -135,7 +135,7 @@ unsafe impl<A: Pod, B: Pod, C: Pod> Pod for (A, B, C) { }
 unsafe impl<A: Pod, B: Pod, C: Pod, D: Pod> Pod for (A, B, C, D) { }
 ```
 
-`bool` 和 `char` 不是 `Pod`：它們的大多數位元模式都不是值（`bool` 是 0 或 1，`char` 是 Unicode 純量）。請重新解讀為 `u8` / `u32`，再帶檢查地轉換（`b != 0u8`、`char::from_u32`）。
+`bool` 和 `char` 不是 `Pod`：它們的大多數位元模式都不是值（`bool` 是 0 或 1，`char` 是 Unicode 純量）。請重新解讀為 `u8` / `u32`，再以帶檢查的方式轉換（`b != 0u8`、`char::from_u32`）。
 
 `Pod` 是 `unsafe trait`（[4.15.4](../../refs-lang/004-functions/415-unsafe.md#4154-在-trait-中)）：它的實作承諾每一種位元模式都是值，而編譯器無法檢查這一點，因此手寫的實作是 `unsafe impl Pod for T {}`。`#[derive(Pod)]` 會寫出它。
 

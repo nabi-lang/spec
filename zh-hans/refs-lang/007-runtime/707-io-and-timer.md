@@ -120,7 +120,7 @@ loop {
 - 在套接字 I/O、`sleep` / `timeout`、`lock_async` 或 `recv_async` / `send_async` 中等待的任务，被取消时会被唤醒，并在下一个 `await` 处离开。
 - 任务结束时，它的所有唤醒注册（I/O 就绪等待、定时器、驻留表中的唤醒器）都会被释放。运行中池里的注册数量可以用诊断函数 `task::registrations()` 查看；该值的确切含义由实现定义。
 
-在 `task::timeout` 到期或 `task::race` 决出胜者之后，落败的任务会继续运行。要停止它们，调用 `cancel`。`task::select` 不生成任务，因此它自己取消落败的 future（[标准库 2.18.1](../../refs-standard-libraries/200-core/218-task.md#select最先完成的-future)）；清理中含有 `await` 的落败者作为独立的任务完成清理。
+在 `task::timeout` 到期或 `task::race` 决出胜者之后，落败的任务会继续运行。要停止它们，调用 `cancel`。`task::select` 不启动任务，因此它自己取消落败的 future（[标准库 2.18.1](../../refs-standard-libraries/200-core/218-task.md#select最先完成的-future)）；清理中含有 `await` 的落败者作为独立的任务完成清理。
 
 ## 7.7.10. 与 reactor 模式的比较
 

@@ -18,7 +18,7 @@ using_binding  ::= pattern "=" expr
 
 - `pattern` 可以是[模式](311-patterns.md)中定义的任何不可反驳的模式（标识符、元组、结构体解构等）。大多数情况下使用单个标识符。被释放的是 `expr` 的整个值。
 - `expr` 是创建或获取资源的表达式。其结果类型必须实现 [`Drop`](../../refs-standard-libraries/200-core/213-marker.md) trait。
-- 如果获取资源可能失败，用 `try` 标记 `expr`（`using f = try fs::open(path) { ... }`）。如果获取时产生错误，控制在未绑定任何资源的情况下离开，因此不会发生 `Drop` 调用。详细语义遵循[错误控制流](314-error-control-flow.md)。
+- 如果获取资源可能失败，用 `try` 标记 `expr`（`using f = try fs::open(path) { ... }`）。如果获取时产生错误，控制流在未绑定任何资源的情况下离开，因此不会发生 `Drop` 调用。详细语义遵循[错误控制流](314-error-control-flow.md)。
 - 用 `,` 连接的多个绑定构成多重资源；详细行为在 [3.17.4 多重资源](#3174-多重资源)中定义。
 - `block` 遵循[块表达式](309-block-expressions.md)的规则，其最后一个表达式的值是整个 `using` 表达式的值。
 
@@ -74,7 +74,7 @@ using a = AcquireA(), b = AcquireB(a) {
 }
 ```
 
-两种形式都遵循**逆序释放**：先 drop `b`，再 drop `a`。这与 Java 的 try-with-resources 规则相同。逆序释放能安全地解开依赖关系（`b` 引用 `a`）。
+两种形式都遵循**逆序释放**：先释放 `b`，再释放 `a`。这与 Java 的 try-with-resources 规则相同。逆序释放能安全地解开依赖关系（`b` 引用 `a`）。
 
 ## 3.17.5. 作为表达式的 `using`
 
@@ -90,7 +90,7 @@ let content = using f = try fs::open(path) {
 
 ## 3.17.6. drop 被调用的时机
 
-`using` 保证在以下全部五条路径上 drop 被绑定的资源：
+在以下全部五条路径上，`using` 都保证对被绑定的资源调用 `drop`：
 
 - 块正常完成（最后一个表达式已求值）
 - 主体内的 `return`

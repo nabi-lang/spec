@@ -284,7 +284,7 @@ let total = evens(10).map(|x| x * x).sum();
 ```
 
 - 具体类型是主体值的类型，按 [4.1.3](#413-省略返回类型) 推断，在 `pub` 函数上也是如此。调用是静态的：没有标签，也没有装箱，与[泛型](../002-types/210-generics.md)相同。
-- 每个函数只有一个具体类型：返回路径类型不同是错误（`the return paths of `f` have different types ..`），帮助信息为 `` to return several types, write `-> any Tr` ``。
+- 每个函数只有一个具体类型：返回路径类型不同是错误（`` the return paths of `f` have different types .. ``），帮助信息为 `` to return several types, write `-> any Tr` ``。
 - 具体类型必须具有每个约束：否则在约束处报 `` `f` returns `ListIter<i32>`, which is not `Iterator<Item = str>` ``。
 - 调用者只能看到约束：可以调用约束（及其父 trait）的方法；约束是迭代器时可以迭代它；可以把它传给期望具有这些约束的泛型参数的位置；约束是函数类型时可以调用它。命名或使用具体类型是错误：`` no method `contains` on `some Iterator<Item = i32>`: callers see only its bounds ``；`` `let b` expects `Range<i32>`, found `some Iterator<Item = i32>` ``。
 - 同一个函数总是返回同一个类型，所以两次调用的结果属于同一类型。不同函数的结果是不同的类型。

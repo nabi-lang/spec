@@ -140,7 +140,7 @@ Ctrl-C            interrupted (Ctrl-C); the session is unchanged
 other (a fault)   the cell failed; the session is unchanged
 ```
 
-`<error>` 是錯誤的描述，與從 `main` 逸出之未捕捉錯誤的描述相同（[4.16.4](../004-functions/416-entry-point.md)）。沒有任何訊息會指名儲存格所產生的進入函式。
+`<error>` 是錯誤的描述，與從 `main` 逸出之未攔截錯誤的描述相同（[4.16.4](../004-functions/416-entry-point.md)）。沒有任何訊息會指名儲存格所產生的進入函式。
 
 繫結與項目會回復到該儲存格之前的狀態（9.7.0 規則 5），但已經發生的外部效果（輸出、檔案寫入等）不會被撤銷。失敗的儲存格不會保留在工作階段中，因此可以再次輸入修正後的儲存格。沒有 fork 的主機（Windows）在儲存格之前儲存工作階段的記憶體與執行緒，並在它失敗時把它們放回去，可觀察到的結果與 fork 出的快照相同。
 
@@ -150,7 +150,7 @@ other (a fault)   the cell failed; the session is unchanged
 
 ### 位置
 
-正在輸入之儲存格中的診斷指名 `<repl>:line:col`，以儲存格自己的文字計算。先前儲存格之項目中的診斷，以及執行中程式碼所回報的位置（panic、未捕捉的錯誤、`try!`），指名 `<repl cell N>:line:col`：儲存格 N 是工作階段中輸入的第 N 個儲存格（`:type` 等指令不是儲存格；失敗的儲存格也算在內），行與欄以其文字計算。在 Jupyter 核心中，N 是筆記本儲存格的執行計數，而拆成多個 REPL 儲存格的筆記本儲存格會把它們編號為 `N.1`、`N.2` 等（[9.8.1](908-jupyter-integration.md#筆記本儲存格與-repl-儲存格)）。在先前儲存格中定義的函式會回報在該儲存格中的位置。
+正在輸入之儲存格中的診斷指名 `<repl>:line:col`，以儲存格自己的文字計算。先前儲存格之項目中的診斷，以及執行中程式碼所回報的位置（panic、未攔截的錯誤、`try!`），指名 `<repl cell N>:line:col`：儲存格 N 是工作階段中輸入的第 N 個儲存格（`:type` 等指令不是儲存格；失敗的儲存格也算在內），行與欄以其文字計算。在 Jupyter 核心中，N 是筆記本儲存格的執行計數，而拆成多個 REPL 儲存格的筆記本儲存格會把它們編號為 `N.1`、`N.2` 等（[9.8.1](908-jupyter-integration.md#筆記本儲存格與-repl-儲存格)）。在先前儲存格中定義的函式會回報在該儲存格中的位置。
 
 ```
 >>> fn boom(n: i32) {
@@ -207,7 +207,7 @@ Opaque
 
 ### Jupyter 輸出
 
-每個儲存格的結果以只有單一 `text/plain` 項目的 `execute_result` 傳送，內容與 REPL 印出的文字相同。不會產生其他種類的 MIME 內容。
+每個儲存格的結果以 `execute_result` 傳送，其 `text/plain` 項目就是 REPL 印出的文字；型別實作了 `RichDisplay` 的值還會加入其 bundle 中的 MIME 種類（[9.8](908-jupyter-integration.md)）。
 
 Jupyter 整合的細節定義於 [Jupyter 整合](908-jupyter-integration.md)。
 

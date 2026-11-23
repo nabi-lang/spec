@@ -284,7 +284,7 @@ impl Drop for Container {
 
 详见 [0.4 lang 槽表](../000-meta/004-lang-slot-table.md)的 0.4.2 / 0.4.3 / 0.4.5 节。
 
-## 2.13.6. Trait 实现矩阵
+## 2.13.6. trait 实现矩阵
 
 标准库的主要类型与这三个 trait 的关系：
 
@@ -443,7 +443,7 @@ trait Default {
 
 `#[derive(...)]`（[refs-lang 6.2.1](../../refs-lang/006-meta-system/602-built-in-attributes.md#621-derive-自动实现-trait)）能生成的内置 trait 只有以下这些：
 
-| Trait         | 生成的实现                                    | 要求                                   |
+| trait         | 生成的实现                                    | 要求                                   |
 |---------------|-----------------------------------------------|----------------------------------------|
 | `Clone`       | 逐字段 `clone`                                | 每个字段都是 `Clone`                   |
 | `Copy`        | 标记                                          | 同时派生/实现了 `Clone`，且不是 `Drop` |

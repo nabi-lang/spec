@@ -147,7 +147,7 @@ bb_exit:
 for x in xs { body }
 ```
 
-[迴圈運算式](../003-expressions/313-loop-expressions.md)中的去糖把它展開為 `let it = xs.into_iter(); loop { match it.next() { ... } }`，然後經過上述相同的降階。對整數範圍（`for i in a..b`，邊界只求值一次）或陣列的 `for`，直接降階為一個在主體之前推進索引的計數 `while` 迴圈，因此 `continue` 無法略過它。
+[迴圈運算式](../003-expressions/313-loop-expressions.md)中的去語法糖把它展開為 `let it = xs.into_iter(); loop { match it.next() { ... } }`，然後經過上述相同的降階。對整數範圍（`for i in a..b`，邊界只求值一次）或陣列的 `for`，直接降階為一個在主體之前推進索引的計數 `while` 迴圈，因此 `continue` 無法略過它。
 
 ## 8.9.5. `break` / `continue`
 

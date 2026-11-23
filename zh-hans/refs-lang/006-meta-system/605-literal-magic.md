@@ -99,8 +99,6 @@ fn matrix_literal<const C: usize>(rows: ...[f64; C]) -> Matrix { ... }   // [f64
  └── open token
 ```
 
-> open token 是开始词法单元，close token 是结束词法单元，expr group 是 `expr` 的分组，“separated by comma”表示以逗号分隔，“zero or more”表示重复零次或多次。
-
 这个模式匹配所有以逗号分隔的列表：`[]`、`[1]`、`[1, 2]`、`[1, 2, 3]` 等。带分隔符的重复允许一个末尾分隔符（`[1, 2,]`）。
 
 引号中的内容必须是单个词法单元。`"ab cd"` 这样包含多个词法单元的写法是错误；应把每个词法单元分别加引号。

@@ -1,6 +1,6 @@
 # 3.3. `time::`：时间
 
-时间按需求分布在两个模块中。`core::time` 存放 `Duration` 和 `Instant`：单调时钟本来就在 `core` 中运行（任务计时器，2.18），所以这两者在所有目标上都可用，也不需要 `use`（0.2）。`std::time` 存放需要操作系统的时钟：挂钟 `SystemTime`、启动时钟 `BootTime` 和 `UNIX_EPOCH`。它还存放民用日历：`Date`、`Time`、`DateTime`、`Period`、`Offset`、`TimeZone` 和 `Zoned`（3.3.6 至 3.3.8），因为时区来自操作系统的 tz 数据库。每个类型只有一条路径（[0.1.6](../000-meta/001-tier-model.md#016-每个项只有一条路径)）；`std::time` 不重新导出 core 的类型。单调时钟、挂钟和自启动以来经过的时间被明确区分，因此可以选择适合所做测量的时钟。
+时间相关的类型按其依赖分布在两个模块中。`core::time` 存放 `Duration` 和 `Instant`：单调时钟本来就在 `core` 中运行（任务计时器，2.18），所以这两者在所有目标上都可用，也不需要 `use`（0.2）。`std::time` 存放需要操作系统的时钟：挂钟 `SystemTime`、启动时钟 `BootTime` 和 `UNIX_EPOCH`。它还存放民用日历：`Date`、`Time`、`DateTime`、`Period`、`Offset`、`TimeZone` 和 `Zoned`（3.3.6 至 3.3.8），因为时区来自操作系统的 tz 数据库。每个类型只有一条路径（[0.1.6](../000-meta/001-tier-model.md#016-每个项只有一条路径)）；`std::time` 不重新导出 core 的类型。单调时钟、挂钟和自启动以来经过的时间被明确区分，因此可以选择适合所做测量的时钟。
 
 ## 3.3.1. 四类型模型
 
@@ -15,7 +15,7 @@
 
 `Duration` 的内部表示是 `i64` 纳秒。Rust 采用的 `u128` 被认为过度；`i64` 已经覆盖约 ±292 年，对实际使用绰绰有余。
 
-**所有时钟共用一条规则。** 任何时钟的两次读数之间的跨度都是精确的有符号 `Duration`：`b` 较晚时 `a.duration_since(b)` 为负，永远不会是错误、`none` 或零。`elapsed()` 在单调时钟上测量，因此挂钟的跳变不会让它变成负数。这是 Go 的规则（`time.Sub`、`time.Since`）。
+**所有时钟共用一条规则**。任何时钟的两次读数之间的跨度都是精确的有符号 `Duration`：`b` 较晚时 `a.duration_since(b)` 为负，永远不会是错误、`none` 或零。`elapsed()` 在单调时钟上测量，因此挂钟的跳变不会让它变成负数。这是 Go 的规则（`time.Sub`、`time.Since`）。
 
 ## 3.3.2. `Instant`：单调时钟
 
@@ -99,7 +99,7 @@ impl Sub<Duration> for SystemTime { type Output = SystemTime; ... }
 
 `duration_since` 是挂钟读数之间的有符号差：较晚的 `earlier` 得到负的 `Duration`，而不是错误。`unix_secs` 向下取整，因此对于亚秒部分为 `n` 的 `t`，`SystemTime::from_unix(t.unix_secs(), n)` 会还原出 `t`，在纪元之前也是如此。
 
-**单调读数。** `SystemTime::now()` 同时也读取单调时钟（即 `Instant` 的时钟）。`elapsed()` 基于这个读数测量，因此在 `now()` 与 `elapsed()` 之间挂钟的跳变不会改变结果。与 `Duration` 进行的 `+` / `-` / `checked_*` 会同时移动两个读数。不是来自 `now()` 的 `SystemTime`（`from_unix`、`UNIX_EPOCH`、`Metadata::modified`）没有单调读数，它的 `elapsed()` 是 `SystemTime::now().duration_since(self)`。比较、相等和哈希只使用挂钟读数。
+**单调读数**。`SystemTime::now()` 同时也读取单调时钟（即 `Instant` 的时钟）。`elapsed()` 基于这个读数测量，因此在 `now()` 与 `elapsed()` 之间挂钟的跳变不会改变结果。与 `Duration` 进行的 `+` / `-` / `checked_*` 会同时移动两个读数。不是来自 `now()` 的 `SystemTime`（`from_unix`、`UNIX_EPOCH`、`Metadata::modified`）没有单调读数，它的 `elapsed()` 是 `SystemTime::now().duration_since(self)`。比较、相等和哈希只使用挂钟读数。
 
 ### 示例
 
@@ -132,7 +132,7 @@ impl BootTime {
 
 与 `Instant` 一样，当 `earlier` 较晚时 `duration_since` 为负。`BootTime` 与 `Instant` 的区别在于跨越挂起时的行为。`Instant` 与 Linux 的 `CLOCK_MONOTONIC` 一样在挂起期间停止，而 `BootTime` 沿用 `CLOCK_BOOTTIME`，在挂起期间继续前进。
 
-当移动或笔记本应用必须测量“真实经过的时间（含挂起）”时，这一区别是决定性的。截至 2026 年，Rust 仍没有用于此目的的稳定 API；Nabi 早早就把它放到了表面上。
+当移动或笔记本应用必须测量“真实经过的时间（含挂起）”时，这一区别是决定性的。截至 2026 年，Rust 仍没有用于此目的的稳定 API；Nabi 则早早把它作为公开 API 提供。
 
 ## 3.3.5. `Duration`
 
@@ -325,15 +325,15 @@ impl Period {
 // Period + Period, Period - Period, -Period; Default is ZERO
 ```
 
-**范围与历法。** `Date` 是外推格里历（proleptic Gregorian calendar）中 `MIN_YEAR` 与 `MAX_YEAR` 之间的某一天；与 ISO 8601 的计法一样，第 0 年是公元前 1 年。天数计算使用 Howard Hinnant 的民用历算法，在整个范围内都是精确的。`unix_days` 从 1970-01-01 起算，该日为第 0 天。
+**范围与历法**。`Date` 是外推格里历（proleptic Gregorian calendar）中 `MIN_YEAR` 与 `MAX_YEAR` 之间的某一天；与 ISO 8601 的计法一样，第 0 年是公元前 1 年。天数计算使用 Howard Hinnant 的民用历算法，在整个范围内都是精确的。`unix_days` 从 1970-01-01 起算，该日为第 0 天。
 
-**字段错误会抛出，运算溢出会触发 panic。** 构造函数收到不构成日期或时间的字段时（`Date::new(2023, 2, 29)`、`Time::new(24, 0, 0)`），会抛出指出该字段及其范围的 `ValueError`：`day 29 is out of range for 2023-02 (1..=28)`。超出范围的运算（`Date::MAX.add_days(1)`）会像 `Duration` 一样触发 panic；`checked_*` 形式则返回 `none`。
+**字段错误会抛出，运算溢出会触发 panic**。构造函数收到不构成日期或时间的字段时（`Date::new(2023, 2, 29)`、`Time::new(24, 0, 0)`），会抛出指出该字段及其范围的 `ValueError`：`day 29 is out of range for 2023-02 (1..=28)`。超出范围的运算（`Date::MAX.add_days(1)`）会像 `Duration` 一样触发 panic；`checked_*` 形式则返回 `none`。
 
-**月份会被钳制。** 新的月份有原来那一天时，`add_months` 和 `add_years` 保留该日，否则取新月份的最后一天：2024-01-31 加一个月是 2024-02-29，2024-02-29 加一年是 2025-02-28。每次调用各自钳制，所以从 1 月 31 日起两次 `add_months(1)` 落在 3 月 29 日，而 `add_months(2)` 落在 3 月 31 日。`Date + Period` 先把年和月一起加上（钳制一次），再加天数。这是 java.time 和 Temporal 的规则。
+**月份会被钳制**。新的月份有原来那一天时，`add_months` 和 `add_years` 保留该日，否则取新月份的最后一天：2024-01-31 加一个月是 2024-02-29，2024-02-29 加一年是 2025-02-28。每次调用各自钳制，所以从 1 月 31 日起两次 `add_months(1)` 落在 3 月 29 日，而 `add_months(2)` 落在 3 月 31 日。`Date + Period` 先把年和月一起加上（钳制一次），再加天数。这是 java.time 和 Temporal 的规则。
 
 **`until`** 是从 `self` 到 `later` 的日历跨度：先取整年，再取整月，然后是天，都带有跨度的符号，其选取方式保证对任意两个日期都有 `d + d.until(e) == e`。`days_since` 是单纯的天数差。
 
-**ISO 周。** `iso_week` 是 ISO 8601 的周编号：每周从星期一开始，第 1 周包含当年的第一个星期四，因此 2021-01-03 属于 2020 年的第 53 周，2024-12-30 属于 2025 年的第 1 周。
+**ISO 周**。`iso_week` 是 ISO 8601 的周编号：每周从星期一开始，第 1 周包含当年的第一个星期四，因此 2021-01-03 属于 2020 年的第 53 周，2024-12-30 属于 2025 年的第 1 周。
 
 ### 示例
 
@@ -430,11 +430,11 @@ impl Add<Period> for Zoned { ... }     // calendar time, as add_months then add_
 impl Sub<Period> for Zoned { ... }
 ```
 
-**时区从哪里来。** `TimeZone::get` 以 TZif 文件（RFC 8536，版本 1 至 4）的形式读取 tz 数据库（IANA）中的时区：设置了 `$TZDIR` 时从中读取，否则从 `/usr/share/zoneinfo`、`/usr/lib/zoneinfo`、`/usr/share/lib/zoneinfo` 和 `/etc/zoneinfo` 中第一个存在的目录读取。越过文件中最后一次转换之后，由文件尾部的 POSIX `TZ` 规则给出偏移，因此遥远未来的日期遵循现行规则。`UTC`、其他 UTC 名称（`Etc/UTC`、`GMT`、`Zulu` 等）和偏移（`+09:00`）无需数据库即可使用。没有数据库时，其他任何名称都会抛出错误，错误会说明系统没有 tz 数据库：Windows 和浏览器没有 tz 数据库，WASI 程序只有在主机授予该目录时才能看到它。`from_tzif` 读取程序自己携带的 TZif 文件（例如用 `include_bytes!`），在所有目标上都可用。`from_posix` 接受 POSIX `TZ` 规则（`EST5EDT,M3.2.0,M11.1.0`；其偏移按 POSIX 的写法以西为正）。
+**时区从哪里来**。`TimeZone::get` 以 TZif 文件（RFC 8536，版本 1 至 4）的形式读取 tz 数据库（IANA）中的时区：设置了 `$TZDIR` 时从中读取，否则从 `/usr/share/zoneinfo`、`/usr/lib/zoneinfo`、`/usr/share/lib/zoneinfo` 和 `/etc/zoneinfo` 中第一个存在的目录读取。越过文件中最后一次转换之后，由文件尾部的 POSIX `TZ` 规则给出偏移，因此遥远未来的日期遵循现行规则。`UTC`、其他 UTC 名称（`Etc/UTC`、`GMT`、`Zulu` 等）和偏移（`+09:00`）无需数据库即可使用。没有数据库时，其他任何名称都会抛出错误，错误会说明系统没有 tz 数据库：Windows 和浏览器没有 tz 数据库，WASI 程序只有在宿主授予该目录时才能看到它。`from_tzif` 读取程序自己携带的 TZif 文件（例如用 `include_bytes!`），在所有目标上都可用。`from_posix` 接受 POSIX `TZ` 规则（`EST5EDT,M3.2.0,M11.1.0`；其偏移按 POSIX 的写法以西为正）。
 
-**本地时区。** `TimeZone::local()` 先读取 `$TZ`：数据库名称（`Asia/Seoul`）、TZif 文件的路径（`/usr/share/zoneinfo/Asia/Seoul`，开头的 `:` 会被去掉）或 POSIX 规则。没有 `$TZ` 时，它读取 `/etc/localtime`；若 `/etc/timezone` 中写有时区名，就用该名称命名，否则命名为 `localtime`。这些都给不出时区时，使用 UTC。它每次调用都会读取文件，因此程序应当保存其结果。
+**本地时区**。`TimeZone::local()` 先读取 `$TZ`：数据库名称（`Asia/Seoul`）、TZif 文件的路径（`/usr/share/zoneinfo/Asia/Seoul`，开头的 `:` 会被去掉）或 POSIX 规则。没有 `$TZ` 时，它读取 `/etc/localtime`；若 `/etc/timezone` 中写有时区名，就用该名称命名，否则命名为 `localtime`。这些都给不出时区时，使用 UTC。它每次调用都会读取文件，因此程序应当保存其结果。
 
-**间隙与重叠。** 在时钟拨快的地方（间隙），某些本地时间从未出现；在时钟拨回的地方（重叠），某些本地时间出现两次。`in_zone_with` 接受一个选择，与 java.time 和 Temporal 的做法相同：
+**间隙与重叠**。在时钟拨快的地方（间隙），某些本地时间从未出现；在时钟拨回的地方（重叠），某些本地时间出现两次。`in_zone_with` 接受一个选择，与 java.time 和 Temporal 的做法相同：
 
 | `Disambiguation` | 在重叠中（01:30 出现两次）        | 在间隙中（跳过 02:30，02:00 直接到 03:00） |
 |------------------|-----------------------------------|-------------------------------------------|
@@ -447,7 +447,7 @@ impl Sub<Period> for Zoned { ... }
 
 `is_dst_at` 和 `Zoned::is_dst` 报告时区数据中的夏令时标志。大多数时区标记的是夏季时间；采用负夏令时的时区则标记其冬季时间（`IST-1GMT0,M10.5.0,M3.5.0/1`，大多数 tz 构建中 Europe/Dublin 的规则）。
 
-**相等。** 两个 `Zoned` 值只按其时刻判断相等、排序和哈希：`2024-01-01T09:00:00+09:00` 等于 `2024-01-01T00:00:00Z`。两个 `TimeZone` 名称相同时相等。
+**相等**。两个 `Zoned` 值只按其时刻判断相等、排序和哈希：`2024-01-01T09:00:00+09:00` 等于 `2024-01-01T00:00:00Z`。两个 `TimeZone` 名称相同时相等。
 
 ### 示例
 
@@ -493,9 +493,9 @@ EST EDT
 
 0..=9999 以外的年份带符号并写成六位数字，即 ISO 8601 的扩展形式。小数部分写成 3、6 或 9 位，取能容纳它的最少位数，为零时省略。偏移为零的 `Zoned` 写作 `Z`；它的 `Debug` 会在方括号中加上时区名（`2024-03-10T03:30:00-04:00[America/New_York]`）。读取带方括号时区的 `Zoned` 时会加载该时区；偏移必须与之一致，否则错误会同时指出两者（没有偏移时，本地时间按 `Compatible` 解析）。没有方括号时，时区就是该固定偏移。带偏移的 `DateTime` 文本是错误，错误会提示改为解析 `Zoned` 或 `SystemTime`。
 
-**错误指出位置。** 解析错误是一个 `ParseError`，其消息指出字节偏移以及那里应有的内容：``cannot parse "2024/02/03": expected `-` after the year at byte 4, found `/` ``、`cannot parse "2024-13-01": month 13 is out of range (1..=12) at byte 5`。`position()` 就是这个偏移。
+**错误指出位置**。解析错误是一个 `ParseError`，其消息指出字节偏移以及那里应有的内容：``cannot parse "2024/02/03": expected `-` after the year at byte 4, found `/` ``、`cannot parse "2024-13-01": month 13 is out of range (1..=12) at byte 5`。`position()` 就是这个偏移。
 
-**模式。** `Date`、`Time`、`DateTime` 和 `Zoned` 上的 `format(pattern)` 写出 strftime 风格的指令；`parse_with(text, pattern)` 按同样的指令读回。名称使用英语（C locale）。
+**模式**。`Date`、`Time`、`DateTime` 和 `Zoned` 上的 `format(pattern)` 写出 strftime 风格的指令；`parse_with(text, pattern)` 按同样的指令读回。名称使用英语（C locale）。
 
 | 指令 | 含义 | 指令 | 含义 |
 |-----------|---------|-----------|---------|
@@ -519,7 +519,7 @@ EST EDT
 
 `parse_with` 读取不超过指令宽度的数字（`%Y` 最多 4 位，带符号时最多 6 位），名称不区分大小写，可以是全称或三个字母的缩写，模式中的一个空格可以匹配任意长度的空白。缺少的时间字段为零；`Date` 需要年份（`%Y`，或 `%y`，其中 69..99 视为 19xx），以及月和日或 `%j`。与日期不符的星期几是错误。`%Z` 读取 `UTC`、`GMT`、`UT`、`Z` 或 `Europe/Paris` 这样的时区名；`EST` 之类的缩写有歧义，会被拒绝，并提示改用 `%z`。`Zoned::parse_with` 需要偏移、时区或 `%s`。`%C`、`%g`、`%G`、`%V`、`%U` 和 `%W` 只能用于写出。
 
-**邮件与 HTTP。** `Zoned::to_rfc2822` 和 `Zoned::parse_rfc2822` 处理 RFC 5322 邮件中的日期（`Sat, 14 Nov 2026 09:30:00 +0900`）；解析时星期几和秒是可选的，并接受过时的时区名（`GMT`、`EST`、`PDT` 等）。`SystemTime::to_http_date` 是 RFC 9110 的 IMF-fixdate（`Sun, 06 Nov 1994 08:49:37 GMT`），`parse_http_date` 还能读取服务器必须接受的两种过时形式（`Sunday, 06-Nov-94 08:49:37 GMT`、`Sun Nov  6 08:49:37 1994`）。
+**邮件与 HTTP**。`Zoned::to_rfc2822` 和 `Zoned::parse_rfc2822` 处理 RFC 5322 邮件中的日期（`Sat, 14 Nov 2026 09:30:00 +0900`）；解析时星期几和秒是可选的，并接受过时的时区名（`GMT`、`EST`、`PDT` 等）。`SystemTime::to_http_date` 是 RFC 9110 的 IMF-fixdate（`Sun, 06 Nov 1994 08:49:37 GMT`），`parse_http_date` 还能读取服务器必须接受的两种过时形式（`Sunday, 06-Nov-94 08:49:37 GMT`、`Sun Nov  6 08:49:37 1994`）。
 
 ```nabi
 impl Date {
@@ -567,7 +567,7 @@ cannot parse "2024-02-30": day 30 is out of range for 2024-02 (1..=29) at byte 8
 | 仿真 / 精密天文学          | 类似 `chrono` 的独立包    |
 | 金融 / 精确闰秒            | 独立的包                  |
 
-## 3.3.10. impl / 目标
+## 3.3.10. 实现 / 目标
 
 各平台的实现映射：
 
@@ -576,7 +576,7 @@ cannot parse "2024-02-30": day 30 is out of range for 2024-02 (1..=29) at byte 8
 | `Instant`    | CLOCK_MONOTONIC | CLOCK_UPTIME_RAW | QueryPerformanceCounter | wasi 时钟    |
 | `SystemTime` | CLOCK_REALTIME  | CLOCK_REALTIME   | GetSystemTimePreciseAsFileTime | wasi  |
 | `BootTime`   | CLOCK_BOOTTIME  | CLOCK_MONOTONIC（mach_continuous_time，含睡眠） | QueryPerformanceCounter（≈ Instant） | （无挂起） |
-| `TimeZone::get` | `$TZDIR`、/usr/share/zoneinfo | /usr/share/zoneinfo | 无：只有 `UTC` 和偏移 | 主机授予时使用主机的文件，否则无 |
+| `TimeZone::get` | `$TZDIR`、/usr/share/zoneinfo | /usr/share/zoneinfo | 无：只有 `UTC` 和偏移 | 宿主授予时使用宿主的文件，否则无 |
 | `TimeZone::local` | `$TZ`、/etc/localtime | `$TZ`、/etc/localtime | `$TZ` 中的 POSIX 规则，否则 UTC | 传入 `$TZ` 时使用它，否则 UTC |
 
 ## 3.3.11. 策略总结

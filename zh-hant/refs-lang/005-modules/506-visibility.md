@@ -148,7 +148,7 @@ let k = Keyed { label: "x" };       // ERROR outside the module: `key` has no de
 pub struct S(pub i32, i32);         // field 0 is pub, field 1 is private
 ```
 
-- 以 `S(a, b)` 建構需要每個欄位在使用處都可見。若有任何欄位是私有的，在其可見範圍之外要使用建構函式（`NonZero::new`）。
+- 以 `S(a, b)` 建構需要每個欄位在使用處都可見。若有任何欄位是私有的，在其可見範圍之外要使用建構子（`NonZero::new`）。
 - 讀取或指派 `x.N` 需要欄位 N 可見。
 - 在模式 `S(p0, p1, ..)` 中，子模式不是 `_` 的每個位置都必須可見。帶具名欄位的結構模式也是如此（只檢查觸及的欄位）。
 - 緊接在 `pub` 之後的 `(` 被讀作可見性限制（`pub(pkg)` 等）。要讓元組型別的欄位公開，請再加一對括號：`struct S(pub ((i32, i32)));`。

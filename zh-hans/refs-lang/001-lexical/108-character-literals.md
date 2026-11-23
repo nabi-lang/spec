@@ -2,7 +2,7 @@
 
 字符字面量是表示单个码位或单个字节的词法单元。
 
-## 1.8.1. 三种类型
+## 1.8.1. 三种形式
 
 ```
 char_lit    ::= "'" char_item "'"
@@ -24,7 +24,7 @@ byte_escape ::= "\\x" hex_digit hex_digit | escape_seq
 
 一对单引号（`'`）中必须恰好包含一个码位。转义序列原样遵循[字符串字面量](107-string-literals.md)中的表：`\\`、`\'`、`\"`、`\n`、`\r`、`\t`、`\0`、`\x`、`\u{...}` 等。`'\x41'` 这样的单字节形式也是合法的，其结果是 ASCII 范围内的单个码位。反之，像 `'AB'` 这样包含两个或更多字符，或者写出空的 `''`，在词法阶段就是错误。
 
-这种形式的字面量是 `char`（Unicode 标量值，编译器原语）。其方法由 [stdlib 2.15](../../refs-standard-libraries/200-core/215-string.md) 定义。
+这种形式的字面量是 `char`（Unicode 标量值，编译器原语）。其方法由 [标准库 2.15](../../refs-standard-libraries/200-core/215-string.md) 定义。
 
 ### C 兼容字符：`c'A'`
 

@@ -186,13 +186,13 @@ fn add_assign(ref self, rhs: Rhs);
 
 | 类型         | trait                                       | 行为                                            |
 |--------------|---------------------------------------------|-------------------------------------------------|
-| `i*`, `u*`   | 6 个算术 + 5 个位运算（共 11 个 trait）     | `nabi.add_assign.i32`, `nabi.shl_assign.u32`, ... |
-| `f32`, `f64` | 仅 6 个算术                                 | `nabi.add_assign.f64`, ...                       |
+| `i*`、`u*`   | 6 个算术 + 5 个位运算（共 11 个 trait）     | `nabi.add_assign.i32`、`nabi.shl_assign.u32`, ... |
+| `f32`、`f64` | 仅 6 个算术                                 | `nabi.add_assign.f64`, ...                       |
 | `bool`       | `BitAndAssign`/`BitOrAssign`/`BitXorAssign` | `nabi.and_assign.bool`, ...                      |
 | `int`        | 算术 + 位运算；`ShlAssign<u32>` / `ShrAssign<u32>` | 自动提升逻辑；替换为新值（不可变）       |
 | `float`      | 算术                                        | （同上：自动提升）                              |
-| `List<T>`    | `AddAssign<T>`, `AddAssign<List<T>>`        | `xs += x` push `x`；`xs += ys` 就地 push `ys` 的所有元素 |
-| `str`        | `AddAssign<str>`, `AddAssign<char>`         | `s = s + t`：新的 str 替换 `s`（str 不可变）    |
+| `List<T>`    | `AddAssign<T>`、`AddAssign<List<T>>`        | `xs += x` push `x`；`xs += ys` 就地 push `ys` 的所有元素 |
+| `str`        | `AddAssign<str>`、`AddAssign<char>`         | `s = s + t`：新的 str 替换 `s`（str 不可变）    |
 | `Dict<K,V>`  | `AddAssign<Dict<K,V>>`（`K: Hash`）         | 就地合并；键相同时以右侧的值为准                |
 | `Set<T>`     | `AddAssign<T>`（`T: Hash`）                 | `s += x` 插入 `x`                               |
 | `Deque<T>`   | `AddAssign<T>`                              | `q += x` 把 `x` push 到末尾                     |

@@ -1,6 +1,6 @@
 # 9.5. 符號修飾方案
 
-由於 [AOT 建置管線](902-aot-pipeline.md)中的 [specialize](../000-meta/007-glossary.md#特化specialize)，一個函式會依每個具體型別分成個別的函式。本節定義賦予這些函式唯一符號名稱的規則。
+由於 [AOT 建置管線](902-aot-pipeline.md)中的[特化](../000-meta/007-glossary.md#特化specialize)，一個函式會依每個具體型別分成個別的函式。本節定義賦予這些函式唯一符號名稱的規則。
 
 ## 9.5.1. 形式
 
@@ -68,7 +68,7 @@ foo::inner::sub → foo_inner_sub
 |---|---|
 | `[A-Za-z0-9]` | 不變 |
 | `_` | `_0` |
-| 其他任何字元（包括 Unicode） | `_1<小寫十六進位碼位>_` |
+| 其他任何字元（包括 Unicode） | `_1<lowercase hex code point>_` |
 
 識別字不以數字開頭，因此 `0` / `1` 絕不會接在分隔符號 `_` 之後。所以跳脫與分隔符號一律可以區分。
 

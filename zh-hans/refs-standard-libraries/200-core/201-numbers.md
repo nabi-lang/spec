@@ -1,6 +1,6 @@
 # 2.1. 数值类型
 
-`core::num` 模块定义了 nabi 的所有数值类型。Nabi 让来自两个世界的数并存，用户可以自由选择其中之一。
+`core::num` 模块定义了 Nabi 的所有数值类型。Nabi 让来自两个世界的数并存，用户可以自由选择其中之一。
 
 ```
 int / float    (auto-promote, arbitrary precision, opt-in)
@@ -240,7 +240,7 @@ pub struct BF16 { bits: u16; }     // bfloat16
 - **比较**（`==`、`<` 等）与其 `f32` 值的比较相同：遵循 IEEE，NaN 与任何值都不相等，`-0.0 == 0.0`。两种类型都不是 `Eq`、`Ord` 或 `Hash`；排序用 `xs.sort_by(f16::total_cmp)`。字面量模式不匹配它们：请在守卫中用 `==` 比较。
 - **方法和常量**。`from_bits` / `to_bits`（`u16` 位模式）、`from_f32`、`from_f64`、`from_i64`、`from_u64`、`to_f32`、`to_f64`、`is_nan`、`is_infinite`、`is_finite`、`is_normal`、`is_sign_positive`、`is_sign_negative`、`abs`、`copysign`、`min`、`max`（与 `f32` 的相同）、`total_cmp`；`EPSILON`、`MAX`、`MIN`、`MIN_POSITIVE`、`NAN`、`INFINITY`、`NEG_INFINITY`。
 - **trait**。`Clone`、`Copy`、`Default`（`0.0`）、`Zero`、`One`、`PartialEq`、`PartialOrd`、上述运算符 trait、`Display`、`Debug`、`FromStr`（从十进制舍入一次），以及 `f32` 和 `f64` 的 `From<f16>` / `From<bf16>`（精确）。
-- **文本**。`Display` 输出能读回同一值的最短数字（`0.1`、`65500`），从不使用指数，以及 `inf` / `NaN`；`Debug` 为整数值加上 `.0`。格式说明符（`{h:.3}`、`{h:e}`）按 `f64` 的方式格式化精确值。
+- **文本**。`Display` 输出能读回同一值的最短数字（`0.1`、`65500`），从不使用指数，无穷大和 NaN 写作 `inf` / `NaN`；`Debug` 为整数值加上 `.0`。格式说明符（`{h:.3}`、`{h:e}`）按 `f64` 的方式格式化精确值。
 - **硬件**。`f16` <-> `f32` 在 CPU 支持转换的地方使用 CPU：x86-64 上目标特性包含 `f16c` 时用 F16C（`-C target-cpu=x86-64-v3`），arm64 上用 `fcvt`。其他情况下是运行时调用，结果相同。`bf16` 的转换是内联的几条整数运算。
 - **C**。在 `extern "C"` 签名中，`f16` 是 C 的 `_Float16`，`bf16` 是 `__bf16`，与 C 一样通过浮点寄存器传递（[refs-lang 8.6.3](../../refs-lang/008-abi/806-calling-convention.md#863-struct-实参--返回小-struct-规则)）。目标的 C 没有这种类型时（powerpc64le 和 wasm32；s390x 上的 `__bf16`；i686 上的半精度结果），该签名是错误：请改为把 `h.to_bits()` 作为 `uint16_t` 传递。
 
@@ -258,8 +258,8 @@ pub struct BF16 { bits: u16; }     // bfloat16
 
 | 组                                   | 成员                                                                                                  | 注册方式                                           |
 |--------------------------------------|-------------------------------------------------------------------------------------------------------|----------------------------------------------------|
-| **16 种语言内置**                    | `i8`/`i16`/`i32`/`i64`, `u8`/`u16`/`u32`/`u64`, `isize`/`usize`, `f32`/`f64`, `bool`, `char`, `c_char`, `str` | 由语言识别；不需要 `#[keyword]`                    |
-| **4 种标准库添加**                   | `int`, `float`, `f16`, `bf16`                                                                 | 用 `#[keyword(...)]` 注册                          |
+| **16 种语言内置**                    | `i8`/`i16`/`i32`/`i64`、`u8`/`u16`/`u32`/`u64`、`isize`/`usize`、`f32`/`f64`、`bool`、`char`、`c_char`、`str` | 由语言识别；不需要 `#[keyword]`                    |
+| **4 种标准库添加**                   | `int`、`float`、`f16`、`bf16`                                                                 | 用 `#[keyword(...)]` 注册                          |
 
 语言内置类型是编译器（词法分析器 / 解析器）直接识别的词法单元，因此标准库不把它们注册为关键字。这自动保证了用户无法重新定义这些名字。
 
@@ -558,7 +558,7 @@ let c2 = (a.to_i32()? + b);       // i32 (OK if a is within the i32 range)
 
 这一策略阻止了类型的悄然混用。与 Julia 不同，Nabi 不做自动提升；由用户说明使用哪个世界。
 
-编译器对混合数值给出的提示会把较窄的一侧转换为较宽的类型，因此建议的转换不会丢失值：整数转为浮点数，任何原始类型转为 `int` 或 `float`，两个有符号或两个无符号整数中较窄的转为较宽的。有符号类型可以容纳无符号类型；两者位宽相同且低于 64 位时，两者都转为宽一级的有符号类型。
+编译器对混合数值给出的提示会把较窄的一侧转换为较宽的类型，因此建议的转换不会丢失值：整数转为浮点数，任何原始类型转为 `int` 或 `float`，两个有符号或两个无符号整数中较窄的转为较宽的。有符号与无符号混合时转为有符号类型；两者位宽相同且低于 64 位时，两者都转为宽一级的有符号类型。
 
 ```nabi
 let a: i32 = 1;
@@ -611,7 +611,7 @@ let d = a + u;   // help: convert both sides: `(a as i64) + (u as i64)`
 
 Nabi 的双世界模型（自动提升的 `int` 与定宽原始类型）借鉴了多种语言。Smalltalk 的 SmallInteger ↔ LargeInteger 是自动提升的原型，Lisp 和 Scheme 的数值塔（fixnum / bignum / rational / real）是另一个重要参考。**Python int** 以任意精度为默认，但没有定宽原始类型；**Julia** 则以定宽原始类型为默认。在 Nabi 中，字面量同样默认是定宽的（`i64` / `f64`），`int` 需要选择加入。
 
-与各语言的区别：**Python** 只提供 int；由于缺少定宽类型，FFI 和性能关键的工作要依赖 NumPy**。Julia** 与 Nabi 一样默认定宽，需要任意精度时必须显式使用 `BigInt`**。Rust** 只有定宽类型，因此用户必须始终写出类型**。Nabi** 让两个世界并存：字面量遵循期望类型（没有时为 `i64` / `f64`），需要任意精度的地方写 `int` / `float`。
+与各语言的区别：**Python** 只提供 int；由于缺少定宽类型，FFI 和性能关键的工作要依赖 NumPy。**Julia** 与 Nabi 一样默认定宽，需要任意精度时必须显式使用 `BigInt`。**Rust** 只有定宽类型，因此用户必须始终写出类型。**Nabi** 让两个世界并存：字面量遵循期望类型（没有时为 `i64` / `f64`），需要任意精度的地方写 `int` / `float`。
 
 ## 2.1.11. 数值 trait、浮点排序、区间、复数
 
@@ -646,4 +646,4 @@ fn fsum<I: IntoIterator<Item = f64>>(xs: I) -> f64; // correctly rounded sum; Py
 
 **`div_floor` / `rem_floor`**。每个整数类型都有 `div_floor(rhs)`，即向负无穷舍入的商（Python 的 `//`），以及 `rem_floor(rhs)`，即符号与除数相同的余数（Python 的 `%`、Nabi 的 `%%`）：`(-7).div_floor(2) == -4`，`(-7).rem_floor(2) == 1`。对无符号类型，它们就是 `/` 和 `%`。
 
-**`Complex<T>`**（`core::num::Complex`）是 `struct Complex<T> { pub re: T; pub im: T; }`，在 `T: FloatingPoint` 时提供 `new`、`i()`、`from_polar`、`abs`、`norm_sqr`、`arg`、`conj`、`recip`、`exp`、`ln`、`sqrt`（主平方根，每个部分都有完整的相对精度，包括极小的虚部）、`powi`、`pow`、`is_nan`；复数之间以及复数与任一侧的实数 `T` 之间的 `+ - * /` 和一元 `-`（`2.0 * z`、`z / 2.0`；实数在左侧仅限 `f32` 和 `f64`）、`Zero`、`One`、`PartialEq`、`Debug`（`Complex { re: 1.0, im: 2.0 }`）和 `Display`（`1+2i`、`1-2i`）。数值后缀 `i` 由 `#[literal(number "i", priority = -1)]` 在 core 中注册，生成虚数 `Complex<f64>`：`3.0 + 4.0i`、`1i`。包自己的 `i` 处理器优先于它（[refs-lang 6.5.5](../../refs-lang/006-meta-system/605-literal-magic.md#655-多个处理函数歧义)）。
+**`Complex<T>`**（`core::num::Complex`）是 `struct Complex<T> { pub re: T; pub im: T; }`，在 `T: FloatingPoint` 时提供 `new`、`i()`、`from_polar`、`abs`、`norm_sqr`、`arg`、`conj`、`recip`、`exp`、`ln`、`sqrt`（主平方根，每个部分都有完整的相对精度，包括极小的虚部）、`powi`、`pow`、`is_nan`；复数之间以及复数与任一侧的实数 `T` 之间的 `+ - * /` 和一元 `-`（`2.0 * z`、`z / 2.0`；实数在左侧仅限 `f32` 和 `f64`）、`Zero`、`One`、`PartialEq`、`Debug`（`Complex { re: 1.0, im: 2.0 }`）和 `Display`（`1+2i`、`1-2i`）。数值后缀 `i` 由 `#[literal(number "i", priority = -1)]` 在 core 中注册，生成虚数 `Complex<f64>`：`3.0 + 4.0i`、`1i`。包自己的 `i` 处理函数优先于它（[refs-lang 6.5.5](../../refs-lang/006-meta-system/605-literal-magic.md#655-多个处理函数歧义)）。

@@ -38,7 +38,7 @@ T::Output                 // associated type of a trait parameter
 
 关联项访问有几种形式。静态方法以 `Type::method(args)` 调用。关联 `const` 以 `Type::CONSTANT` 引用，trait 参数的关联类型以 `T::AssocType` 引用。
 
-经由类型别名的路径指名别名所指类型的项。有 `type B = S<i32>;` 时，`B::mk(x)` 就是 `S::<i32>::mk(x)`；有 `type Al<T> = S<T>;` 时，`Al::mk(x)` 就是推断实参的 `S::mk(x)`，`Al::<i32>::mk(x)` 就是 `S::<i32>::mk(x)`。不带实参指名的泛型别名，只有当别名所指类型的实参是别名的互不相同的参数时，才把实参留给推断；否则，由与别名固定实参一致的、别名所指类型的带类型槽给出实参（有 `type Matrix<T> = Array<T, 2>;` 时的 `let m: Matrix<f64> = Matrix::zeros([2, 3]);`），或者写出实参（有 `type Names<V> = Dict<str, V>;` 时的 `Names::<i32>::new()`）。
+经由类型别名的路径指名别名所指类型的项。有 `type B = S<i32>;` 时，`B::mk(x)` 就是 `S::<i32>::mk(x)`；有 `type Al<T> = S<T>;` 时，`Al::mk(x)` 就是推断实参的 `S::mk(x)`，`Al::<i32>::mk(x)` 就是 `S::<i32>::mk(x)`。不带实参指名的泛型别名，只有当别名所指类型的实参是别名的互不相同的参数时，才把实参留给推断；否则，实参由一个带类型的槽给出，该槽的类型是别名所指的类型，且与别名固定的实参一致（有 `type Matrix<T> = Array<T, 2>;` 时的 `let m: Matrix<f64> = Matrix::zeros([2, 3]);`），或者写出实参（有 `type Names<V> = Dict<str, V>;` 时的 `Names::<i32>::new()`）。
 
 经由别名的结构体字面量和结构体模式指名别名所指的结构体。有 `type Q = P<f64>;` 时，`Q { x: 2.0 }` 就是 `P::<f64> { x: 2.0 }`，模式 `Q { x }` 匹配 `P<f64>`。不带实参写出的泛型别名按同一规则推断实参（有 `type A<T> = P<T>;` 时的 `A { x: 3 }`）；否则写出实参（有 `type D<T> = P<List<T>>;` 时的 `D<i64> { x: [1] }`）。
 
@@ -77,7 +77,7 @@ collect::<List<f64>>(iter)
 
 ## 2.13.7. 路径与和类型的组合
 
-路径本身是[类型表达式](201-type-expressions.md)的简单名称或路径形式，可以与和类型（`|`）、泛型应用（`<...>`）等其他组合子自由混用。
+路径本身是[类型表达式](201-type-expressions.md)的简单名称或路径形式，可以与和类型（`|`）、泛型应用（`<...>`）等其他组合符自由混用。
 
 ```nabi
 core::io::Lines<T>

@@ -194,7 +194,7 @@ let status = try await child.wait_async();
 
 這些決策一致地以減少 fd 洩漏、行程洩漏與訊號競爭為目標。
 
-使用 `Command::env` 時，程式仍在父行程的 `PATH` 上查找，而不是子行程的 `PATH`。
+使用 `Command::env` 時，程式仍在父行程的 `PATH` 上尋找，而不是子行程的 `PATH`。
 
 ## 3.6.5. 訊號處理（進階）
 

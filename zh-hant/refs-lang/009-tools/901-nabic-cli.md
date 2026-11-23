@@ -4,8 +4,8 @@
 
 | 二進位檔 | 角色                                                                                  |
 |----------|---------------------------------------------------------------------------------------|
-| `nabic`   | 編譯器（相當於 rustc）。建置、檢查與輸出套件，並建置測試與效能測試的 harness（本節） |
-| `nabi`    | Cargo 風格的前端。負責資訊清單、相依套件、環境與工具鏈釘選，呼叫 `nabic`，並在連結了編譯器的情況下執行各工具（run、lint、REPL、Jupyter、LSP、格式化工具、文件……）（[9.10](910-nabi-frontend.md)） |
+| `nabic`   | 編譯器（相當於 rustc）。建置、檢查與輸出套件，並建置測試與基準測試的 harness（本節） |
+| `nabi`    | Cargo 風格的前端。負責清單、相依套件、環境與工具鏈釘選，呼叫 `nabic`，並在連結了編譯器的情況下執行各工具（run、lint、REPL、Jupyter、LSP、格式化工具、文件……）（[9.10](910-nabi-frontend.md)） |
 | `nabicc`  | C 編譯器。與 `nabi cc` 是同一個編譯器（[9.13](913-c-compiler.md)）                 |
 | `nabils`  | 供編輯器使用的 LSP 伺服器執行檔。與 `nabi lsp` 是同一個伺服器                       |
 
@@ -128,7 +128,7 @@ nabic test [path] [filter]
 - 它是一個使用 `^` `$` `.` `*` `+` `?` 與 `\` 跳脫的小型正規表示式。搜尋不錨定，因此沒有 `^` / `$` 時它可以比對名稱的任何部分。
 - 沒有這些字元時，它等同於單純的子字串搜尋。
 
-**每個測試都在自己的行程中執行。** 若某個測試 panic（結束碼 101）或以未捕捉的錯誤結束（結束碼 1），只有該測試失敗，其餘的繼續執行。被訊號終止也是失敗，執行超過時間限制（`--timeout`，預設 600 秒）的測試也是：它會被終止並回報為逾時。`#[should_panic]` 測試只在 panic 時通過；`#[ignore]` 測試回報為已忽略，不會執行（[6.2.5](../006-meta-system/602-built-in-attributes.md#625-test-測試函式標記)）。
+**每個測試都在自己的行程中執行。** 若某個測試 panic（結束碼 101）或以未攔截的錯誤結束（結束碼 1），只有該測試失敗，其餘的繼續執行。被訊號終止也是失敗，執行超過時間限制（`--timeout`，預設 600 秒）的測試也是：它會被終止並回報為逾時。`#[should_panic]` 測試只在 panic 時通過；`#[ignore]` 測試回報為已忽略，不會執行（[6.2.5](../006-meta-system/602-built-in-attributes.md#625-test-測試函式標記)）。
 
 #### 文件測試
 
@@ -183,15 +183,15 @@ test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 filtered out; finished in 
 
 在兩個根檔案都有的套件中，先執行函式庫的測試，再執行執行檔的測試（對照不含其測試的函式庫建置），然後是文件測試；失敗的執行會結束該指令。`bench` 的運作方式相同。
 
-### `nabic bench`：效能測試
+### `nabic bench`：基準測試
 
 ```
 nabic bench [path] [filter]
 ```
 
-收集標示了 `#[bench]` 的函式，並以最佳化建置建置它們（除非給出 `-O`，否則為 `-O2`）；明確的 `-O0` 或 `-O1` 會與 `nabic test` 一樣，以帶有偵錯資訊的 `debug` 設定檔建置。`nabi bench`（[9.10](910-nabi-frontend.md)）執行 harness 並量測它們（[9.9.11](909-debug-tools.md#9911-效能測試)）。與 `#[test]` 一樣，`#[bench]` 隱含 `#[cfg(test)]`，效能測試同時從 `src/` 與 `benches/` 目錄（[0.3.5](../000-meta/003-source-units.md#035-測試與基準測試目錄)）收集。`path`、`filter` 與 `--emit-harness` 的規則與 `nabic test` 相同。
+收集標示了 `#[bench]` 的函式，並以最佳化建置建置它們（除非給出 `-O`，否則為 `-O2`）；明確的 `-O0` 或 `-O1` 會與 `nabic test` 一樣，以帶有偵錯資訊的 `debug` 設定檔建置。`nabi bench`（[9.10](910-nabi-frontend.md)）執行 harness 並量測它們（[9.9.11](909-debug-tools.md#9911-基準測試)）。與 `#[test]` 一樣，`#[bench]` 隱含 `#[cfg(test)]`，基準測試同時從 `src/` 與 `benches/` 目錄（[0.3.5](../000-meta/003-source-units.md#035-測試與基準測試目錄)）收集。`path`、`filter` 與 `--emit-harness` 的規則與 `nabic test` 相同。
 
-效能測試接受一個 `Bench` 控制代碼並對一個閉包計時，因此準備工作不會被算入量測：
+基準測試接受一個 `Bench` 控制代碼並對一個閉包計時，因此準備工作不會被算入量測：
 
 ```nabi
 #[bench]
@@ -202,19 +202,19 @@ fn parse_1kb(b: bench::Bench) {
 }
 ```
 
-`b.iter(f)` 執行整個量測（校準、暖身、取樣）；其結果會被黑箱化。`hint::black_box`（[`core::hint`](../../refs-standard-libraries/200-core/README.md#基準測試最佳化器提示)）是最佳化器無法看穿的恆等函式。把它套用到計時區域的輸入與結果，好讓工作既不會被提升到外面，也不會被摺疊掉。`b.set_bytes(n)` / `b.set_items(n)` 會加上一個吞吐量欄位。`Bench`、`black_box` 與統計是函式庫 API；其方法定義於 [9.9.11](909-debug-tools.md#9911-效能測試)。
+`b.iter(f)` 執行整個量測（校準、暖身、取樣）；其結果會被黑箱化。`hint::black_box`（[`core::hint`](../../refs-standard-libraries/200-core/README.md#基準測試最佳化器提示)）是最佳化器無法看穿的恆等函式。把它套用到計時區域的輸入與結果，好讓工作既不會被提升到外面，也不會被摺疊掉。`b.set_bytes(n)` / `b.set_items(n)` 會加上一個吞吐量欄位。`Bench`、`black_box` 與統計是函式庫 API；其方法定義於 [9.9.11](909-debug-tools.md#9911-基準測試)。
 
 每個樣本的呼叫次數、樣本數量與輸出形式是執行器 `nabi bench` 的選項（[9.10.1](910-nabi-frontend.md#9101-子指令與全域選項)）。
 
-效能測試一次執行一個。無論是否輸出到終端機，每個都以人類易讀的單位印出一行對齊的內容：
+基準測試一次執行一個。無論是否輸出到終端機，每個都以人類易讀的單位印出一行對齊的內容：
 
 ```
   json::parse_1kb     1.84 us +/- 0.03 us   543 MiB/s   [2 outliers, 0 gc]
 ```
 
-`nabi bench --format=nabibench` 則改為印出供回歸工具使用的穩定機器形式，每個效能測試一行：`#nabibench name=<name> median_ns=<f> mad_ns=<f> samples=<n> outliers=<n> gc=<n> bytes=<n> items=<n>`。這一行原樣凍結：不會新增、移除或重新排列任何鍵，因此為它撰寫的讀取程式能持續運作。新的欄位只會放在 `--format=json` 的 JSON 紀錄中，它也會把效能測試自己的輸出與這些紀錄分開（使用 `nabibench` 時，它與這些行共用 stdout）。
+`nabi bench --format=nabibench` 則改為印出供回歸工具使用的穩定機器形式，每個基準測試一行：`#nabibench name=<name> median_ns=<f> mad_ns=<f> samples=<n> outliers=<n> gc=<n> bytes=<n> items=<n>`。這一行原樣凍結：不會新增、移除或重新排列任何鍵，因此為它撰寫的讀取程式能持續運作。新的欄位只會放在 `--format=json` 的 JSON 紀錄中，它也會把基準測試自己的輸出與這些紀錄分開（使用 `nabibench` 時，它與這些行共用 stdout）。
 
-從未呼叫 `b.iter` 的效能測試沒有量測到任何東西。這不是失敗：它的那一行是 `` <name>  warning: measured nothing: time the code with `b.iter(|| ..)` ``，摘要把它算作 `<n> measured nothing`，而不是已執行。
+從未呼叫 `b.iter` 的基準測試沒有量測到任何東西。這不是失敗：它的那一行是 `` <name>  warning: measured nothing: time the code with `b.iter(|| ..)` ``，摘要把它算作 `<n> measured nothing`，而不是已執行。
 
 ### `nabic check`：診斷
 
@@ -298,7 +298,7 @@ nabic <subcommand> --help
 
 `nabic help` 把 `--print` 的各種形式與建置選項列在一起，因為它們印出的內容取決於 `--target` 與 `--cfg`；它們不需要子指令。
 
-lint 等級依下列順序決定：lint 的預設等級 < `-A` / `-W` / `-D` < 程式碼中的 `#[allow(..)]` / `#[warn(..)]` / `#[deny(..)]`（最內層者勝出）。`nabi` 把資訊清單的 `lints` 作為這些旗標加在前面（[9.10.1](910-nabi-frontend.md#9101-子指令與全域選項)）。
+lint 等級依下列順序決定：lint 的預設等級 < `-A` / `-W` / `-D` < 程式碼中的 `#[allow(..)]` / `#[warn(..)]` / `#[deny(..)]`（最內層者勝出）。`nabi` 把清單的 `lints` 作為這些旗標加在前面（[9.10.1](910-nabi-frontend.md#9101-子指令與全域選項)）。
 
 色彩對 stdout 與 stderr 分別依下列順序決定：`--color=never` 關閉它，`--color=always` 開啟它；否則（`--color=auto`，預設）非空的 `NO_COLOR` 關閉它，非空且不是 `0` 的 `CLICOLOR_FORCE` 開啟它，`TERM=dumb` 關閉它，其他情況下串流是終端機時就加上色彩。在 Windows 上，不接受跳脫序列的主控台會得到純文字。
 
@@ -393,7 +393,7 @@ error[E0027]: cannot find value `count` in this scope
 |-------------|-----------------------------------------------|
 | `Compiling` | 前端開始（套件名稱與目錄）；`check` 與 `lint` 時為 `Checking`，`doc` 時為 `Documenting`。`nabi` 所擷取的相依套件（位於 `$NABI_HOME/cache/` 下）改為顯示 `<name> v<version>` |
 | `Building`  | 產生執行檔 / 封存檔（`build`）                |
-| `Built`     | 單獨檔案的執行檔已複製到其旁邊（`build`）：`Built hello (use -o to put it elsewhere)`。在沒有 `--emit-harness` 的情況下建置了測試或效能測試 harness（`test`、`bench`），後面接著一則提示，指出以 `nabi test` 或 `nabi bench` 執行它 |
+| `Built`     | 單獨檔案的執行檔已複製到其旁邊（`build`）：`Built hello (use -o to put it elsewhere)`。在沒有 `--emit-harness` 的情況下建置了測試或基準測試 harness（`test`、`bench`），後面接著一則提示，指出以 `nabi test` 或 `nabi bench` 執行它 |
 | `Wrote`     | 已寫出一個 `--emit` 輸出                      |
 | `Reused`    | 有 `-v` 時，在前端之後：有多少檔案的剖析結果與多少主體的降階結果來自增量快取（[9.2.16](902-aot-pipeline.md#9216-增量建置)） |
 | `Units`     | 有 `-v` 時，在程式碼產生期間：有多少程式碼單元被重複使用（來自增量快取或函式快取），有多少被編譯 |

@@ -290,7 +290,7 @@ fn strict_zone() { ... }
 
 有些警告来自编译器本身而不是 lint 阶段，但仍属于某个 lint：易混淆的标识符属于 `confusable_idents`，字符串或注释中的不可见字符属于 `hidden_chars`，位置不当的文档注释属于 `unused_doc_comments`。它们的级别与其他 lint 一样，通过 lint 名设置。
 
-每条 lint 诊断都会说明其级别从何而来：`` `#[warn(unused_variables)]` on by default ``、`` `-D unused` on the command line ``，级别来自清单时为 `` `"unused_variables": "deny"` in `lints` of nabi.nabion ``，或者在设置该级别的属性上加标签。未知的 lint 名或组名会产生警告，警告给出最接近的已知名称，并指向 `nabi lint --list`。在属性、`-A` / `-W` / `-D` 或 `lints` 中写出的已移除 lint（大多已变成错误）会被接受但不起作用；即使在 `-D warnings` 下也不会报告。
+每条 lint 诊断都会说明其级别从何而来：`` `#[warn(unused_variables)]` on by default ``、`` `-D unused` on the command line ``，级别来自清单时为 `` `"unused_variables": "deny"` in `lints` of nabi.nabion ``，或者用一个标签指向设置该级别的属性。未知的 lint 名或组名会产生警告，警告给出最接近的已知名称，并指向 `nabi lint --list`。在属性、`-A` / `-W` / `-D` 或 `lints` 中写出的已移除 lint（大多已变成错误）会被接受但不起作用；即使在 `-D warnings` 下也不会报告。
 
 `nabi lint --list` 打印所有 lint 及其默认级别和加入的版本，然后打印各组。
 
@@ -418,7 +418,7 @@ pub fn wake_io(fd: i32) { .. }
 
 ### 其他内置属性
 
-编译器还识别以下属性。每个属性都在其功能所在之处规定。
+编译器还识别以下属性。各属性在其所属功能的章节中规定。
 
 | 属性                           | 位置                          | 含义 |
 |--------------------------------|-------------------------------|---------|

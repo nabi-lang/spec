@@ -211,5 +211,3 @@ fn add_all<T: Add<T, Output = T>>(items: List<T>) -> T {
 컴파일러는 코루틴을 직접 상태 기계로 낮춥니다(8.10.1). 제네릭은 단형화로 구체 타입마다 별개의 코드를 만들어 낮추고, vtable은 쓰지 않습니다.
 
 이 두 메커니즘이 이 [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) 블록에서 가장 복잡한 lowering입니다. 나머지인 [Lowering: 데이터 타입과 표현식](808-lowering-types.md)과 [Lowering: 제어 흐름과 GC 통합](809-lowering-control.md)은 기계 연산에 거의 그대로 대응합니다.
-
-8장(런타임 ABI / lowering / 코드 생성)은 여기까지입니다.

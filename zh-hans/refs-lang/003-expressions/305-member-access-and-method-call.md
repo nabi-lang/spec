@@ -52,13 +52,13 @@ let d = p.distance(other);
 1. 首先是固有 `impl`（[`impl`](../002-types/209-impl.md)）中定义的方法。
 2. 然后是 trait `impl` 的方法，限于左侧类型所满足、且在当前模块的作用域内的 trait：`core` 的 trait（其中包括 prelude 的 trait：它们就是内置类型自身的方法）、用 `use` 导入的 trait（在模块中或外围块中）、在同一模块中定义的 trait，以及类型参数接收者的约束。`std` 或包中的 trait 需要 `use`（对 `(0..6).outcomes()` 要写 `use std::random::SampleRange;`），与 Rust 相同。通过类型书写的关联函数（`Point::origin()`）能看到这些 trait 以及其他所有标准库 trait。元模板写出的方法名，按模板所在模块作用域内的 trait 查找（[6.9.9](../006-meta-system/609-template-tokens.md#展开中的名字)）。
 
-3. 当两者都没有该方法，而接收者的类型有一个无参数的方法 `iter()` 时，若 `iter()` 返回的类型有 `m`，则 `x.m(args)` 即 `x.iter().m(args)`。零参数的 `x.min()` / `x.max()` 也以同样方式转发，尽管存在 `Ord::min` / `max`（它们接受一个参数）。因此集合可以响应迭代器方法：`xs.map(f).sum()`（[stdlib 2.7.14](../../refs-standard-libraries/200-core/207-iter.md#2714-集合类型响应迭代器方法)）。
+3. 当两者都没有该方法，而接收者的类型有一个无参数的方法 `iter()` 时，若 `iter()` 返回的类型有 `m`，则 `x.m(args)` 即 `x.iter().m(args)`。零参数的 `x.min()` / `x.max()` 也以同样方式转发，尽管存在 `Ord::min` / `max`（它们接受一个参数）。因此集合可以响应迭代器方法：`xs.map(f).sum()`（[标准库 2.7.14](../../refs-standard-libraries/200-core/207-iter.md#2714-集合类型响应迭代器方法)）。
 
 类型为类型参数的接收者（`x: T`，`T: Root`）只拥有其约束所给出的东西，所以在泛型主体中，`x.sqrt()` 对每个实例都是 `Root::sqrt`，对带有固有 `sqrt` 的类型（`T = Complex<f64>`）的实例也是如此。
 
 如果存在多个 trait 候选，而其中恰好一个来自在该模块中定义或 `use` 的 trait（固有方法总是优先），则选择那一个。否则，同时存在多个候选是有歧义的编译错误。此时用户必须用[类型路径](../002-types/213-type-paths.md)的完全限定形式显式消解。
 
-只有不在作用域内的 trait 才提供的方法是错误（E0135），错误会写出需要添加的 `use`：``method `hi` comes from trait `a::Greet`, which is not in scope``，帮助信息为 ``add `use pkg::a::Greet;` ``。其他包的 trait 以其公开所在的路径命名（`linalg::AsVector`，而不是声明它的模块）。完全限定形式（`a::Greet::hi(x)`）不需要 `use`。
+若方法只由不在作用域内的 trait 提供，调用它是错误（E0135），错误会写出需要添加的 `use`：``method `hi` comes from trait `a::Greet`, which is not in scope``，帮助信息为 ``add `use pkg::a::Greet;` ``。其他包的 trait 以其公开所在的路径命名（`linalg::AsVector`，而不是声明它的模块）。完全限定形式（`a::Greet::hi(x)`）不需要 `use`。
 
 当同一泛型 trait 的多个 impl 都提供该方法时（对 `List<i64>` 有 `Conv<f64>` 和 `Conv<i64>`），由 trait 的实参选出一个：类型参数的约束（`x.conv()`，`x: X`，`X: Conv<f64>`）、路径的实参（`Conv::<f64>::conv(x)`）或限定路径的实参（`<List<i64> as Conv<f64>>::conv(x)`）。
 

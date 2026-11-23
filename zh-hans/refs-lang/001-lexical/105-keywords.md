@@ -6,7 +6,7 @@
 
 ## 1.5.1. 保留关键字列表
 
-关键字分为两类。其原则是下面这一条规则。
+关键字分为两类，划分原则只有下面这一条。
 
 > [!IMPORTANT]
 > 开始一条语句或一个表达式、且可能与“标识符 + 其后内容”相混淆的词是**保留关键字**；出现位置固定的词是**上下文关键字**（1.5.4）。
@@ -48,16 +48,16 @@ macro     defer     dyn       move      gen       do
 |------------------------------------|------------------------------------------------------------------------|------|
 | `type`                             | 位于项的开头，且后跟一个标识符，再跟 `=` 或 `<` 时（类型别名）         | [2.6](../002-types/206-sum-types.md) |
 | `any`                              | 类型位置（`any`、`any Tr`）                                            | [2.2](../002-types/202-any-slot.md) |
-| `some`                             | 函数的返回类型或参数类型中，或类型别名的右侧，位于约束之前（`-> some Tr`、`x: some Tr`、`type X = some Tr;`） | [4.1.13](../004-functions/401-function-declaration.md#4113-不透明返回类型some-trait), [4.1.15](../004-functions/401-function-declaration.md#4115-具名不透明类型type-x--some-trait) |
-| `in`                               | `for pat in` 中的 `in`；在表达式中是成员运算符 `in` / `!in`（`∈` / `∉`） | [3.13.3](../003-expressions/313-loop-expressions.md#3133-for基于迭代器的重复), [3.2.3](../003-expressions/302-precedence-and-associativity.md#323-优先级与结合性表) |
+| `some`                             | 函数的返回类型或参数类型中，或类型别名的右侧，位于约束之前（`-> some Tr`、`x: some Tr`、`type X = some Tr;`） | [4.1.13](../004-functions/401-function-declaration.md#4113-不透明返回类型some-trait)、[4.1.15](../004-functions/401-function-declaration.md#4115-具名不透明类型type-x--some-trait) |
+| `in`                               | `for pat in` 中的 `in`；在表达式中是成员运算符 `in` / `!in`（`∈` / `∉`） | [3.13.3](../003-expressions/313-loop-expressions.md#3133-for基于迭代器的重复)、[3.2.3](../003-expressions/302-precedence-and-associativity.md#323-优先级与结合性表) |
 | `where`                            | 函数签名、`impl` 头部，或 `struct` / `enum` / `union` / 类型别名头部之后 | [2.10.4](../002-types/210-generics.md#2104-where-子句) |
-| `throws`, `rethrows`               | 函数签名的参数 `)` 之后                                                | [4.14](../004-functions/414-throws.md) |
-| `catch`, `finally`                 | 表达式或块之后（后缀子句）                                             | [3.14](../003-expressions/314-error-control-flow.md) |
-| `const`                            | 位于项的开头，在 `impl` / `trait` 体中也是（`const` 项、`const fn`），以及在泛型参数列表中（`<const N: usize>`） | [5.2](../005-modules/502-const.md), [2.11](../002-types/211-const-generics.md) |
-| `static`, `extern`, `mut`          | 位于项的开头（包括 `extern "C"`、`static mut`）                        | [5.3](../005-modules/503-static.md), [5.9](../005-modules/509-extern-block.md) |
+| `throws`、`rethrows`               | 函数签名的参数 `)` 之后                                                | [4.14](../004-functions/414-throws.md) |
+| `catch`、`finally`                 | 表达式或块之后（后缀子句）                                             | [3.14](../003-expressions/314-error-control-flow.md) |
+| `const`                            | 位于项的开头，在 `impl` / `trait` 体中也是（`const` 项、`const fn`），以及在泛型参数列表中（`<const N: usize>`） | [5.2](../005-modules/502-const.md)、[2.11](../002-types/211-const-generics.md) |
+| `static`、`extern`、`mut`          | 位于项的开头（包括 `extern "C"`、`static mut`）                        | [5.3](../005-modules/503-static.md)、[5.9](../005-modules/509-extern-block.md) |
 | `union`                            | 位于项的开头，且紧跟一个标识符时                                       | [2.5](../002-types/205-union.md) |
-| `pkg`, `sub`                       | 紧跟在 `pub(` 之后                                                     | [5.6](../005-modules/506-visibility.md) |
-| `pkg`, `sup`                       | 作为路径的第一个词法单元，且紧跟 `::` 时                               | [5.7](../005-modules/507-paths.md) |
+| `pkg`、`sub`                       | 紧跟在 `pub(` 之后                                                     | [5.6](../005-modules/506-visibility.md) |
+| `pkg`、`sup`                       | 作为路径的第一个词法单元，且紧跟 `::` 时                               | [5.7](../005-modules/507-paths.md) |
 
 ```nabi
 let type = 1;                       // identifier

@@ -1,8 +1,8 @@
 # 9.10. `nabi`：套件 / 建置前端與工具
 
-`nabi` 是 cargo 風格的前端。它負責資訊清單 `nabi.nabion` 與鎖定檔 `nabi.lock`、相依套件、環境、工具鏈釘選以及指令碼的相依套件，並把編譯委派給編譯器 `nabic`（[9.1](901-nabic-cli.md)）。各工具（run、lint、REPL、Jupyter、LSP、格式化工具、文件……）是 `nabi` 本身的一部分（9.10.8）。執行環境是 `nabir`（`libnabir.a`）。
+`nabi` 是 cargo 風格的前端。它負責清單 `nabi.nabion` 與鎖定檔 `nabi.lock`、相依套件、環境、工具鏈釘選以及指令碼的相依套件，並把編譯委派給編譯器 `nabic`（[9.1](901-nabic-cli.md)）。各工具（run、lint、REPL、Jupyter、LSP、格式化工具、文件……）是 `nabi` 本身的一部分（9.10.8）。執行環境是 `nabir`（`libnabir.a`）。
 
-沒有相依套件的套件只憑檔案慣例就能建置，不需要資訊清單（[0.3.4](../000-meta/003-source-units.md#034-清單nabinabion是選用的)）。此時 `nabi build` 等同於 `nabic build`。
+沒有相依套件的套件只憑檔案慣例就能建置，不需要清單（[0.3.4](../000-meta/003-source-units.md#034-清單nabinabion是選用的)）。此時 `nabi build` 等同於 `nabic build`。
 
 ## 9.10.1. 子指令與全域選項
 
@@ -28,12 +28,12 @@
 - 每個相依套件一個 `--extern name=<source directory>`。它們依照 `nabi.lock` 準備，相依套件排在其相依者之前（即 `nabi deps` 印出的順序）。預先建置由 `nabic` 進行（[9.2.3](902-aot-pipeline.md#預先建置的相依套件)）。
 - 每個套件的每個相依套件一個 `--extern-dep <package>=<name>`（`pkg` 表示正在建置的套件），讓每個套件只看得到它自己的相依套件（[5.7.14](../005-modules/507-paths.md#5714-套件之間的路徑)）。
 - 套件自己的 feature 以 `--cfg feature=<f>` 傳入，每個相依套件的 feature 以 `--extern-feature <name>=<f>` 傳入（9.10.4c）。build / run / test / bench / check / lint / fix / doc / emit / repl / lsp / jupyter / deps 的 feature 選項 `--features <f,..>`（可重複；也可以是 `<dep>/<f>`）、`--all-features` 與 `--no-default-features` 由 `nabi` 消耗（位於 `--` 之前）。
-- 資訊清單的 `lints` 以 `-A` / `-W` / `-D` 傳入（位於引數之前）。資訊清單是路徑所選擇之專案的資訊清單：對 `.nabi` 檔案而言，是該檔案所在或其上方最近一個含有 `src/main.nabi`、`src/lib.nabi` 或 `nabi.nabion` 的目錄。位於套件 `src/` 中的檔案選擇該套件（[9.1.1](901-nabic-cli.md#911-一般形式)）。位於某個有 `nabi.nabion` 之目錄中其他地方的單獨檔案（套件 `src/` 旁邊的指令碼，或只有 `nabi.nabion` 的目錄），會以該資訊清單的 `lints`（以及 `lints_from`）與相依套件，作為單一檔案套件編譯。
+- 清單的 `lints` 以 `-A` / `-W` / `-D` 傳入（位於引數之前）。清單是路徑所選擇之專案的清單：對 `.nabi` 檔案而言，是該檔案所在或其上方最近一個含有 `src/main.nabi`、`src/lib.nabi` 或 `nabi.nabion` 的目錄。位於套件 `src/` 中的檔案選擇該套件（[9.1.1](901-nabic-cli.md#911-一般形式)）。位於某個有 `nabi.nabion` 之目錄中其他地方的單獨檔案（套件 `src/` 旁邊的指令碼，或只有 `nabi.nabion` 的目錄），會以該清單的 `lints`（以及 `lints_from`）與相依套件，作為單一檔案套件編譯。
 - 在套件之外（環境、指令碼），`--target-dir` 設為該環境或指令碼的 `target/`。
 
 `nabi cc` 既不是委派的子指令也不是工具：它以 `cc` 之後的每個引數原樣執行工具鏈的 `nabicc`，不加上任何東西（[9.13.1](913-c-compiler.md#9131-nabicc-與-nabi-cc)）。
 
-`nabi repl <path>` 與 `run` 一樣，從該路徑的專案解析相依套件與 lint，並使用資訊清單的名稱（`--name`）。
+`nabi repl <path>` 與 `run` 一樣，從該路徑的專案解析相依套件與 lint，並使用清單的名稱（`--name`）。
 
 `nabi test` 的執行器接受下列選項（位於 `--` 之前）；它們不會傳給 `nabic`：
 
@@ -52,8 +52,8 @@
 
 - `--iters=N` 固定每個樣本的呼叫次數，而不進行校準。
 - `--samples=N` 是量測的樣本數（預設 10）。
-- `--format=human|json|nabibench` 選擇輸出形式（預設 `human`）：`json` 與測試相同，`nabibench` 是 [9.1.2](901-nabic-cli.md#nabic-bench效能測試) 的穩定行。
-- `--list` 與測試一樣印出篩選器所保留之效能測試的名稱，不執行任何效能測試。
+- `--format=human|json|nabibench` 選擇輸出形式（預設 `human`）：`json` 與測試相同，`nabibench` 是 [9.1.2](901-nabic-cli.md#nabic-bench基準測試) 的穩定行。
+- `--list` 與測試一樣印出篩選器所保留之基準測試的名稱，不執行任何基準測試。
 
 兩者都經由其執行器執行另一個 `--target` 的執行檔（[其他目標的執行檔](#其他目標的執行檔)）。
 
@@ -105,7 +105,7 @@ nabi init --script <file.nabi>
 
 `nabi init` 把既有的目錄（省略時為目前目錄）變成套件。若該目錄已含有 `src/main.nabi` 或 `src/lib.nabi`，則是錯誤。
 
-`nabi init --script <file.nabi>` 把一個指令碼（[9.10.7](#9107-單檔指令碼的行內資訊清單)）變成位於該指令碼目錄中、以檔案名稱（去掉 `.nabi`）命名的套件。`nabi.nabion` 取得指令碼各區塊合併後的 `deps`（以及 `native`），路徑改寫為相對於它；指令碼變成 `src/main.nabi`，其 `mod` 所載入的每個檔案都以相同的相對路徑移到 `src/` 之下，各自去掉其區塊。若指令碼位於套件內、被移動的檔案或 `nabi.nabion` 已存在，或某個子模組檔案位於指令碼目錄之外，則是錯誤。
+`nabi init --script <file.nabi>` 把一個指令碼（[9.10.7](#9107-單檔指令碼的行內清單)）變成位於該指令碼目錄中、以檔案名稱（去掉 `.nabi`）命名的套件。`nabi.nabion` 取得指令碼各區塊合併後的 `deps`（以及 `native`），路徑改寫為相對於它；指令碼變成 `src/main.nabi`，其 `mod` 所載入的每個檔案都以相同的相對路徑移到 `src/` 之下，各自去掉其區塊。若指令碼位於套件內、被移動的檔案或 `nabi.nabion` 已存在，或某個子模組檔案位於指令碼目錄之外，則是錯誤。
 
 兩個指令也都會以標準形式（[NABION 3.8.4](../../refs-standard-libraries/300-std/308-nabion.md#384-正規形式)）寫出 `nabi.nabion`，其 `nabi_version` 是寫出它的 `nabi` 的版本（`nabi_version: "0.1.3"`，省略其預發行標記），並釘選在該 `nabi` 的系列上（任何 0.1.x 都寫 `toolchain: "0.1"`，9.10.6），讓套件在更新的系列成為預設時仍停留在該系列；還會寫出內容為 `target/` 的 `.gitignore`，並在不位於 git 儲存庫內時執行 `git init`。`init` 使用依命名規則（9.10.3）調整過的目錄名稱作為套件名稱：Windows 裝置名稱會加上前綴 `pkg-`（`nul` → `pkg-nul`），名稱會截短為 64 個字元。
 
@@ -134,9 +134,9 @@ hello/
 
 ## 9.10.3. `nabi.nabion` / `nabi.lock`
 
-套件根部的 `nabi.nabion` 是資訊清單，同一位置的 `nabi.lock` 是鎖定檔。兩者都是 [NABION](../../refs-standard-libraries/300-std/308-nabion.md) 格式。名稱的拼寫完全如此（全部小寫）。只有大小寫不同的檔案（`Nabi.nabion` 等）會被忽略並發出警告，不會被讀取。
+套件根部的 `nabi.nabion` 是清單，同一位置的 `nabi.lock` 是鎖定檔。兩者都是 [NABION](../../refs-standard-libraries/300-std/308-nabion.md) 格式。名稱的拼寫完全如此（全部小寫）。只有大小寫不同的檔案（`Nabi.nabion` 等）會被忽略並發出警告，不會被讀取。
 
-資訊清單是單一的 NABION 值，即一個 `Package { .. }` 結構（根名稱 `Package` 可以省略）。它只會被讀取，絕不會被編譯或執行。
+清單是單一的 NABION 值，即一個 `Package { .. }` 結構（根名稱 `Package` 可以省略）。它只會被讀取，絕不會被編譯或執行。
 
 ```nabion
 Package {
@@ -190,42 +190,42 @@ Package {
 ```
 
 - 值是 NABION 字面值（字串、`{ "k": v }` 字典、空字典 `{}`）以及 `Dep::path("..")` / `Dep::git("url", rev | tag | branch: "..")` / `Dep::version("req", registry: "url")`。`Dep::git` 最多接受 `rev` / `tag` / `branch` 其中之一，`Dep::version` 的 `registry` 是選用的。只是一個字串的相依套件值是 `Dep::version` 的簡寫。
-- `Dep::path("..", version: "req")` 為路徑相依套件加上版本需求。建置使用該路徑，而那裡的套件必須有需求所接受的版本（`` dependency `linalg` (path ..) is version 0.2.0, which its `version: "^0.1"` does not accept; .. ``）；`nabi publish` 會在其位置寫入該需求（9.10.4a）。並行開發的套件就是以這種方式發布的。
+- `Dep::path("..", version: "req")` 為路徑相依套件加上版本需求。建置使用該路徑，而那裡的套件必須有需求所接受的版本（`` dependency `linalg` (path ..) is version 0.2.0, which its `version: "^0.1"` does not accept; .. ``）；`nabi publish` 會在其位置寫入該需求（9.10.4a）。並排開發的套件就是以這種方式發布的。
 - `Dep::path` / `Dep::git` / `Dep::version` 也接受 `optional: true`、`features: ["<f>", ..]` 與 `default_features: false`（9.10.4c）；選用的開發用相依套件是錯誤。
 - `package: "<name>"` 重新命名相依套件：`<name>` 是套件，鍵是這個套件的程式碼對它的稱呼（`"j": Dep::version("^1", package: "json5")` 就是 `json5`，以 `use j::..` 使用）。每個相依者選擇自己的名稱，而且只有它自己的程式碼看得到，因此兩個套件可以用不同的名稱稱呼同一個套件；它仍是同一個套件，只建置一次，其型別在每個名稱下都相同。一個相依者以兩個鍵相依於同一個套件是錯誤（`` the root package depends on package `json5` twice, as `j` and `json5`; depend on it once ``）。
-- `target: "<target>"` 把相依套件限制在對相符目標的建置：目標名稱（`x86_64-unknown-linux-gnu`），或是對 [6.3.2](../006-meta-system/603-cfg.md#632-述詞的種類) 之目標鍵（`target_os`、`target_arch`、`target_family`、`target_env`、`target_endian`、`target_pointer_width`）的 `cfg(<predicate>)`，搭配 `all(..)`、`any(..)`、`not(..)`。其他任何東西在讀取資訊清單時都是錯誤。解析與鎖定檔對每個目標都涵蓋該相依套件；對其他目標的建置會省略它，連同它會啟用的 feature。
+- `target: "<target>"` 把相依套件限制在對相符目標的建置：目標名稱（`x86_64-unknown-linux-gnu`），或是對 [6.3.2](../006-meta-system/603-cfg.md#632-述詞的種類) 之目標鍵（`target_os`、`target_arch`、`target_family`、`target_env`、`target_endian`、`target_pointer_width`）的 `cfg(<predicate>)`，搭配 `all(..)`、`any(..)`、`not(..)`。其他任何東西在讀取清單時都是錯誤。解析與鎖定檔對每個目標都涵蓋該相依套件；對其他目標的建置會省略它，連同它會啟用的 feature。
 - 相依套件上的 `plugin: true` 把它建置為程式旁邊的外掛，不連結它（[9.12.2](912-plugins.md#9122-建置)）；外掛之相依套件上的 `bundle: true` 把它連結進外掛，而不是從程式取得。在不是外掛的套件中使用 `bundle` 是錯誤（`` `bundle: true` on `noise` belongs in a plugin's dependencies: give this package `lib: { kind: "plugin" }`, or remove `bundle: true` ``），同時帶有兩者的相依套件也是錯誤。
 - `Dep::registry` 只用於 `nabi.lock`；在 `nabi.nabion` 中使用它是錯誤。
 - 套件名稱（`deps` 的鍵、`name`）是以字母開頭的小寫 ASCII `[a-z0-9_-]+`（以數字、`-` 或 `_` 開頭是錯誤）。名稱 `std`、`core` 與 `bare` 是標準函式庫的各層級，隨工具鏈提供：套件、原生套件或登錄庫的名稱是其中之一是錯誤（`` `std` is the standard library, which ships with the toolchain; name the package something else, e.g. `std_util` ``），以它執行 `nabi new` / `nabi init` 也是；`nabi add std` 會說明沒有東西可以新增。`deps` 的鍵是其中之一是錯誤，其說明為 `` std ships with the toolchain; remove this line ``，除非它帶有 `package: "<name>"`：此時它是以該層級之名稱稱呼的那個套件（[5.7.4](../005-modules/507-paths.md#574-stdcorebare標準函式庫層級)）。`package: "std"` 是相同的錯誤。程式碼也必須能夠指名該套件，因此其程式碼名稱（見下文）不得是關鍵字（1.5：`fn`、`match`、`self`……）或路徑起點（5.7.1：`pkg`、`sup`）；執行檔中的 `use pkg::add;` 一律表示它自己的根（`` `pkg` already names a package's own root (`pkg::`), so code can't name a package called that; name the package something else, e.g. `pkg_util` ``）。鍵是字串（`"nabi-syntax": Dep::version("^0.1")`）。
 - 套件名稱也必須是每個支援的作業系統都能作為檔案或目錄儲存的名稱：不是 Windows 裝置名稱（`con`、`prn`、`aux`、`nul`、`com1`-`com9`、`lpt1`-`lpt9`，不論大小寫），且最多 64 個字元（`` `nul` is a device name on Windows, so no file can be called that; name the package something else, e.g. `my_nul` ``）。`nabi new` / `nabi init --script` / `nabi add` / `nabi publish` 會拒絕這樣的名稱。在被讀取的 `nabi.nabion` 中（其 `name` 以及 `deps`、`dev_deps`、`native` 的鍵），它是帶有 `file:line:col` 的警告，建置繼續進行。
-- `version` 是一個版本（`major.minor.patch`，9.10.4a）。不是版本的值在讀取資訊清單時是警告（`` `banana` is not a version (major.minor.patch): it needs three numbers; `nabi publish` needs one, e.g. `version: "0.1.0"` ``），在 `nabi publish` 時是錯誤。
-- `nabi_version` 是套件能用以建置的最舊工具鏈，是完整的版本：`x.y.z`，不多也不少（讀取資訊清單時為 `` `nabi_version: "0.1"` is not a toolchain version; write all three parts, e.g. `nabi_version: "0.1.3"` ``）。它接受該工具鏈以及其系列中較新的工具鏈（[9.10.6 相容性](#相容性)）：`"0.1.3"` 接受 0.1.3 到最後一個 0.1.x，`"1.4.2"` 接受 1.4.2 到最後一個 1.x。`nabi publish` 需要它（9.10.4a），而解析依它挑選版本。它不是 `toolchain`，後者釘選這個專案用以建置的工具鏈（9.10.6）。
+- `version` 是一個版本（`major.minor.patch`，9.10.4a）。不是版本的值在讀取清單時是警告（`` `banana` is not a version (major.minor.patch): it needs three numbers; `nabi publish` needs one, e.g. `version: "0.1.0"` ``），在 `nabi publish` 時是錯誤。
+- `nabi_version` 是套件能用以建置的最舊工具鏈，是完整的版本：`x.y.z`，不多也不少（讀取清單時為 `` `nabi_version: "0.1"` is not a toolchain version; write all three parts, e.g. `nabi_version: "0.1.3"` ``）。它接受該工具鏈以及其系列中較新的工具鏈（[9.10.6 相容性](#相容性)）：`"0.1.3"` 接受 0.1.3 到最後一個 0.1.x，`"1.4.2"` 接受 1.4.2 到最後一個 1.x。`nabi publish` 需要它（9.10.4a），而解析依它挑選版本。它不是 `toolchain`，後者釘選這個專案用以建置的工具鏈（9.10.6）。
 - 在程式碼中，把 `-` 換成 `_` 的名稱是指稱該套件的頂層路徑（`nabi-syntax` → `use nabi_syntax::..`、`--extern nabi_syntax=..`）。
 - 在登錄庫以及同一個相依圖內，名稱的比較把 `-` 與 `_` 視為相同並忽略大小寫。因此 `nabi-syntax` 與 `nabi_syntax` 無法共存。
 - 相依套件必須有 `src/lib.nabi`；該函式庫就是其相依者所得到的東西，無論套件是否也有 `src/main.nabi`。只有 `src/main.nabi` 的相依套件是錯誤，錯誤訊息會說明它是程式，應使用 `nabi install`。間接相依套件是相依套件的 `deps`（`dev_deps` 不會傳遞）。
 - `native` 把原生套件名稱（自成一個命名空間：套件與原生套件可以同名）對應到 `Dep::native("req"[, registry: "url"])`、需求字串，或 `Dep::native(url: "<url or path relative to the manifest>", sha256: "<64 hex digits>")`（9.10.4b）。它也把名稱對應到 `Dep::system(..)`，即安裝在機器上的函式庫，以及 `Dep::framework()`，即 Apple framework，這些在建置時尋找（9.10.4b）。在 `deps` / `dev_deps` 中使用 `Dep::native` 是錯誤。圖中每個套件的原生相依套件都會連結進執行檔（只經由 `dev_deps` 到達者，只用於 test / bench）。
 - `lib: { kind: "nabi" | "cdylib" | "staticlib" | "plugin" }`（該紀錄可以命名為 `Lib`）說明函式庫建置出什麼。`"nabi"` 是預設值，即其他 Nabi 套件所使用的函式庫；使用 `"cdylib"` 時，`nabi build` 會傳入 `--crate-type=cdylib` 以及帶有套件 `version` 的 `--lib-version`（[9.1.2](901-nabic-cli.md#nabic-buildaot-建置)），因此建置也會產生共用函式庫及其 C 標頭檔（[9.3.3](903-package-archive.md#933-靜態與共用函式庫)），除非命令列給出了 `--crate-type`。使用 `"staticlib"` 時，它傳入 `--crate-type=staticlib`：建置也會產生一個 C 與 Swift 可以單獨連結的靜態函式庫，連同其標頭檔與模組對應檔（9.3.3）；在它旁邊的 `xcframework: true` 還會傳入 `--xcframework`，用在其他種類上則是錯誤。使用 `"plugin"` 時，它傳入 `--crate-type=plugin`：該套件是由 Nabi 程式載入的共用函式庫（[9.12](912-plugins.md)）；帶有 `src/main.nabi` 的 `"plugin"` 套件是錯誤，對它執行 `nabi run` 也是。其他種類是錯誤，錯誤訊息會列出這四種。
-- `c: { sources, include, define, std, flags }`（該紀錄可以命名為 `C`）是由 nabicc，即 Nabi 自己的 C 編譯器（絕不是系統的 C 編譯器），建置進套件的 C 檔案：`sources`（相對於資訊清單的路徑，至少一個）、`include`（標頭檔目錄，然後是套件之 `Dep::system` 函式庫的目錄）、`define`（`{ "NAME": "value" }`）、`std`（`c89`、`c99`、`c11`、`c17`、`c23` 或其 `gnu` 版本）以及 `flags`，後者只接受 `-O*`、`-g`、`-W*`、`-f*`（不包括 `-flto`）與 `-m*`：其他任何東西都是錯誤，錯誤訊息會列出它們。目的檔放到 `target/<profile>/c/<name>/` 並加入連結（`--native-object`）。只有其輸入（它以及它所讀取的標頭檔）或選項改變的原始檔才會重新編譯（[9.13.8](913-c-compiler.md#9138-套件的-c-原始碼)）。
+- `c: { sources, include, define, std, flags }`（該紀錄可以命名為 `C`）是由 nabicc，即 Nabi 自己的 C 編譯器（絕不是系統的 C 編譯器），建置進套件的 C 檔案：`sources`（相對於清單的路徑，至少一個）、`include`（標頭檔目錄，然後是套件之 `Dep::system` 函式庫的目錄）、`define`（`{ "NAME": "value" }`）、`std`（`c89`、`c99`、`c11`、`c17`、`c23` 或其 `gnu` 版本）以及 `flags`，後者只接受 `-O*`、`-g`、`-W*`、`-f*`（不包括 `-flto`）與 `-m*`：其他任何東西都是錯誤，錯誤訊息會列出它們。目的檔放到 `target/<profile>/c/<name>/` 並加入連結（`--native-object`）。只有其輸入（它以及它所讀取的標頭檔）或選項改變的原始檔才會重新編譯（[9.13.8](913-c-compiler.md#9138-套件的-c-原始碼)）。
 - `lints` 設定 lint 等級（lint 或群組名稱 → `"allow"` | `"warn"` | `"deny"`，[6.2.9](../006-meta-system/602-built-in-attributes.md#629-allow--deny--warn-lint-控制)）。它們被當作加在 `nabi` 所執行之每個編譯指令（委派給 `nabic` 的，或工具）的 CLI 旗標之前處理，因此 CLI 的 `-A/-W/-D` 與程式碼中的屬性會覆寫它們。
-- `lints_from` 指定一個目錄（相對於這個資訊清單的目錄，或絕對路徑），其 `nabi.nabion` 提供起始的 lint 等級。該資訊清單的 `lints`（在其自己的 `lints_from` 鏈之後）先套用，接著是這個資訊清單的 `lints`，因此這裡的項目會覆寫鏈中相同的 lint 或群組（所有項目都依此順序以 `-A`/`-W`/`-D` 傳入；較後的旗標勝出）。它只適用於正在建置或檢查的套件（以及環境的資訊清單）；絕不會參考相依套件之資訊清單的 lint。若該目錄不存在、不含 `nabi.nabion`，或該鏈回到鏈中已有的資訊清單（循環），則是錯誤。`nabi env import` 會把相對的 `lints_from` 改寫為絕對路徑。指令碼的 `//! ```nabion` 區塊不得使用它。
+- `lints_from` 指定一個目錄（相對於這個清單的目錄，或絕對路徑），其 `nabi.nabion` 提供起始的 lint 等級。該清單的 `lints`（在其自己的 `lints_from` 鏈之後）先套用，接著是這個清單的 `lints`，因此這裡的項目會覆寫鏈中相同的 lint 或群組（所有項目都依此順序以 `-A`/`-W`/`-D` 傳入；較後的旗標勝出）。它只適用於正在建置或檢查的套件（以及環境的清單）；絕不會參考相依套件之清單的 lint。若該目錄不存在、不含 `nabi.nabion`，或該鏈回到鏈中已有的清單（循環），則是錯誤。`nabi env import` 會把相對的 `lints_from` 改寫為絕對路徑。指令碼的 `//! ```nabion` 區塊不得使用它。
 - `profile` 把建置設定檔（`"debug"` 或 `"release"`，[9.2.15](902-aot-pipeline.md#9215-輸出)）對應到其設定 `{ overflow_checks: bool }`（該紀錄可以命名為 `Profile`）。`overflow_checks: false` 在該設定檔中關閉整數溢位檢查，與 `-C overflow-checks=no` 相同（[9.1.2](901-nabic-cli.md#nabic-buildaot-建置)）；命令列上的 `-C overflow-checks` 會覆寫它。其他設定檔名稱或設定是錯誤。只會讀取正在建置的套件（或環境）；不讀取相依套件的設定檔，指令碼的 `//! ```nabion` 區塊也不得使用它。
-- 套件中繼資料：`authors` 是 `"Name <email>"` 字串，`nabi new` / `nabi init` 不會填入它們。`keywords` 與 `categories` 各自最多容納 5 個項目。`authors`、`keywords`、`categories`、`include` 或 `exclude` 中的空項目是錯誤。`readme` 與 `license_file` 是套件內、相對於資訊清單目錄的路徑（絕對路徑，或其 `..` 離開套件的路徑，是錯誤）；沒有 `readme` 時，若有 `README.md`，它就是 readme。`metadata` 是 `nabi` 不讀取的表（`{ .. }`）；它依寫出的樣子送到登錄庫。`nabi publish` 會檢查 readme 與 `license_file` 存在、`default_run` 指名套件的某個執行檔，並拒絕帶有 `publish: false` 的套件（9.10.4a）。
+- 套件中繼資料：`authors` 是 `"Name <email>"` 字串，`nabi new` / `nabi init` 不會填入它們。`keywords` 與 `categories` 各自最多容納 5 個項目。`authors`、`keywords`、`categories`、`include` 或 `exclude` 中的空項目是錯誤。`readme` 與 `license_file` 是套件內、相對於清單目錄的路徑（絕對路徑，或其 `..` 離開套件的路徑，是錯誤）；沒有 `readme` 時，若有 `README.md`，它就是 readme。`metadata` 是 `nabi` 不讀取的表（`{ .. }`）；它依寫出的樣子送到登錄庫。`nabi publish` 會檢查 readme 與 `license_file` 存在、`default_run` 指名套件的某個執行檔，並拒絕帶有 `publish: false` 的套件（9.10.4a）。
 - `include` / `exclude` 是針對所發布之提交中檔案路徑的 glob（`*` 與 `?` 在一個名稱內，`**` 跨越名稱；不含 `/` 的模式比對任何深度的名稱，比對到目錄的模式也比對其中的內容）。當 `include` 為空或比對到某個檔案，且 `exclude` 沒有比對到它時，套件就容納該檔案；`nabi.nabion` 一律包含在內。它們決定 `nabi publish` 送出的打包大小（9.10.4a）；原始碼仍是整個提交。
 - `links` 指名套件所連結的原生函式庫。同一個建置中兩個套件有相同的 `links` 是錯誤，錯誤訊息會指出兩者。
 - `default_run` 指名 `nabi run` 所執行的執行檔；一個套件最多有一個執行檔（`src/main.nabi`，以套件命名），因此它就是那個名稱。
 - `deployment_target` 是套件的程式能執行的最舊 macOS，以數字表示（`"13.0"`；其他形式是會顯示它的錯誤）；省略時為 `11.0`。紀錄形式 `{ macos: "13.0", ios: "16.0" }` 也給出最舊的 iOS（省略時為 `13.4`；更舊的是錯誤），每個欄位都是選用的。`nabi` 把它們以 `MACOSX_DEPLOYMENT_TARGET` 與 `IPHONEOS_DEPLOYMENT_TARGET` 傳給 `nabic`，除非其中之一已經設定，此時以已設定的為準。比它更新的 Objective-C API 只在 `objc::available` 之下呼叫（[std 1.10.13](../../refs-standard-libraries/100-bare/110-objc.md#11013-可用性與部署目標)）。
-- `nabi` 不認識的欄位是帶有 `file:line:col` 的警告（`` unknown field `licence` is ignored; did you mean `license`? ``，有接近的欄位時附上建議），資訊清單在沒有它的情況下被讀取；`nabi publish` 會把它依寫出的樣子放在 `meta` 中送出（9.10.4a），讓較新的登錄庫可以使用它。
+- `nabi` 不認識的欄位是帶有 `file:line:col` 的警告（`` unknown field `licence` is ignored; did you mean `license`? ``，有接近的欄位時附上建議），清單在沒有它的情況下被讀取；`nabi publish` 會把它依寫出的樣子放在 `meta` 中送出（9.10.4a），讓較新的登錄庫可以使用它。
 - 錯誤：未知的 `Dep` 種類 / 具名引數、重複、違反 9.10.4c 規則的 `features`、違反規則的套件名稱、不是 NABION 的語法、單一 `Package { .. }` 以外的任何東西、結尾多餘的語彙單元。診斷以 `file:line:col` 與插入符號顯示位置。
 
 | 相依套件來源 | 形式                                                         | 在 `nabi.lock` 中釘選 |
 |-------------------|--------------------------------------------------------------|----------------------|
-| path        | `Dep::path(".."[, version: "req"])`（相對於資訊清單的路徑）  | 否（一律為目前的內容） |
+| path        | `Dep::path(".."[, version: "req"])`（相對於清單的路徑）  | 否（一律為目前的內容） |
 | git         | `Dep::git("url")`，可選擇 `rev:` / `tag:` / `branch:` 其中之一 | 提交與 tree 雜湊     |
 | registry    | `Dep::version("req"[, registry: "url"])` 或字串 `"req"`（[9.10.4a](#9104a-登錄庫套件)） | 版本、提交、tree 雜湊（連同索引，絕不是鏡像站） |
 | native      | `Dep::native("req")` / `Dep::native(url:, sha256:)`（[9.10.4b](#9104b-原生套件)） | 版本與項目 SHA-256（索引）；無（由雜湊釘選） |
 | system      | `Dep::system(..)` / `Dep::framework()`（[9.10.4b](#9104b-原生套件)） | 否（每次建置時尋找） |
 
-Nabi 沒有建置指令碼：套件的程式碼不會在建置時執行。C 函式庫以預先建置的原生套件、安裝在機器上的函式庫，或由 nabicc 編譯的 C 原始碼（`c`，[9.13.8](913-c-compiler.md#9138-套件的-c-原始碼)）的形式引入，全都在資訊清單中宣告（9.10.4b）。
+Nabi 沒有建置指令碼：套件的程式碼不會在建置時執行。C 函式庫以預先建置的原生套件、安裝在機器上的函式庫，或由 nabicc 編譯的 C 原始碼（`c`，[9.13.8](913-c-compiler.md#9138-套件的-c-原始碼)）的形式引入，全都在清單中宣告（9.10.4b）。
 
 在一個建置內，一個名稱就是一個套件。若同一個名稱從不同的來源被要求（不同的路徑，或不同的 url / 提交），就是錯誤，錯誤訊息會顯示兩個要求者。兩個相依者把同一個程式碼名稱給了不同的套件也是錯誤（`` `hello` is package `other` for the root package and package `greet` for `mid` ``）。一個套件可以有多個程式碼名稱（`package`）；`nabi` 以相同的路徑把每一個都作為 `--extern` 傳入。
 
@@ -247,7 +247,7 @@ Workspace {
 
 ### `nabi.lock` 格式
 
-`nabi.lock` 是由 `nabi` 以確定性方式寫出的 NABION（標準形式）。在一段標頭註解之後，它依名稱順序為每個 git 或登錄庫套件容納一個 `Locked`。路徑相依套件不會被釘選，也不會出現。其欄位名稱遵循資訊清單的命名。
+`nabi.lock` 是由 `nabi` 以確定性方式寫出的 NABION（標準形式）。在一段標頭註解之後，它依名稱順序為每個 git 或登錄庫套件容納一個 `Locked`。路徑相依套件不會被釘選，也不會出現。其欄位名稱遵循清單的命名。
 
 ```nabion
 // nabi.lock: generated by `nabi`; do not edit. Commit it with your sources.
@@ -321,7 +321,7 @@ nabi deps [--dev] [--features <f,..>] [--all-features] [--no-default-features] [
 | `cache/registry/db/<repo>-<hash>/`         | 登錄庫索引的 bare clone（每個索引一個）                 |
 | `cache/registry/src/<sha256>/`             | 來自登錄庫之該 SHA-256 封存檔的登錄庫套件檔案（9.10.4a）；絕不會再次擷取 |
 | `cache/git/checkouts/<commit>/`            | 某個提交的 checkout。使用前以 tree 雜湊驗證，不同時會重新解開 |
-| `cache/scripts/<hash>/`                    | 指令碼的 `nabi.lock` 與 `target/`；`<hash>` 涵蓋指令碼的路徑，以及它所到達之每個檔案的路徑與區塊（[9.10.7](#9107-單檔指令碼的行內資訊清單)） |
+| `cache/scripts/<hash>/`                    | 指令碼的 `nabi.lock` 與 `target/`；`<hash>` 涵蓋指令碼的路徑，以及它所到達之每個檔案的路徑與區塊（[9.10.7](#9107-單檔指令碼的行內清單)） |
 | `cache/native/<sha256>/`                   | 原生封存檔，在其 SHA-256 相符之後解開；絕不會再次擷取（9.10.4b） |
 | `cache/native/meta/<sha256>.nabion`         | `Dep::native(url:)` 檔案                                |
 
@@ -367,7 +367,7 @@ Sources { replace: { "https://github.com/nabi-lang/packages-index": "https://mir
 | 3           | `3/a/abc`                |
 | 4 以上      | `ab/cd/abcd..`           |
 
-檔案的每一行是一個版本，以標準形式的單行 NABION 表示。較舊的版本在前。一行只容納解析所需的東西，使用資訊清單的欄位名稱；描述性欄位送到登錄庫 API（`meta`，見下文）。
+檔案的每一行是一個版本，以標準形式的單行 NABION 表示。較舊的版本在前。一行只容納解析所需的東西，使用清單的欄位名稱；描述性欄位送到登錄庫 API（`meta`，見下文）。
 
 ```nabion
 Package { name: "json", version: "1.4.2", deps: [{ name: "util", req: "^0.3", kind: "normal" }], source: Dep::git("https://example.com/json.git", rev: "0b6d.."), tree: "77e1..", yanked: false, nabi_version: "0.1.0" }
@@ -387,10 +387,10 @@ Package { name: "json", version: "1.4.2", deps: [{ name: "util", req: "^0.3", ki
 | `links`     | 選用：它所連結的原生函式庫（9.10.3） |
 | `official`  | 選用，由登錄庫寫入：對 Nabi 專案所發布的套件為 `true`（見下文） |
 
-- `deps` 中的 `kind` 是 `"normal"`、`"dev"` 或 `"native"`；`registry` 是選用的。被重新命名的相依套件以 `name` 表示程式碼名稱，以 `package` 表示套件的名稱；限定目標的相依套件帶有與資訊清單相同的 `target`，由用戶端在每次建置時求值（9.10.3）。
+- `deps` 中的 `kind` 是 `"normal"`、`"dev"` 或 `"native"`；`registry` 是選用的。被重新命名的相依套件以 `name` 表示程式碼名稱，以 `package` 表示套件的名稱；限定目標的相依套件帶有與清單相同的 `target`，由用戶端在每次建置時求值（9.10.3）。
 - 帶有 feature 的套件在 `deps` 之後有 `features: { "<name>": ["<entry>", ..] }`，依 9.10.4c 檢查。`normal` 相依套件可以有 `optional: true`、`features: [..]` 與 `default_features: false`（只在不是預設值時寫入）；`dev` / `native` 相依套件不得是選用的，原生相依套件沒有 feature。`nabi publish` 從 `nabi.nabion` 寫入它們；解析從項目中讀取它們。checkout 之後，項目的 `features` 必須等於該提交時套件之 `nabi.nabion` 的 `features`（順序不拘）；否則是錯誤。
 - `native/<shard path>` 容納原生套件，每行一個 `Native { .. }`（[9.10.4b](#9104b-原生套件)）。
-- `nabi_version` 就是資訊清單的 `nabi_version`（9.10.3）。`nabi publish` 需要它：沒有它時的錯誤是 `` nabi.nabion has no `nabi_version`, the oldest nabi this package builds with; the registry needs it ``，說明為 `` add `nabi_version: "0.1.3"` (this nabi), or the oldest one you have built it with ``，而不接受進行發布之 `nabi` 的值是錯誤，錯誤訊息會指出它所接受的工具鏈。登錄庫會拒絕沒有它，或其值不是 `x.y.z` 的行。讀取者會遵守它（解析，見下文）；在自己的索引中，沒有它的行適用於任何工具鏈。
+- `nabi_version` 就是清單的 `nabi_version`（9.10.3）。`nabi publish` 需要它：沒有它時的錯誤是 `` nabi.nabion has no `nabi_version`, the oldest nabi this package builds with; the registry needs it ``，說明為 `` add `nabi_version: "0.1.3"` (this nabi), or the oldest one you have built it with ``，而不接受進行發布之 `nabi` 的值是錯誤，錯誤訊息會指出它所接受的工具鏈。登錄庫會拒絕沒有它，或其值不是 `x.y.z` 的行。讀取者會遵守它（解析，見下文）；在自己的索引中，沒有它的行適用於任何工具鏈。
 - 標準函式庫層級的檔案（`3/s/std`、`co/re/core`、`ba/re/bare`）容納一行 `Library { name: "std", official: true }`：登錄庫中對隨工具鏈提供、由 Nabi 專案擁有、沒有版本也沒有封存檔之函式庫的項目。進行解析的讀取者會略過它，也無法以其名稱發布任何版本。
 - 這是唯一的行格式：每一行沒有格式版本。
 - 讀取者會略過索引行中它不認識的欄位（`Package`、其 `deps` 項目、`Native`、`Artifact`）。自己的 `Native { .. }` 檔案（`Dep::native(url:)`、`nabi publish --native`）仍會拒絕它們。登錄庫會嚴格檢查各行。
@@ -414,10 +414,10 @@ Nabi 專案所發布的套件在索引中標示為 `official: true`（由登錄�
 
 - 挑選工具鏈所攜帶的版本（見下文），否則挑選這個工具鏈能建置的最高未撤回版本（其 `nabi_version` 接受這個工具鏈），並把 `"<name>": "^<major>.<minor>"`（低於 0.1 時為 `^<version>`）寫進套件的 `nabi.nabion`（工作區成員自己的；指令碼的 `//! nabion` 區塊，缺少時會建立），解析並更新 `nabi.lock`，印出 `Added <name> ^x.y (official)`，然後繼續執行該指令；
 - 對工具鏈所攜帶的套件，不讀取任何索引；否則讀取快取的索引，只有在沒有快取時才擷取它（擷取失敗，或 `--offline` 而沒有快取時，不會新增任何東西）；
-- 有 `--locked` 或 `--frozen` 時（在錯誤中以其名稱指出），或 `CI` 設為非空值時，絕不編輯資訊清單：`` `json` is an official package the code uses, but it is not in nabi.nabion, and --locked never changes it; add it: `nabi add json` ``；
+- 有 `--locked` 或 `--frozen` 時（在錯誤中以其名稱指出），或 `CI` 設為非空值時，絕不編輯清單：`` `json` is an official package the code uses, but it is not in nabi.nabion, and --locked never changes it; add it: `nabi add json` ``；
 - 離線且兩個快取中都沒有該套件時：`` .. it is not in the cache and --offline is set: run `nabi add json` online, or keep the official packages for offline use with `nabi component add packages` ``。
 
-根 `std`、`core`、`bare`、`nabi`、`pkg`、`sup`、`crate`、`super`、`self` 以及首字母大寫的名稱絕不是套件。不是官方的名稱保留編譯器的錯誤（`` `geom` is not a dependency of this package: add it to nabi.nabion (`nabi add geom`) ``）。REPL 與 Jupyter 核心對每個儲存格做相同的事（在套件的工作階段中是 `nabi add`，在環境的工作階段中是 `nabi install --env`）。語言伺服器絕不編輯資訊清單：它提供 `nabi add <name>` 快速修正（9.9.13）。
+根 `std`、`core`、`bare`、`nabi`、`pkg`、`sup`、`crate`、`super`、`self` 以及首字母大寫的名稱絕不是套件。不是官方的名稱保留編譯器的錯誤（`` `geom` is not a dependency of this package: add it to nabi.nabion (`nabi add geom`) ``）。REPL 與 Jupyter 核心對每個儲存格做相同的事（在套件的工作階段中是 `nabi add`，在環境的工作階段中是 `nabi install --env`）。語言伺服器絕不編輯清單：它提供 `nabi add <name>` 快速修正（9.9.13）。
 
 ### `nabi component`
 
@@ -438,7 +438,7 @@ nabi component remove packages
 
 沒有 `archive` 的版本是一則附註，在使用時從 git 擷取。對 `add` 與 `update` 使用 `--offline` 是錯誤；其他名稱是錯誤，錯誤訊息會列出各元件。
 
-元件只會填入快取：版本仍由資訊清單與鎖定檔挑選。釘選了工具鏈與快取都沒有之版本的鎖定檔，在線上時會下載它，離線時則是上述錯誤。
+元件只會填入快取：版本仍由清單與鎖定檔挑選。釘選了工具鏈與快取都沒有之版本的鎖定檔，在線上時會下載它，離線時則是上述錯誤。
 
 ### `nabi search` / `publish` / `yank` / `login` / `logout`
 
@@ -463,17 +463,17 @@ nabi yank [--native] <name>@<version> [--undo] [--message <why>] [--registry <ur
   - `GET <api>/api/v1/packages/<name>` 與 `/api/v1/native/<name>`，不需權杖 → `Package { name, native, owners, versions: [Version { version, yanked, meta, yank_message, has_readme, downloads, published_by, yanked_by, unyanked_by }, ..] }`；`GET <api>/api/v1/packages/<name>/<version>/readme` → 以 markdown 表示的 README。
 
   失敗是帶有 `Error { message: ".." }` 的 4xx / 5xx 狀態，`nabi` 會回報其訊息；401 表示權杖無效。`nabi` 會略過它不認識的回覆欄位。
-- `meta` 容納描述套件、不參與解析的內容，來自資訊清單（9.10.3）與套件。沒有值的欄位會被省略。
+- `meta` 容納描述套件、不參與解析的內容，來自清單（9.10.3）與套件。沒有值的欄位會被省略。
 
   | 欄位 | 來源 |
   |-------|------|
-  | `description`、`license`、`license_file`、`authors`、`homepage`、`documentation`、`repository`、`readme`（路徑）、`keywords`、`categories`、`include`、`exclude`、`publish`、`metadata`、`links`、`default_run` | 資訊清單中同名的欄位 |
+  | `description`、`license`、`license_file`、`authors`、`homepage`、`documentation`、`repository`、`readme`（路徑）、`keywords`、`categories`、`include`、`exclude`、`publish`、`metadata`、`links`、`default_run` | 清單中同名的欄位 |
   | `has_lib` | 套件是否有 `src/lib.nabi` |
   | `bin_names` | 其執行檔：有 `src/main.nabi` 時為 `[<name>]`，否則為 `[]` |
   | `readme_content` | readme 的文字（9.10.3），最多 524288 位元組；更長的在 `nabi publish` 時是錯誤 |
   | `size` | 打包大小：套件所容納之 HEAD 檔案的位元組數（`include` / `exclude`，9.10.3） |
 
-  `nabi` 不認識的資訊清單欄位會依寫出的樣子放在 `meta` 中送出，讓較新的登錄庫可以儲存它們。對 `publish --native`，`meta` 是該檔案的 `description`、`license` 與 `repository`。
+  `nabi` 不認識的清單欄位會依寫出的樣子放在 `meta` 中送出，讓較新的登錄庫可以儲存它們。對 `publish --native`，`meta` 是該檔案的 `description`、`license` 與 `repository`。
 - 登錄庫 API 需要權杖；`--index-dir` checkout 不需要。預設登錄庫的權杖是有設定且非空時的 `NABI_REGISTRY_TOKEN`，否則是 `nabi login` 所儲存的權杖。對其他索引，是 `nabi login --registry <url>` 所儲存的權杖；`NABI_REGISTRY_TOKEN` 絕不會送到那裡（有設定時，會警告一次：``NABI_REGISTRY_TOKEN goes only to https://github.com/nabi-lang/packages-index; for <url> run `nabi login --registry <url>` ``）。沒有權杖時，是錯誤「run `nabi login` first」（對其他索引是 ``run `nabi login --registry <url>` first``）。
 - `nabi login` 接受一個登錄庫帳號權杖，在網站上建立（`<api>/me`，以 GitHub 登入；目前只有登錄庫的維護者能建立）。省略權杖時，會從標準輸入讀取，不回顯（按 Ctrl-C 時會恢復回顯）。`login` 會詢問 `/api/v1/me`：它拒絕 API 不接受的權杖，以及其 `publish` 為 false 的帳號（「this account cannot publish yet: publishing is open to the registry's maintainers only」），不儲存任何東西。否則它把該索引（`--registry <url>`，否則為預設登錄庫）的權杖以 `Tokens { tokens: { "<index url>": "<token>" } }` 儲存在 `$NABI_HOME/tokens.nabion` 中（鍵不帶結尾的 `/`；已有的欄位與其他索引會保留），並印出「Logged in as <login>」。權杖只會送到它自己之索引的登錄庫 API。
 - `tokens.nabion` 是唯一的權杖檔案。
@@ -624,8 +624,8 @@ nabi uninstall [--native] <name>..
 
 1. 命令列上的 `+<version>`（`nabi +0.4 build`）
 2. 環境變數 `NABI_TOOLCHAIN`
-3. 所執行之指令碼區塊中的 `toolchain: "X"`（[9.10.7](#9107-單檔指令碼的行內資訊清單)），適用於 `nabi <file>`，以及對套件之外的 `.nabi` 檔案執行的 `nabi run` / `build` / `check` / `test`（代理程式讀取該檔案的前 64 KiB）
-4. 資訊清單中的 `toolchain: "X"`（最近的 `nabi.nabion`；代理程式只讀取這個欄位，因此它不認識的欄位不影響釘選）
+3. 所執行之指令碼區塊中的 `toolchain: "X"`（[9.10.7](#9107-單檔指令碼的行內清單)），適用於 `nabi <file>`，以及對套件之外的 `.nabi` 檔案執行的 `nabi run` / `build` / `check` / `test`（代理程式讀取該檔案的前 64 KiB）
+4. 清單中的 `toolchain: "X"`（最近的 `nabi.nabion`；代理程式只讀取這個欄位，因此它不認識的欄位不影響釘選）
 5. 預設值（`$NABI_HOME/config.nabion` 中的 `Config { toolchain }`）
 
 釘選是下列其中之一：
@@ -634,7 +634,7 @@ nabi uninstall [--native] <name>..
 - 9.10.4a 中的需求（`^0.3.1`、`~0.3.1`、`=0.3.1`、`>=0.3, <0.5`），比對它所接受的最高已安裝版本；
 - 工具鏈目錄名稱（`0.3.1-<triple>`），比對該目錄。
 
-相符的最高已安裝正式版勝出；預發行版（`0.3.1-rc.1`）只在沒有正式版相符時才勝出，因此 `0.3` 會選擇 `0.3.0` 而不是 `0.3.1-rc.1`，而只安裝了候選版的系列會選擇其中最新的。確切指名預發行版的釘選（`0.3.1-rc.1`）只比對它。不屬於這些的資訊清單釘選是警告，會說明該寫什麼（`` `toolchain: "banana"`: write a version (`0.1`), a requirement (`^0.1.0`) or a toolchain directory name ``）。若沒有任何工具鏈相符，就是錯誤，錯誤訊息會指出該釘選及其來源，以及安裝它的指令：完整版本時為 `nabi toolchain install <pin>`，否則為帶有該釘選所接受之完整版本的 `nabi toolchain install <version>`，或 `--from`。
+相符的最高已安裝正式版勝出；預發行版（`0.3.1-rc.1`）只在沒有正式版相符時才勝出，因此 `0.3` 會選擇 `0.3.0` 而不是 `0.3.1-rc.1`，而只安裝了候選版的系列會選擇其中最新的。確切指名預發行版的釘選（`0.3.1-rc.1`）只比對它。不屬於這些的清單釘選是警告，會說明該寫什麼（`` `toolchain: "banana"`: write a version (`0.1`), a requirement (`^0.1.0`) or a toolchain directory name ``）。若沒有任何工具鏈相符，就是錯誤，錯誤訊息會指出該釘選及其來源，以及安裝它的指令：完整版本時為 `nabi toolchain install <pin>`，否則為帶有該釘選所接受之完整版本的 `nabi toolchain install <version>`，或 `--from`。
 
 一個系列是一個破壞性變更槽位所涵蓋的各個版本：主版本為 0 時是 `0.MINOR`（`0.1`），之後是 `MAJOR`（`1`）。只有最新的系列會得到修正與安全性版本；較舊的系列仍可下載與安裝，但不受支援。
 
@@ -644,7 +644,7 @@ nabi uninstall [--native] <name>..
 
 代理程式是最新已安裝工具鏈之 `nabi` 的複本：這個主機的最高版本，只有在沒有安裝正式版時才是預發行版。較新的 `nabi` 以這種方式持續執行較舊的工具鏈，因此代理程式的契約在整個 0.x 中是固定的：上述的順序，然後以相同的引數執行 `toolchains/<dir>/bin/<tool>`，設定 `NABI_HOME`，並把 `NABI_TOOLCHAIN` 設為代理程式所取下的 `+<version>`。
 
-每個工具鏈的 `nabi` 只執行它自己的 `nabic`，即它旁邊的那一個，因此 `nabi` 與 `nabic` 之間的旗標、環境變數與檔案絕不是跨版本的契約。直接執行的 `nabi`（開發建置、套件管理器的、工具鏈的 `bin/nabi`），在 `+<version>`、`NABI_TOOLCHAIN` 或資訊清單的 `toolchain` 指名另一個已安裝的工具鏈時，會把指令交給該工具鏈的 `nabi`：它從啟動所在的目錄以相同的引數執行它，設定 `NABI_HOME`，並以其狀態結束（在 Unix 上它取代自己；在 Windows 上它等待）。對會編譯的指令（委派給 `nabic` 的，或會編譯的工具），資訊清單是該指令所作用之套件的資訊清單（`nabi build ../app` 讀取 `../app/nabi.nabion`）；對其他指令則是最近的那一個。當釘選與它自己的版本相符時、當該工具鏈就是它執行所在的目錄時（以實際路徑比較），或當該工具鏈的 `nabi --version` 印出與它自己相同的行時（同一個建置），它不會交出。沒有釘選時，預設值不適用：直接執行的 `nabi` 保留該指令。`nabi toolchain`、`help`、`version`、`completions` 與 `--version` 絕不交出。被交出指令的工具鏈若又把它交回，是錯誤，錯誤訊息會指出兩個執行檔，絕不會形成迴圈。對會編譯的指令，指名了未安裝工具鏈的釘選是上述的錯誤；其他指令則繼續執行。
+每個工具鏈的 `nabi` 只執行它自己的 `nabic`，即它旁邊的那一個，因此 `nabi` 與 `nabic` 之間的旗標、環境變數與檔案絕不是跨版本的契約。直接執行的 `nabi`（開發建置、套件管理器的、工具鏈的 `bin/nabi`），在 `+<version>`、`NABI_TOOLCHAIN` 或清單的 `toolchain` 指名另一個已安裝的工具鏈時，會把指令交給該工具鏈的 `nabi`：它從啟動所在的目錄以相同的引數執行它，設定 `NABI_HOME`，並以其狀態結束（在 Unix 上它取代自己；在 Windows 上它等待）。對會編譯的指令（委派給 `nabic` 的，或會編譯的工具），清單是該指令所作用之套件的清單（`nabi build ../app` 讀取 `../app/nabi.nabion`）；對其他指令則是最近的那一個。當釘選與它自己的版本相符時、當該工具鏈就是它執行所在的目錄時（以實際路徑比較），或當該工具鏈的 `nabi --version` 印出與它自己相同的行時（同一個建置），它不會交出。沒有釘選時，預設值不適用：直接執行的 `nabi` 保留該指令。`nabi toolchain`、`help`、`version`、`completions` 與 `--version` 絕不交出。被交出指令的工具鏈若又把它交回，是錯誤，錯誤訊息會指出兩個執行檔，絕不會形成迴圈。對會編譯的指令，指名了未安裝工具鏈的釘選是上述的錯誤；其他指令則繼續執行。
 
 ```
 nabi toolchain list                         # marks the default with * and (default)
@@ -710,7 +710,7 @@ nabi cache clean                            # remove everything in it
 - 配置：一個頂層目錄 `nabi-<version>-<triple>/`，容納 `bin/nabi` 與 `bin/nabic`（Windows 為 `bin\nabi.exe` 與 `bin\nabic.exe`）、`lib/<runtime>`（`lib/libnabir.a`；Windows 為 `lib\nabir.lib`）以及 `lib/nabi/core/src/lib.nabi`。
 - `bin/nabic --version --verbose` 在第一行印出 `nabic <version>`（後面可以接著一個空白與更多文字），並印出一行 `host: <triple>`。
 
-## 9.10.7. 單檔指令碼的行內資訊清單
+## 9.10.7. 單檔指令碼的行內清單
 
 匿名套件（[4.16.8](../004-functions/416-entry-point.md#4168-單一檔案執行)）只從其檔案以及其 `mod` 所載入之每個檔案最開頭（在 shebang 行之後）的 `//!` 行內、容納 `Package { deps: { .. } }`（以及 `native`）的 ```` ```nabion ```` 區塊取得其相依套件（類似 uv 的行內指令碼中繼資料）。安裝到環境中的函式庫絕不會被使用。區塊只能包含 `deps`、`native` 與 `toolchain`（沒有 `features`，因此沒有選用的相依套件）。`toolchain` 釘選執行該指令碼的工具鏈（9.10.6），只允許出現在被執行之檔案的區塊中；在模組的區塊中是錯誤，錯誤訊息會指出被執行的檔案。直接執行的 `nabi` 會與對套件一樣，把指令碼交給被釘選之工具鏈的 `nabi`。其他語言的程式碼區塊會被忽略。區塊中的路徑相對於容納它的檔案。各區塊會被合併；在兩個檔案中被給予不同項目的同一個函式庫是錯誤，錯誤訊息會指出兩個檔案與兩個項目。直接執行子模組檔案時，只使用該執行所到達之檔案的區塊。`nabi add <name> .. <file.nabi>` / `nabi remove <name> <file.nabi>` 寫入區塊（[9.10.4](#9104-相依套件nabi-add--remove--update--deps)），`nabi init --script` 把指令碼變成套件（[9.10.2](#9102-nabi-new--nabi-init建立套件)）。指令碼把其鎖定檔與建置保存在 `cache/scripts/<hash>/` 中，以其路徑以及它所到達之每個檔案的路徑與區塊作為鍵。指令碼的執行檔以建置它的一切作為快取鍵，包括它所引入的每個檔案及其函式庫。指令碼對它所缺少之套件的 `use x::..` 是錯誤，其說明是要執行的指令 ``run `nabi add x <file>` ``，當作用中的環境有 `x` 時附上一則附註；在套件中，它建議 `nabi add x`。`import x`（以及 `include` / `require`）是錯誤，當 `x.nabi` 位於檔案旁邊時，其說明是 `mod x;`，當 `x` 是路徑根或檔案所宣告的模組時是 `use`，否則是 `nabi add x <file>`。
 
@@ -814,7 +814,7 @@ nabi fix [path] [--allow-dirty] [--diff] [-A|-W|-D <lint | group>..]
 | `redundant_clone` | 刪除 `.clone()` |
 | `missing_f_prefix` | 字串加上 `f` 前綴 |
 
-lint 等級（`-A` / `-W` / `-D`、資訊清單的 `lints`、屬性）決定回報什麼，因而也決定修正什麼：`nabi fix -A unused_imports` 會保留未使用的匯入。當套件位於其目錄下有未提交變更的 git 工作樹中時，`nabi fix` 會拒絕（``the work tree has uncommitted changes (src/main.nabi); commit them first so the fixes can be reviewed and undone, or run `nabi fix --allow-dirty` ``）；`--allow-dirty` 仍會修正。在 git 之外沒有這項檢查。`--diff` 與 `nabi fmt --diff` 一樣印出第一輪的編輯，不寫入任何東西。沒有任何修正能解決的錯誤會以結束碼 `1` 與 ``N errors to fix by hand first; nothing was changed`` 停止它（在某一輪之後則是 ``the files fixed so far are kept``）。它以每個被改變之檔案的 `Fixed <file> (N fixes)`，或 `<name>: nothing to fix` 結束。
+lint 等級（`-A` / `-W` / `-D`、清單的 `lints`、屬性）決定回報什麼，因而也決定修正什麼：`nabi fix -A unused_imports` 會保留未使用的匯入。當套件位於其目錄下有未提交變更的 git 工作樹中時，`nabi fix` 會拒絕（``the work tree has uncommitted changes (src/main.nabi); commit them first so the fixes can be reviewed and undone, or run `nabi fix --allow-dirty` ``）；`--allow-dirty` 仍會修正。在 git 之外沒有這項檢查。`--diff` 與 `nabi fmt --diff` 一樣印出第一輪的編輯，不寫入任何東西。沒有任何修正能解決的錯誤會以結束碼 `1` 與 ``N errors to fix by hand first; nothing was changed`` 停止它（在某一輪之後則是 ``the files fixed so far are kept``）。它以每個被改變之檔案的 `Fixed <file> (N fixes)`，或 `<name>: nothing to fix` 結束。
 
 ### `nabi repl`：終端機 REPL
 
@@ -909,7 +909,7 @@ target/doc/
 └── fonts/, favicon.svg
 ```
 
-`<pkg>` 是套件的名稱（資訊清單的 `name`）；標準函式庫的層級就是它自己的名稱（`core`、`std`、`bare`）。當模組路徑上的每個模組都是 `pub` 且不是 `#[doc(hidden)]` 時，該模組就是公開的；每個公開模組有一個頁面：根的頁面是 `<pkg>/index.html`，`a::b` 的頁面是 `<pkg>/a/b.html`（根的名為 `index` 的子模組是 `<pkg>/index/index.html`）。套件的根頁面之上沒有頁面：每個頁面的標頭顯示其套件的名稱（連結到該套件的根）與版本，其側邊欄列出套件的相依套件（連結到它們的根頁面），並與其麵包屑一起通往它自己套件的根，而搜尋從任何頁面都涵蓋每個有文件的套件。較早的工具鏈留下的 `target/doc/index.html` 會被移除；`target/doc/` 中的其他檔案都不會。頁面不需要網路：樣式表、指令碼與字型都在輸出中。
+`<pkg>` 是套件的名稱（清單的 `name`）；標準函式庫的層級就是它自己的名稱（`core`、`std`、`bare`）。當模組路徑上的每個模組都是 `pub` 且不是 `#[doc(hidden)]` 時，該模組就是公開的；每個公開模組有一個頁面：根的頁面是 `<pkg>/index.html`，`a::b` 的頁面是 `<pkg>/a/b.html`（根的名為 `index` 的子模組是 `<pkg>/index/index.html`）。套件的根頁面之上沒有頁面：每個頁面的標頭顯示其套件的名稱（連結到該套件的根）與版本，其側邊欄列出套件的相依套件（連結到它們的根頁面），並與其麵包屑一起通往它自己套件的根，而搜尋從任何頁面都涵蓋每個有文件的套件。較早的工具鏈留下的 `target/doc/index.html` 會被移除；`target/doc/` 中的其他檔案都不會。頁面不需要網路：樣式表、指令碼與字型都在輸出中。
 
 模組的頁面顯示其文件（其 `//!` 行，接在其 `mod` 項目上的 `///` 之後；一般的 `//` 註解不是文件註解，而 `nabi lint` 會對開啟函式庫或公開模組之檔案的這種註解發出警告，[6.2.9](../006-meta-system/602-built-in-attributes.md#629-allow--deny--warn-lint-控制)）、其公開的子模組，然後依種類顯示其項目：重新匯出、結構（其中包括 union）、列舉、trait、型別別名、函式、常數、static，最後是在別處宣告之型別的實作（`impl str { .. }`）。項目是不是 `#[doc(hidden)]` 或 `#[internal]` 的 `pub` 項目，每個都帶有其寫出的簽章、其文件、其成員（公開欄位、變體、trait 項目、其固有 impl 的公開方法與常數）以及其 trait 實作。頁面顯示什麼由下列規則決定：
 
@@ -945,7 +945,7 @@ nabi bindgen <header> [-x objective-c] [-o <file>] [--target <t>] [--c-shim <fil
 
 使用 `-x objective-c` 時（Apple 目標），標頭檔以 Objective-C 讀取，其類別、協定與 category 會與 `ffi::objc::import` 的做法一樣變成 `extern "objc"` 區塊（[std 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-標頭檔ffiobjcimport)）；`-x c` 是預設值。
 
-`static inline` 函式沒有可以連結的符號，因此會被略過並附上註解。使用 `--c-shim <file.c>` 時，它則會被繫結：`<file.c>` 為每個這類函式取得一個 C 包裝函式，即位於 `#include "<header file name>"` 之後的 `R nabi_shim_<f>(A a0, ..) { return <f>(a0, ..); }`，而繫結連結到該包裝函式（`#[link_name = "nabi_shim_<f>"]`）。套件從其資訊清單的 `c.sources` 編譯 `<file.c>`，並把標頭檔的目錄放在 `c.include` 中（9.10.3）。可變參數的 inline 函式仍會被略過。
+`static inline` 函式沒有可以連結的符號，因此會被略過並附上註解。使用 `--c-shim <file.c>` 時，它則會被繫結：`<file.c>` 為每個這類函式取得一個 C 包裝函式，即位於 `#include "<header file name>"` 之後的 `R nabi_shim_<f>(A a0, ..) { return <f>(a0, ..); }`，而繫結連結到該包裝函式（`#[link_name = "nabi_shim_<f>"]`）。套件從其清單的 `c.sources` 編譯 `<file.c>`，並把標頭檔的目錄放在 `c.include` 中（9.10.3）。可變參數的 inline 函式仍會被略過。
 
 ### `nabi inspect`：檢視套件
 

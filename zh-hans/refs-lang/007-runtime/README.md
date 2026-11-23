@@ -51,7 +51,7 @@ OS Thread (worker) x N  ──── nabi task / coroutine x M
                                    (typically M >> N)
 ```
 
-N 默认为 CPU 核心数，可以通过运行时配置调整（`NABIR_WORKERS`，[7.6.8](706-scheduler.md#768-每核一线程选项)）。每个工作线程既是调度器的工作线程，也是 mutator；stop-the-world 回收在发起它的线程上运行（[7.6.10](706-scheduler.md#7610-集成的-gc-工作角色)）。I/O 驱动是一个单独的 reactor 线程（[7.7](707-io-and-timer.md)），并发标记在单独的标记线程上运行（[7.5](705-concurrent-collection.md)）。
+N 默认为 CPU 核心数，可以通过运行时配置调整（`NABIR_WORKERS`，[7.6.8](706-scheduler.md#768-每核一线程选项)）。每个工作线程既是调度器的工作线程，也是 mutator；全局停顿（stop-the-world）回收在发起它的线程上运行（[7.6.10](706-scheduler.md#7610-集成的-gc-工作角色)）。I/O 驱动是一个单独的 reactor 线程（[7.7](707-io-and-timer.md)），并发标记在单独的标记线程上运行（[7.5](705-concurrent-collection.md)）。
 
 ## 单一 .a 输出
 

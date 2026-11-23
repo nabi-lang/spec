@@ -15,7 +15,7 @@ static DEFAULT_CONFIG: Config = Config::default();
 static APP_NAME: str = "nabi";
 ```
 
-基本形式是 `static`、名稱、帶型別的 `:`，以及帶初始化式的 `=`。型別必須寫出。`const` 初始化式（[`const`](502-const.md)）在編譯期求值；其他任何初始化式在第一次存取時執行一次（[5.3.9](#539-初始化式編譯期或第一次使用)）。
+基本形式是 `static`、名稱、`:` 加型別，以及 `=` 加初始化式。型別必須寫出。`const` 初始化式（[`const`](502-const.md)）在編譯期求值；其他任何初始化式在第一次存取時執行一次（[5.3.9](#539-初始化式編譯期或第一次使用)）。
 
 `static` 可以從每個執行緒存取，因此其型別必須是 `Sync`（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)）；延遲初始化的 static 也是如此。`static XS: List<i32> = [];` 是編譯錯誤（集合型別、`StrBuf` 與 `Cell<T>` 是 `!Sync`）；請寫 `static XS: Mutex<List<i32>> = Mutex::new([]);`。每個執行緒各自的狀態使用 `thread::local`（[stdlib 3.4.4](../../refs-standard-libraries/300-std/304-thread.md#344-執行緒區域儲存)），其 `ThreadLocal<T>` 是 `Sync`。`extern` 區塊的 static（[5.3.10](#5310-extern-staticffi)）豁免。
 
@@ -61,7 +61,7 @@ static CACHE: Mutex<Dict<str, Data>> = Mutex::new(Dict::new());
 - `Mutex<T>`：以鎖保護。
 - `RwLock<T>`：讀寫鎖，用於本身是 `Sync` 的 `T`（[stdlib 2.16.4](../../refs-standard-libraries/200-core/216-sync.md#2164-rwlockt讀寫分離)）。
 
-`Cell<T>` 是單執行緒的且為 `!Sync`，因此不能作為 `static`；每個執行緒各自的可變全域變數是 `thread::local(..)`。
+`Cell<T>` 只限單一執行緒使用，且為 `!Sync`，因此不能作為 `static`；每個執行緒各自的可變全域變數是 `thread::local(..)`。
 
 這些全都是標準函式庫型別；其確切簽章定義於函式庫規格。
 
@@ -107,7 +107,7 @@ static LOCAL_ONLY: bool = false;
 
 ## 5.3.8. 與方法 / trait 的組合
 
-`static` 是容納值的槽位，而不是定義項目者。因此它不會出現在 trait 或 `impl` 區塊的定義中；那裡改放 `const` 或關聯函式。
+`static` 是容納值的槽位，本身不定義項目。因此它不會出現在 trait 或 `impl` 區塊的定義中；那裡改放 `const` 或關聯函式。
 
 ```nabi
 impl Counter {

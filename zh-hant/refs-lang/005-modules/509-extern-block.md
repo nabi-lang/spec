@@ -267,7 +267,7 @@ extern "C" fn callback(arg: i32) -> i32 {
 }
 ```
 
-在一般函式宣告上的 `extern "ABI"` 限定詞，標示該函式要編譯為與該 ABI 相容。`extern "C" fn` 定義保持其修飾後的符號名稱（[9.5](../009-tools/905-symbol-mangling.md)）；若要 C 能連結的名稱，請加上 `#[export]`，它以函式自己的名稱（`nabi_compute`）匯出，或加上 `#[export_name("sym")]`，它以 `sym` 匯出（`area` 匯出為 `nabi_area`）。匯出的函式是無法到達函式消除的根，而匯出的函式就是共用函式庫（`--crate-type=cdylib`，[9.3](../009-tools/903-package-archive.md)）所公開的東西。
+在一般函式宣告上的 `extern "ABI"` 限定詞，標示該函式要編譯為與該 ABI 相容。`extern "C" fn` 定義保持其修飾後的符號名稱（[9.5](../009-tools/905-symbol-mangling.md)）；若要 C 能連結的名稱，請加上 `#[export]`，它以函式自己的名稱（`nabi_compute`）匯出，或加上 `#[export_name("sym")]`，它以 `sym` 匯出（`area` 匯出為 `nabi_area`）。匯出的函式是消除無法到達之函式時的根，而共用函式庫（`--crate-type=cdylib`，[9.3](../009-tools/903-package-archive.md)）所公開的就是這些匯出。
 
 `extern "ABI" fn` 定義接受 `"C"` 或 `"system"`；其他任何 ABI 字串都是錯誤。在 32 位元 x86 Windows 上，`extern "system"` 宣告或定義是 stdcall：由被呼叫者彈出其引數，符號是 `_name@N`，與 MSVC 相同。
 
@@ -299,9 +299,9 @@ extern "C" fn half(x: f64) -> f64 { .. }
 extern "C" fn notify(x: i32) { .. }
 ```
 
-會穿越 C 的框架離開 C 所呼叫之函式的 panic 會中止行程（5.9.12）。在 `extern "C"` 或 `extern "system"` fn 定義上的 `#[on_panic(return = v)]` 則改為恢復：panic 照常回報，panic 掛鉤也會執行（[stdlib 3.12](../../refs-standard-libraries/300-std/312-panic.md)），然後該函式把 `v` 回傳給其呼叫者，無論是 C 還是 Nabi。`v` 是結果型別的字面值：整數、浮點數、`true` / `false`，或對指標結果而言的 `0`（null 指標）。沒有結果的函式只寫 `#[on_panic]`。恢復的函式是 panic 之下最近的 C 進入點：當 C 在更深處再次呼叫回 Nabi 時，由那個內層的進入點決定。
+會穿越 C 的框架離開 C 所呼叫之函式的 panic 會中止行程（5.9.12）。在 `extern "C"` 或 `extern "system"` fn 定義上的 `#[on_panic(return = v)]` 則改為恢復：panic 照常回報，panic 掛鉤也會執行（[stdlib 3.12](../../refs-standard-libraries/300-std/312-panic.md)），然後該函式把 `v` 回傳給其呼叫者，無論是 C 還是 Nabi。`v` 是結果型別的字面值：整數、浮點數、`true` / `false`，指標結果則用 `0`（null 指標）。沒有結果的函式只寫 `#[on_panic]`。恢復的函式是 panic 之下最近的 C 進入點：當 C 在更深處再次呼叫回 Nabi 時，由那個內層的進入點決定。
 
-panic 與該函式之間的框架會被略過。它們的 `Drop` 不會執行，因此它們本應釋放的東西會洩漏，而在被略過的框架中鎖住的 `Mutex` 會保持鎖住：下一次對它的 `lock` 會永遠等待。在持有鎖時可能失敗的函式，應回傳錯誤值而不是 panic。恢復是以 `setjmp` / `longjmp` 實現的（[8.5.12](../008-abi/805-extern-symbols.md#8512-輔助符號附錄非規範性)）；wasm32 與沒有作業系統的目標沒有它，在那裡 panic 會像沒有該屬性時一樣中止。
+panic 與該函式之間的框架會被略過。它們的 `Drop` 不會執行，因此它們本應釋放的東西會洩漏，而在被略過的框架中鎖住的 `Mutex` 會保持鎖住：下一次對它的 `lock` 會永遠等待。在持有鎖時可能失敗的函式，應回傳錯誤值而不是 panic。恢復以 `setjmp` / `longjmp` 實作（[8.5.12](../008-abi/805-extern-symbols.md#8512-輔助符號附錄非規範性)）；wasm32 與沒有作業系統的目標沒有它，在那裡 panic 會像沒有該屬性時一樣中止。
 
 每一種誤用都是錯誤，錯誤訊息會說明應寫什麼：
 

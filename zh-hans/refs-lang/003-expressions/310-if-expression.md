@@ -19,14 +19,14 @@ if cond1 { ... } else if cond2 { ... } else { ... }
 
 ## 3.10.2. 作为表达式的值
 
-只有带 `else` 子句时，`if` 才产生 unit 以外的值。
+只有带 `else` 子句时，`if` 才产生单元值以外的值。
 
 ```nabi
 let a = if cond { 1i32 } else { 2i32 };          // OK, i32
 let b = if cond { 1i32 };                          // OK, but b has type unit (no else)
 ```
 
-没有 `else` 的 `if` 只有一个分支，因此不返回值，结果为 unit。带 `else` 的 `if` 把两个分支的值合并为它的结果。
+没有 `else` 的 `if` 只有一个分支，因此不返回值，结果为单元值。带 `else` 的 `if` 把两个分支的值合并为它的结果。
 
 ### 分支结果类型
 

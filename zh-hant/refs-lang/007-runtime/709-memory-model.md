@@ -11,7 +11,7 @@
 - **Synchronizes with**：對原子物件的 release 操作，與對同一物件、讀取它所寫入之值（或其 release 序列中之後的值）的 acquire 操作同步。7.9.3 的函式庫操作也依該處的說明同步。
 - **Happens before**：sequenced before 與 synchronizes with 的遞移閉包（即 C++20 的 simply-happens-before；Nabi 沒有 `consume` 順序，因此這兩個概念一致）。
 
-非原子的讀取會看到對該位置、happens before 它的最後一次寫入，前提是沒有其他對它的寫入與該讀取之間沒有順序關係。
+非原子的讀取會看到對該位置、happens before 它的最後一次寫入，前提是其他每一次對該位置的寫入，與該讀取之間都有順序關係。
 
 ## 7.9.2. 原子順序
 
@@ -61,8 +61,8 @@ Nabi 沒有獨立的記憶體柵欄：每個順序都附加在某個原子操作
 
 - `static` 可以從每個執行緒存取，因此其型別必須是 `Sync`（[5.3.1](../005-modules/503-static.md#531-基本形式)）；`static mut` 只存在於 `extern "C"` 區塊中，存取它需要 `unsafe`。
 - 集合型別（`List`、`Dict`、`StrBuf`……）是 `!Sync`，`Cell<T>`、原始指標與守衛也是（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)）。共享的可變狀態只能放在 `Mutex`、`RwLock`、`Atomic` 或通道內跨越執行緒。凍結的集合（`xs.freeze()`，[stdlib 2.9.7b](../../refs-standard-libraries/200-core/209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s唯讀集合型別)）是 `Sync`，因為沒有任何東西寫入它：沒有任何可變更的控制代碼能到達其儲存空間。
-- 把值交給另一個擁有者（`Mutex::new`、`send`、`task::spawn`、`[move x]`、執行緒的結果……）會讓新的擁有者得到該值所能到達之每個集合的自己的複本，而之後使用傳送者的值是編譯錯誤（2.13.9）。被產生之閉包的一般擷取必須是 `Send + Sync`。
-- `par` 在執行時檢查兩個項目不會到達同一個不是 `Sync` 的集合，並一次執行一個這樣的項目（[stdlib 2.19.1](../../refs-standard-libraries/200-core/219-par.md#2191-核心-api)）。項目只有在其他項目的視圖或切片都不與自己寫入的部分重疊之處，才能透過視圖（`chunks_mut`）寫入同一個串列。
+- 把值交給另一個擁有者（`Mutex::new`、`send`、`task::spawn`、`[move x]`、執行緒的結果……）會讓新的擁有者得到該值所能到達之每個集合的自己的複本，而之後使用傳送者的值是編譯錯誤（2.13.9）。傳給 spawn 之閉包的一般擷取必須是 `Send + Sync`。
+- `par` 在執行時檢查兩個項目不會到達同一個不是 `Sync` 的集合，並一次執行一個這樣的項目（[stdlib 2.19.1](../../refs-standard-libraries/200-core/219-par.md#2191-核心-api)）。項目只有在其他項目的檢視或切片都不與自己寫入的部分重疊之處，才能透過檢視（`chunks_mut`）寫入同一個串列。
 
 使資料競爭成為可能、因而需要作者小心的東西：
 

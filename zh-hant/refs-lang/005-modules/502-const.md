@@ -92,7 +92,7 @@ Nabi 沒有 `&` 運算子，因此沒有任何運算式會取得 `const` 的位�
 
 - 整數溢位（包括摺疊只由字面值與常數構成之運算式的結果，`let m: u8 = 2 * 200`）、除以零、`MIN / -1`、移位位元寬度以上，以及超出範圍的浮點數 → 整數轉換。回繞算術只能透過 `wrapping_*`。
   被常數條件排除的程式碼永遠不會執行，也不受檢查：在 `N = 0` 的泛型實例中，`if N == 0 { 0 } else { a[N - 1] }` 的 `N - 1`、`if N == 0 { return ..; }` 之後區塊其餘部分中的 `N - 1`，以及 `N > 0 && a[N - 1] == x` 中的 `N - 1`，都不是錯誤。實例中的溢位會連同建立該實例的呼叫及其 const 引數一起回報。
-- 求值期間的 panic 或未捕捉的 `throw`。
+- 求值期間的 panic 或未攔截的 `throw`。
 - 超出求值步數或呼叫深度的限制。限制由實作定義（nabi：4,000,000 步，深度 128）。
 - `const` 之間的循環參照。
 
@@ -168,6 +168,6 @@ fn chunk<const N: usize>(xs: [i32; N]) -> usize {
 
 - 它讀取的東西與函式主體 `const` 相同：常數、`const fn` 呼叫、周圍程式碼的 const 參數，以及其型別參數的關聯常數與 `T::size()` / `T::align()`。`let` 變數是錯誤，其說明會拿掉 `const`。
 - 在泛型函式中，它在實例的引數已知之後，對每個實例求值一次。泛型主體在其定義處的檢查（[2.10.9](../002-types/210-generics.md#2109-主體檢查)）會對區塊做型別檢查，但不求值它。
-- 對它求值時發生 panic 或 `assert` 失敗，是在建立該實例之呼叫處的編譯錯誤，錯誤訊息會指出該實例（`` const block failed in `chunk::<0>`: chunk needs at least one element ``），並以該 `assert` 作為次要位置。`nabi check` 也會回報它：它和 `nabi build` 一樣，會實例化程式所到達的東西。
+- 對它求值時發生 panic 或 `assert` 失敗，是在建立該實例之呼叫處的編譯錯誤，錯誤訊息會指出該實例（`` const block failed in `chunk::<0>`: chunk needs at least one element ``），並以該 `assert` 作為次要位置。`nabi check` 也會回報它：它和 `nabi build` 一樣，會實例化程式會觸及的部分。
 - 通過的區塊在執行時沒有任何成本；其值和任何 `const` 一樣被嵌入。
 - 求值器知道一般型別（數字、`bool`、`char`、`str`、`()` 或由它們組成的陣列）的 `T::size()`；對其他型別則是錯誤，其訊息會提示使用 const 參數或 `List`。

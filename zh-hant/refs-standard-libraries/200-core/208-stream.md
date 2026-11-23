@@ -39,7 +39,7 @@ loop {
 }
 ```
 
-這與 [2.7.2 for 去語法糖](207-iter.md)中的同步版本形狀相同，只多了 `await`。
+這與 [2.7.2 for 去語法糖](207-iter.md)中的同步版本結構相同，只多了 `await`。
 
 ## 2.8.3. `IntoStream`：非同步可迭代物件
 
@@ -175,7 +175,7 @@ fn zip<S1: Stream, S2: Stream>(a: S1, b: S2) -> Zip<S1, S2>;        // Stream<It
 fn select<S1: Stream, S2: Stream>(a: S1, b: S2) -> Select<S1, S2>;  // Stream<Item = S1::Item | S2::Item>, ends when either ends
 ```
 
-`merge` 在兩個串流的項目就緒時依序產出它們，並在兩者都結束時結束。`select` 是任一串流結束就立即結束的 `merge`。`zip` 把兩個串流配對。`merge` 與 `select` 的每次輪詢都先嘗試第一個串流，再嘗試第二個，因此一個始終就緒的第一個串流會使第二個串流陷入飢餓。
+`merge` 在兩個串流的項目一就緒時就產出它們，並在兩者都結束時結束。`select` 是任一串流結束就立即結束的 `merge`。`zip` 把兩個串流配對。`merge` 與 `select` 的每次輪詢都先嘗試第一個串流，再嘗試第二個，因此若第一個串流始終就緒，第二個串流就會陷入飢餓。
 
 > [!NOTE]
 > `select` 與 `task::select` 同名；兩者都不在 [prelude](../000-meta/002-import.md) 中：請寫成 `stream::select` 或匯入它。
@@ -199,7 +199,7 @@ impl<T, E> TryStream for TryAsyncStream<T, E> {
 }
 ```
 
-`AsyncStream<T>` 的配接器（`map`、`filter`、`collect` 等）是 `Stream` 的預設方法（2.8.5）。`TryAsyncStream` 是 `TryStream`（[2.8.11](#2811-trystream可能失敗的串流)），而不是 `Stream`，因為它的 `poll_next` 會擲回錯誤；它以 `try for await` 或 `TryStream` 配接器消費。私有欄位不予規定。複本共用同一個協程框架，因此共用進度位置。
+`AsyncStream<T>` 的配接器（`map`、`filter`、`collect` 等）是 `Stream` 的預設方法（2.8.5）。`TryAsyncStream` 是 `TryStream`（[2.8.11](#2811-trystream可能失敗的串流)），而不是 `Stream`，因為它的 `poll_next` 會擲回錯誤；它以 `try for await` 或 `TryStream` 配接器消費。私有欄位不作規定。複本共用同一個協程框架，因此共用進度位置。
 
 ## 2.8.9. 模組對應
 

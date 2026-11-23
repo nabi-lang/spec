@@ -21,7 +21,7 @@ use core::sync::{Atomic, Mutex, RwLock, Once, Condvar, Cell};
 | `Once`      | 恰好运行一次初始化函数（2.16.4a）          | 延迟的全局初始化               |
 | `Condvar`   | 在 `Mutex` 下等待条件（2.16.4a）           | 生产者 / 消费者                |
 | `Frozen<T>` | 只读共享一个复制的值（2.16.4b）            | 共享配置                       |
-| `FrozenList<T>`, `FrozenDict<K, V>` | 没有人修改、无需复制即可共享的集合（[2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s只读集合类型)） | 表、以读为主的映射 |
+| `FrozenList<T>`、`FrozenDict<K, V>` | 没有人修改、无需复制即可共享的集合（[2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s只读集合类型)） | 表、以读为主的映射 |
 
 ## 2.16.2. `Atomic<T>`：无锁原子操作
 
@@ -403,10 +403,10 @@ task::spawn(async { c.set(100) });       // ERROR: Cell is not cross-task safe
 | `RwLock<T>`  | `core::sync` | futex + 读者计数器                    |
 | `Cell<T>`    | `core::sync` | 普通包装，无锁                        |
 | `MutexGuard` | `core::sync` | 通过 Drop 实现 RAII                   |
-| `RwLockReadGuard`, `RwLockWriteGuard` | `core::sync` | 通过 Drop 实现 RAII |
-| `LockFuture`, `ReadFuture`, `WriteFuture` | `core::sync` | `lock_async` / `read_async` / `write_async` 的 future |
+| `RwLockReadGuard`、`RwLockWriteGuard` | `core::sync` | 通过 Drop 实现 RAII |
+| `LockFuture`、`ReadFuture`、`WriteFuture` | `core::sync` | `lock_async` / `read_async` / `write_async` 的 future |
 | `Once`       | `core::sync` | 状态字 + 等待队列                     |
-| `Condvar`, `CondvarWait` | `core::sync` | 等待队列；`CondvarWait` 是 `wait_async` 的 future |
+| `Condvar`、`CondvarWait` | `core::sync` | 等待队列；`CondvarWait` 是 `wait_async` 的 future |
 | `Frozen<T>`  | `core::sync` | 其他人无法到达的副本                  |
-| `LoadOrdering`, `StoreOrdering`, `UpdateOrdering` | `core::sync` | 内存排序（2.16.2） |
+| `LoadOrdering`、`StoreOrdering`、`UpdateOrdering` | `core::sync` | 内存排序（2.16.2） |
 | `AtomicPrimitive` | `core::sync` | 密封的标记 trait                 |

@@ -18,7 +18,7 @@ x?.method()
 
 `?.` 語彙單元定義於[標點與運算子語彙單元](../001-lexical/110-punctuation-and-operator-tokens.md)。當左側 `x` 的型別為 `T | none` 且存在值時，就進行點存取或方法呼叫；沒有值（`none`）時，整個結果是 `none`。
 
-### 去糖
+### 去語法糖
 
 ```
 x?.field            →   match x { v: T => v.field, none => none }
@@ -66,7 +66,7 @@ x ?? y
 
 當左側 `x` 是 `T | none` 時，`??` 在值存在時回傳該值，否則回傳 `y`。
 
-### 去糖
+### 去語法糖
 
 ```
 x ?? y          →   match x { v: T => v, none => y }
@@ -124,7 +124,7 @@ x?.foo().bar()
 
 在這個運算式中，若 `x` 是 `none`，`foo()` 與 `bar()` 都不會被呼叫。短路求值是有保證的。
 
-這是因為去糖後的 `match` 在 `none` 分支中立即回傳 `none`。
+這是因為去語法糖後的 `match` 在 `none` 分支中立即回傳 `none`。
 
 因此，當鏈中放了帶有副作用的方法時，接收者為 `none` 時它不會被呼叫。
 

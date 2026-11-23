@@ -127,7 +127,7 @@ Config { host: "h", port: 80 }
 Opaque
 ```
 
-평범한 식은 `Display`를, 없으면 `Debug`를 쓰고, 뒤에 `?`를 붙이면 `Debug`를 씁니다. 둘 다 없는 값(뒤에 `?`를 붙였다면 `Debug`가 없는 값)은 타입 이름만 출력합니다. REPL과 Jupyter의 셀 세션([9.7](../009-tools/907-jit-cells.md))이 이 방식으로 출력합니다.
+둘 다 없는 값(뒤에 `?`를 붙였다면 `Debug`가 없는 값)은 타입 이름만 출력합니다. REPL과 Jupyter의 셀 세션([9.7](../009-tools/907-jit-cells.md))이 이 방식으로 출력합니다.
 
 ## 6.10.4. 전역 `typeof` / `sizeof` 함수 없음
 

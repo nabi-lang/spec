@@ -36,7 +36,7 @@ TLS 槽位是一個由執行環境定義並匯出的 `thread_local` 區塊 `nabi
 > - 11p+16：`static_inits`
 > - 12p+16：`held_locks`。這個執行緒持有的鎖。在工作階段主機中，已經不存在的執行緒在阻塞時持有的鎖會被釋放。
 > - 13p+16：`thread_name`（`{ptr, len}`）。報告中執行緒的名稱；未命名時為 null。
-> - 15p+16：`throw_site`。其錯誤正在傳遞中之 `throw` 的、以 NUL 結尾之位置的位址，由編譯後的程式碼在 `throw` 處存入；未知時為 null 或空。
+> - 15p+16：`throw_site`。錯誤正在傳遞中的那個 `throw` 的位置字串（以 NUL 結尾）的位址，由編譯後的程式碼在 `throw` 處存入；未知時為 null 或空。
 
 ## 8.3.2. 存取機制
 

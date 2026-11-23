@@ -27,7 +27,7 @@ impl<T> Poll<T> {
 
 `poll(ctx)` 有两种结果。`Ready(v)` 表示结果已就绪，`v` 原样返回；`Pending` 表示还没有结果，当 `ctx` 中的唤醒器唤醒该 future 时会再次轮询它。
 
-这个模型与 Rust 的 `Future` 和 `Poll`（Nabi 的是 `core::future::Poll`）同构，并编译为**无栈协程**（编译器生成的状态机，[refs-lang 7.8](../../refs-lang/007-runtime/708-coroutine.md)）。
+这个模型与 Rust 的 `Future` 和 `Poll`（Nabi 的是 `core::future::Poll`）相同，并编译为**无栈协程**（编译器生成的状态机，[refs-lang 7.8](../../refs-lang/007-runtime/708-coroutine.md)）。
 
 ## 2.20.2. `Context` / `Waker`
 
@@ -235,7 +235,7 @@ impl<T, E> TryAsyncFuture<T, E> {
 
 | 方面                 | Rust                    | C#                 | Swift                  | Nabi                              |
 |----------------------|-------------------------|--------------------|------------------------|-----------------------------------|
-| 模型                 | 基于轮询                | 回调（状态）       | 续体（continuation）   | 基于轮询（与 Rust 同构）          |
+| 模型                 | 基于轮询                | 回调（状态）       | 续体（continuation）   | 基于轮询（与 Rust 相同）          |
 | `async fn`           | ✓                       | ✓                  | ✓                      | ✓                                 |
 | `await`              | 后缀 `.await`           | 前缀 `await`       | 前缀 `await`           | 前缀 `await`                      |
 | 协程实现             | 编译器生成              | 编译器生成         | 编译器生成             | 编译器状态机                      |

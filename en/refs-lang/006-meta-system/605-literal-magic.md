@@ -99,8 +99,6 @@ The example decomposes as follows.
  └── open token
 ```
 
-> The open token is the opening token, the close token is the closing token, the expr group is the group of `expr`, "separated by comma" means comma-separated, and "zero or more" means zero or more repetitions.
-
 This pattern matches every comma-separated list: `[]`, `[1]`, `[1, 2]`, `[1, 2, 3]`, etc. Separated repetition allows one trailing separator (`[1, 2,]`).
 
 The content of quotes must be a single token. Several tokens such as `"ab cd"` is an error; quote each token separately.

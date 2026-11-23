@@ -1,6 +1,6 @@
 # 3. Std 層級
 
-與目標相依領域的標準函式庫。它涵蓋檔案系統、網路、時間、作業系統執行緒、環境變數、行程、路徑、NABION 格式、作業系統亂數來源、特定作業系統的項目、外掛、panic 鉤子與熱重載，可用性隨使用者的環境（作業系統 / 平台）而異。
+標準函式庫中相依於目標的部分。它涵蓋檔案系統、網路、時間、作業系統執行緒、環境變數、行程、路徑、NABION 格式、作業系統亂數來源、特定作業系統的項目、外掛、panic 鉤子與熱重載，可用性隨使用者的環境（作業系統 / 平台）而異。
 
 ## 位置
 
@@ -44,7 +44,7 @@ use std::thread::Builder;
 此層級的每個簽章都適用兩個簡寫。
 
 - 寫成 `Path` 的路徑參數代表型別參數 `P: AsPath`，因此同時接受 `str` 與 `Path`（[3.7.3a](307-path.md#373a-aspath路徑引數)）。兩個路徑參數彼此獨立（`P: AsPath, Q: AsPath`）。
-- 寫入的資料（`Write::write` / `write_all`、`send`、`send_to`、`send_with_fd`、它們的 `_async` 形式、`fs` 的寫入函式）是 `B: AsBytes`，因此可以傳入 `str`、`List<u8>`、`Slice<u8>` 與 `[u8; N]`（[2.23.3](../200-core/223-io.md#2233-write-and-close)）。`write_zerocopy` 接受 `List<u8>`。
+- 寫入的資料（`Write::write` / `write_all`、`send`、`send_to`、`send_with_fd`、它們的 `_async` 形式、`fs` 的寫入函式）是 `B: AsBytes`，因此可以傳入 `str`、`List<u8>`、`Slice<u8>` 與 `[u8; N]`（[2.23.3](../200-core/223-io.md#2233-write-與-close)）。`write_zerocopy` 接受 `List<u8>`。
 
 讀取緩衝區是 `SliceMut<u8>`：`read(buf)` 填入 `buf[0..n]` 並回傳 `n`，串流結束時為 `0`。`List<u8>` 以整個串列的檢視傳入，`buf[a:b]` 則傳入其中一部分。
 
@@ -52,7 +52,7 @@ use std::thread::Builder;
 
 ### 1. 阻塞 API + `*_async`：兩組 trait
 
-std 的 I/O 函式是同步的，會阻塞呼叫它的作業系統執行緒。若要在任務中等待時讓出工作者，請 await 同一操作的 `*_async` 方法（[3.2.0](302-net.md#320-共通規則)）。在無堆疊協程下，普通函式無法暫停任務，因此同步呼叫絕不會自行變成非同步。
+std 的 I/O 函式是同步的，會阻塞呼叫它的作業系統執行緒。若要在任務中等待時讓出工作者，請 `await` 同一操作的 `*_async` 方法（[3.2.0](302-net.md#320-共通規則)）。在無堆疊協程下，一般函式無法暫停任務，因此同步呼叫絕不會自行變成非同步。
 
 ```nabi
 // blocking: on an OS thread (thread::spawn) or outside a task
@@ -117,7 +117,7 @@ let bytes = try f.read_to_end();
 try f.close();
 ```
 
-此模型有三項優點。第一，它避免 TOCTOU：在 `open_dir` 之後進行的 `open` 沒有競爭。第二，沙箱化自然而然：只把**範圍狹窄的 Dir** 傳給子任務。第三，它與 WASI 相容：同一份程式碼可在原生環境與 WASI 上運作。
+此模型有三項優點。第一，它避免 TOCTOU：在 `open_dir` 之後進行的 `open` 沒有競爭。第二，自然就能做到沙箱化：只把**範圍狹窄的 Dir** 傳給子任務。第三，它與 WASI 相容：同一份程式碼可在原生環境與 WASI 上運作。
 
 為了方便，也允許 `fs::open(absolute_path)`。它在內部展開為 `Dir::root().open(...)`。
 
@@ -142,7 +142,7 @@ let full = Path::new("/etc") / "nginx" / "nginx.conf";
 
 ### 6. 所有 I/O 都 `throws (IoError)`
 
-panic 幾乎不會發生（OOM 除外）。找不到檔案、權限遭拒與網路失敗，都以 `throws (IoError)` 簽章擲回，並透過以 `try` 標示呼叫來傳播。錯誤型別之間沒有自動轉換；若要轉成其他錯誤型別，請以 `catch` 包住並重新擲回。
+panic 幾乎不會發生（OOM 除外）。找不到檔案、權限遭拒與網路失敗，都以 `throws (IoError)` 簽章擲回，在呼叫處標上 `try` 即可傳播。錯誤型別之間沒有自動轉換；若要轉成其他錯誤型別，請以 `catch` 包住並重新擲回。
 
 ```nabi
 fn load_config() throws (ConfigError) -> Config {

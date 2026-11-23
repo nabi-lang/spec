@@ -37,7 +37,7 @@ extern "C" {
 | `"C"`      | 平台的 C ABI。无论符号名如何，始终相同。                   |
 | `"system"` | 操作系统的系统调用 ABI。在某些平台上与 `"C"` 不同（如 Win32 `stdcall`）。 |
 | `"nabi"`    | 运行时（`nabir`）的 ABI。见下文。                                      |
-| `"objc"`   | Apple 目标上的 Objective-C 类及其方法（[stdlib 1.10](../../refs-standard-libraries/100-bare/110-objc.md)）；`ffi::objc::import { "AppKit/AppKit.h" }` 根据 SDK 的头文件生成这些块（[stdlib 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-头文件ffiobjcimport)）。 |
+| `"objc"`   | Apple 目标上的 Objective-C 类及其方法（[标准库 1.10](../../refs-standard-libraries/100-bare/110-objc.md)）；`ffi::objc::import { "AppKit/AppKit.h" }` 根据 SDK 的头文件生成这些块（[标准库 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-头文件ffiobjcimport)）。 |
 
 在 `"system"` 与 `"C"` 一致的目标上（除 32 位 x86 Windows 之外的所有受支持目标），`"system"` 就是 `"C"`。在 32 位 x86 Windows 上，它是 stdcall（[5.9.10](#5910-extern-fn-定义对外暴露)）。
 
@@ -83,18 +83,18 @@ extern "C" {
 }
 ```
 
-这一形式引用在外部定义的全局变量；`static mut` 只允许出现在 `extern` 块内（[`static`](503-static.md)）。C 的 `errno` 不是这样的变量：它是一个按线程区分的宏，所以 `static errno` 会读到错误的内存。在声明上加 `#[errno]` 会在调用之后保存它（[stdlib 1.7.11](../../refs-standard-libraries/100-bare/107-ffi.md#1711-errnoerrno-与-getlasterror)）。
+这一形式引用在外部定义的全局变量；`static mut` 只允许出现在 `extern` 块内（[`static`](503-static.md)）。C 的 `errno` 不是这样的变量：它是一个按线程区分的宏，所以 `static errno` 会读到错误的内存。在声明上加 `#[errno]` 会在调用之后保存它（[标准库 1.7.11](../../refs-standard-libraries/100-bare/107-ffi.md#1711-errnoerrno-与-getlasterror)）。
 
 ### 不允许的内容
 
-`struct`、`enum`、`impl`、`fn` 函数体、`const` 等不出现在 `extern` 块的主体中。该块只声明与外部 ABI 之间的边界。
+`struct`、`enum`、`impl`、`fn` 函数体、`const` 等不能出现在 `extern` 块的主体中。该块只声明与外部 ABI 之间的边界。
 
 ## 5.9.4. FFI 兼容类型
 
 参数、返回值和 `static` 的类型都必须是 FFI 兼容的。FFI 类型如下：
 
 - 原始整数：`i8` 到 `i64`、`u8` 到 `u64`、`usize`、`isize`。
-- C 的具名类型，即这些原始类型的别名，其大小与目标的 C 编译器所定的大小一致：`c_int`、`c_uint`、`c_long`、`c_ulong`、`c_size_t`、`c_wchar` 以及 `bare::ffi::types` 中的其余类型，全部在 prelude 中（[stdlib 1.7.9](../../refs-standard-libraries/100-bare/107-ffi.md#179-c-类型c_intc_longc_void)）。`c_long` 在 Windows 和 32 位目标上是 32 位，所以 C 的 `long` 要声明为 `c_long`，而不是 `i64`。`c_void` 表示指针背后的 `void`（`CPtr<c_void>`）。
+- C 的具名类型，即这些基本类型的别名，其大小与目标的 C 编译器所定的大小一致：`c_int`、`c_uint`、`c_long`、`c_ulong`、`c_size_t`、`c_wchar` 以及 `bare::ffi::types` 中的其余类型，全部在 prelude 中（[标准库 1.7.9](../../refs-standard-libraries/100-bare/107-ffi.md#179-c-类型c_intc_longc_void)）。`c_long` 在 Windows 和 32 位目标上是 32 位，所以 C 的 `long` 要声明为 `c_long`，而不是 `i64`。`c_void` 表示指针背后的 `void`（`CPtr<c_void>`）。
 - 原始浮点数：`f32`、`f64`。
 - `bool`（C 的 `bool`）和 `c_char`（1 字节）。
 - `f16` / `bf16`：C 的 `_Float16` / `__bf16`，仅在其 C 具有这些类型的目标上（[8.6.3](../008-abi/806-calling-convention.md#863-struct-实参--返回小-struct-规则)）。
@@ -103,12 +103,12 @@ extern "C" {
 - 字段均为 FFI 类型（包括由它们构成的定长数组）的 `struct` 和 `union` 类型。默认布局已经是 C 的布局；`#[repr(packed)]` 和 `#[repr(align(N))]` 按与 C 相同的方式改变布局。
 - 带整数 `#[repr]`（`#[repr(i32)]`）的无字段枚举：即 C 的 `enum`。
 - 函数指针：`extern "C" fn(...) -> ...`（请见下文的“C 函数指针类型”）。
-- 函数类型的参数：`extern "C"` 声明中的 `fn(..) -> R` 参数与 `extern "C" fn(..) -> R` 相同。实参必须指名一个函数；闭包是错误（`` `each` is a C function: a `fn` argument must name a function (a C callback has no room for a closure's captures) ``），其帮助信息说明状态应放在哪里：`` a C callback cannot capture: keep the state in `Handle::new(..)` (`bare::ffi`), pass `h.as_ptr()` as the `void*` argument, and read it back in an `extern "C" fn` with `Handle::<T>::from_ptr(p).get()` ``（[stdlib 1.7.10](../../refs-standard-libraries/100-bare/107-ffi.md#1710-handletc-持有的-nabi-值)）。
+- 函数类型的参数：`extern "C"` 声明中的 `fn(..) -> R` 参数与 `extern "C" fn(..) -> R` 相同。实参必须指名一个函数；闭包是错误（`` `each` is a C function: a `fn` argument must name a function (a C callback has no room for a closure's captures) ``），其帮助信息说明状态应放在哪里：`` a C callback cannot capture: keep the state in `Handle::new(..)` (`bare::ffi`), pass `h.as_ptr()` as the `void*` argument, and read it back in an `extern "C" fn` with `Handle::<T>::from_ptr(p).get()` ``（[标准库 1.7.10](../../refs-standard-libraries/100-bare/107-ffi.md#1710-handletc-持有的-nabi-值)）。
 - 可空指针：`Ptr<T> | none`、`ConstPtr<T> | none`、`extern "C" fn(..) -> R | none`（带空值 niche 的指针，[2.7.2](../002-types/207-niche-optimization.md#272-自动-niche)），以及任何 `#[niche(0)]` 结构体 `| none`（`NonZero<i32> | none` 是一个 `int`）；`none` 即 null。
 - 作为 `extern "C"` 声明参数的 `str`：按下面的规则转换。
 - 作为结果的 `()` 和 `!`。
 
-`extern "C"` 声明中的 `str` 参数是一个以 NUL 结尾的 `char*`。如果字节之后紧跟 NUL，字节按原样传递；否则（切片等）传递一个在调用期间被固定的副本。调用返回后，C 不得保留该指针。`str` 结果是错误：返回的 `char*` 的字节属于 C（可能是下次调用会覆盖的静态缓冲区、调用方必须释放的内存、指向实参副本且随调用一起失效的指针），所以基于它们的 `str` 可能改变或悬空，而且这些字节不一定是 UTF-8。应把结果声明为 `ConstPtr<c_char> | none`，并用 `CStr::from_ptr`（[stdlib 1.7.2](../../refs-standard-libraries/100-bare/107-ffi.md#172-cstr--cstring以-null-结尾的字符串)）复制字符串，它还会说明字符串是否为 UTF-8：
+`extern "C"` 声明中的 `str` 参数是一个以 NUL 结尾的 `char*`。如果字节之后紧跟 NUL，字节按原样传递；否则（切片等）传递一个在调用期间被固定的副本。调用返回后，C 不得保留该指针。`str` 结果是错误：返回的 `char*` 的字节属于 C（可能是下次调用会覆盖的静态缓冲区、调用方必须释放的内存、指向实参副本且随调用一起失效的指针），所以基于它们的 `str` 可能改变或悬空，而且这些字节不一定是 UTF-8。应把结果声明为 `ConstPtr<c_char> | none`，并用 `CStr::from_ptr`（[标准库 1.7.2](../../refs-standard-libraries/100-bare/107-ffi.md#172-cstr--cstring以-null-结尾的字符串)）复制字符串，它还会说明字符串是否为 UTF-8：
 
 ```nabi
 extern "C" {
@@ -126,7 +126,7 @@ let home = match unsafe { getenv("HOME") } {
 
 | 类型 | 原因 | 改写为 |
 |------|-----|---------------|
-| GC 类型（`List`、`Dict`、闭包、`any`、包含它们的结构体） | 在 C 持有期间，回收器可能移动或释放它 | 原始类型、`CPtr<T>` 加长度，或由它们构成的结构体；用 `gc::pin` 固定的 `List<T>`，以 `p.as_data_ptr()` 和 `xs.len()` 传递 |
+| GC 类型（`List`、`Dict`、闭包、`any`、包含它们的结构体） | 在 C 持有期间，回收器可能移动或释放它 | 基本类型、`CPtr<T>` 加长度，或由它们构成的结构体；用 `gc::pin` 固定的 `List<T>`，以 `p.as_data_ptr()` 和 `xs.len()` 传递 |
 | 作为结果的 `str`，或 `extern "C" fn` 定义中的 `str` | 字节归 C 所有（见上文）；C 传递的是 `char*` | `ConstPtr<c_char> \| none`，用 `CStr::from_ptr` 复制 |
 | `char` | C 没有四字节字符 | `u32` 和 `char::from_u32` |
 | 元组 | C 没有元组 | `struct` |
@@ -171,9 +171,9 @@ let f: unsafe extern "C" fn(ConstPtr<u8>, ConstPtr<u8>) -> i32 = cmp_i32;   // a
 let g: extern "C" fn(ConstPtr<u8>, ConstPtr<u8>) -> i32 = cmp_i32;          // ERROR: safe position
 ```
 
-### extern 函数的名称空间
+### extern 函数的命名空间
 
-在 `extern` 块中声明的函数构成单一的全局名称空间，可以从任何模块以不带前缀的名称调用。这对应于 C 符号在链接时位于单一全局空间的情况。它是普通项“不隐式查找祖先模块”规则（[5.7.1](507-paths.md#571-路径的起始标识符)）的一个例外，只适用于 extern 函数。以不同签名两次声明同名的 extern 函数是编译错误。工具链在 `core::rt` 中的运行时声明也算在内：重新声明某个 `nabi_*` 运行时函数的用户 `extern` 必须与其签名一致。
+在 `extern` 块中声明的函数构成单一的全局命名空间，可以从任何模块以不带前缀的名称调用。这对应于 C 符号在链接时位于单一全局空间的情况。它是普通项“不隐式查找祖先模块”规则（[5.7.1](507-paths.md#571-路径的起始标识符)）的一个例外，只适用于 extern 函数。以不同签名两次声明同名的 extern 函数是编译错误。工具链在 `core::rt` 中的运行时声明也算在内：重新声明某个 `nabi_*` 运行时函数的用户 `extern` 必须与其签名一致。
 
 ## 5.9.5. `Ptr<T>` / `ConstPtr<T>`
 
@@ -208,7 +208,7 @@ fn use_malloc() {
 }
 ```
 
-每个 `extern` 函数（包括 `extern "nabi"`）都是不安全的，要在 `unsafe { ... }` 内调用（[4.15](../004-functions/415-unsafe.md)）；工具链的各包把它们声明的运行时函数包装在安全函数中。除此之外，`extern` 函数调用与普通调用的区别仅在于它是外部符号。Nabi 的普通语义适用于结果类型。`extern static` 像普通变量一样读取，并且（如果是 `mut`）像普通变量一样写入。Nabi 无法检查 C 的全局变量，所以读写它需要 `unsafe`（`unsafe` 块或 `unsafe fn` 主体）；在其外部是错误，帮助信息引用修正写法：`unsafe { optind = 6; }`。用 `addr_of` 取其地址不读取任何内容，不需要 `unsafe`。它的类型仍然必须是 FFI 兼容的（5.9.4）：Nabi 会把外部内存当作该类型读取，所以 `static environ: List<str>;` 是未定义行为；应把它声明为指针（`static environ: Ptr<Ptr<c_char>>;`）。
+每个 `extern` 函数（包括 `extern "nabi"`）都是不安全的，要在 `unsafe { ... }` 内调用（[4.15](../004-functions/415-unsafe.md)）；工具链的各包把它们声明的运行时函数包装在安全函数中。除此之外，`extern` 函数调用与普通调用的区别仅在于它是外部符号。结果类型遵循 Nabi 的普通语义。`extern static` 像普通变量一样读取，并且（如果是 `mut`）像普通变量一样写入。Nabi 无法检查 C 的全局变量，所以读写它需要 `unsafe`（`unsafe` 块或 `unsafe fn` 主体）；在其外部是错误，帮助信息引用修正写法：`unsafe { optind = 6; }`。用 `addr_of` 取其地址不读取任何内容，不需要 `unsafe`。它的类型仍然必须是 FFI 兼容的（5.9.4）：Nabi 会把外部内存当作该类型读取，所以 `static environ: List<str>;` 是未定义行为；应把它声明为指针（`static environ: Ptr<Ptr<c_char>>;`）。
 
 ## 5.9.7. 可见性
 
@@ -299,11 +299,11 @@ extern "C" fn half(x: f64) -> f64 { .. }
 extern "C" fn notify(x: i32) { .. }
 ```
 
-一个会穿过 C 的栈帧离开 C 所调用函数的 panic 会中止进程（5.9.12）。`extern "C"` 或 `extern "system"` fn 定义上的 `#[on_panic(return = v)]` 改为恢复：panic 照常报告，panic 钩子运行（[stdlib 3.12](../../refs-standard-libraries/300-std/312-panic.md)），然后函数向其调用方（C 或 Nabi）返回 `v`。`v` 是结果类型的字面量：整数、浮点数、`true` / `false`，或对指针结果而言的 `0`（空指针）。没有结果的函数单独写 `#[on_panic]`。负责恢复的函数是 panic 之下最近的 C 入口：当 C 在更深处再次回调 Nabi 时，由那个内层入口决定。
+一个会穿过 C 的栈帧离开 C 所调用函数的 panic 会中止进程（5.9.12）。`extern "C"` 或 `extern "system"` fn 定义上的 `#[on_panic(return = v)]` 改为恢复：panic 照常报告，panic 钩子运行（[标准库 3.12](../../refs-standard-libraries/300-std/312-panic.md)），然后函数向其调用方（C 或 Nabi）返回 `v`。`v` 是结果类型的字面量：整数、浮点数、`true` / `false`，或对指针结果而言的 `0`（空指针）。没有结果的函数单独写 `#[on_panic]`。负责恢复的函数是 panic 之下最近的 C 入口：当 C 在更深处再次回调 Nabi 时，由那个内层入口决定。
 
 panic 与该函数之间的栈帧会被跳过。它们的 `Drop` 不会运行，所以它们本应释放的东西会泄漏，在被跳过的栈帧中加锁的 `Mutex` 会保持锁定：下一次对它的 `lock` 会永远等待。持有锁时可能失败的函数应返回错误值，而不是触发 panic。恢复通过 `setjmp` / `longjmp` 实现（[8.5.12](../008-abi/805-extern-symbols.md#8512-辅助符号附录资料性)）；wasm32 和没有操作系统的目标都没有它们，在那里 panic 与不带该属性时一样中止。
 
-每种误用都是错误，并说明应写什么：
+每种误用都是错误，错误信息会说明应写什么：
 
 | 情况 | 消息 |
 |------|---------|
@@ -341,4 +341,4 @@ panic 不得穿过 C 的栈帧离开 C 所调用的函数：C 对此一无所知
 panic in a function C called: aborting (`#[on_panic(return = v)]` on the `extern "C" fn` returns `v` to C instead)
 ```
 
-并中止进程（`SIGABRT`，在 Unix 上退出状态为 134）。下层没有外部栈帧的 panic 以退出码 101 结束进程，与在其他任何地方一样。共享库（`--crate-type=cdylib`）遵循同样的规则，所以 Python、R 或 Julia 这样的宿主永远不会看到其进程 `exit`。`#[on_panic]`（5.9.10）把 panic 变成返回值，`std::panic::set_hook`（[stdlib 3.12](../../refs-standard-libraries/300-std/312-panic.md)）会在中止、退出或恢复之前看到每个 panic。
+并中止进程（`SIGABRT`，在 Unix 上退出状态为 134）。下层没有外部栈帧的 panic 以退出码 101 结束进程，与在其他任何地方一样。共享库（`--crate-type=cdylib`）遵循同样的规则，所以 Python、R 或 Julia 这样的宿主永远不会看到其进程 `exit`。`#[on_panic]`（5.9.10）把 panic 变成返回值，`std::panic::set_hook`（[标准库 3.12](../../refs-standard-libraries/300-std/312-panic.md)）会在中止、退出或恢复之前看到每个 panic。

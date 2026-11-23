@@ -1,6 +1,6 @@
 # 2.1. Numeric types
 
-The `core::num` module defines every numeric type of nabi. Nabi keeps numbers from two
+The `core::num` module defines every numeric type of Nabi. Nabi keeps numbers from two
 worlds side by side, and the user is free to choose either.
 
 ```

@@ -180,18 +180,18 @@ fn add_assign(ref self, rhs: Rhs);
 
 每個 `*Assign` 語彙單元在 [refs-lang 3.2](../../refs-lang/003-expressions/302-precedence-and-associativity.md) 表格中都固定在同一層級。其優先順序為 `prec = -2`，低於一般算術（`+` 為 9，`*` 為 10）、`..`（=0）和 `|>`（=-1）。這是最低的層級。不允許鏈式指派（[refs-lang 3.4.4](../../refs-lang/003-expressions/304-assignment.md)）。
 
-## 2.4.6. Trait 實作矩陣
+## 2.4.6. trait 實作矩陣
 
 基本型別的每個 `*Assign` 實作都帶有 `#[intrinsic("nabi.OP_assign.TYPE")]`。
 
-| 型別         | Trait                                      | 行為                                        |
+| 型別         | trait                                      | 行為                                        |
 |--------------|---------------------------------------------|-------------------------------------------------|
 | `i*`, `u*`   | 6 個算術 + 5 個位元（共 11 個 trait）        | `nabi.add_assign.i32`、`nabi.shl_assign.u32`…… |
 | `f32`, `f64` | 只有 6 個算術                           | `nabi.add_assign.f64`……                       |
 | `bool`       | `BitAndAssign`/`BitOrAssign`/`BitXorAssign` | `nabi.and_assign.bool`……                      |
 | `int`        | 算術 + 位元；`ShlAssign<u32>` / `ShrAssign<u32>` | 自動提升邏輯；以新值取代（不可變）  |
 | `float`      | 算術                                  | （同上：自動提升）                   |
-| `List<T>`    | `AddAssign<T>`, `AddAssign<List<T>>`        | `xs += x` push `x`；`xs += ys` 就地 push `ys` 的每個元素 |
+| `List<T>`    | `AddAssign<T>`, `AddAssign<List<T>>`        | `xs += x` 會 push `x`；`xs += ys` 就地 push `ys` 的每個元素 |
 | `str`        | `AddAssign<str>`, `AddAssign<char>`         | `s = s + t`：以新的 str 取代 `s`（str 不可變） |
 | `Dict<K,V>`  | `AddAssign<Dict<K,V>>`（`K: Hash`）          | 就地合併；共同的鍵以右側的值為準  |
 | `Set<T>`     | `AddAssign<T>`（`T: Hash`）                  | `s += x` 插入 `x`                            |
@@ -262,7 +262,7 @@ impl ops::AddAssign for Vec3 {
 
 Nabi **不**把 `Add` 設為 `AddAssign` 的父 trait。這兩個 trait 彼此獨立。
 
-原因是某些型別（例如集合型別）有意義的 `AddAssign`，卻沒有有意義的 `Add`：`Set<T>` 和 `Deque<T>` 實作 `AddAssign<T>`（插入或 push 一個元素），但沒有 `Add<T>`。父 trait 關係會讓這類型別無法只實作 `AddAssign`。
+原因是某些型別（例如集合型別）的 `AddAssign` 有意義，`Add` 卻沒有意義：`Set<T>` 和 `Deque<T>` 實作 `AddAssign<T>`（插入或 push 一個元素），但沒有 `Add<T>`。父 trait 關係會讓這類型別無法只實作 `AddAssign`。
 
 ## 2.4.10. 相關：廣播的 `*Assign`？
 

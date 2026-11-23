@@ -106,7 +106,7 @@ fn main(tls):
 nabi-hir -> specialize(hir, type_tuple) -> nabi-mir -> machine code
 ```
 
-在 [AOT](../000-meta/007-glossary.md#aot預先編譯) 模式下，先收集所有呼叫處，然後一次執行 [specialize](../000-meta/007-glossary.md#特化specialize)。在 [JIT](../000-meta/007-glossary.md#jit即時編譯) 模式下，specialize 在第一次呼叫時執行，其結果會被快取（見[執行引擎與使用者介面](../000-meta/001-execution-modes.md)）。兩種模式共用相同的 specialize 機制。
+在 [AOT](../000-meta/007-glossary.md#aot預先編譯) 模式下，先收集所有呼叫處，然後一次執行[特化](../000-meta/007-glossary.md#特化specialize)。在 [JIT](../000-meta/007-glossary.md#jit即時編譯) 模式下，特化在第一次呼叫時執行，其結果會被快取（見[執行引擎與使用者介面](../000-meta/001-execution-modes.md)）。兩種模式共用相同的特化機制。
 
 ### 符號命名
 
@@ -211,5 +211,3 @@ fn add_all<T: Add<T, Output = T>>(items: List<T>) -> T {
 編譯器自己把協程降階為狀態機（8.10.1）。泛型降階透過單態化為每個具體型別產生個別的程式碼，不使用 vtable。
 
 這兩種機制是本 [ABI](../000-meta/007-glossary.md#abi應用程式二進位介面) 部分中最複雜的降階；其餘的[降階：資料型別與運算式](808-lowering-types.md)與[降階：控制流程與 GC 整合](809-lowering-control.md)，都接近直接對應到機器運算。
-
-第 8 章（執行環境 ABI / 降階 / 程式碼產生）到此結束。

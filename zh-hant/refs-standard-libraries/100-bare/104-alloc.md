@@ -78,7 +78,7 @@ impl<T> Allocation<T> {
 impl<T> Drop for Allocation<T> { /* frees the block */ }
 ```
 
-大小使 `usize` 溢位或系統沒有記憶體時，`new` 擲回 `LayoutError`（`message()` 為 `"out of memory"`）。`Allocation` 實作 `Drop`，因此它是仿射的（[2.13.4](../200-core/213-marker.md#2134-drop釋放時的清理)）：`let b = a` 會移動它，而它的區塊在最後一個擁有者釋放它的位置（`using` 區塊結束或擁有者離開作用域）被釋放。
+大小使 `usize` 溢位或系統沒有記憶體時，`new` 擲回 `LayoutError`（`message()` 為 `"out of memory"`）。`Allocation` 實作 `Drop`，因此它是仿射的（[2.13.4](../200-core/213-marker.md#2134-drop釋放時的清理)）：`let b = a` 會移動它，而它的區塊在最後一個擁有者釋放它的位置（`using` 區塊結束或擁有者離開作用域）釋放。
 
 ## 1.4.3. 與 GC 的關係
 

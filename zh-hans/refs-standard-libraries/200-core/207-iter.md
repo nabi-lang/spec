@@ -293,12 +293,12 @@ trait Step: PartialOrd + Clone {
 
 | 类型                 | 实现     | 说明                                                |
 |----------------------|----------|------------------------------------------------------|
-| `i8`..`i64`, `isize` | **有**  | 溢出时 `forward_checked` 返回 `none`         |
-| `u8`..`u64`, `usize` | **有**  | 下溢时 `backward_checked` 返回 `none`       |
+| `i8`..`i64`、`isize` | **有**  | 溢出时 `forward_checked` 返回 `none`         |
+| `u8`..`u64`、`usize` | **有**  | 下溢时 `backward_checked` 返回 `none`       |
 | `int`                | **无**   | 没有标准库实现                             |
 | `char`               | **有**  | 按码位步进，跳过代理项（`0xD800..=0xDFFF`） |
 | `bool`               | **无**   | 没有标准库实现                             |
-| `f32`, `f64`         | **无**   | `Range<f64>` 不是迭代器：步长有歧义     |
+| `f32`、`f64`         | **无**   | `Range<f64>` 不是迭代器：步长有歧义     |
 | `float`              | **无**   | （同上）                                      |
 
 用户定义的类型可以自由添加 `impl Step for MyType`，这会立即使 `Range<MyType>` 可用。
@@ -347,7 +347,7 @@ impl<T: Step> Iterator for Range<T> {
 }
 ```
 
-每种区间形式都由 `core::range` 的一个 `#[literal]` 处理器注册（构建 `Range` 的函数上带有 `#[literal(expr ".." expr)]`，每种形式一个处理器），所以 `0..5` 这样的写法脱糖为 `Range` 结构体（以 [refs-lang 6.5](../../refs-lang/006-meta-system/605-literal-magic.md) 为准）。编译器通过 `range_type` lang 槽找到 `Range`。
+每种区间形式都由 `core::range` 的一个 `#[literal]` 处理函数注册（构建 `Range` 的函数上带有 `#[literal(expr ".." expr)]`，每种形式一个处理函数），所以 `0..5` 这样的写法脱糖为 `Range` 结构体（以 [refs-lang 6.5](../../refs-lang/006-meta-system/605-literal-magic.md) 为准）。编译器通过 `range_type` lang 槽找到 `Range`。
 
 ```nabi
 for i in 0..5 {
@@ -616,12 +616,12 @@ trait TryIterator {
 
 `TryIterator` 在 prelude 中（[0.2](../000-meta/002-import.md)）。它是一个单独的 trait，而不是 `Iterator` 上的错误参数：一个值要么是这个，要么是那个。
 
-- **抛出错误之后。** 抛出错误后的 `next` 做什么，由各类型在文档中选择。类型可以继续给出下一项（`io::Bytes`），也可以结束，此后一直给出 `none`（`TryGenIter`）。
-- **适配器函数抛出 `Error`。** 传给 `map`、`filter`、`fold` 等的函数可以抛出迭代器自身的 `Error`；不抛出错误的函数也适用（[refs-lang 4.14.8](../../refs-lang/004-functions/414-throws.md#4148-函数类型中的-throws)）。抛出其他类型的函数在调用处是类型错误：先用 `.map_err(..)` 转换，或在函数内用 `catch` 处理错误。`map_err` 是改变 `Error` 的唯一方式：`.map_err(|e| -> IoError | ParseError { e })` 扩大它，`.map_err(|e| -> any Error { e })` 擦除它。
-- **没有 `try_fold` / `try_for_each`。** `fold` 和 `for_each` 已经接受会抛出错误的函数。`Iterator::try_fold` / `try_for_each`（2.7.1）仍然保留：它们为不抛出错误的迭代器加上抛出。
+- **抛出错误之后**。抛出错误后的 `next` 做什么，由各类型在文档中选择。类型可以继续给出下一项（`io::Bytes`），也可以结束，此后一直给出 `none`（`TryGenIter`）。
+- **适配器函数抛出 `Error`**。传给 `map`、`filter`、`fold` 等的函数可以抛出迭代器自身的 `Error`；不抛出错误的函数也适用（[refs-lang 4.14.8](../../refs-lang/004-functions/414-throws.md#4148-函数类型中的-throws)）。抛出其他类型的函数在调用处是类型错误：先用 `.map_err(..)` 转换，或在函数内用 `catch` 处理错误。`map_err` 是改变 `Error` 的唯一方式：`.map_err(|e| -> IoError | ParseError { e })` 扩大它，`.map_err(|e| -> any Error { e })` 擦除它。
+- **没有 `try_fold` / `try_for_each`**。`fold` 和 `for_each` 已经接受会抛出错误的函数。`Iterator::try_fold` / `try_for_each`（2.7.1）仍然保留：它们为不抛出错误的迭代器加上抛出。
 - **`collect`** 构建任何 `FromIterator` 集合类型（2.7.5）；没有单独的 trait。它在第一个错误处停止并抛出该错误。
-- **命名。** 适配器类型带 `Try` 前缀，与 `Map`、`Filter` 等一起位于 `core::iter`；`MapErr` 和 `Results` 只存在于这里。
-- **`for`。** `TryIterator` 用 `try for x in it { .. }` 步进（[refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for基于迭代器的重复)）。`try` 覆盖可迭代对象和每次 `next`，而不覆盖循环体。对 `TryIterator` 使用普通的 `for` 是编译错误，错误会提示改用 `try for` 或 `.results()`。
+- **命名**。适配器类型带 `Try` 前缀，与 `Map`、`Filter` 等一起位于 `core::iter`；`MapErr` 和 `Results` 只存在于这里。
+- **`for`**。`TryIterator` 用 `try for x in it { .. }` 步进（[refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for基于迭代器的重复)）。`try` 覆盖可迭代对象和每次 `next`，而不覆盖循环体。对 `TryIterator` 使用普通的 `for` 是编译错误，错误会提示改用 `try for` 或 `.results()`。
 
 ### 转换
 

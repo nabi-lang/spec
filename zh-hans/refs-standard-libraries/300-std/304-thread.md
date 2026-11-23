@@ -98,13 +98,13 @@ impl<T: Default> ThreadLocal<T> {
 
 `Thread::unpark` 设置该线程的 park 令牌并唤醒它。一个令牌由一次 `park` 消耗。
 
-`thread::spawn` 就是套在 `try!` 后面、使用默认设置的 `Builder::spawn`：当 `Builder::spawn` 抛出错误时（目标上没有线程，或操作系统拒绝创建新线程），`thread::spawn` 会触发 panic。要处理该错误，就使用 `Builder::new().spawn(f)`。
+`thread::spawn` 就是用 `try!` 包装、使用默认设置的 `Builder::spawn`：当 `Builder::spawn` 抛出错误时（目标上没有线程，或操作系统拒绝创建新线程），`thread::spawn` 会触发 panic。要处理该错误，就使用 `Builder::new().spawn(f)`。
 
 `await handle`（[2.20.5](../200-core/220-future.md#2205-intofuture可等待的值)）在任务内部等待线程：join 在执行器的阻塞通道（[`task::spawn_blocking`](../200-core/218-task.md#2181-核心-api)）上运行，因此只有该任务在等待。它产出 `T`；操作系统层面的 join 失败（`JoinError`）会触发 panic，所以要处理它就调用 `join`。
 
 ### Panic 与 `JoinError`
 
-任何线程中的 panic 都会以退出码 101 终止整个进程。因此 `join` 永远不会收到另一个线程的 panic，而 `thread::panicking()` 只对进程结束期间在发生 panic 的线程上运行的代码（嵌入方的退出钩子）为 true。`JoinError` 表示操作系统层面的 join 失败（`JoinErrorKind::Os`），或者对以失败的 REPL 单元结束的线程表示为 `JoinErrorKind::Lost`（[refs-lang 9.7.0](../../refs-lang/009-tools/907-jit-cells.md#970-单元会话的规则)），显示为“thread join failed: the thread ended with a failed REPL cell”。
+任何线程中的 panic 都会以退出码 101 终止整个进程。因此 `join` 永远不会收到另一个线程的 panic，而 `thread::panicking()` 只对进程结束期间在发生 panic 的线程上运行的代码（嵌入方的退出钩子）为 true。`JoinError` 表示操作系统层面的 join 失败（`JoinErrorKind::Os`），或者对以失败的 REPL 单元格结束的线程表示为 `JoinErrorKind::Lost`（[refs-lang 9.7.0](../../refs-lang/009-tools/907-jit-cells.md#970-单元格会话的规则)），显示为“thread join failed: the thread ended with a failed REPL cell”。
 
 `JoinErrorKind::Taken`：该句柄或它的副本已经被 join 或 detach 过。第二次 `join` 会抛出它；第二次 `detach` 什么也不做。
 
@@ -164,7 +164,7 @@ let all = SEEN.take();                   // the list itself, leaving []
 
 `with` 接受的闭包不能 `await`，因此线程的值永远不会跨越 `await` 被持有，而在 `await` 处任务可能会在另一个线程上恢复。
 
-## 3.4.5. impl / 目标
+## 3.4.5. 实现 / 目标
 
 各平台的支持情况：
 

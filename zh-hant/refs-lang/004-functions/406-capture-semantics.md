@@ -105,7 +105,7 @@ fns[4]();                          // 4
 
 值擷取把值複製進閉包。[`struct`](../002-types/203-struct.md) 是值型別，因此閉包持有它自己的複本；閉包內的欄位寫入不會到達外部變數。要那樣做請使用 `[ref p]`。對值擷取進行欄位寫入是編譯錯誤（E0057），與重新繫結擷取相同，其說明為 ``add `[ref p]` to the closure's capture list``。對單純資料（數字、`bool`、`str`，以及由它們組成、沒有 `Drop` 的結構、元組、陣列與列舉）的值擷取或其欄位呼叫 `ref self` 方法也是如此：閉包的每次呼叫都從它自己的複本開始，因此變更會遺失（以帶種子的產生器 `g` 執行 `List::from_fn(4, |_| g.uniform(0.0, 1.0))` 會得到同一個值四次）。共享其狀態的控制代碼與資源（`Cell`、`File`、通訊端）不受影響。請寫 `[ref g] |_| g.uniform(0.0, 1.0)`；若只要在閉包內改變一份複本，請先把它複製到區域變數中。
 
-集合型別（`List`、`Dict`、`Set`、`StrBuf`……）是參照控制代碼（[stdlib 2.9](../../refs-standard-libraries/200-core/209-collections.md#參考控制代碼)）。值擷取複製的是控制代碼，因此物件是共享的。
+集合型別（`List`、`Dict`、`Set`、`StrBuf`……）是參照控制代碼（[stdlib 2.9](../../refs-standard-libraries/200-core/209-collections.md#參照控制代碼)）。值擷取複製的是控制代碼，因此物件是共享的。
 
 ```nabi
 let xs = [1, 2, 3];
@@ -138,7 +138,7 @@ let g = [ref xs] || {
 };
 ```
 
-對參照控制代碼而言，值擷取與物件變更可以並行不悖，因為物件是共享的。`ref` 擷取用於必須重新指派繫結本身的時候。
+對參照控制代碼而言，值擷取與物件變更可以同時成立，因為物件是共享的。`ref` 擷取用於必須重新指派繫結本身的時候。
 
 這種區分與 [`impl`](../002-types/209-impl.md) 的 `self` 與 `ref self` 模型相同。
 
@@ -152,7 +152,7 @@ par::for_each(xs, [ref buf] |x| { buf.push(x) });
 // ERROR (E0085): a [ref buf] cell cannot cross threads
 ```
 
-請改用摺疊（`par::fold(xs, 0, |a, b| a + b)`），透過 `Mutex` / `RwLock` / `Atomic` / 通道共享，或從執行緒回傳值（`join()`）。只有被產生的程式碼需要的值，要移入：`thread::spawn([move buf] || buf.len())`。
+請改用摺疊（`par::fold(xs, 0, |a, b| a + b)`），透過 `Mutex` / `RwLock` / `Atomic` / 通道共享，或從執行緒回傳值（`join()`）。只有被啟動的程式碼才需要的值，則要移入：`thread::spawn([move buf] || buf.len())`。
 
 以這種方式共享的值屬於其新的擁有者：在 `Mutex::new(buf)` 或 `tx.send(buf)` 之後使用 `buf` 是編譯錯誤（E0105，[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)）。請透過鎖使用它，或交出 `buf.clone()`。
 

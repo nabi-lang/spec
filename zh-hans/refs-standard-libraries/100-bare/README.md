@@ -56,7 +56,7 @@ let q: Ptr<i32> = p.with_addr(addr + 4); // safe: provenance kept, only the addr
 let r: Ptr<i32> = unsafe { bare::ptr::from_exposed_provenance(addr) };  // unsafe: fresh provenance
 ```
 
-`as` 强制转换永远不能用于指针。这一方向的依据是 [Ralf Jung “Pointers Are Complicated”](https://www.ralfj.de/blog/2022/04/11/provenance-exposed.html)，它与 Rust 1.84（2024 年 12 月）稳定的模型同构。
+`as` 强制转换永远不能用于指针。这一方向的依据是 [Ralf Jung “Pointers Are Complicated”](https://www.ralfj.de/blog/2022/04/11/provenance-exposed.html)，它与 Rust 1.84（2024 年 12 月）稳定的模型一致。
 
 ### 2. 数量编码在类型中：Zig 模型
 

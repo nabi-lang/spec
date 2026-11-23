@@ -105,7 +105,7 @@ impl<T: NicheInt> Positive<T> {
 }
 ```
 
-值為 0 或以上。無號的 `T` 沒有負值，因此沒有 niche。`TryFrom<T>` 遇到負值時擲回 `ConversionError`，而 `From<Positive<T>> for T` 是無損的。
+值大於或等於 0。無號的 `T` 沒有負值，因此沒有 niche。`TryFrom<T>` 遇到負值時擲回 `ConversionError`，而 `From<Positive<T>> for T` 是無損的。
 
 ## 2.2.6. `new_unchecked`
 

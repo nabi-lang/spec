@@ -284,7 +284,7 @@ let total = evens(10).map(|x| x * x).sum();
 ```
 
 - The concrete type is the type of the body's value, inferred as in [4.1.3](#413-omitting-the-return-type), also on a `pub` function. Calls are static: no tag, no boxing, as with [generics](../002-types/210-generics.md).
-- One concrete type per function: return paths of different types are an error (`the return paths of `f` have different types ..`), help `` to return several types, write `-> any Tr` ``.
+- One concrete type per function: return paths of different types are an error (`` the return paths of `f` have different types .. ``), help `` to return several types, write `-> any Tr` ``.
 - The concrete type must have every bound: otherwise `` `f` returns `ListIter<i32>`, which is not `Iterator<Item = str>` `` at the bound.
 - Callers see only the bounds: they may call the bounds' methods (and their supertraits'), iterate it when the bound is an iterator, pass it where a generic parameter with those bounds is expected, and call it when the bound is a function type. Naming or using the concrete type is an error: `` no method `contains` on `some Iterator<Item = i32>`: callers see only its bounds ``; `` `let b` expects `Range<i32>`, found `some Iterator<Item = i32>` ``.
 - The same function always returns the same type, so two calls' results have one type. Results of different functions are different types.

@@ -118,7 +118,7 @@ A `use` path may start with a prelude name: `use task::sleep;` imports `core::ta
 
 ## 0.2.5. Tiers **not** applied implicitly
 
-Only the prelude is implicit. unsafe and std are **explicit only**.
+Only the prelude is implicit. `bare` and `std` are **explicit only**.
 
 ```nabi
 use bare::ffi::{CStr, CString};      // unsafe: danger signal

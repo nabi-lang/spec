@@ -1,6 +1,6 @@
 # 2.22. `encoding::`：hex 與 base64
 
-`core::encoding` 以程式最常遇到的兩種 RFC 4648 編碼，把位元組轉成文字再轉回來：hex（base16）與 base64。它們是純計算，在每個目標上的行為完全相同，因此位於 `core`（0.1）。每種編碼是一個模組，`encoding::hex` 與 `encoding::base64`，各有相同的四個函式；`encoding::DecodeError` 是兩者擲回的錯誤。
+`core::encoding` 以程式最常遇到的兩種 RFC 4648 編碼，把位元組轉成文字再轉回來：hex（base16）與 base64。它們是純計算，在每個目標上的行為完全相同，因此位於 `core`（0.1）。每種編碼各是一個模組（`encoding::hex` 與 `encoding::base64`），各有相同的四個函式；`encoding::DecodeError` 是兩者擲回的錯誤。
 
 ```nabi
 // core::encoding::hex
@@ -32,7 +32,7 @@ encoding::base64::decode("Zm9vYg");            //→ [102, 111, 111, 98]
 
 ## 2.22.1. Hex
 
-`hex::encode` 把每個位元組寫成兩個數字，高半部在前（`[0x00, 0xff]` → `"00ff"`）；數字 `a` 到 `f` 為小寫，使用 `Case::Upper` 時為大寫。`hex::decode` 每個位元組讀取兩個數字，大小寫皆接受（`"DeadBeef"`）。文字長度必須為偶數；除此之外不接受任何東西：沒有 `0x` 前綴，也沒有空格或分隔符。
+`hex::encode` 把每個位元組寫成兩個十六進位數字，高四位元在前（`[0x00, 0xff]` → `"00ff"`）；數字 `a` 到 `f` 為小寫，使用 `Case::Upper` 時為大寫。`hex::decode` 每個位元組讀取兩個數字，大小寫皆接受（`"DeadBeef"`）。文字長度必須為偶數；除此之外不接受任何東西：沒有 `0x` 前綴，也沒有空格或分隔符。
 
 `hex::encode_into` 需要 `out` 有 `2 * data.len()` 個位元組，`hex::decode_into` 需要 `text.len() / 2` 個；較短的 `out` 是呼叫端的錯誤，會觸發 panic 並指出應給的大小（``hex::encode_into: `out` holds 3 bytes but the text needs 4, two per byte; size `out` as `2 * data.len()` ``，`decode_into` 則為 ``size `out` as `text.len() / 2` ``）。
 
@@ -65,7 +65,7 @@ const URL_SAFE_NO_PAD: Codec;          // UrlSafe, Absent
 | `PresentOptional` | 是                 | 有填補或無填補的文字 |
 | `AbsentOptional`  | 否                  | 有填補或無填補的文字 |
 
-`STANDARD` 是預設引數：編碼時填補，解碼時兩種形式都接受。嚴格的解碼器只差一個 codec：`Codec::new(Alphabet::Standard, Padding::Present)`。
+`STANDARD` 是預設引數：編碼時填補，解碼時兩種形式都接受。要嚴格的解碼器，換一個 codec 即可：`Codec::new(Alphabet::Standard, Padding::Present)`。
 
 | 輸入      | `STANDARD`     | `STANDARD_NO_PAD` |
 |------------|----------------|-------------------|
@@ -75,7 +75,7 @@ const URL_SAFE_NO_PAD: Codec;          // UrlSafe, Absent
 | `"foo"`    | `"Zm9v"`       | `"Zm9v"`          |
 | `"foobar"` | `"Zm9vYmFy"`   | `"Zm9vYmFy"`      |
 
-存在的填補必須正確：結尾有一或兩個 `=`，使長度成為 4 的倍數。最後一個字元中剩餘的位元會被忽略。空白字元與換行不會被略過：分行的文字（PEM、MIME）要先合併，例如使用 `split_whitespace`（[2.15.2](215-string.md#2152-str不可變的-utf-8-字串)）。
+若有填補，就必須正確：結尾有一或兩個 `=`，使長度成為 4 的倍數。最後一個字元中剩餘的位元會被忽略。空白字元與換行不會被略過：分行的文字（PEM、MIME）要先合併，例如使用 `split_whitespace`（[2.15.2](215-string.md#2152-str不可變的-utf-8-字串)）。
 
 ```nabi
 let raw: List<u8> = [0xfb, 0xff, 0xbf];

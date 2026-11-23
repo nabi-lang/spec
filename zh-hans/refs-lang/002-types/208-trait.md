@@ -88,7 +88,7 @@ impl TryFrom<RawPath> for Path { type Error = Utf8Error; ... }   // overridden
 impl TryFrom<Celsius> for Kelvin { ... }                           // Error = ConversionError
 ```
 
-在 trait 和所有 impl（trait impl 和固有 impl）内部，裸名 `Item` 和 `Self::Item` 都表示该关联类型，在方法签名和方法体中都可以使用。在 impl 中，它是该 impl 选定的具体类型。如果关联类型遮蔽了外部同名的类型（模块中的 `struct Item`、原始类型等），裸名在那里就有歧义：在 trait 或 impl 中使用它是编译错误，其帮助信息会要求写 `Self::Item` 或外部类型的路径（`pkg::Item`、`std::process::Output`）。声明这样的关联类型但不使用裸名时会给出警告（`assoc_type_shadowing`，[6.2.9](../006-meta-system/602-built-in-attributes.md#629-allow--deny--warn-lint-控制)）。同名的 trait 不是类型，因此不会发出警告（`trait IntoFuture { type IntoFuture; }` 没有问题）。
+在 trait 和所有 impl（trait impl 和固有 impl）内部，裸名 `Item` 和 `Self::Item` 都表示该关联类型，在方法签名和方法体中都可以使用。在 impl 中，它是该 impl 选定的具体类型。如果关联类型遮蔽了外部同名的类型（模块中的 `struct Item`、基本类型等），裸名在那里就有歧义：在 trait 或 impl 中使用它是编译错误，其帮助信息会要求写 `Self::Item` 或外部类型的路径（`pkg::Item`、`std::process::Output`）。声明这样的关联类型但不使用裸名时会给出警告（`assoc_type_shadowing`，[6.2.9](../006-meta-system/602-built-in-attributes.md#629-allow--deny--warn-lint-控制)）。同名的 trait 不是类型，因此不会发出警告（`trait IntoFuture { type IntoFuture; }` 没有问题）。
 
 如果一个类型实现的两个 trait 都有同名的关联类型，那么在该类型的 impl 主体中，裸 `X` / `Self::X` 有歧义，属于错误。这时用 `<Self as Tr>::X` 指明 trait。
 

@@ -1,6 +1,6 @@
 # 0.7. 术语表
 
-同样的概念在本规范的许多章节中反复出现，把常用术语集中到一处对读者有帮助。本文档汇集了 Nabi 规范中通篇出现的核心术语，阅读正文时一旦某个概念变得模糊，就可以直接查阅这里。每个条目给出简短的定义及其在 Nabi 中的具体语境，说明的不只是词典意义，还有该术语在规范中所处的位置。
+同样的概念在本规范的许多章节中反复出现，把常用术语集中到一处可以方便读者。本文档汇集了 Nabi 规范中通篇出现的核心术语，阅读正文时一旦某个概念变得模糊，就可以直接查阅这里。每个条目给出简短的定义及其在 Nabi 中的具体语境，说明的不只是词典意义，还有该术语在规范中所处的位置。
 
 ## ABI (Application Binary Interface)
 
@@ -84,7 +84,7 @@ scan_table 是 GC 用来查找对象中哪些槽是 GC 指针的元表。它按 
 
 ## shadow stack
 
-影子栈（shadow stack）是 GC 用来追踪存活对象的辅助栈。编译器直接生成代码，在函数入口和出口处把存放 GC 对象变量所在槽的帧链入和移出链表。帧位于机器栈上，链表头按线程保存在 TLS 中。
+影子栈（shadow stack）是 GC 用来追踪存活对象的辅助栈。编译器直接生成代码，在函数入口和出口处把存放 GC 对象变量槽的帧链入和移出链表。帧位于机器栈上，链表头按线程保存在 TLS 中。
 
 ## specialize
 
@@ -116,11 +116,11 @@ TLAB 是每个工作线程拥有的线程局部内存缓冲区。快速路径的
 
 ## nabic / nabi / nabils / nabir
 
-构成工具链的可执行文件和运行时。`nabic` 是编译器（相当于 rustc，[9.1](../009-tools/901-nabic-cli.md)），带有自己的代码生成器和链接器；`nabi` 是类似 cargo 的前端，负责处理清单、依赖、环境和工具链固定，调用 `nabic`，并以链接了编译器的方式运行各种工具（run、lint、REPL、Jupyter、LSP、格式化工具……）（[9.10](../009-tools/910-nabi-frontend.md)）；`nabicc` 是 C 编译器（`nabi cc`，[9.13](../009-tools/913-c-compiler.md)）；`nabils` 是供编辑器使用的 LSP 服务器可执行文件（`nabi lsp`）；`nabir` 是运行时（`libnabir.a`）。`$NABI_HOME/bin/` 中的可执行文件是指向当前工具链（`$NABI_HOME/toolchains/<version>-<triple>/`）的代理，`nabic` 在相对于其自身可执行文件的 sysroot 中查找标准库和运行时（[9.2.19](../009-tools/902-aot-pipeline.md#9219-安装布局)）。
+构成工具链的可执行文件和运行时。`nabic` 是编译器（相当于 rustc，[9.1](../009-tools/901-nabic-cli.md)），带有自己的代码生成器和链接器；`nabi` 是类似 cargo 的前端，负责处理清单、依赖、环境和工具链固定，调用 `nabic`，并运行链接了编译器的各种工具（run、lint、REPL、Jupyter、LSP、格式化工具……）（[9.10](../009-tools/910-nabi-frontend.md)）；`nabicc` 是 C 编译器（`nabi cc`，[9.13](../009-tools/913-c-compiler.md)）；`nabils` 是供编辑器使用的 LSP 服务器可执行文件（`nabi lsp`）；`nabir` 是运行时（`libnabir.a`）。`$NABI_HOME/bin/` 中的可执行文件是指向当前工具链（`$NABI_HOME/toolchains/<version>-<triple>/`）的代理，`nabic` 在相对于其自身可执行文件的 sysroot 中查找标准库和运行时（[9.2.19](../009-tools/902-aot-pipeline.md#9219-安装布局)）。
 
 ## NABION
 
-Nabi Object Notation。一种使用 Nabi 字面量语法的子集来书写值的数据格式，扩展名为 `.nabion`。清单 `nabi.nabion` 和锁文件 `nabi.lock` 使用这种格式（[stdlib 3.8](../../refs-standard-libraries/300-std/308-nabion.md)）。
+Nabi Object Notation。一种使用 Nabi 字面量语法的子集来书写值的数据格式，扩展名为 `.nabion`。清单 `nabi.nabion` 和锁文件 `nabi.lock` 使用这种格式（[标准库 3.8](../../refs-standard-libraries/300-std/308-nabion.md)）。
 
 ## packages.nabi-lang.org
 

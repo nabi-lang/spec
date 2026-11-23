@@ -210,7 +210,7 @@ Package {
 - `lints_from` 指定一个目录（相对于本清单所在目录，或绝对路径），由该目录的 `nabi.nabion` 提供初始 lint 级别。先应用那个清单的 `lints`（在它自己的 `lints_from` 链之后），再应用本清单的 `lints`，因此这里的条目会覆盖链中同一 lint 或组的设置（所有条目按此顺序以 `-A`/`-W`/`-D` 传递；后面的标志优先）。它只作用于正在构建或检查的包（以及环境的清单）；从不为 lint 查阅依赖的清单。该目录不存在、不含 `nabi.nabion`，或者链回到其中已有的清单（形成环）时，是错误。`nabi env import` 把相对的 `lints_from` 改写为绝对路径。脚本的 `//! ```nabion` 块不得使用它。
 - `profile` 把构建配置（`"debug"` 或 `"release"`，[9.2.15](902-aot-pipeline.md#9215-输出)）映射到其设置 `{ overflow_checks: bool }`（该记录可以命名为 `Profile`）。`overflow_checks: false` 在该构建配置中关闭整数溢出检查，与 `-C overflow-checks=no` 的效果相同（[9.1.2](901-nabic-cli.md#nabic-buildaot-构建)）；命令行上的 `-C overflow-checks` 会覆盖它。其他构建配置名称或设置是错误。只读取正在构建的包（或环境）的配置；不读取依赖的构建配置，脚本的 `//! ```nabion` 块也不得使用它。
 - 包元数据：`authors` 是 `"Name <email>"` 字符串，`nabi new` / `nabi init` 不会填写它们。`keywords` 和 `categories` 各最多 5 项。`authors`、`keywords`、`categories`、`include` 或 `exclude` 中的空条目是错误。`readme` 和 `license_file` 是包内的路径，相对于清单所在目录（绝对路径，或经 `..` 离开包的路径，是错误）；没有 `readme` 时，若存在 `README.md`，则以它为 readme。`metadata` 是 `nabi` 不读取的表（`{ .. }`）；它原样发送到注册表。`nabi publish` 检查 readme 和 `license_file` 是否存在、`default_run` 是否指向包中的某个可执行文件，并拒绝带有 `publish: false` 的包（9.10.4a）。
-- `include` / `exclude` 是作用于所发布提交中文件路径的 glob（`*` 和 `?` 在一个名称内匹配，`**` 跨越多个名称；不含 `/` 的模式匹配任意深度的名称，匹配目录的模式也匹配目录中的内容）。当 `include` 为空或匹配某个文件、且 `exclude` 不匹配它时，包含有该文件；`nabi.nabion` 总是包含在内。它们决定 `nabi publish` 发送的打包大小（9.10.4a）；源代码仍是整个提交。
+- `include` / `exclude` 是作用于所发布提交中文件路径的 glob（`*` 和 `?` 在一个名称内匹配，`**` 跨越多个名称；不含 `/` 的模式匹配任意深度的名称，匹配目录的模式也匹配目录中的内容）。当 `include` 为空或匹配某个文件、且 `exclude` 不匹配它时，包中包含该文件；`nabi.nabion` 总是包含在内。它们决定 `nabi publish` 发送的打包大小（9.10.4a）；源代码仍是整个提交。
 - `links` 指定包链接的原生库。同一构建中两个包具有相同的 `links` 是错误，错误消息会指出这两个包。
 - `default_run` 指定 `nabi run` 运行的可执行文件；一个包最多有一个可执行文件（`src/main.nabi`，以包名命名），因此就是这个名称。
 - `deployment_target` 是包中程序可运行的最旧 macOS，以数字表示（`"13.0"`；其他形式是错误，错误消息会给出正确形式）；省略时为 `11.0`。记录形式 `{ macos: "13.0", ios: "16.0" }` 同时给出最旧的 iOS（省略时为 `13.4`；更旧的版本是错误），每个字段都是可选的。`nabi` 把它们作为 `MACOSX_DEPLOYMENT_TARGET` 和 `IPHONEOS_DEPLOYMENT_TARGET` 传给 `nabic`，除非其中某个已经设置，这时已设置的值优先。比它更新的 Objective-C API 只在 `objc::available` 下调用（[标准库 1.10.13](../../refs-standard-libraries/100-bare/110-objc.md#11013-可用性与部署目标)）。
@@ -320,7 +320,7 @@ nabi deps [--dev] [--features <f,..>] [--all-features] [--no-default-features] [
 | `cache/git/db/<repo>-<hash>/`              | 仓库的裸克隆（每个 url 一个）                           |
 | `cache/registry/db/<repo>-<hash>/`         | 注册表索引的裸克隆（每个索引一个）                      |
 | `cache/registry/src/<sha256>/`             | 注册表包的文件，来自注册表中具有该 SHA-256 的压缩包（9.10.4a）；不会再次获取 |
-| `cache/git/checkouts/<commit>/`            | 某个提交的检出。使用前按树哈希验证，不一致时重新解压    |
+| `cache/git/checkouts/<commit>/`            | 某个提交的检出。使用前按树哈希验证，不一致时重新检出    |
 | `cache/scripts/<hash>/`                    | 脚本的 `nabi.lock` 和 `target/`；`<hash>` 涵盖脚本的路径，以及它所到达的每个文件的路径和块（[9.10.7](#9107-单文件脚本的内联清单)） |
 | `cache/native/<sha256>/`                   | 原生压缩包，在其 SHA-256 匹配后解压；不会再次获取（9.10.4b） |
 | `cache/native/meta/<sha256>.nabion`         | 一个 `Dep::native(url:)` 文件                           |
@@ -354,7 +354,7 @@ nabi deps [--dev] [--features <f,..>] [--all-features] [--no-default-features] [
 Sources { replace: { "https://github.com/nabi-lang/packages-index": "https://mirror.example.com/packages-index" } }
 ```
 
-- 每个键是一个索引 url（忽略末尾的 `/`），其值是内容相同的镜像的 git url。`nabi` 从镜像获取索引；其余一切，包括锁文件（9.10.3）、令牌和消息，都以索引称呼。文件不存在时不进行替换；`nabi` 不认识的字段被跳过。
+- 每个键是一个索引 url（忽略末尾的 `/`），其值是内容相同的镜像的 git url。`nabi` 从镜像获取索引；其余一切，包括锁文件（9.10.3）、令牌和消息，都指称索引本身。文件不存在时不进行替换；`nabi` 不认识的字段被跳过。
 
 ### 索引格式
 
@@ -417,7 +417,7 @@ Nabi 项目发布的包在索引中标记为 `official: true`（由注册表写�
 - 使用 `--locked` 或 `--frozen`（错误中会如实写出所用选项），或 `CI` 设为非空值时，从不编辑清单：`` `json` is an official package the code uses, but it is not in nabi.nabion, and --locked never changes it; add it: `nabi add json` ``；
 - 离线且包不在任一缓存中时：`` .. it is not in the cache and --offline is set: run `nabi add json` online, or keep the official packages for offline use with `nabi component add packages` ``。
 
-根 `std`、`core`、`bare`、`nabi`、`pkg`、`sup`、`crate`、`super`、`self` 以及首字母大写的名称从不是包。不是官方的名称保留编译器的错误（`` `geom` is not a dependency of this package: add it to nabi.nabion (`nabi add geom`) ``）。REPL 和 Jupyter 内核对每个单元（cell）都这样做（在包的会话中用 `nabi add`，在环境的会话中用 `nabi install --env`）。语言服务器从不编辑清单：它提供 `nabi add <name>` 快速修复（9.9.13）。
+根 `std`、`core`、`bare`、`nabi`、`pkg`、`sup`、`crate`、`super`、`self` 以及首字母大写的名称从不是包。不是官方的名称保留编译器的错误（`` `geom` is not a dependency of this package: add it to nabi.nabion (`nabi add geom`) ``）。REPL 和 Jupyter 内核对每个单元格都这样做（在包的会话中用 `nabi add`，在环境的会话中用 `nabi install --env`）。语言服务器从不编辑清单：它提供 `nabi add <name>` 快速修复（9.9.13）。
 
 ### `nabi component`
 
@@ -451,7 +451,7 @@ nabi yank [--native] <name>@<version> [--undo] [--message <why>] [--registry <ur
 ```
 
 - `search` 按名称搜索索引，每个匹配项打印一行：`<name> <newest version> - <description>`。说明来自注册表 API（`GET <api>/api/v1/packages/<name>`，最新版本的 `meta.description`）；API 没有说明或没有应答时，以及在 `--offline` 下，省略说明。索引查找接受 `-` 或 `_` 任一种拼写。
-- `publish` 执行发布（与 `cargo publish` 相同）；`publish --dry-run` 是试运行。带有 `publish: false` 的包被拒绝，错误消息会指出应当删除的那一行。readme（9.10.3）必须存在。它要求工作树干净、包位于仓库根目录，并具有 `src/lib.nabi`、`src/main.nabi` 或两者都有。只有 `src/main.nabi` 的包是程序：由 `nabi install` 构建，不能作为依赖。普通的路径依赖以其 `version:` 要求发布，没有该要求时被拒绝（`` dependency `linalg` is a path: .. add the version it needs, published from that path: `Dep::path("../linalg", version: "^0.1")` ``）；普通的 git 依赖被拒绝，没有 `version:` 的路径 / git 开发依赖被丢弃。它检查与同一版本的冲突，以及与在 `-` / `_` 等同和大小写折叠下相同的名称的冲突。已以不同拼写被占有的名称被拒绝。不带 `--index-dir` 的试运行只打印条目；带 `--index-dir` 时还会对照该检出进行检查。条目的源是按配置的 git 远程 `origin` 的 url（在 `insteadOf` 改写之前）；它必须是 `https://`，`http://127.0.0.1` 和 `http://localhost` 除外。
+- `publish` 执行发布（与 `cargo publish` 相同）；`publish --dry-run` 是试运行。带有 `publish: false` 的包被拒绝，错误消息会指出应当删除的那一行。readme（9.10.3）必须存在。它要求工作树干净、包位于仓库根目录，并具有 `src/lib.nabi`、`src/main.nabi` 或两者都有。只有 `src/main.nabi` 的包是程序：由 `nabi install` 构建，不能作为依赖。普通的路径依赖以其 `version:` 要求发布，没有该要求时被拒绝（`` dependency `linalg` is a path: .. add the version it needs, published from that path: `Dep::path("../linalg", version: "^0.1")` ``）；普通的 git 依赖被拒绝，没有 `version:` 的路径 / git 开发依赖被丢弃。它检查与同一版本的冲突，以及与在 `-` / `_` 等同和大小写折叠下相同的名称的冲突。已被以其他拼写占用的名称会被拒绝。不带 `--index-dir` 的试运行只打印条目；带 `--index-dir` 时还会对照该检出进行检查。条目的源是按配置的 git 远程 `origin` 的 url（在 `insteadOf` 改写之前）；它必须是 `https://`，`http://127.0.0.1` 和 `http://localhost` 除外。
 - 不带 `--dry-run` 时，`publish` 添加条目：使用 `--index-dir` 时，作为该检出中的一个提交“Publish <name> <version>”（不推送）；不使用时，通过 `--registry <url>` 所指索引的注册表 API，否则通过默认注册表的 API（见“使用哪个索引”），由注册表把它添加到索引中。`--index-dir` 和 `--registry` 不能同时使用。客户端从不自己写入索引仓库。
 - `yank` 为该版本设置（使用 `--undo` 时清除）`yanked`：使用 `--index-dir` 时，作为该检出中的一个提交；否则通过 `--registry <url>` 所指索引的注册表 API，再否则通过默认注册表的 API。
 - `--commit`（`publish`）、`--index`（`publish` 和 `yank`）和 `--vers`（`yank`）是错误，错误消息会指出应当写的形式：不带选项的 `publish`、`--index-dir <dir>` 和 `yank <name>@<version>`。
@@ -520,7 +520,7 @@ nabi yank --native <name>@<version> [--undo] [--registry <url> | --index-dir <di
 `publish --native` 获取并检查每个目标，要求使用绝对 url、具有许可证文件，且依赖只来自索引。它的发布和 `yank --native` 遵循注册表包的规则：使用 `--index-dir` 检出，否则使用带令牌的注册表 API（`Yank` 中为 `native: true`）。
 
 - 在 ELF 目标上，运行时库的 soname 必须等于它的文件名。为 `-musl` 目标使用 `dylib` 链接是错误。
-- `repl` / `jupyter` 加载原生包：共享库通过系统加载器加载，静态压缩包链接进会话。`check` / `lint` / `doc` 不链接任何内容。
+- `repl` / `jupyter` 加载原生包：共享库通过系统加载器加载，静态归档文件链接进会话。`check` / `lint` / `doc` 不链接任何内容。
 - 放在可执行文件旁边的副本是构建输出。
 
 ### 系统库与框架
@@ -655,7 +655,7 @@ nabi toolchain update [<version>]
 nabi toolchain clean                        # remove every installed toolchain but the default
 ```
 
-- 一个安装是 `$NABI_HOME/toolchains/<version>-<triple>/`，且是自包含的（[9.2.19](902-aot-pipeline.md#9219-安装布局)）。
+- 安装的工具链位于 `$NABI_HOME/toolchains/<version>-<triple>/`，且是自包含的（[9.2.19](902-aot-pipeline.md#9219-安装布局)）。
 - `install --from` 从目录、压缩包或其 URL 安装；`<version>` 是工具链必须匹配的固定值。不带 `--from` 时，`install` 下载一个发布版本（见下文“分发”）：`<version>` 是完整版本（`0.1.0`）；其他任何写法都是错误，错误信息说明应写完整版本（`` nabi toolchain install: `0.1` is not a full version; write one like `0.1.0` ``）。已安装的工具链不会再次下载（`toolchain <dir> is already installed`）。它不改变默认值。
 - `install` 用 `bin/nabic --version --verbose` 验证；版本和主机必须匹配。
 - 第一个安装的工具链成为默认值，`bin/` 代理也在此时创建。
@@ -664,7 +664,7 @@ nabi toolchain clean                        # remove every installed toolchain b
 - 执行 `nabi toolchain default <version>` 或 `nabi toolchain update` 之后，安装脚本写入的补全脚本（见下文“分发”）会根据新默认工具链的 `nabi completions` 重写。只重写已存在的文件，不创建新文件；没有 `completions` 的工具链保持它们不变。这不打印任何内容；`-v` 会列出重写的文件。
 - 执行 `nabi toolchain default <version>` 或 `nabi toolchain update` 之后，`nabi` 在 `PATH` 上查找 `nabi`（在 Windows 上尝试每个 `PATHEXT` 扩展名）。如果找到的第一个不是 `$NABI_HOME/bin/nabi`（按真实路径比较），它会发出警告，给出那个文件及其 `--version` 打印的版本：`warning: your shell runs <path> (nabi X) before ~/.nabi/bin/nabi; put ~/.nabi/bin first on PATH or remove the other one`。`-q` 省略该警告（安装脚本就是这样运行的）。
 - `nabi --version -v`（或 `nabi version -v`）在版本行之后打印 `binary`（本可执行文件）、`toolchain`（活动工具链及其原因：命令行上的 `+`、`NABI_TOOLCHAIN`、固定它的 `nabi.nabion`，或默认值；没有时为 `none`）、`nabic`（此处命令运行的 `nabic`：它自己的，或移交时固定工具链的）和 `host`，每项一行 `key: value`，值对齐，形式与 `nabic --version -v` 相同（`host: <triple>`）。`--format json`（`nabi version -v --format json`、`nabi --version --format=json`）改为打印一个 JSON 对象：`schema`（目前为 `1`）、`version`、`line`（版本行中 `nabi ` 之后的文本），带 `-v` 时还有上述四个键。
-- `nabi toolchain clean` 移除除当前默认值之外的所有已安装工具链，这是对 `update` 留下的旧版本的选择性清理。项目固定的版本也会被移除，所以如果构建需要它，请重新安装；没有设置默认值时是错误。
+- `nabi toolchain clean` 移除除当前默认值之外的所有已安装工具链，这是一项需要主动执行的清理，用于 `update` 留下的旧版本。项目固定的版本也会被移除，所以如果构建需要它，请重新安装；没有设置默认值时是错误。
 
 ### 构建缓存
 
@@ -676,7 +676,7 @@ nabi cache clean                            # remove everything in it
 
 缓存是活动工具链的 `lib/nabi-cache/`（[9.2.19](902-aot-pipeline.md#9219-安装布局)）：函数缓存（存放构建时编译的标准库代码）以及库收集的项（[9.2.16](902-aot-pipeline.md#9216-增量构建)）。其中的内容都不是必需的；构建会重新计算缺失的部分。
 
-- `prune` 移除 `--unused` 天内没有任何构建读取过的条目（函数缓存和库阶段的条目；默认 30 天，构建每天自行移除一次），然后按最近读取时间从旧到新移除，直到剩余不超过 `--max-size`（字节数，或带 `K`、`M` 或 `G` 的数字；默认为上限 `NABI_CACHE_MAX_SIZE`，[9.2.16](902-aot-pipeline.md#9216-增量构建)），并打印移除和保留的数量。
+- `prune` 移除 `--unused` 天内没有任何构建读取过的条目（函数缓存和库阶段的条目；默认 30 天，即构建每天一次自行清理时所用的天数），然后按最近读取时间从旧到新移除，直到剩余不超过 `--max-size`（字节数，或带 `K`、`M` 或 `G` 的数字；默认为上限 `NABI_CACHE_MAX_SIZE`，[9.2.16](902-aot-pipeline.md#9216-增量构建)），并打印移除和保留的数量。
 - `clean` 移除缓存目录中的所有内容。
 
 ### 工具链之间共享的文件
@@ -729,7 +729,7 @@ greet();
 
 ## 9.10.8. 工具
 
-工具是 `nabi` 自己的子命令。`nabi` 在自己的进程中运行它们，并链接了编译器；会编译的工具接受 `nabic build` 的编译选项（[9.1.2](901-nabic-cli.md#nabic-buildaot-构建)），并按 9.10.1 所述获得包的依赖、特性和 lint。除非某个工具另有说明，它们的诊断、进度行和颜色遵循 [9.1.8](901-nabic-cli.md#918-输出格式)，用法错误和退出码遵循 [9.1.6](901-nabic-cli.md#916-退出码)。`nabi lsp`、`nabi repl` 和 `nabi jupyter` 在编译器内部错误后仍能继续：语言服务器把它报告为所分析缓冲区的一条错误诊断，REPL / 内核让该单元失败（[9.7.5](907-jit-cells.md#975-错误模式)）；两者都继续提供服务。
+工具是 `nabi` 自己的子命令。`nabi` 在自己的进程中运行它们，并链接了编译器；会编译的工具接受 `nabic build` 的编译选项（[9.1.2](901-nabic-cli.md#nabic-buildaot-构建)），并按 9.10.1 所述获得包的依赖、特性和 lint。除非某个工具另有说明，它们的诊断、进度行和颜色遵循 [9.1.8](901-nabic-cli.md#918-输出格式)，用法错误和退出码遵循 [9.1.6](901-nabic-cli.md#916-退出码)。`nabi lsp`、`nabi repl` 和 `nabi jupyter` 在编译器内部错误后仍能继续：语言服务器把它报告为所分析缓冲区的一条错误诊断，REPL / 内核让该单元格失败（[9.7.5](907-jit-cells.md#975-错误模式)）；两者都继续提供服务。
 
 ### `nabi run`：构建并运行
 
@@ -747,7 +747,7 @@ nabi run hello.nabi -- arg1 arg2
 
 `nabi run` 的退出码就是程序的退出码。如果程序因信号 `n` 终止，退出码为 `128 + n`。
 
-程序不会比 `nabi run` 活得更久。发给 `nabi` 的 `SIGTERM`、`SIGHUP`、`SIGINT` 或 `SIGQUIT` 会转发给程序（终端发给其前台进程组的信号已经会到达程序），如果程序因该信号结束，`nabi run` 也因它结束。如果 `nabi run` 本身被杀死，程序随之被杀死；在 Windows 上，程序在一个随 `nabi` 结束的作业对象中运行。
+程序不会在 `nabi run` 结束后继续存活。发给 `nabi` 的 `SIGTERM`、`SIGHUP`、`SIGINT` 或 `SIGQUIT` 会转发给程序（终端发给其前台进程组的信号已经会到达程序），如果程序因该信号结束，`nabi run` 也因它结束。如果 `nabi run` 本身被杀死，程序随之被杀死；在 Windows 上，程序在一个随 `nabi` 结束的作业对象中运行。
 
 ### `nabi dev`：带热重载运行
 
@@ -824,16 +824,16 @@ lint 级别（`-A` / `-W` / `-D`、清单的 `lints`、属性）决定报告什�
 nabi repl [path] [-q]
 ```
 
-单元的语义遵循 [9.7.0](907-jit-cells.md#970-单元会话的规则) 的规则：每个单元恰好运行一次，顶层 `let` 绑定和项延续到之后的单元，失败的单元不在绑定中留下任何痕迹。表达式单元打印其值（`Display`，否则 `Debug`，再否则为其类型名）。
+单元格的语义遵循 [9.7.0](907-jit-cells.md#970-单元格会话的规则) 的规则：每个单元格恰好运行一次，顶层 `let` 绑定和项延续到之后的单元格，失败的单元格不在绑定中留下任何痕迹。表达式单元格打印其值（`Display`，否则 `Debug`，再否则为其类型名）。
 
-- 默认模式用 Nabi 的代码生成器编译每个单元，并把代码交给一个存活于整个会话的 JIT 宿主进程；宿主加载它并运行一次（[9.6](906-jit-engine.md)）。绑定、`static` 状态和 `any` 值在单元之间延续。类型无法在顶层命名的绑定（闭包、私有类型等）在创建时被拒绝。
-- 诊断针对单元自身的文本给出 `<repl>:line:col`；更早单元的项和运行时位置给出 `<repl cell N>:line:col`（[9.7.5](907-jit-cells.md#975-错误模式)）。
-- 在终端上，输入支持行编辑、Tab 补全、颜色和整单元历史（[9.7.8](907-jit-cells.md#行编辑)）；历史保存在 `$NABI_HOME/repl_history` 中。
+- 默认模式用 Nabi 的代码生成器编译每个单元格，并把代码交给一个存活于整个会话的 JIT 宿主进程；宿主加载它并运行一次（[9.6](906-jit-engine.md)）。绑定、`static` 状态和 `any` 值在单元格之间延续。类型无法在顶层命名的绑定（闭包、私有类型等）在创建时被拒绝。
+- 诊断针对单元格自身的文本给出 `<repl>:line:col`；更早单元格的项和运行时位置给出 `<repl cell N>:line:col`（[9.7.5](907-jit-cells.md#975-错误模式)）。
+- 在终端上，输入支持行编辑、Tab 补全、颜色和整单元格历史（[9.7.8](907-jit-cells.md#行编辑)）；历史保存在 `$NABI_HOME/repl_history` 中。
 - 在终端上，会话以工具链行和一条提示开始（[9.7.8](907-jit-cells.md#行编辑)）；`-q` 省略它们。
-- 不带路径时，会话以空状态开始。程序路径（单独的 `.nabi` 文件或含有 `src/main.nabi` 的包）会被加载并运行，顶层语句作为单元、`fn main` 作为入口，然后会话继续（[9.7.10](907-jit-cells.md#9710-加载程序repl-path)）。库包路径（`src/lib.nabi`）被添加为依赖，`use <name>::*;` 作为第一个单元，`:reset` 之后也是如此。
+- 不带路径时，会话以空状态开始。程序路径（单独的 `.nabi` 文件或含有 `src/main.nabi` 的包）会被加载并运行，顶层语句作为单元格、`fn main` 作为入口，然后会话继续（[9.7.10](907-jit-cells.md#9710-加载程序repl-path)）。库包路径（`src/lib.nabi`）被添加为依赖，`use <name>::*;` 作为第一个单元格，`:reset` 之后也是如此。
 - 在包内不带路径时，不加载该包。找不到但由该包定义的名称会得到提示 ``load this package: `nabi repl .` ``。
-- 多于一个路径是用法错误。不接受 `-`；标准输入就是单元输入。
-- `NABI_REPL_TIME=1` 在 stderr 上打印单元每个阶段的耗时（[9.9.9](909-debug-tools.md#999-repl--jupyter-调试)）。
+- 多于一个路径是用法错误。不接受 `-`；标准输入就是单元格输入。
+- `NABI_REPL_TIME=1` 在 stderr 上打印单元格每个阶段的耗时（[9.9.9](909-debug-tools.md#999-repl--jupyter-调试)）。
 
 两个根文件都有的包是程序路径；它的库是会话的依赖。`nabi repl <path>` 从该路径所在的项目解析依赖和 lint（9.10.1）；在包之外，会话使用活动环境的库（9.10.5）。
 
@@ -848,7 +848,7 @@ nabi jupyter --connection-file <path>
 
 `nabi jupyter install` 注册内核（[9.8.3](908-jupyter-integration.md#983-安装-kernelspec)）；kernelspec 运行 `nabi jupyter --connection-file {connection_file}`。
 
-`nabi jupyter --connection-file <path>` 就是内核。它由 Jupyter 启动，用户不直接运行它。`--connection-file` 接受 Jupyter 提供的 ZMQ 连接文件的路径；单独的 `nabi jupyter` 是用法错误，错误信息指向 `nabi jupyter install`。`--features` 等构建选项也被接受。内核运行在与 REPL 相同的单元会话上（[9.7.0](907-jit-cells.md#970-单元会话的规则)），并像 `nabi repl .` 那样加载它启动时所在的包；开始监听后，它在 stderr 上打印 `nabi jupyter: ready`（[9.8.2](908-jupyter-integration.md#982-本地原生内核运行方式)）。集成细节定义在 [Jupyter 集成](908-jupyter-integration.md)中。
+`nabi jupyter --connection-file <path>` 就是内核。它由 Jupyter 启动，用户不直接运行它。`--connection-file` 接受 Jupyter 提供的 ZMQ 连接文件的路径；单独的 `nabi jupyter` 是用法错误，错误信息指向 `nabi jupyter install`。`--features` 等构建选项也被接受。内核运行在与 REPL 相同的单元格会话上（[9.7.0](907-jit-cells.md#970-单元格会话的规则)），并像 `nabi repl .` 那样加载它启动时所在的包；开始监听后，它在 stderr 上打印 `nabi jupyter: ready`（[9.8.2](908-jupyter-integration.md#982-本地原生内核运行方式)）。集成细节定义在 [Jupyter 集成](908-jupyter-integration.md)中。
 
 ### `nabi lsp`：LSP 服务器
 
@@ -941,9 +941,9 @@ nabi clean [path]
 nabi bindgen <header> [-x objective-c] [-o <file>] [--target <t>] [--c-shim <file.c>] [-- <C compiler args>]
 ```
 
-把 `<header>` 的 [std 1.7.6](../../refs-standard-libraries/100-bare/107-ffi.md#176-自动生成绑定) 声明写到标准输出（或 `-o <file>`）；其第一行以 ``// Generated by `nabi bindgen` `` 开头。`nabi` 用工具链的 C 编译器（[9.13](913-c-compiler.md)）的前端读取头文件；它不需要其他 C 编译器，也不需要 libclang。`--` 之后的参数是会改变头文件所声明内容的 C 编译器选项：`-I <dir>`、`-isystem <dir>`、`-iquote <dir>`、`-idirafter <dir>`、`-D <name>[=<value>]`、`-U <name>`、`-include <file>`、`--sysroot <dir>`、`-isysroot <dir>`、`-nostdinc`、`-nostdlibinc` 和 `-nobuiltininc`。`-std=` 和警告选项会被接受并忽略；其他任何选项都是错误，错误信息列出上述选项。前端拒绝的头文件是错误（退出码 1），报告在其 `file:line:col` 处，并说明应当改写成什么（[std 1.7.6](../../refs-standard-libraries/100-bare/107-ffi.md#bindgen-读取的-c) 列出它读取的内容）。
+把 `<header>` 的 [标准库 1.7.6](../../refs-standard-libraries/100-bare/107-ffi.md#176-自动生成绑定) 声明写到标准输出（或 `-o <file>`）；其第一行以 ``// Generated by `nabi bindgen` `` 开头。`nabi` 用工具链的 C 编译器（[9.13](913-c-compiler.md)）的前端读取头文件；它不需要其他 C 编译器，也不需要 libclang。`--` 之后的参数是会改变头文件所声明内容的 C 编译器选项：`-I <dir>`、`-isystem <dir>`、`-iquote <dir>`、`-idirafter <dir>`、`-D <name>[=<value>]`、`-U <name>`、`-include <file>`、`--sysroot <dir>`、`-isysroot <dir>`、`-nostdinc`、`-nostdlibinc` 和 `-nobuiltininc`。`-std=` 和警告选项会被接受并忽略；其他任何选项都是错误，错误信息列出上述选项。前端拒绝的头文件是错误（退出码 1），报告在其 `file:line:col` 处，并说明应当改写成什么（[标准库 1.7.6](../../refs-standard-libraries/100-bare/107-ffi.md#bindgen-读取的-c) 列出它读取的内容）。
 
-带 `-x objective-c`（Apple 目标）时，头文件按 Objective-C 读取，其类、协议和类别像 `ffi::objc::import` 那样变为 `extern "objc"` 块（[std 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-头文件ffiobjcimport)）；默认为 `-x c`。
+带 `-x objective-c`（Apple 目标）时，头文件按 Objective-C 读取，其类、协议和类别像 `ffi::objc::import` 那样变为 `extern "objc"` 块（[标准库 1.10.12](../../refs-standard-libraries/100-bare/110-objc.md#11012-头文件ffiobjcimport)）；默认为 `-x c`。
 
 `static inline` 函数没有可链接的符号，所以会被跳过并留下一条注释。带 `--c-shim <file.c>` 时则会为它生成绑定：`<file.c>` 在 `#include "<header file name>"` 之后为每个这样的函数得到一个 C 包装函数 `R nabi_shim_<f>(A a0, ..) { return <f>(a0, ..); }`，绑定链接到该包装函数（`#[link_name = "nabi_shim_<f>"]`）。包从其清单的 `c.sources` 编译 `<file.c>`，并把头文件所在目录放入 `c.include`（9.10.3）。可变参数的 inline 函数仍被跳过。
 

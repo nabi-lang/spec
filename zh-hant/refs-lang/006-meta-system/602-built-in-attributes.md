@@ -156,12 +156,12 @@ fn rejects_empty() {
 fn downloads() { }
 ```
 
-- `#[should_panic]` 只在測試 panic 時通過；`#[should_panic(expected = "text")]` 還要求 panic 的輸出包含 `text`。回傳了或以未捕捉之錯誤結束的測試會失敗。
+- `#[should_panic]` 只在測試 panic 時通過；`#[should_panic(expected = "text")]` 還要求 panic 的輸出包含 `text`。回傳了或以未攔截之錯誤結束的測試會失敗。
 - `#[ignore]`（或 `#[ignore = "reason"]`）讓測試不在一般執行中執行；它會被回報為已忽略，並附上理由。`nabi test --ignored` 只執行這類測試，`--include-ignored` 也會執行它們（[9.10.1](../009-tools/910-nabi-frontend.md#9101-子指令與全域選項)）。
 
 在沒有 `#[test]` 的函式上使用其中任一者是錯誤，錯誤訊息會提示加上 `#[test]`；其他任何引數形式都是錯誤，錯誤訊息會顯示這兩種形式。
 
-`#[bench]` 標示基準測試函式，並與 `#[test]` 一樣隱含 `#[cfg(test)]`。`nabic bench` 收集它們並建置測試框架，`nabi bench` 執行它（[9.1.2](../009-tools/901-nabic-cli.md#nabic-bench效能測試)）。無論其自身與外層模組的可見性為何，基準測試函式都會被執行；`#[bench]` 不會為其他程式碼改變可見性。
+`#[bench]` 標示基準測試函式，並與 `#[test]` 一樣隱含 `#[cfg(test)]`。`nabic bench` 收集它們並建置測試框架，`nabi bench` 執行它（[9.1.2](../009-tools/901-nabic-cli.md#nabic-bench基準測試)）。無論其自身與外層模組的可見性為何，基準測試函式都會被執行；`#[bench]` 不會為其他程式碼改變可見性。
 
 ## 6.2.6. `#[cold]` 很少被呼叫的函式
 
@@ -286,7 +286,7 @@ fn strict_zone() { ... }
 | `warnings`          | 每個等級為 warn 的 lint，包括之後版本加入的                                                  |
 | `all`               | 每個 lint，包括之後版本加入的                                                                |
 
-`warnings` 採用 rustc 的意義：deny 它（在 `lints` 中寫 `"warnings": "deny"`、`-D warnings` 或 `#![deny(warnings)]`）會把每個警告都變成錯誤，包括之後版本加入的 lint 與棄用。必須在各版本之間持續能建置的建置，要固定其工具鏈（`nabi.nabion` 中的 `toolchain`，[9.10.6](../009-tools/910-nabi-frontend.md)）。每個 lint 的 Since 欄僅供參考。
+`warnings` 採用 rustc 的意義：deny 它（在 `lints` 中寫 `"warnings": "deny"`、`-D warnings` 或 `#![deny(warnings)]`）會把每個警告都變成錯誤，包括之後版本加入的 lint 與棄用。需要跨版本持續建置成功的專案，應固定其工具鏈（`nabi.nabion` 中的 `toolchain`，[9.10.6](../009-tools/910-nabi-frontend.md)）。每個 lint 的 Since 欄僅供參考。
 
 有些警告來自編譯器本身而非 lint 階段，但仍屬於某個 lint：易混淆的識別字是 `confusable_idents`，字串或註解中的不可見字元是 `hidden_chars`，位置錯誤的文件註解是 `unused_doc_comments`。它們的等級與其他任何 lint 一樣，以該 lint 的名稱設定。
 
@@ -294,7 +294,7 @@ fn strict_zone() { ... }
 
 `nabi lint --list` 印出各 lint 及其預設等級與加入它的版本，然後印出各群組。
 
-有些發現附帶能解決它的修改（`while true` -> `loop`、刪除未使用的 `use`）；編輯器把它當作快速修正提供，而 `nabi fix`（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-fix套用修正)）會在整個套件中套用它們。
+有些檢查結果附帶能解決問題的修改（`while true` -> `loop`、刪除未使用的 `use`）；編輯器把它當作快速修正提供，而 `nabi fix`（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-fix套用修正)）會在整個套件中套用它們。
 
 `nabic check --check-library`（[9.1.2](../009-tools/901-nabic-cli.md#nabic-check診斷)）與 `nabi lint --check-library`（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-lintlinter)）也會以標準函式庫的等級對其自身的程式碼執行 lint：每個預設等級，外加 `missing_docs` 為 `deny`：標準函式庫的每個公開項目都有文件註解（[stdlib 0.5.14](../../refs-standard-libraries/000-meta/005-notation.md#0514-文件與屬性)）。
 
@@ -322,7 +322,7 @@ let p = ClientOptions { verbose: true, ..o };   // OK
 let ClientOptions { retries, .. } = p;          // `..` required in another package
 ```
 
-在 `struct` 上，它標示一個其套件可能新增欄位的紀錄：
+在 `struct` 上，它標示一個所屬套件之後可能再新增欄位的紀錄型別：
 
 - 從外部套件對它進行的結構模式以 `..` 結尾（`let`、`match`、`if let`）；沒有 `..` 是錯誤，錯誤訊息會顯示加上 `..` 的模式。定義它的套件可以列出每個欄位。
 - 結構第一個版本之後新增的每個欄位都有預設值（[2.3.3](../002-types/203-struct.md#233-欄位預設值)），因此省略它的字面值可以繼續編譯。編譯器看不到結構的歷史；這條規則是作者的責任，之後的 semver 檢查會強制它。
@@ -424,7 +424,7 @@ pub fn wake_io(fd: i32) { .. }
 |--------------------------------|-------------------------------|---------|
 | `#[path("file.nabi")]`          | `mod name;`                   | 從該檔案而不是 `name.nabi` 載入模組（[5.4.6](../005-modules/504-modules.md#546-自訂路徑path)） |
 | `#![no_implicit_nabi]`          | 檔案（內部）                  | 為該檔案關閉隱含的 `use core::prelude::*;`（[stdlib 0.2.6](../../refs-standard-libraries/000-meta/002-import.md#026-停用no_implicit_nabi)） |
-| `#[export_name("sym")]`        | `extern "C"` / `extern "system"` fn | 以未修飾的符號 `sym` 匯出函式（在 wasm32 上是同名的 wasm 匯出）；是無法到達函式消除的根（[9.5.8](../009-tools/905-symbol-mangling.md)）。在一般函式上是錯誤（[5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-定義對外公開)） |
+| `#[export_name("sym")]`        | `extern "C"` / `extern "system"` fn | 以未修飾的符號 `sym` 匯出函式（在 wasm32 上是同名的 wasm 匯出）；是消除無法到達之函式時的根（[9.5.8](../009-tools/905-symbol-mangling.md)）。在一般函式上是錯誤（[5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-定義對外公開)） |
 | `#[export]`                    | `extern "C"` / `extern "system"` fn | 以函式自己的名稱進行的 `#[export_name]`（[5.9.10](../005-modules/509-extern-block.md#5910-extern-fn-定義對外公開)） |
 | `#[on_panic(return = v)]`、`#[on_panic]` | `extern "C"` / `extern "system"` fn | 函式中的 panic 會被回報，然後函式回傳 `v`（整數、浮點數或 `bool` 字面值，null 指標為 `0`；沒有結果時不回傳任何東西），而不是中止行程（[5.9.10](../005-modules/509-extern-block.md#on_panic給-c-一個值而不是中止)） |
 | `#[errno]`                     | `extern "C"` / `extern "system"` 區塊或宣告 | 每次呼叫在回傳之後立即儲存 errno（在 Windows 上還有 `GetLastError`），供 `bare::ffi::errno()` 使用（[stdlib 1.7.11](../../refs-standard-libraries/100-bare/107-ffi.md#1711-errnoerrno-與-getlasterror)）；在 `extern "nabi"` 區塊與函式上是錯誤 |

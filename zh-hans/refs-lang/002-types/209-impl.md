@@ -61,7 +61,7 @@ impl ops::Add for Point {
 
 impl 方法必须满足以下条件：参数个数与 trait 声明相同；除接收者外的每个参数上的 `ref` 相同；`unsafe` 相同（[4.15.4](../004-functions/415-unsafe.md#4154-在-trait-中)）；在它写出类型的每个参数上，类型与声明的类型（经下述替换）相同（未写类型的参数取该类型，[4.1](../004-functions/401-function-declaration.md)）；当且仅当声明返回值时返回值，且返回类型是把声明类型中的 `Self`、trait 的参数及其关联类型替换为 impl 的对应类型后的类型（没有更窄的返回或协变返回）。否则在 impl 处报错，错误信息会显示该声明。impl 方法的 `throws` 必须与 trait 方法的 `throws` 相同；没有 `throws` 的 impl 方法取 trait 方法的 `throws`。impl 不能添加 `throws`，也不能扩大错误类型（[4.14.11](../004-functions/414-throws.md#41411-方法上的-throws)）。
 
-`Send` / `Sync` 是自动的标记 trait，有两种手动声明（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)）。
+`Send` / `Sync` 是自动的标记 trait，有两种手动声明（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)）。
 
 - 选择加入：`unsafe impl Send for X {}`。`unsafe impl` 只能用于 `Send` / `Sync` 和 `unsafe trait`（[4.15.4](../004-functions/415-unsafe.md#4154-在-trait-中)），且手动实现这些 trait 时必须使用它。
 - 选择退出：`impl !Send for X {}`、`impl<T> !Send for Cell<T> {}`。它阻止自动实现，且主体必须为空。`!` 只能与 `Send` / `Sync` 一起使用。
@@ -163,7 +163,7 @@ impl<T> Mul<Matrix> for T { ... }        // ERROR: the bare `T` comes first (E00
 impl Add<List<Matrix>> for i32 { ... }   // ERROR: `List<Matrix>` is `core`'s type (E0076)
 ```
 
-本地类型之前出现裸参数会被拒绝，因为另一个包可能为处在该位置的自身类型写出同样的 `impl`；仅嵌套在外部类型中的本地类型（`List<Matrix>`）不算数。内置类型（原始类型、元组、数组、函数类型）视为在 `core` 中定义。
+本地类型之前出现裸参数会被拒绝，因为另一个包可能为处在该位置的自身类型写出同样的 `impl`；仅嵌套在外部类型中的本地类型（`List<Matrix>`）不算数。内置类型（基本类型、元组、数组、函数类型）视为在 `core` 中定义。
 
 这条规则的单位是[源单元](../000-meta/003-source-units.md)中的包。因此，同一包内的不同模块可以自由地 `impl`。
 

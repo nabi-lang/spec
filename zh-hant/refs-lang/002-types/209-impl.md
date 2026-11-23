@@ -63,8 +63,8 @@ impl 方法必須：與 trait 宣告有相同的參數數量；除接收者以�
 
 `Send` / `Sync` 是自動的標記 trait，有兩種手動宣告方式（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)）。
 
-- 選入：`unsafe impl Send for X {}`。`unsafe impl` 只能用於 `Send` / `Sync` 以及 `unsafe trait`（[4.15.4](../004-functions/415-unsafe.md#4154-在-trait-中)），而手動實作這些 trait 時必須使用它。
-- 選出：`impl !Send for X {}`、`impl<T> !Send for Cell<T> {}`。它阻止自動實作，主體必須為空。`!` 只能與 `Send` / `Sync` 一起使用。
+- 選擇加入：`unsafe impl Send for X {}`。`unsafe impl` 只能用於 `Send` / `Sync` 以及 `unsafe trait`（[4.15.4](../004-functions/415-unsafe.md#4154-在-trait-中)），而手動實作這些 trait 時必須使用它。
+- 選擇退出：`impl !Send for X {}`、`impl<T> !Send for Cell<T> {}`。它阻止自動實作，主體必須為空。`!` 只能與 `Send` / `Sync` 一起使用。
 
 ### `impl` 中的常數
 

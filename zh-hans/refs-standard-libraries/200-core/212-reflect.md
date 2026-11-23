@@ -6,7 +6,7 @@
 
 反射分为两级 trait。
 
-| Trait     | 自动 / 显式选择               | 提供                              | 使用场景                                           |
+| trait     | 自动 / 显式选择               | 提供                              | 使用场景                                           |
 |-----------|-------------------------------|-----------------------------------|----------------------------------------------------|
 | `Reflect` | **自动**（所有类型）          | type_name / size / align          | `core` 的 trait，处处可见（很少直接使用）          |
 | `Inspect` | 显式选择（`#[derive(Inspect)]`）| field_names / fields / variant_name / get_field / methods | trait 通过隐式 prelude 可用，derive 需显式写出 |

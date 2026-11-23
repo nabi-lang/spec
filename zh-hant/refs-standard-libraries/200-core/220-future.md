@@ -121,7 +121,7 @@ impl<F: Future> IntoFuture for F {               // Task<T>: Future<Output = T> 
 impl<T: Send> IntoFuture for JoinHandle<T> { type Output = T; type IntoFuture = Task<T>; ... }
 ```
 
-`JoinHandle<T>` 的 impl 在阻塞池（`task::spawn_blocking`，[2.18](218-task.md)）中 join 該執行緒，因此只有進行 await 的任務會等待。只要該型別不實作 `Future`，這個 impl 才合法，以免與泛用 impl 重疊（[refs-lang 2.9.5](../../refs-lang/002-types/209-impl.md#一致性)）。
+`JoinHandle<T>` 的 impl 在阻塞池（`task::spawn_blocking`，[2.18](218-task.md)）中 join 該執行緒，因此只有進行 await 的任務會等待。只有在該型別不實作 `Future` 時，這個 impl 才合法，以免與全面實作（blanket impl）重疊（[refs-lang 2.9.5](../../refs-lang/002-types/209-impl.md#一致性)）。
 
 `await expr` 先呼叫 `IntoFuture::into_future(expr)`，再對結果反覆呼叫 `Future::poll`（2.20.3）。這與 [2.8 stream](208-stream.md) 中 `for await` 處理 `IntoStream` 的方式相同。
 
@@ -212,7 +212,7 @@ impl<T, E> TryAsyncFuture<T, E> {
 }
 ```
 
-`TryAsyncFuture` 不實作 `Future`，因為它的 `poll` 會擲回錯誤；它以 `try await` 進行 await。私有欄位未指定。複本共用同一個協程框架，因此共用推進的位置。
+`TryAsyncFuture` 不實作 `Future`，因為它的 `poll` 會擲回錯誤；它以 `try await` 進行 await。私有欄位不予規定。複本共用同一個協程框架，因此共用推進的位置。
 
 ## 2.20.9. 模組對應
 

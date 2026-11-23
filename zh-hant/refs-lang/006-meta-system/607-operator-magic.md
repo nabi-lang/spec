@@ -1,6 +1,6 @@
 # 6.7. 運算子魔法
 
-`#[infix]`、`#[prefix]` 與 `#[postfix]` 這三個屬性只把運算子語彙單元連接到 trait 方法。優先順序與結合性由 [3.2.3](../003-expressions/302-precedence-and-associativity.md#323-優先順序與結合性表) 的表格在語言層級固定，這些屬性無法設定或改變它們。它們是讓[運算子分派](../003-expressions/301-operator-dispatch.md)的去糖機制運作所必需的核心魔法。
+`#[infix]`、`#[prefix]` 與 `#[postfix]` 這三個屬性只把運算子語彙單元連接到 trait 方法。優先順序與結合性由 [3.2.3](../003-expressions/302-precedence-and-associativity.md#323-優先順序與結合性表) 的表格在語言層級固定，這些屬性無法設定或改變它們。它們是讓[運算子分派](../003-expressions/301-operator-dispatch.md)的去語法糖機制運作所必需的核心魔法。
 
 ```
 infix_attr      ::= "#" "[" "infix" "(" string_lit ("," like_arg)? ("," "swap")? ")" "]"
@@ -52,7 +52,7 @@ trait Degrees {
 
 `sym` 與 `like` 和其他字串字面值一樣：語彙單元是字串的值，因此 `"\\"` 與 `r"\"` 都指稱單字元的語彙單元 `\`（`a \ b`）。
 
-`swap` 以交換兩個運算元的方式連接二元運算。帶有 `#[infix("∈", swap)]` 的 `contains` 把 `a ∈ b` 去糖為 `b.contains(a)`。它是為了容器不在左側的運算子（`∈ ∉`）而存在的。
+`swap` 以交換兩個運算元的方式連接二元運算。帶有 `#[infix("∈", swap)]` 的 `contains` 把 `a ∈ b` 去語法糖為 `b.contains(a)`。它是為了容器不在左側的運算子（`∈ ∉`）而存在的。
 
 對 3.2 表中的語彙單元不能寫 `like`。沒有指定優先順序或結合性的引數（`prec`、`left` / `right` / `none` 等）；寫出這樣的引數是編譯錯誤。
 
@@ -66,11 +66,11 @@ trait Degrees {
 
 當 `#[infix("+")]` 附加在 trait 方法 `add` 上時，編譯器的行為如下：
 
-首先，`+` 語彙單元被繫結到該 trait，作為其連接點。接著編譯器把運算式 `a + b` 去糖為 `<typeof(a) as the_trait<typeof(b)>>::add(a, b)`。優先順序與結合性是[優先順序與結合性](../003-expressions/302-precedence-and-associativity.md)的表格中為 `+` 固定的值（9，左結合）。
+首先，`+` 語彙單元被繫結到該 trait，作為其連接點。接著編譯器把運算式 `a + b` 去語法糖為 `<typeof(a) as the_trait<typeof(b)>>::add(a, b)`。優先順序與結合性是[優先順序與結合性](../003-expressions/302-precedence-and-associativity.md)的表格中為 `+` 固定的值（9，左結合）。
 
 三個屬性都遵循相同的模式；被繫結的只有語彙單元、位置與 trait 方法。
 
-運算元以該呼叫之引數的方式定型。字面值的右運算元（`[1.0, 2.0]`、`{..}`、數字）取為左運算元所選之 impl 的參數型別，因此當該 impl 的方法接受 `Vector<f64>` 時，`t ⊲ [1.0, 2.0]` 傳入的是 `Vector<f64>`。閉包運算元會滿足其 `fn` 型別上的 impl，就像它滿足約束一樣（[4.4.2](../004-functions/404-function-type.md#442-函式值與閉包值的型別)），而 blanket `impl<F: Tr> Op for F` 也適用於它。對沒有型別參數的 trait 而言，方法自身的參數型別就是右運算元的型別。
+運算元的型別依該呼叫的引數決定。字面值的右運算元（`[1.0, 2.0]`、`{..}`、數字）取為左運算元所選之 impl 的參數型別，因此當該 impl 的方法接受 `Vector<f64>` 時，`t ⊲ [1.0, 2.0]` 傳入的是 `Vector<f64>`。閉包運算元會滿足其 `fn` 型別上的 impl，就像它滿足約束一樣（[4.4.2](../004-functions/404-function-type.md#442-函式值與閉包值的型別)），而 blanket `impl<F: Tr> Op for F` 也適用於它。對沒有型別參數的 trait 而言，方法自身的參數型別就是右運算元的型別。
 
 接受 `ref self` 的方法以方法呼叫接受其接收者的方式接受其左（或唯一的）運算元：當運算元是變數或變數的欄位時，方法所做的變更會寫回它，因此在 `fn draw(ref self, d: D)` 之下，`g ∼ d` 會像 `g.draw(d)` 一樣推進 `g`。閉包中依值擷取的變數，會像方法呼叫一樣被拒絕（[4.6.7](../004-functions/406-capture-semantics.md#467-擷取結構與參照控制代碼)）。
 

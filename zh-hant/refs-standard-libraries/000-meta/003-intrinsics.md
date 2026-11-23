@@ -105,7 +105,7 @@ impl Add for i32 {
 }
 ```
 
-規則整理如下。在啟用內建函式的一般編譯途徑上，主體會被忽略；在不認得該內建函式的實驗性後端或直譯環境中，則實際使用主體。若主體為空，就視為 stub `panic("intrinsic not available")`。
+規則整理如下。在啟用內建函式的一般編譯途徑上，主體會被忽略；在不認得該內建函式的實驗性後端或直譯環境中，則實際使用主體。若主體為空，就視為虛設常式（stub）`panic("intrinsic not available")`。
 
 當方法被取出作為 `fn` 值（`let f = i32::add;`）時，呼叫該值會執行主體。內建函式只在直接呼叫處生效，因此內建方法的主體也必須是意義相同的正確實作。在主體內，對基本型別寫 `self + rhs` 本身就是對此內建函式的直接呼叫，因此會降階為機器運算，而不會再回到主體。
 
@@ -133,6 +133,6 @@ fn my_add(a: i32, b: i32) -> i32 { ... }
 | `#[intrinsic("...")]` | 標準函式庫方法 ↔ 編譯器後端 PrimOp                               | 本文件                                                                 |
 | `#[lang(...)]`        | 標準函式庫項目 ↔ 編譯器槽位（none、iter、index 等）              | [refs-lang 6.4](../../refs-lang/006-meta-system/604-lang-magic.md)     |
 | `#[infix(...)]`       | 語彙單元 ↔ 標準函式庫 trait 方法                                 | [refs-lang 6.7](../../refs-lang/006-meta-system/607-operator-magic.md) |
-| `#[literal(...)]`     | 字面值形式 ↔ 標準函式庫處理器                                    | [refs-lang 6.5](../../refs-lang/006-meta-system/605-literal-magic.md)  |
+| `#[literal(...)]`     | 字面值形式 ↔ 標準函式庫處理函式                                  | [refs-lang 6.5](../../refs-lang/006-meta-system/605-literal-magic.md)  |
 
 這四種魔法彼此正交。`#[intrinsic]` 負責與編譯器後端的耦合，其他三種則負責與語言語法的耦合。

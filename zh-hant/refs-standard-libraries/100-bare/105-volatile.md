@@ -57,6 +57,6 @@ unsafe fn write<T>(dst: Ptr<T>, value: T);
 
 ## 1.5.5. 降階
 
-`volatile::read` 和 `volatile::write` 降階為一次以指向型別進行的載入 / 儲存，最佳化器將其視為副作用：它永遠不會被移除、合併，也不會被移到另一個記憶體存取的另一側；它們呼叫 `ConstPtr` / `Ptr` 的方法 `read_volatile` / `write_volatile`，其內建函式為 `nabi.ptr.read_volatile` 和 `nabi.ptr.write_volatile`。
+`volatile::read` 和 `volatile::write` 降階為以被指向物型別進行的一次載入 / 儲存，最佳化器將其視為副作用：它永遠不會被移除、合併，也不會被移到另一個記憶體存取的另一側；它們呼叫 `ConstPtr` / `Ptr` 的方法 `read_volatile` / `write_volatile`，其內建函式為 `nabi.ptr.read_volatile` 和 `nabi.ptr.write_volatile`。
 
 原子操作在 [2.16 sync](../200-core/216-sync.md) 中詳細說明；本章只對非原子的情況具權威性。

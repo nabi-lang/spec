@@ -172,7 +172,7 @@ let s: str = "hello";        // a str pointing to immortal constant bytes
 | `IntoIterator`              | **无**                         | 显式写 `.chars()`；避免字节与字符的歧义    |
 | `Add<str>` (`s + t`)        | ✓ → str（拼接，新 str）        |                                            |
 | `Add<char>` (`s + c`)       | ✓ → str（追加 `c`，新 str）    |                                            |
-| `AddAssign<str>`, `AddAssign<char>` (`s += t`, `s += c`) | ✓ | `s = s + t`：新 str 替换 `s`            |
+| `AddAssign<str>`、`AddAssign<char>` (`s += t`、`s += c`) | ✓ | `s = s + t`：新 str 替换 `s`            |
 | `FromIterator<char>`        | ✓                              | `(chars).collect::<str>()`                 |
 | `FromIterator<str>`         | ✓                              | `(strs).collect::<str>()`                  |
 

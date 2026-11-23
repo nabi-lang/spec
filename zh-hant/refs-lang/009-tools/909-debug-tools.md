@@ -186,7 +186,7 @@ nabic build --message-format=json
 
 範圍有 `file_name`、`line_start`、`col_start`、`byte_start`、`byte_end`、`is_primary`、`label`、`line_end` 與 `col_end`。`line_end` / `col_end` 是範圍結束之處（恰好越過其最後一個字元的位置），與 `line_start` / `col_start` 一樣以碼位計算；手邊沒有原始碼文字時為 `null`。只知道檔案而不知道位置的診斷只有 `{"file_name": .., "is_primary": true}`。修正有 `file_name`、`line_start`、`col_start`、`byte_start`、`byte_end`、`text`、`title`（``convert with `as i32` ``）、`line_end` 與 `col_end`；語言伺服器把它作為快速修正提供（[9.9.13](#9913-lsp-伺服器)）。
 
-在同一個 `schema` 內，欄位只會新增，絕不會被移除、重新命名或賦予另一個意義，因此讀取者應當忽略它不認識的欄位。測試、效能測試與 `nabi deps` 的紀錄（[9.9.12](#9912-ci--測試整合)、[9.10.4](910-nabi-frontend.md#9104-相依套件nabi-add--remove--update--deps)）以它們自己的 `schema`（目前是 `1`）遵循相同的規則。
+在同一個 `schema` 內，欄位只會新增，絕不會被移除、重新命名或賦予另一個意義，因此讀取者應當忽略它不認識的欄位。測試、基準測試與 `nabi deps` 的紀錄（[9.9.12](#9912-ci--測試整合)、[9.10.4](910-nabi-frontend.md#9104-相依套件nabi-add--remove--update--deps)）以它們自己的 `schema`（目前是 `1`）遵循相同的規則。
 
 這個格式讓 IDE 與 CI 系統能以機械方式讀取診斷。
 
@@ -350,7 +350,7 @@ nabic build --message-format=json
 | `E0148` | `lexical` | character that only looks like a token |
 | `E0149` | `type` | change a running program cannot take |
 
-`kind` 的值有 `lexical`、`parse`、`resolve`、`visibility`、`module`、`type`、`pattern`、`handoff`（值的所有權與生命週期：交出之後的使用，[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)；被移動或關閉之後使用的資源，或未關閉的資源，[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop釋放時的清理)；保留超過 `with` 的執行緒區域值；超過其串流使用的串流視圖，[stdlib 2.23.1](../../refs-standard-libraries/200-core/223-io.md#2231-read)；在其串列調整大小之後使用的 `SliceMut`，[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可寫入檢視)）、`meta`、`linkage`、`unsupported`、`internal`、`other` 與 `lint`。
+`kind` 的值有 `lexical`、`parse`、`resolve`、`visibility`、`module`、`type`、`pattern`、`handoff`（值的所有權與生命週期：交出之後的使用，[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)；被移動或關閉之後使用的資源，或未關閉的資源，[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop釋放時的清理)；保留超過 `with` 的執行緒區域值；超過其串流使用的串流檢視，[stdlib 2.23.1](../../refs-standard-libraries/200-core/223-io.md#2231-read)；在其串列調整大小之後使用的 `SliceMut`，[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可寫入檢視)）、`meta`、`linkage`、`unsupported`、`internal`、`other` 與 `lint`。
 
 ## 9.9.5. 記錄 / 進度顯示
 
@@ -553,17 +553,17 @@ nabic build --emit=expansions    # → target/<profile>/build/<name>.expanded.na
 impl MyHash for Point { ... }
 ```
 
-要以 Nabi 原始碼查看所有 meta 展開與去糖之後的完整 AST，請使用 `--emit=source`（`<name>.ast.nabi`）。
+要以 Nabi 原始碼查看所有 meta 展開與去語法糖之後的完整 AST，請使用 `--emit=source`（`<name>.ast.nabi`）。
 
-## 9.9.11. 效能測試
+## 9.9.11. 基準測試
 
-微效能測試以下列指令執行。
+微基準測試以下列指令執行。
 
 ```
 nabi bench
 ```
 
-`nabic bench` 建置效能測試 harness，`nabi bench`（[9.10](910-nabi-frontend.md)）執行它（[9.1.2](901-nabic-cli.md#nabic-bench效能測試)），在 `-O2` 建置中一次一個地量測標示了 `#[bench]` 的函式。每個都接受一個 `Bench` 控制代碼，並經由 `b.iter` 對一個閉包計時，因此閉包外的準備工作不會被量測。量測方式如下：
+`nabic bench` 建置基準測試 harness，`nabi bench`（[9.10](910-nabi-frontend.md)）執行它（[9.1.2](901-nabic-cli.md#nabic-bench基準測試)），在 `-O2` 建置中一次一個地量測標示了 `#[bench]` 的函式。每個都接受一個 `Bench` 控制代碼，並經由 `b.iter` 對一個閉包計時，因此閉包外的準備工作不會被量測。量測方式如下：
 
 1. **時鐘。** 一個單調的奈秒時鐘。其固定開銷藉由每個樣本計時 `iters` 次呼叫來攤提，絕不只計時單一呼叫。
 2. **校準。** 除非給出 `--iters`，否則會提高 `iters`，直到一個樣本大約需要 100 ms，讓時鐘的量化誤差與開銷可以忽略。
@@ -574,7 +574,7 @@ nabi bench
 
 `black_box(x)` 是最佳化器無法看穿的恆等函式；把它套用到被計時之閉包的輸入與結果，好讓工作既不會被提升到外面，也不會被摺疊掉。`b.set_bytes(n)` / `b.set_items(n)` 把每次呼叫的時間轉換成吞吐量（`MiB/s`、`Melem/s`）。
 
-無論是否輸出到終端機，輸出都是對齊的，並使用人類易讀的單位；`--format=nabibench` 給出供回歸工具使用、每個效能測試一行的穩定機器形式（[9.1.2](901-nabic-cli.md#nabic-bench效能測試)），`--format=json` 則給出 JSON 紀錄（[9.9.12](#9912-ci--測試整合)）。從未呼叫 `b.iter` 的效能測試會被回報為沒有量測到任何東西，這是警告而不是失敗。`--iters` / `--samples` 調整取樣。
+無論是否輸出到終端機，輸出都是對齊的，並使用人類易讀的單位；`--format=nabibench` 給出供回歸工具使用、每個基準測試一行的穩定機器形式（[9.1.2](901-nabic-cli.md#nabic-bench基準測試)），`--format=json` 則給出 JSON 紀錄（[9.9.12](#9912-ci--測試整合)）。從未呼叫 `b.iter` 的基準測試會被回報為沒有量測到任何東西，這是警告而不是失敗。`--iters` / `--samples` 調整取樣。
 
 ## 9.9.12. CI / 測試整合
 
@@ -588,9 +588,9 @@ nabic build --message-format=json --no-color > build.log
 
 這個輸出適合 CI 系統剖析。
 
-### 測試與效能測試的紀錄
+### 測試與基準測試的紀錄
 
-`nabi test --format json` 與 `nabi bench --format json` 在 stdout 上每行寫出一個 JSON 物件。人類可讀的文字、測試的輸出，以及效能測試自己印出的任何東西都輸出到 stderr，因此 stdout 只容納紀錄。每筆紀錄都有 `schema`（目前是 `1`）、`type` 與 `kind`（`test` 或 `bench`）。
+`nabi test --format json` 與 `nabi bench --format json` 在 stdout 上每行寫出一個 JSON 物件。人類可讀的文字、測試的輸出，以及基準測試自己印出的任何東西都輸出到 stderr，因此 stdout 只容納紀錄。每筆紀錄都有 `schema`（目前是 `1`）、`type` 與 `kind`（`test` 或 `bench`）。
 
 ```json
 {"schema":1,"type":"case","kind":"test","name":"math::adds","result":"ok","ms":3.215}
@@ -601,8 +601,8 @@ nabic build --message-format=json --no-color > build.log
 
 | `type`    | 欄位                                                                |
 |-----------|---------------------------------------------------------------------|
-| `case`    | `name`；`result`：`ok`、`failed`、`ignored`（`#[ignore]` 測試或文件區塊、沒有量測到任何東西的效能測試）或 `timeout`（在其時間限制被終止的測試）；`ms`，其行程的實際耗時；`reason`，有的話（失敗的原因，或忽略的原因）。`result` 為 `ok` 的效能測試還有 `median_ns`、`mad_ns`、`samples`、`outliers`、`gc`、`bytes` 與 `items`，與 `#nabibench` 行相同（[9.1.2](901-nabic-cli.md#nabic-bench效能測試)） |
-| `summary` | `result`（`ok` 或 `failed`）、`ms`，以及各計數：測試為 `passed`、`failed`、`ignored`、`filtered_out`；效能測試為 `run`、`failed`、`ignored`、`filtered_out` |
+| `case`    | `name`；`result`：`ok`、`failed`、`ignored`（`#[ignore]` 測試或文件區塊、沒有量測到任何東西的基準測試）或 `timeout`（在其時間限制被終止的測試）；`ms`，其行程的實際耗時；`reason`，有的話（失敗的原因，或忽略的原因）。`result` 為 `ok` 的基準測試還有 `median_ns`、`mad_ns`、`samples`、`outliers`、`gc`、`bytes` 與 `items`，與 `#nabibench` 行相同（[9.1.2](901-nabic-cli.md#nabic-bench基準測試)） |
+| `summary` | `result`（`ok` 或 `failed`）、`ms`，以及各計數：測試為 `passed`、`failed`、`ignored`、`filtered_out`；基準測試為 `run`、`failed`、`ignored`、`filtered_out` |
 | `listed`  | `--list` 所保留之每個案例的 `name`，被忽略的測試還有 `ignored`（`true`）；之後沒有摘要（[9.10.1](910-nabi-frontend.md#9101-子指令與全域選項)） |
 
 每個 harness 的案例之後都有一個摘要，因此兩個根檔案都有的套件在其函式庫的執行通過時會有兩個摘要。紀錄以它們自己的編號（目前是 `1`）遵循 JSON 診斷的 `schema` 規則（[9.9.4](#994-診斷--錯誤訊息)）：讀取者忽略它不認識的欄位。有 `--message-format=json` 時，建置的診斷是同一個 stdout 上的 JSON 行；它們的 `type`（`error`、`warning`……）把它們與紀錄區分開來。
@@ -640,7 +640,7 @@ nabils
 - **重新命名。** 當重新命名會作用於游標下的名稱時，`prepareRename` 回傳該名稱的範圍。對在緩衝區之外宣告的名稱，它會以說明位置的訊息失敗，例如 ``cannot rename `println`: it is defined in the standard library``；對關鍵字則是 `` `let` is a keyword ``。
 - **文件符號。** 符號的範圍涵蓋整個項目，從其修飾詞（`pub`、`const`……）到其結尾的 `}` 或 `;`；其選取範圍是名稱。
 - **輸入時即時診斷。** 診斷在緩衝區每次改變之後（`didOpen`、`didChange`）就會發布，而不只在儲存時。檢查在背景中進行，一次一個，在 30 ms 內沒有新的編輯時開始；期間到達的編輯會以最新的文字一起檢查，而在執行期間其緩衝區改變之檢查的診斷不會被發布（它們會指向較舊的文字）。它們就是編譯器自己的診斷，文字與錯誤碼相同，因此詞法問題（不可見或外觀相似的字元、單獨的組合用附加符號、註解中的雙向控制字元、格式錯誤的數字、錯誤的跳脫）以及沒有處理器接受的字面值（`10Hz`、`95%`、`dat"..."`）在輸入時就會顯示，各自附上其診斷所帶的快速修正。
-- **相依套件。** 每個緩衝區都以其套件的相依套件檢查：其上方最近一個含有 `nabi.nabion`、`src/main.nabi` 或 `src/lib.nabi` 的目錄，從其資訊清單與鎖定檔解析，並以在那裡啟動的 `nabi lsp` 會建置它們的方式建置。位於所有套件之外但位於某個工作區資料夾（`workspaceFolders`，否則為 `rootUri`）內的緩衝區使用環境的函式庫（[9.10.5](910-nabi-frontend.md#9105-環境)）；位於它們所有之外時，使用伺服器啟動所在之目錄的相依套件。每個套件只解析一次；儲存的資訊清單或鎖定檔（`didSave`）、編輯器回報的這類檔案的變更（`workspace/didChangeWatchedFiles`，用戶端允許時，伺服器會為此註冊 `**/nabi.nabion` 與 `**/nabi.lock`），以及工作區資料夾的變更，都會重新解析並重新檢查開啟的緩衝區。其相依套件無法解析的套件會在沒有它們的情況下檢查，伺服器會說明原因一次（`window/showMessage`）。
+- **相依套件。** 每個緩衝區都以其套件的相依套件檢查：其上方最近一個含有 `nabi.nabion`、`src/main.nabi` 或 `src/lib.nabi` 的目錄，從其清單與鎖定檔解析，並以在那裡啟動的 `nabi lsp` 會建置它們的方式建置。位於所有套件之外但位於某個工作區資料夾（`workspaceFolders`，否則為 `rootUri`）內的緩衝區使用環境的函式庫（[9.10.5](910-nabi-frontend.md#9105-環境)）；位於它們所有之外時，使用伺服器啟動所在之目錄的相依套件。每個套件只解析一次；儲存的清單或鎖定檔（`didSave`）、編輯器回報的這類檔案的變更（`workspace/didChangeWatchedFiles`，用戶端允許時，伺服器會為此註冊 `**/nabi.nabion` 與 `**/nabi.lock`），以及工作區資料夾的變更，都會重新解析並重新檢查開啟的緩衝區。其相依套件無法解析的套件會在沒有它們的情況下檢查，伺服器會說明原因一次（`window/showMessage`）。
 - **檢查進行中時的回應。** 懸停提示、跳至定義、補全、簽章說明、文件符號與格式化不會等待編輯的檢查：它們從最後一次完成型別檢查的檢查回應，並透過此後的編輯對應位置。位於該檢查之後被編輯之文字上的位置（包括游標下的名稱），則會等待對目前文字的檢查，參照與重新命名也是，因為它們依緩衝區的現狀編輯。在 `x.` 之後的補全，若只有正在輸入的那一行改變，且 `x` 在那裡的寫法與之前相同，就從該檢查取得 `x` 的型別；否則它會檢查緩衝區到 `.` 為止。用戶端在得到回應之前取消的請求（`$/cancelRequest`）會得到錯誤 `RequestCancelled`（-32800）。
 - **診斷範圍。** 範圍為空的診斷會回報在該位置的語彙單元上，或在行尾時回報在其前一個語彙單元上。
 - **手動啟動。** 在終端機上，伺服器會先在標準錯誤印出 ``nabils speaks the language server protocol on stdin; start it from an editor (see `nabi help lsp`)``。當輸入在用戶端傳送 `initialize` 之前就結束時，它會印出 ``nabils: input ended before the editor sent `initialize` `` 並以 1 結束。在 `initialize` 之後，依 LSP 標準所述，`shutdown` 之後的結束碼是 0，否則是 1。

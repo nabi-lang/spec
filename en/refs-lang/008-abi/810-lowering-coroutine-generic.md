@@ -211,5 +211,3 @@ After monomorphization, a separate function is created for each T at each call s
 The compiler lowers coroutines itself into state machines (8.10.1). Generic lowering generates separate code for each concrete type through monomorphization and uses no vtables.
 
 These two mechanisms are the most complex lowerings in this [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) block; the rest, [Lowering: data types and expressions](808-lowering-types.md) and [Lowering: control flow and GC integration](809-lowering-control.md), are close to direct mappings onto machine operations.
-
-This concludes chapter 8 (runtime ABI / lowering / code generation).

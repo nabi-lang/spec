@@ -73,7 +73,7 @@ p.replace_with(other);      // ref self: caller does not write 'ref'
 
 這是方法接收者專用的規則，與一般函式呼叫的明確 `ref` 規則不同。詳細內容定義於函式規格。
 
-### 方法呼叫的去糖
+### 方法呼叫的去語法糖
 
 ```
 obj.method(a, b)
@@ -87,7 +87,7 @@ obj.method(a, b)
 
 （若定義在固有 `impl` 中，則是 `Type::method(obj, a, b)`。）
 
-這種去糖遵循與[運算子分派](301-operator-dispatch.md)之 trait 方法對應相同的機制。`.` 語彙單元本身並不帶有 `#[infix(".")]` 之類的對應，但所產生的呼叫形狀相同。
+這種去語法糖遵循與[運算子分派](301-operator-dispatch.md)之 trait 方法對應相同的機制。`.` 語彙單元本身並不帶有 `#[infix(".")]` 之類的對應，但所產生的呼叫形狀相同。
 
 ### Turbofish：明確的泛型方法
 

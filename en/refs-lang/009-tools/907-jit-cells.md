@@ -207,7 +207,7 @@ A name the user defines wins: once a cell binds `it` with `let`, or an item name
 
 ### Jupyter output
 
-The result of each cell is sent as an `execute_result` with a single `text/plain` entry, the same text the REPL prints. No other MIME types are produced.
+The result of each cell is sent as an `execute_result` whose `text/plain` entry is the text the REPL prints; a value whose type implements `RichDisplay` adds its bundle's MIME types ([9.8](908-jupyter-integration.md)).
 
 Jupyter integration details are defined in [Jupyter integration](908-jupyter-integration.md).
 

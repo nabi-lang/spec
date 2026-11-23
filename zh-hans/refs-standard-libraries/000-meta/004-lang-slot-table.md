@@ -154,9 +154,9 @@ trait 槽指明把用户编写的语法脱糖为标准库 trait 调用时，编�
 | `fused_row_fn` | 融合点表达式：一行在缓冲区中的位置 | `core::array::fused_row` | 2.6.6 |
 | `fused_step_fn` | 融合点表达式：沿最后一个轴的步长 | `core::array::fused_step` | 2.6.6 |
 | `fused_at_fn` | 融合点表达式：连续段中的一个元素 | `core::array::fused_at` | 2.6.6 |
-| `fused_put_fn` | 融合点表达式：向连续段中的存储 | `core::array::fused_put` | 2.6.6 |
+| `fused_put_fn` | 融合点表达式：向连续段写入一个元素 | `core::array::fused_put` | 2.6.6 |
 | `fused_get_fn` | 融合点表达式：跨步行中的一个元素 | `core::array::fused_get` | 2.6.6 |
-| `fused_set_fn` | 融合点表达式：向跨步行中的存储 | `core::array::fused_set` | 2.6.6 |
+| `fused_set_fn` | 融合点表达式：向跨步行写入一个元素 | `core::array::fused_set` | 2.6.6 |
 | `fused_dest_fn` | 融合点表达式：原地结果与其目标相符 | `core::array::fused_dest` | 2.6.6 |
 | `fused_source_fn` | 融合点表达式：与目标重叠的原地源会被复制 | `core::array::fused_source` | 2.6.6 |
 | `fused_list_alloc_fn` | 列表上的融合点表达式：按索引填充的结果列表 | `core::collections::broadcast::fused_list_alloc` | 2.6.6 |

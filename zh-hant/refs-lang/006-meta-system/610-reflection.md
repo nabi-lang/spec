@@ -82,9 +82,9 @@ struct MethodInfo {
 ```
 
 - `get_field` 以 `any` 回傳欄位的值，名稱不存在時回傳 `none`。私有欄位也可以讀取。
-- 當值的型別與欄位**完全相同**，或不同整數型別的整數**能無損地放進**時（把 `u.set_field("id", 42)` 放進 `u64` 欄位），`set_field` 會指派並回傳 `true`。否則它不指派並回傳 `false`。沒有其他轉換（例如 `i32` → `f64`）。
+- 當值的型別與欄位**完全相同**，或不同整數型別的整數**能無損地放進**時（例如以 `u.set_field("id", 42)` 設定 `u64` 欄位），`set_field` 會指派並回傳 `true`。否則它不指派並回傳 `false`。沒有其他轉換（例如 `i32` → `f64`）。
 - `methods()` 只回傳型別的**固有方法**（不含 trait 方法），依名稱排序。泛型 `impl` 的方法依寫法顯示型別（`T`）。
-- `fields()` 依宣告順序列出每個欄位及其型別名稱與是否為 `pub`。**私有欄位也會列出**：衍生 `Inspect` 是型別作者的同意，與 `get_field` 相同。型別名稱是實例化後的名稱（`Box<f64>` 回報 `v: f64`、`items: List<f64>`），不帶模組路徑，與 `type_name` 的寫法相同。
+- `fields()` 依宣告順序列出每個欄位及其型別名稱與是否為 `pub`。**私有欄位也會列出**：衍生 `Inspect` 就表示型別作者同意公開它們，與 `get_field` 相同。型別名稱是實例化後的名稱（`Box<f64>` 回報 `v: f64`、`items: List<f64>`），不帶模組路徑，與 `type_name` 的寫法相同。
 - `enum` 在型別層級沒有欄位（`field_names()` 與 `fields()` 是空串列）。`variant_names()` 依宣告順序列出其變體。在值上，`variant_name()` 是它所容納的變體（`"Circle"`），`field_names_of_val()` 是該變體的欄位（元組變體為 `"0"`、`"1"`，具名變體為其名稱），而 `get_field` 讀取它們。變體的酬載透過 `Inspect` 是唯讀的：對列舉使用 `set_field` 是 `false`。
 - 在結構上，`variant_names()` 是空串列，`variant_name()` 是其型別名稱（`type_name_of_val()`），`field_names_of_val()` 是其欄位。
 - 每個方法都有預設主體；`get_field`、`set_field` 與名稱清單讀取 `type_info()`。derive 只寫出 `type_info()` 所呼叫的存取函式（6.10.7）。手寫的 `impl Inspect` 可以覆寫任何方法。
@@ -127,7 +127,7 @@ Config { host: "h", port: 80 }
 Opaque
 ```
 
-單獨的運算式使用 `Display`，否則使用 `Debug`，而結尾的 `?` 使用 `Debug`。兩者都沒有的值（對結尾的 `?` 而言是沒有 `Debug`）只印出其型別名稱。REPL 與 Jupyter 儲存格工作階段使用這種行為（[9.7](../009-tools/907-jit-cells.md)）。
+兩者都沒有的值（對結尾的 `?` 而言是沒有 `Debug`）只印出其型別名稱。REPL 與 Jupyter 儲存格工作階段使用這種行為（[9.7](../009-tools/907-jit-cells.md)）。
 
 ## 6.10.4. 沒有全域的 `typeof` / `sizeof` 函式
 
@@ -163,7 +163,7 @@ fn classify(v: i32 | f64) -> str {
 }
 ```
 
-編譯器把型別測試模式（`v: T => ...`）去糖為 `Reflect` 的標籤檢查。
+編譯器把型別測試模式（`v: T => ...`）去語法糖為 `Reflect` 的標籤檢查。
 
 ## 6.10.6. 層級之間的關係
 
@@ -229,6 +229,6 @@ hp.attr::<Range>()                 // Range { min: 0.0, max: 100.0 }
 
 欄位上的 `#[renamed_from("old")]` 在其描述中記錄該欄位先前的名稱（`Field::renamed_from`），供讀取以舊名稱寫出之資料的工具使用。
 
-## 6.10.9. 與外掛及熱重載
+## 6.10.9. 搭配外掛與熱重載
 
 描述位於定義該型別的模組中。每個模組在啟動或被載入時都會向執行環境註冊其描述，而 `info_of` 與 `find` 在那裡查找它們；`find` 回傳最新模組對某個路徑的描述。由於相等性依鍵判斷，兩個模組對同一個泛型實例的描述比較起來相等。

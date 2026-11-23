@@ -66,7 +66,7 @@ Following the principle of minimizing reserved keywords in [Keywords](../001-lex
 | `task::join([...])`     | Until all finish (`List<Task<T>>`, await).                               |
 | `task::timeout(d, t)`   | Time limit. If exceeded, `TimeoutError` at `try await`.                  |
 | `thread::spawn(f)`      | Create a new OS thread (1:1).                                            |
-| `par::for_each(xs, f)`  | Parallel for-each ([block](../000-meta/007-glossary.md#block) on join). |
+| `par::for_each(xs, f)`  | Parallel for-each (returns when every call has finished). |
 | `par::scope { ... }`    | Parallel scope (trailing closure).                                       |
 
 Since these are not keywords, identifiers such as `spawn` or `race` can be used freely in user code.

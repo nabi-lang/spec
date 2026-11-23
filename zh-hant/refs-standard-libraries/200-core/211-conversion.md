@@ -21,7 +21,7 @@ Nabi 依**意圖**把轉換分成四種類別。使用者每次都必須指明�
 
 無聲的飽和或無聲的環繞會在使用者不知情的情況下改變值，產生難以偵錯的錯誤。Nabi 同時採納了 JS 在引入 Number → BigInt 時學到的教訓，以及 NumPy 從環繞改為 OverflowError 時學到的教訓。
 
-基於相同的理由，固定寬度算術（`+ - *`、一元 `-`）在每個建置設定檔中都會在溢位時觸發 panic，與 Swift 相同。這些檢查的成本很低：在 Apple M 系列上以 `-O2` 用 `bench/` 量測（退休指令數，取 3 次中最佳），`fannkuch`（整數串列）+5.6%，`jsontokenizer`（位元組掃描）+9.2%，`nbody`（f64）在雜訊範圍內（-2.8%）。需要最後幾個百分點的程式可以用 `-C overflow-checks=no` 或 `nabi.nabion` 建置設定檔（`profile: { "release": { overflow_checks: false } }`，[refs-lang 9.10.3](../../refs-lang/009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)）關閉檢查，此時溢位會環繞。
+基於相同的理由，固定寬度算術（`+ - *`、一元 `-`）在每個建置設定檔中都會在溢位時觸發 panic，與 Swift 相同。這些檢查的成本很低：在 Apple M 系列上以 `-O2` 用 `bench/` 量測（已引退（retired）指令數，取 3 次中最佳），`fannkuch`（整數串列）+5.6%，`jsontokenizer`（位元組掃描）+9.2%，`nbody`（f64）在雜訊範圍內（-2.8%）。需要最後幾個百分點的程式可以用 `-C overflow-checks=no` 或 `nabi.nabion` 建置設定檔（`profile: { "release": { overflow_checks: false } }`，[refs-lang 9.10.3](../../refs-lang/009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)）關閉檢查，此時溢位會環繞。
 
 ## 2.11.2. `From<U>` trait：無損轉換
 
@@ -162,7 +162,7 @@ trait WrappingInto {
 }
 ```
 
-其形狀與 `From` / `Into` 一致。轉換本身是 `SaturatingFrom` / `WrappingFrom` 的實作；`saturating_into` / `wrapping_into` 是由全面實作提供的泛型方法。
+其結構與 `From` / `Into` 一致。轉換本身是 `SaturatingFrom` / `WrappingFrom` 的實作；`saturating_into` / `wrapping_into` 是由全面實作提供的泛型方法。
 
 ### `saturating_into`：夾限到範圍兩端
 
@@ -310,7 +310,7 @@ f64 → f32 是窄化轉換，因此必須使用 `try_into`、`saturating_into` 
 | `int`     | 僅 `try_into`       | 僅 `try_into` | `to_f64`、`try_into`、`saturating_into`（捨入） |
 | `float`   | `try_into`（截斷） | `try_into`     | `to_f64`、`try_into`、`saturating_into`（捨入） |
 
-`From` 毫無例外地無損，因此 `int` 與 `float` 沒有轉為 `f64` 的 `From`，也沒有轉為 `f64` / `f32` 的 `WrappingFrom`（環繞保留低位元，而浮點數沒有低位元）：`x as f64` 是會指出 `to_f64` 的編譯錯誤。三種形式都捨入到最接近的 `f64`（同距時取偶數），只在超過 `±f64::MAX` 時有差異：`to_f64()` 得到 `±inf`，`try_into` 擲回 `OverflowError`（即 `TryFrom<f64> for f32` 的規則），`saturating_into` 得到 `±f64::MAX`。對 `f64` 而言過小的 `float` 在三者中都會成為次正規數或 `±0`。
+`From` 毫無例外地無損，因此 `int` 與 `float` 沒有轉為 `f64` 的 `From`，也沒有轉為 `f64` / `f32` 的 `WrappingFrom`（環繞保留低位元，而浮點數沒有低位元）：`x as f64` 是編譯錯誤，錯誤訊息會指向 `to_f64`。三種形式都捨入到最接近的 `f64`（同距時取偶數），只在超過 `±f64::MAX` 時有差異：`to_f64()` 得到 `±inf`，`try_into` 擲回 `OverflowError`（即 `TryFrom<f64> for f32` 的規則），`saturating_into` 得到 `±f64::MAX`。對 `f64` 而言過小的 `float` 在三者中都會成為次正規數或 `±0`。
 
 `int → fixed` 不保證無損（`int` 可能超出固定寬度型別的範圍），因此必須使用 `try_into` 或 `saturating_into`。
 
@@ -409,7 +409,7 @@ impl From<i32> for i64 {
 
 ## 2.11.13. `AsBytes` trait：位元組作為檢視
 
-`core::convert::AsBytes` 是標準函式庫每個位元組引數所接受的型別：`str::from_utf8`（[2.15.6](215-string.md#2156-utf-8-不變式行程內的每個字串)）、`hex` 與 `base64`（[2.22](222-encoding.md)）、`crypto`（[2.21](221-crypto.md)）、`CString::new`（[1.7.2](../100-bare/107-ffi.md)）、`fs` 與 `net` 的寫入函式（[2.23.3](223-io.md)）以及 `Slice<u8>::find`（[2.9.7](209-collections.md)）。這類參數寫成 `<B: AsBytes>`，每個位元組引數各有一個型別參數，因此金鑰與訊息不必是相同的型別。
+標準函式庫的每個位元組引數都接受 `core::convert::AsBytes`：`str::from_utf8`（[2.15.6](215-string.md#2156-utf-8-不變式行程內的每個字串)）、`hex` 與 `base64`（[2.22](222-encoding.md)）、`crypto`（[2.21](221-crypto.md)）、`CString::new`（[1.7.2](../100-bare/107-ffi.md)）、`fs` 與 `net` 的寫入函式（[2.23.3](223-io.md)）以及 `Slice<u8>::find`（[2.9.7](209-collections.md)）。這類參數寫成 `<B: AsBytes>`，每個位元組引數各有一個型別參數，因此金鑰與訊息不必是相同的型別。
 
 ```nabi
 trait AsBytes {

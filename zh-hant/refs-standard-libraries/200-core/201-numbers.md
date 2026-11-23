@@ -1,6 +1,6 @@
 # 2.1. 數值型別
 
-`core::num` 模組定義 nabi 的所有數值型別。Nabi 讓兩個世界的數字並存，使用者可以自由選擇其中一個。
+`core::num` 模組定義 Nabi 的所有數值型別。Nabi 讓兩個世界的數字並存，使用者可以自由選擇其中一個。
 
 ```
 int / float    (auto-promote, arbitrary precision, opt-in)
@@ -96,7 +96,7 @@ impl Int {
 }
 ```
 
-這些方法沿用固定寬度整數的名稱與 panic。位元數與位元索引是 `u64`，和 `bit_length` 一樣：一個值可以有超過 2^32 個位元（固定寬度的規則見下文）。依附於寬度的位元方法（`leading_zeros`、`rotate_left`、`swap_bytes` 等）在沒有寬度時沒有意義，因此不提供。`count_ones` 計算的是 `|self|`（即 Python 的 `bit_count`），因為負數有無限多個 1 位元。表示法寫在名稱裡：`to_le_bytes` / `from_le_bytes` 使用二補數，與固定寬度整數的位元組一致；`_unsigned` 形式使用絕對值，遇到負值會 panic（`Int::to_le_bytes_unsigned: negative value; use to_le_bytes for two's complement or call .abs() first`）。位元組長度是值所允許的最短長度：`128` 是 `[128, 0]`，無號形式為 `[128]`；`-1` 是 `[255]`；零是 `[0]`。`write_*` 形式則填滿固定寬度，也就是 `out`（一個 `List<u8>` 或其檢視）的每個位元組：`-2` 以四個位元組、小端序寫出是 `[254, 255, 255, 255]`；值需要的位元組比 `out` 多時會 panic（`Int::write_le_bytes: the value needs 2 bytes but `out` has 1; pass a view of at least 2 bytes`）。`from_*` 形式接受任何位元組（[`AsBytes`](211-conversion.md)）：`List<u8>`、`Slice<u8>`、`[u8; N]` 或 `str`。`pow` 接受 `u32` 指數：更大的指數對 0 與 ±1 以外的任何底數，都會產生至少 2^32 個位元。`modpow` 接受 `int` 指數，因為其結果保持在 `|m|` 以下；結果的正負號與 `m` 相同，和 [`%%`](203-ops.md#modulo向下取整模數) 一樣。負指數是錯誤（沒有模反元素）。零是 `Int::default()`（或 `Int::zero()`，請見 2.1.5 的 `Zero`）；`Int` 沒有 `new`。除以零時，無論來自運算子 `/`、`%` 與 `%%`，或來自 `div_rem`、`div_euclid` 與 `rem_euclid`，都會以 `attempt to divide an int by zero` 觸發 panic。帶檢查的 `to_i32` / `to_i64` / `to_u64` 是與 `TryFrom` 並列的固有方法（[0.5.11](../000-meta/005-notation.md)）。
+這些方法沿用固定寬度整數的名稱與 panic。位元數與位元索引是 `u64`，和 `bit_length` 一樣：一個值可以有超過 2^32 個位元（固定寬度的規則見下文）。與寬度相關的位元方法（`leading_zeros`、`rotate_left`、`swap_bytes` 等）在沒有寬度時沒有意義，因此不提供。`count_ones` 計算的是 `|self|`（即 Python 的 `bit_count`），因為負數有無限多個 1 位元。表示法寫在名稱裡：`to_le_bytes` / `from_le_bytes` 使用二補數，與固定寬度整數的位元組一致；`_unsigned` 形式使用絕對值，遇到負值會 panic（`Int::to_le_bytes_unsigned: negative value; use to_le_bytes for two's complement or call .abs() first`）。位元組長度是值所允許的最短長度：`128` 是 `[128, 0]`，無號形式為 `[128]`；`-1` 是 `[255]`；零是 `[0]`。`write_*` 形式則填滿固定寬度，也就是 `out`（一個 `List<u8>` 或其檢視）的每個位元組：`-2` 以四個位元組、小端序寫出是 `[254, 255, 255, 255]`；值需要的位元組比 `out` 多時會 panic（`Int::write_le_bytes: the value needs 2 bytes but `out` has 1; pass a view of at least 2 bytes`）。`from_*` 形式接受任何位元組（[`AsBytes`](211-conversion.md)）：`List<u8>`、`Slice<u8>`、`[u8; N]` 或 `str`。`pow` 接受 `u32` 指數：更大的指數對 0 與 ±1 以外的任何底數，都會產生至少 2^32 個位元。`modpow` 接受 `int` 指數，因為其結果保持在 `|m|` 以下；結果的正負號與 `m` 相同，和 [`%%`](203-ops.md#modulo向下取整模數) 一樣。負指數是錯誤（沒有模反元素）。零是 `Int::default()`（或 `Int::zero()`，請見 2.1.5 的 `Zero`）；`Int` 沒有 `new`。除以零時，無論來自運算子 `/`、`%` 與 `%%`，或來自 `div_rem`、`div_euclid` 與 `rem_euclid`，都會以 `attempt to divide an int by zero` 觸發 panic。帶檢查的 `to_i32` / `to_i64` / `to_u64` 是與 `TryFrom` 並列的固有方法（[0.5.11](../000-meta/005-notation.md)）。
 
 `Int` 定義在 `core::num::bigint::Int`（`Float` 在 `core::num::bigfloat::Float`）。`#[keyword("int")]` 將識別字 `int` 註冊為型別關鍵字，此註冊適用於所有套件。因此使用者程式碼將型別寫成小寫的 `int`，而不是 PascalCase 的 `Int`（以 [refs-lang 6.6](../../refs-lang/006-meta-system/606-keyword-magic.md) 為準）。編譯器透過 `#[lang("int_type")]` 找到 `int` 型別。
 
@@ -204,14 +204,14 @@ impl Float {
 
 `f32` 與 `f64` 在每個目標上的行為都相同：
 
-- **捨入。**`+ - * /`、`%`（精確，即 C 的 `fmod`）、`√` / `sqrt`、`mul_add`、每個轉成浮點數的 `as` 轉換、每個浮點數字面值以及 `parse`，都捨入到最近值，平手時取偶數。字面值或剖析的字串從其十進位值只捨入一次：`0.1f32` 是最接近 0.1 的 `f32`，而不是將 `0.1f64` 再捨入一次。沒有其他捨入模式，也無法變更。
-- **不縮併。**`a * b + c` 是先捨入乘積，再捨入總和。只有 `mul_add` 將兩者融合為一次捨入。最佳化器與任何後端都不會縮併、重新結合或重新排列浮點數運算：加總浮點數的迴圈不會向量化（線道會改變順序），而常數求值得到的位元與程式執行時計算的相同。
-- **保留次正規數。**沒有任何目標會將次正規數的輸入或結果清為零。執行環境在每個目標上都將浮點數控制狀態（MXCSR、FPCR、FPSCR）保持在 IEEE 預設值，Nabi 程式碼無法變更它。
-- **NaN。**與 NaN 的每個比較都為 false，`!=` 除外。運算回傳哪一個 NaN 未指定：其酬載與正負號在不同目標上可能不同（x86 讓 `0.0 / 0.0` 為負）。`-x`、`abs` 與 `copysign` 只改變符號位元，對 NaN 亦然，而 `to_bits` / `from_bits` 保留每個位元。`f32::NAN` 與 `f64::NAN` 是符號位元清除的固定 quiet NaN。
-- **有號零。**`-0.0 == 0.0`，而 `1.0 / -0.0` 是 `-inf`。
+- **捨入**。`+ - * /`、`%`（精確，即 C 的 `fmod`）、`√` / `sqrt`、`mul_add`、每個轉成浮點數的 `as` 轉換、每個浮點數字面值以及 `parse`，都捨入到最近值，平手時取偶數。字面值或剖析的字串從其十進位值只捨入一次：`0.1f32` 是最接近 0.1 的 `f32`，而不是將 `0.1f64` 再捨入一次。沒有其他捨入模式，也無法變更。
+- **不縮併**。`a * b + c` 是先捨入乘積，再捨入總和。只有 `mul_add` 將兩者融合為一次捨入。最佳化器與任何後端都不會縮併、重新結合或重新排列浮點數運算：加總浮點數的迴圈不會向量化（線道會改變順序），而常數求值得到的位元與程式執行時計算的相同。
+- **保留次正規數**。沒有任何目標會將次正規數的輸入或結果清為零。執行環境在每個目標上都將浮點數控制狀態（MXCSR、FPCR、FPSCR）保持在 IEEE 預設值，Nabi 程式碼無法變更它。
+- **NaN**。與 NaN 的每個比較都為 false，`!=` 除外。運算回傳哪一個 NaN 未指定：其酬載與正負號在不同目標上可能不同（x86 讓 `0.0 / 0.0` 為負）。`-x`、`abs` 與 `copysign` 只改變符號位元，對 NaN 亦然，而 `to_bits` / `from_bits` 保留每個位元。`f32::NAN` 與 `f64::NAN` 是符號位元清除的固定 quiet NaN。
+- **有號零**。`-0.0 == 0.0`，而 `1.0 / -0.0` 是 `-inf`。
 - **`min` / `max`** 是 IEEE 754 的 `minimumNumber` / `maximumNumber`：一個運算元為 NaN 時得到另一個（只有兩者都是 NaN 時才得到 NaN），且 `-0.0` 排在 `+0.0` 之前，因此在每個目標上 `(0.0).min(-0.0)` 都是 `-0.0`，`(-0.0).max(0.0)` 都是 `0.0`。`total_cmp` 是 IEEE 全序（[2.1.11](#2111-數值-trait浮點數排序範圍複數)）。
 - **浮點數轉整數**的 `as` 向零截斷，並在整數型別的界限處飽和；NaN 得到 0。整數轉浮點數捨入到最近值，平手時取偶數。
-- **函式庫函式。**`sin`、`exp`、`ln`、`pow` 與其他超越函式使用目標的 C 函式庫：不保證正確捨入，最後一個位元在不同目標上可能不同。常數求值不會將它們摺疊。
+- **函式庫函式**。`sin`、`exp`、`ln`、`pow` 與其他超越函式使用目標的 C 函式庫：不保證正確捨入，最後一個位元在不同目標上可能不同。常數求值不會將它們摺疊。
 
 `float`（2.1.3）在 `f64` 的範圍內遵循相同的規則。
 
@@ -234,15 +234,15 @@ pub struct BF16 { bits: u16; }     // bfloat16
 
 `f16` 與 `bf16`（`core::num::half`）是儲存用型別：它們讓大型陣列（模型權重、影像、感測器資料）的記憶體減半，並透過 `f32` 進行計算。兩者都是 2 個位元組、對齊為 2，`List<f16>` 或 `Array<bf16, 2>` 每個元素存放 2 個位元組，`Array::zeros` / `ones` 也適用於它們。
 
-- **字面值。**位於 `f16` / `bf16` 槽位中的無後綴字面值，或帶有後綴 `f16` / `bf16` 的字面值（`0.1f16`、`2bf16`），其值是從十進位只捨入一次的結果。捨入成無窮大的字面值是編譯錯誤（`let h: f16 = 70000.0;`）；整數字面值必須精確（`let h: f16 = 2049;` 是錯誤，與 `f32` 相同）。
+- **字面值**。位於 `f16` / `bf16` 槽位中的無後綴字面值，或帶有後綴 `f16` / `bf16` 的字面值（`0.1f16`、`2bf16`），其值是從十進位只捨入一次的結果。捨入成無窮大的字面值是編譯錯誤（`let h: f16 = 70000.0;`）；整數字面值必須精確（`let h: f16 = 2049;` 是錯誤，與 `f32` 相同）。
 - **`as`** 可在 16 位元浮點數與每個整數、浮點數基本型別之間互轉，也可在 `f16` 與 `bf16` 之間互轉。轉成 16 位元浮點數時，直接從來源捨入到最近值，平手時取偶數：`f64` 或 `i64` 絕不會先捨入成 `f32`。從它轉出時，轉成 `f32` / `f64` 是精確的，轉成整數則等同其 `f32` 值的 `as`。`int`、`float`、`bool` 與 `char` 不能用 `as` 轉換（請寫 `x.to_f64() as f16`）。
-- **算術。**`+ - * / % %%`、其複合指派、一元 `-` 與 `√` 都以 `f32` 計算，再對該型別捨入一次。對 `+ - * / %` 與 `√` 而言，這正好是 16 位元格式下正確捨入的 IEEE 結果（`f32` 的有效數字位元多於其兩倍再加二）。混合運算元與基本型別一樣會被拒絕（2.1.6）。沒有超越函式方法，也沒有 `FloatingPoint` 實作：請轉成 `f32`（`h.to_f32().sin()`）。
+- **算術**。`+ - * / % %%`、其複合指派、一元 `-` 與 `√` 都以 `f32` 計算，再對該型別捨入一次。對 `+ - * / %` 與 `√` 而言，這正好是 16 位元格式下正確捨入的 IEEE 結果（`f32` 的有效數字位元多於其兩倍再加二）。混合運算元與基本型別一樣會被拒絕（2.1.6）。沒有超越函式方法，也沒有 `FloatingPoint` 實作：請轉成 `f32`（`h.to_f32().sin()`）。
 - **比較**（`==`、`<` 等）以 `f32` 值進行：IEEE 語意，NaN 與任何值都不相等，`-0.0 == 0.0`。兩個型別都不是 `Eq`、`Ord` 或 `Hash`；排序請用 `xs.sort_by(f16::total_cmp)`。字面值模式不會比對它們：請在守衛中用 `==` 比較。
-- **方法與常數。**`from_bits` / `to_bits`（`u16` 位元樣式）、`from_f32`、`from_f64`、`from_i64`、`from_u64`、`to_f32`、`to_f64`、`is_nan`、`is_infinite`、`is_finite`、`is_normal`、`is_sign_positive`、`is_sign_negative`、`abs`、`copysign`、`min`、`max`（與 `f32` 的相同）、`total_cmp`；`EPSILON`、`MAX`、`MIN`、`MIN_POSITIVE`、`NAN`、`INFINITY`、`NEG_INFINITY`。
-- **trait。**`Clone`、`Copy`、`Default`（`0.0`）、`Zero`、`One`、`PartialEq`、`PartialOrd`、上述運算子 trait、`Display`、`Debug`、`FromStr`（從十進位捨入一次），以及 `f32` 與 `f64` 的 `From<f16>` / `From<bf16>`（精確）。
-- **文字。**`Display` 寫出能讀回相同值的最短位數（`0.1`、`65500`），絕不使用指數，也寫出 `inf` / `NaN`；`Debug` 對整數值加上 `.0`。格式規範（`{h:.3}`、`{h:e}`）與 `f64` 一樣格式化精確值。
-- **硬體。**`f16` <-> `f32` 在 CPU 支援轉換的地方使用 CPU：x86-64 上當目標特性包含 `f16c` 時使用 F16C（`-C target-cpu=x86-64-v3`），arm64 上使用 `fcvt`。其他地方則是執行環境呼叫，結果相同。`bf16` 的轉換是少數幾個內嵌的整數運算。
-- **C。**在 `extern "C"` 簽章中，`f16` 是 C 的 `_Float16`，`bf16` 是 `__bf16`，以 C 的方式透過浮點數暫存器傳遞（[refs-lang 8.6.3](../../refs-lang/008-abi/806-calling-convention.md#863-struct-引數--回傳小-struct-規則)）。目標的 C 沒有這種型別時（powerpc64le 與 wasm32；s390x 上的 `__bf16`；i686 上的半精度回傳值），該簽章是錯誤：請改以 `uint16_t` 傳遞 `h.to_bits()`。
+- **方法與常數**。`from_bits` / `to_bits`（`u16` 位元樣式）、`from_f32`、`from_f64`、`from_i64`、`from_u64`、`to_f32`、`to_f64`、`is_nan`、`is_infinite`、`is_finite`、`is_normal`、`is_sign_positive`、`is_sign_negative`、`abs`、`copysign`、`min`、`max`（與 `f32` 的相同）、`total_cmp`；`EPSILON`、`MAX`、`MIN`、`MIN_POSITIVE`、`NAN`、`INFINITY`、`NEG_INFINITY`。
+- **trait**。`Clone`、`Copy`、`Default`（`0.0`）、`Zero`、`One`、`PartialEq`、`PartialOrd`、上述運算子 trait、`Display`、`Debug`、`FromStr`（從十進位捨入一次），以及 `f32` 與 `f64` 的 `From<f16>` / `From<bf16>`（精確）。
+- **文字**。`Display` 寫出能讀回相同值的最短位數（`0.1`、`65500`），絕不使用指數，也寫出 `inf` / `NaN`；`Debug` 對整數值加上 `.0`。格式規範（`{h:.3}`、`{h:e}`）與 `f64` 一樣格式化精確值。
+- **硬體**。`f16` <-> `f32` 在 CPU 支援轉換的地方使用 CPU：x86-64 上當目標特性包含 `f16c` 時使用 F16C（`-C target-cpu=x86-64-v3`），arm64 上使用 `fcvt`。其他地方則是執行環境呼叫，結果相同。`bf16` 的轉換是少數幾個內嵌的整數運算。
+- **C**。在 `extern "C"` 簽章中，`f16` 是 C 的 `_Float16`，`bf16` 是 `__bf16`，以 C 的方式透過浮點數暫存器傳遞（[refs-lang 8.6.3](../../refs-lang/008-abi/806-calling-convention.md#863-struct-引數--回傳小-struct-規則)）。目標的 C 沒有這種型別時（powerpc64le 與 wasm32；s390x 上的 `__bf16`；i686 上的半精度回傳值），該簽章是錯誤：請改以 `uint16_t` 傳遞 `h.to_bits()`。
 
 ### 布林值 / 字元（3 個型別）
 
@@ -385,7 +385,7 @@ impl u32 {
 }
 ```
 
-整數型別的最小值 / 最大值是關聯常數 `i32::MIN` / `i32::MAX`，不是函式。沒有引數的固有方法 `min()` / `max()` 會遮蔽同名的 `Ord::min` / `Ord::max`（`a.min(b)`）。
+整數型別的最小值 / 最大值是關聯常數 `i32::MIN` / `i32::MAX`，不是函式。若提供沒有引數的固有方法 `min()` / `max()`，就會遮蔽同名的 `Ord::min` / `Ord::max`（`a.min(b)`）。
 
 浮點數型別（`f32`、`f64`）提供下列常數與方法（`f32` 擁有相同的集合，只是以 `f32` 取代 `f64`，位元為 `u32`）。
 
@@ -611,15 +611,15 @@ let d = a + u;   // help: convert both sides: `(a as i64) + (u as i64)`
 
 Nabi 的雙世界模型（自動提升的 `int` 與固定基本型別）借鑑了多種語言。Smalltalk 的 SmallInteger ↔ LargeInteger 是自動提升的原型，而 Lisp 與 Scheme 的數值塔（fixnum / bignum / rational / real）是另一個重要參考。**Python int** 以任意精度為預設，但沒有固定基本型別；**Julia** 則以固定基本型別為預設。在 Nabi 中，字面值同樣預設為固定型別（`i64` / `f64`），`int` 需選擇性加入。
 
-與各語言的差異：**Python** 只提供 int；由於缺少固定寬度，FFI 與效能關鍵的工作需要相依於 NumPy。**Julia** 與 Nabi 一樣預設為固定型別，需要任意精度時必須明確使用 `BigInt`。**Rust** 只有固定型別，因此使用者必須一律寫出型別。**Nabi** 讓兩個世界並存：字面值依循預期型別（沒有時為 `i64` / `f64`），需要任意精度的地方則寫 `int` / `float`。
+與各語言的差異：**Python** 只提供 int；由於缺少固定寬度，FFI 與效能關鍵的工作需要相依於 NumPy**。Julia** 與 Nabi 一樣預設為固定型別，需要任意精度時必須明確使用 `BigInt`**。Rust** 只有固定型別，因此使用者必須一律寫出型別**。Nabi** 讓兩個世界並存：字面值依循預期型別（沒有時為 `i64` / `f64`），需要任意精度的地方則寫 `int` / `float`。
 
 ## 2.1.11. 數值 trait、浮點數排序、範圍、複數
 
-**`Num`。**`trait Num: Copy + Zero + One + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self> + PartialEq + PartialOrd {}`，由十二個固定基本型別實作：要撰寫適用於其中任何一個的程式碼，請寫 `T: Num`。混合運算元仍然會被拒絕（2.1.6）。
+**`Num`**。`trait Num: Copy + Zero + One + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self> + PartialEq + PartialOrd {}`，由十二個固定基本型別實作：要撰寫適用於其中任何一個的程式碼，請寫 `T: Num`。混合運算元仍然會被拒絕（2.1.6）。
 
-**`FloatingPoint`。**`trait FloatingPoint: Num + Neg<Output = Self>` 由 `f32` 與 `f64` 實作（`float` 不實作，其型別名為 `Float`，因此這個 trait 採用 Swift 的名稱）。它帶有常數 `NAN`、`INFINITY`、`NEG_INFINITY`、`EPSILON`、`PI`、`E`，以及方法 `abs sqrt cbrt exp ln log2 log10 powi pow sin cos tan asin acos atan atan2 sinh cosh tanh hypot floor ceil round trunc signum mul_add min max is_nan is_infinite is_finite total_cmp`（各自就是該型別同名的方法），還有 `to_f64`、`from_f64`（捨入到最近值）與 `from_usize`。
+**`FloatingPoint`**。`trait FloatingPoint: Num + Neg<Output = Self>` 由 `f32` 與 `f64` 實作（`float` 不實作，其型別名為 `Float`，因此這個 trait 採用 Swift 的名稱）。它帶有常數 `NAN`、`INFINITY`、`NEG_INFINITY`、`EPSILON`、`PI`、`E`，以及方法 `abs sqrt cbrt exp ln log2 log10 powi pow sin cos tan asin acos atan atan2 sinh cosh tanh hypot floor ceil round trunc signum mul_add min max is_nan is_infinite is_finite total_cmp`（各自就是該型別同名的方法），還有 `to_f64`、`from_f64`（捨入到最近值）與 `from_usize`。
 
-**`total_cmp`。**`f32::total_cmp` / `f64::total_cmp(self, other) -> Ordering` 是 IEEE 754 的 `totalOrder`：`-NaN < -inf < .. < -0.0 < +0.0 < .. < inf < +NaN`。`xs.sort_by(f64::total_cmp)` 可排序任何浮點數串列；`f64` 仍然沒有 `Ord`，`==` 仍然是 IEEE 語意。`f64::NAN` 與 `f32::NAN`（`0x7fc0_0000`）在每個目標上符號位元都清除，因此排在 `inf` 之後；算術產生的 NaN（`0.0 / 0.0`）可能帶有任一正負號（x86 會設定它），負的 NaN 排在最前面。
+**`total_cmp`**。`f32::total_cmp` / `f64::total_cmp(self, other) -> Ordering` 是 IEEE 754 的 `totalOrder`：`-NaN < -inf < .. < -0.0 < +0.0 < .. < inf < +NaN`。`xs.sort_by(f64::total_cmp)` 可排序任何浮點數串列；`f64` 仍然沒有 `Ord`，`==` 仍然是 IEEE 語意。`f64::NAN` 與 `f32::NAN`（`0x7fc0_0000`）在每個目標上符號位元都清除，因此排在 `inf` 之後；算術產生的 NaN（`0.0 / 0.0`）可能帶有任一正負號（x86 會設定它），負的 NaN 排在最前面。
 
 **`linspace` / `arange`**（`core::num`，對 `T: FloatingPoint` 泛型，回傳 `List<T>`）：
 
@@ -630,9 +630,9 @@ arange(0.0, 1.0, 0.25)    //→ [0.0, 0.25, 0.5, 0.75]: start + i*step while bef
 
 `linspace(start, stop, n)` 產生 `start + i * step`，其中 `step = (stop - start) / (n - 1)`，最後一個值恰為 `stop`（`n == 1` 時只有 `start`，`0` 時什麼都沒有）。`arange(start, stop, step)` 產生 `ceil((stop - start) / step)` 個值 `start + i * step`，每個值都由 `i` 計算，因此不會累積誤差；步長為零或 NaN 時會 panic。`Range<f64>` 不是迭代器（[2.7.3](207-iter.md#273-step單步抽象)）。
 
-**`gcd` / `lcm`。**每個固定寬度整數型別都有 `gcd(other)`，即最大公因數，絕不為負（兩個零時為 `0`；`12i32.gcd(-18) == 6`），以及 `lcm(other)`，即最小公倍數，絕不為負（任一為 0 時為 `0`）。結果放不下時會 panic，並提示改用 `int` 計算（`i64::MIN.gcd(0)`、溢位的 `lcm`）；`int` 有自己的 `gcd` / `lcm`（2.1.2）。
+**`gcd` / `lcm`**。每個固定寬度整數型別都有 `gcd(other)`，即最大公因數，絕不為負（兩個零時為 `0`；`12i32.gcd(-18) == 6`），以及 `lcm(other)`，即最小公倍數，絕不為負（任一為 0 時為 `0`）。結果放不下時會 panic，並提示改用 `int` 計算（`i64::MIN.gcd(0)`、溢位的 `lcm`）；`int` 有自己的 `gcd` / `lcm`（2.1.2）。
 
-**`is_close`。**`f64::is_close(self, other, rel: f64 = 1e-9, abs: f64 = 0.0, equal_nan: bool = false) -> bool` 即 Python 的 `math.isclose`：當兩者相等，或兩者皆有限且 `|a - b| <= max(rel * max(|a|, |b|), abs)` 時為 `true`。它對兩個值是對稱的。預設的 `rel` 要求大約九位相同的數字；接近零時只有 `abs` 有作用（`1e-12.is_close(0.0)` 是 `false`，`1e-12.is_close(0.0, abs: 1e-9)` 是 `true`）。無窮大只與自己接近；NaN 不與任何值接近，除非指定 `equal_nan` 且兩者都是 NaN。`f32::is_close` 的形式相同，預設 `rel` 為 2^-20（最後一位的八個單位；1e-9 低於 `f32` 的精度）。陣列形式是 `Array::is_close` / `all_close`（[2.9.14](209-collections.md#2914-arrayt-const-n-usizen-維陣列)）。
+**`is_close`**。`f64::is_close(self, other, rel: f64 = 1e-9, abs: f64 = 0.0, equal_nan: bool = false) -> bool` 即 Python 的 `math.isclose`：當兩者相等，或兩者皆有限且 `|a - b| <= max(rel * max(|a|, |b|), abs)` 時為 `true`。它對兩個值是對稱的。預設的 `rel` 要求大約九位相同的數字；接近零時只有 `abs` 有作用（`1e-12.is_close(0.0)` 是 `false`，`1e-12.is_close(0.0, abs: 1e-9)` 是 `true`）。無窮大只與自己接近；NaN 不與任何值接近，除非指定 `equal_nan` 且兩者都是 NaN。`f32::is_close` 的形式相同，預設 `rel` 為 2^-20（最後一位的八個單位；1e-9 低於 `f32` 的精度）。陣列形式是 `Array::is_close` / `all_close`（[2.9.14](209-collections.md#2914-arrayt-const-n-usizen-維陣列)）。
 
 **`comb` / `perm` / `fsum`**（`core::num`）：
 
@@ -644,6 +644,6 @@ fn fsum<I: IntoIterator<Item = f64>>(xs: I) -> f64; // correctly rounded sum; Py
 
 `comb` 與 `perm` 是精確的（`comb(100, 50) == 100891344545564193334812497256`）。`fsum` 將精確的總和保存為不重疊的部分和串列（Shewchuk 1997），並只捨入一次（捨入到最近值，平手時取偶數），因此結果與順序及數量級無關（`fsum([0.1; 10]) == 1.0`、`fsum([1e100, 1.0, -1e100]) == 1.0`）。值中有無窮大或 NaN 時得到一般的 IEEE 結果（`inf - inf` 是 NaN），累計和超出 `f64` 範圍時也一樣（`[1e308, 1e308, -1e308]` 得到 `inf`）。它的成本約為一般迴圈的三倍；`Array::sum` 採用成對加總，速度快。
 
-**`div_floor` / `rem_floor`。**每個整數型別都有 `div_floor(rhs)`，即向負無窮大捨入的商（Python 的 `//`），以及 `rem_floor(rhs)`，即與除數同號的餘數（Python 的 `%`，Nabi 的 `%%`）：`(-7).div_floor(2) == -4`、`(-7).rem_floor(2) == 1`。對無號型別而言，它們就是 `/` 與 `%`。
+**`div_floor` / `rem_floor`**。每個整數型別都有 `div_floor(rhs)`，即向負無窮大捨入的商（Python 的 `//`），以及 `rem_floor(rhs)`，即與除數同號的餘數（Python 的 `%`，Nabi 的 `%%`）：`(-7).div_floor(2) == -4`、`(-7).rem_floor(2) == 1`。對無號型別而言，它們就是 `/` 與 `%`。
 
 **`Complex<T>`**（`core::num::Complex`）是 `struct Complex<T> { pub re: T; pub im: T; }`，對 `T: FloatingPoint` 提供 `new`、`i()`、`from_polar`、`abs`、`norm_sqr`、`arg`、`conj`、`recip`、`exp`、`ln`、`sqrt`（主平方根，每個部分都達到完整的相對精度，包括極小的虛部）、`powi`、`pow`、`is_nan`；複數之間以及與任一側的實數 `T` 之間的 `+ - * /` 與一元 `-`（`2.0 * z`、`z / 2.0`；實數在左側僅限 `f32` 與 `f64`）、`Zero`、`One`、`PartialEq`、`Debug`（`Complex { re: 1.0, im: 2.0 }`）與 `Display`（`1+2i`、`1-2i`）。數值後綴 `i` 由 core 以 `#[literal(number "i", priority = -1)]` 註冊，產生虛數 `Complex<f64>`：`3.0 + 4.0i`、`1i`。套件自己的 `i` 處理器優先於它（[refs-lang 6.5.5](../../refs-lang/006-meta-system/605-literal-magic.md#655-多個處理器歧義)）。

@@ -161,10 +161,10 @@ for await v in rx {
 |----------------|----------------------|--------------------------|
 | `Sender<T>`    | `core::channel` | 原子引用计数 + 队列           |
 | `Receiver<T>`  | `core::channel` | 队列 + 停驻（parking）        |
-| `channel<T>()`, `channel_bounded<T>(cap)` | `core::channel` | 类似 Arc 的内部状态 |
-| `SendError<T>`, `TrySendError<T>` | `core::channel` | 携带未发送值的错误 |
-| `Empty`, `Closed` | `core::channel` | `try_recv` 的结果 |
+| `channel<T>()`、`channel_bounded<T>(cap)` | `core::channel` | 类似 Arc 的内部状态 |
+| `SendError<T>`、`TrySendError<T>` | `core::channel` | 携带未发送值的错误 |
+| `Empty`、`Closed` | `core::channel` | `try_recv` 的结果 |
 | `ReceiverIter<T>` | `core::channel` | `for x in rx` 的迭代器 |
-| `RecvFuture<T>`, `SendFuture<T>` | `core::channel` | `recv_async` / `send_async` 的 future |
+| `RecvFuture<T>`、`SendFuture<T>` | `core::channel` | `recv_async` / `send_async` 的 future |
 
 内部队列方面，有界通道使用类似 Tokio mpsc 的环形缓冲区，无界通道使用分段链表。有界通道的队列是无锁的；无界通道的分段链表可能使用锁。

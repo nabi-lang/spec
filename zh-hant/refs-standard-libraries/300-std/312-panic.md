@@ -15,7 +15,7 @@ pub fn take_hook();
 
 ## 3.12.1. `set_hook` / `take_hook`
 
-`set_hook(hook)` 讓 `hook` 從此在行程中的每一次 panic 時執行：在觸發 panic 的執行緒上，於報告印出之後、行程結束（代碼 101）、中止（C 框架下的 panic，[refs-lang 5.9.12](../../refs-lang/005-modules/509-extern-block.md#5912-ffi-安全的責任)）或復原（`#[on_panic]`，[refs-lang 5.9.10](../../refs-lang/005-modules/509-extern-block.md#on_panic給-c-一個值而不是中止)）之前執行。鉤子可以是任何 `fn(PanicInfo)` 值，包括閉包。之後的 `set_hook` 會取代它，`take_hook()` 則移除它。鉤子內發生的 panic 會被報告，但不會再次傳給鉤子。鉤子最多只看到訊息的前 1024 個位元組。`PanicInfo` 實作 `Debug`。
+`set_hook(hook)` 讓 `hook` 從此在行程中的每一次 panic 時執行：在觸發 panic 的執行緒上，於報告印出之後、行程結束（結束碼 101）、中止（C 框架下的 panic，[refs-lang 5.9.12](../../refs-lang/005-modules/509-extern-block.md#5912-ffi-安全的責任)）或復原（`#[on_panic]`，[refs-lang 5.9.10](../../refs-lang/005-modules/509-extern-block.md#on_panic給-c-一個值而不是中止)）之前執行。鉤子可以是任何 `fn(PanicInfo)` 值，包括閉包。之後的 `set_hook` 會取代它，`take_hook()` 則移除它。鉤子內發生的 panic 會被報告，但不會再次傳給鉤子。鉤子最多只看到訊息的前 1024 個位元組。`PanicInfo` 實作 `Debug`。
 
 ```nabi
 fn main() {

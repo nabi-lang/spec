@@ -1,6 +1,6 @@
 # 8.3. mutator TLS 槽布局
 
-每个 OS 线程（= 调度器工作线程 = mutator）都在线程局部存储（TLS）中的固定位置保存运行时信息。编译器生成的代码与运行时读写同一组 TLS 槽，因此本文档定义每个槽的偏移和类型。
+每个操作系统线程（= 调度器工作线程 = mutator）都在线程局部存储（TLS）中的固定位置保存运行时信息。编译器生成的代码与运行时读写同一组 TLS 槽，因此本文档定义每个槽的偏移和类型。
 
 ## 8.3.1. TLS 槽结构
 
@@ -31,7 +31,7 @@ TLS 槽是由运行时定义并导出的一个 `thread_local` 块 `nabi_tls`；�
 > Nabi 的运行时把下列槽放在 ABI 部分之后。整个块为 16p+16 字节。
 >
 > - 10p+10：`no_safepoint`（`u8`）。调试版 nabic 用 `nabi_nosp_enter` / `nabi_nosp_leave` 包围的 `#[no_safepoint]` 调用的深度（[8.4.10](804-safepoint.md#8410-原生调用)）。
-> - 10p+11：`attached`（`u8`）。线程加入运行时的方式：0 表示尚未加入或已不再加入，1 表示通过 `nabi_thread_init` 或是运行时启动的线程，2 表示在 `extern "C"` 定义的 C 入口处接入（8.3.8）。
+> - 10p+11：`attached`（`u8`）。线程加入运行时的方式：0 表示尚未加入或已经退出，1 表示通过 `nabi_thread_init` 加入或由运行时启动，2 表示在 `extern "C"` 定义的 C 入口处接入（8.3.8）。
 > - 10p+16：`task_lane`
 > - 11p+16：`static_inits`
 > - 12p+16：`held_locks`。本线程持有的锁。在会话宿主中，已经结束的线程在阻塞时持有的锁会被释放。
@@ -40,7 +40,7 @@ TLS 槽是由运行时定义并导出的一个 `thread_local` 块 `nabi_tls`；�
 
 ## 8.3.2. 访问机制
 
-每种 OS 和架构都有各自的 TLS 访问机制。
+每种操作系统和架构都有各自的 TLS 访问机制。
 
 | 平台           | 机制                                  |
 |----------------|---------------------------------------|
@@ -91,7 +91,7 @@ allocate(size):
 
 ### `nabi_tls_wb_log_cursor` / `nabi_tls_wb_log_limit`（ptr）
 
-[屏障与根追踪](../007-runtime/704-barriers-and-roots.md)中写屏障日志缓冲区的游标和界限。
+[屏障与根跟踪](../007-runtime/704-barriers-and-roots.md)中写屏障日志缓冲区的游标和界限。
 
 ```
 write_barrier(p, q):
@@ -127,7 +127,7 @@ mutator 的当前状态。
 
 ## 8.3.5. 32 位与 64 位
 
-指针槽为 p 字节（64 位上为 8，32 位上为 4），因此 32 位与 64 位之间的偏移按表中给出的方式不同。
+指针槽为 p 字节（64 位上为 8，32 位上为 4），因此 32 位与 64 位上的偏移不同，具体见上表。
 
 ## 8.3.6. TLS 槽的初始化
 
@@ -180,7 +180,7 @@ if flag != 0 then bb_slow else bb_cont
 
 ### 影子栈头
 
-`nabi_tls` 偏移 0 处的槽（`nabi_tls_shadow_stack_top`）是[屏障与根追踪](../007-runtime/704-barriers-and-roots.md#741-根跟踪编译器直接生成的影子栈)中[影子栈](../000-meta/007-glossary.md#shadow-stack)链的头，即最内层 `ShadowFrame` 的地址（没有则为 null）。它是唯一的链头。编译器生成的代码在函数每条路径的第一个安全点之前链接帧，并在链接过帧的路径的每个 `return` 之前立即解除链接（8.4.7）。
+`nabi_tls` 偏移 0 处的槽（`nabi_tls_shadow_stack_top`）是[屏障与根跟踪](../007-runtime/704-barriers-and-roots.md#741-根跟踪编译器直接生成的影子栈)中[影子栈](../000-meta/007-glossary.md#shadow-stack)链的头，即最内层 `ShadowFrame` 的地址（没有则为 null）。它是唯一的链头。编译器生成的代码在函数每条路径的第一个安全点之前链接帧，并在链接过帧的路径的每个 `return` 之前立即解除链接（8.4.7）。
 
 ## 8.3.9. 稳定性
 

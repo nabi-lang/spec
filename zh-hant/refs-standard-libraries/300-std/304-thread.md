@@ -104,7 +104,7 @@ impl<T: Default> ThreadLocal<T> {
 
 ### panic 與 `JoinError`
 
-任何執行緒中的 panic 都會以結束代碼 101 終止整個行程。因此 `join` 絕不會收到其他執行緒的 panic，而 `thread::panicking()` 只對在行程結束期間、於觸發 panic 的執行緒上執行的程式碼（嵌入者的結束鉤子）為 true。`JoinError` 表示作業系統層級的 join 失敗（`JoinErrorKind::Os`），或者對以失敗的 REPL 儲存格結束的執行緒表示 `JoinErrorKind::Lost`（[refs-lang 9.7.0](../../refs-lang/009-tools/907-jit-cells.md#970-儲存格工作階段的規則)），顯示為「thread join failed: the thread ended with a failed REPL cell」。
+任何執行緒中的 panic 都會以結束碼 101 終止整個行程。因此 `join` 絕不會收到其他執行緒的 panic，而 `thread::panicking()` 只對在行程結束期間、於觸發 panic 的執行緒上執行的程式碼（嵌入者的結束鉤子）為 true。`JoinError` 表示作業系統層級的 join 失敗（`JoinErrorKind::Os`），或者對以失敗的 REPL 儲存格結束的執行緒表示 `JoinErrorKind::Lost`（[refs-lang 9.7.0](../../refs-lang/009-tools/907-jit-cells.md#970-儲存格工作階段的規則)），顯示為「thread join failed: the thread ended with a failed REPL cell」。
 
 `JoinErrorKind::Taken`：該控制代碼或其副本已經 join 或 detach。第二次 `join` 會擲回它；第二次 `detach` 不做任何事。
 
@@ -162,7 +162,7 @@ let all = SEEN.take();                   // the list itself, leaving []
 
 擁有形式將值移入與移出：`set(v)` 儲存 `v`，`replace(v)` 儲存 `v` 並回傳舊值，`take()` 回傳該值並留下 `T::default()`。`get()` 回傳副本，需要 `T: Copy`；對其他任何 `T` 都是編譯錯誤（請使用 `with`、`replace` 或 `take`）。`unsafe fn as_ptr()` 指向目前執行緒的值；該槽位在執行緒結束前保持固定，透過該指標進行的讀寫由呼叫者負責。
 
-`with` 接受無法 `await` 的閉包，因此執行緒的值絕不會跨越 `await` 被持有，因為任務可能在 `await` 之後於另一個執行緒上繼續執行。
+`with` 接受無法 `await` 的閉包，因此執行緒的值絕不會被跨越 `await` 持有；任務在 `await` 之後可能於另一個執行緒上繼續執行。
 
 ## 3.4.5. impl / target
 

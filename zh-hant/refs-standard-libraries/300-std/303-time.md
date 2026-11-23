@@ -13,9 +13,9 @@
 | `SystemTime` | `std::time`  | 牆上時鐘（UTC，可由 NTP 調整） | 檔案 mtime / 顯示給使用者 |
 | `BootTime`   | `std::time`  | 自開機以來的時間（含休眠） | 行動裝置 / 筆電應用程式 |
 
-`Duration` 的內部表示是 `i64` 奈秒。Rust 採用的 `u128` 被判定為過度；`i64` 已涵蓋約 ±292 年，對實務用途綽綽有餘。
+`Duration` 的內部表示是 `i64` 奈秒。Rust 採用的 `u128` 被認為過大；`i64` 已涵蓋約 ±292 年，對實務用途綽綽有餘。
 
-**所有時鐘適用同一條規則。** 任何時鐘兩次讀數之間的間隔，都是精確的有號 `Duration`：`b` 較晚時 `a.duration_since(b)` 為負值，絕不會是錯誤、`none` 或零。`elapsed()` 在單調時鐘上測量，因此牆上時鐘的跳動不會讓它變成負值。這是 Go 的規則（`time.Sub`、`time.Since`）。
+**所有時鐘適用同一條規則**。任何時鐘兩次讀數之間的間隔，都是精確的有號 `Duration`：`b` 較晚時 `a.duration_since(b)` 為負值，絕不會是錯誤、`none` 或零。`elapsed()` 在單調時鐘上測量，因此牆上時鐘的跳動不會讓它變成負值。這是 Go 的規則（`time.Sub`、`time.Since`）。
 
 ## 3.3.2. `Instant`：單調時鐘
 
@@ -95,11 +95,11 @@ impl Sub<Duration> for SystemTime { type Output = SystemTime; ... }
 
 `SystemTime` 是相對於 `UNIX_EPOCH` 的 `i64` 奈秒，因此在每個目標上的範圍都約為 ±292 年。32 位元目標透過 64 位元時間介面（`time64`）讀取時鐘，因此沒有 2038 年的限制。
 
-`SystemTime` 的行為相當不同。時間可能因 NTP 調整或使用者變更而倒退，而且由於它是相對於 UNIX_EPOCH 的絕對時間，因此**可以序列化**。所以它可以在跨行程之間有意義地比較。
+`SystemTime` 的行為相當不同。時間可能因 NTP 調整或使用者變更而倒退，而且由於它是相對於 UNIX_EPOCH 的絕對時間，因此**可以序列化**。所以跨行程比較它也有意義。
 
 `duration_since` 是牆上讀數的有號差：較晚的 `earlier` 會得到負的 `Duration`，而不是錯誤。`unix_secs` 向下捨入，因此對於秒以下部分為 `n` 的 `t`，`SystemTime::from_unix(t.unix_secs(), n)` 會還原出 `t`，在紀元之前也是如此。
 
-**單調讀數。** `SystemTime::now()` 也會讀取單調時鐘（`Instant` 的時鐘）。`elapsed()` 在該讀數上測量，因此 `now()` 與 `elapsed()` 之間牆上時鐘的跳動不會改變結果。與 `Duration` 進行的 `+` / `-` / `checked_*` 會同時移動兩個讀數。不是來自 `now()` 的 `SystemTime`（`from_unix`、`UNIX_EPOCH`、`Metadata::modified`）沒有單調讀數，其 `elapsed()` 是 `SystemTime::now().duration_since(self)`。比較、相等性與雜湊只使用牆上讀數。
+**單調讀數**。`SystemTime::now()` 也會讀取單調時鐘（`Instant` 的時鐘）。`elapsed()` 在該讀數上測量，因此 `now()` 與 `elapsed()` 之間牆上時鐘的跳動不會改變結果。與 `Duration` 進行的 `+` / `-` / `checked_*` 會同時移動兩個讀數。不是來自 `now()` 的 `SystemTime`（`from_unix`、`UNIX_EPOCH`、`Metadata::modified`）沒有單調讀數，其 `elapsed()` 是 `SystemTime::now().duration_since(self)`。比較、相等性與雜湊只使用牆上讀數。
 
 ### 範例
 
@@ -132,7 +132,7 @@ impl BootTime {
 
 與 `Instant` 相同，`earlier` 較晚時 `duration_since` 為負值。`BootTime` 和 `Instant` 的差別在於休眠期間的行為。`Instant` 與 Linux 的 `CLOCK_MONOTONIC` 一樣在休眠期間停止，而 `BootTime` 依循 `CLOCK_BOOTTIME`，在休眠期間持續前進。
 
-當行動裝置或筆電應用程式必須測量「實際經過的時間（含休眠）」時，這個差別具有決定性。截至 2026 年，Rust 仍沒有這方面的穩定 API；Nabi 及早將它公開在表面上。
+當行動裝置或筆電應用程式必須測量「實際經過的時間（含休眠）」時，這個差別具有決定性。截至 2026 年，Rust 仍沒有這方面的穩定 API；Nabi 及早將它直接公開。
 
 ## 3.3.5. `Duration`
 
@@ -181,7 +181,7 @@ impl Debug for Duration { ... }         // same as Display
 
 兩個時間長度的 `a.min(b)` 是 `Ord::min`。
 
-`Display` 寫出一個符合數量級的單位：絕對值至少 1 秒時用 `s`，至少 1 ms 時用 `ms`，至少 1 µs 時用 `µs`，否則用 `ns`。以該單位相除的整數部分之後接著以小數表示的餘數；尾端的零會移除，餘數為 0 時不寫小數點。負值會加上前綴 `-`。
+`Display` 寫出一個符合數量級的單位：絕對值至少 1 秒時用 `s`，至少 1 ms 時用 `ms`，至少 1 µs 時用 `µs`，否則用 `ns`。先寫出除以該單位所得的整數部分，再以小數寫出餘數；尾端的零會移除，餘數為 0 時不寫小數點。負值會加上前綴 `-`。
 
 ```nabi
 Duration::ms(1234);      // "1.234s"
@@ -325,15 +325,15 @@ impl Period {
 // Period + Period, Period - Period, -Period; Default is ZERO
 ```
 
-**範圍與曆法。** `Date` 是 `MIN_YEAR` 到 `MAX_YEAR` 之間外推格里曆的一天；與 ISO 8601 的計法相同，第 0 年是西元前 1 年。日數計算使用 Howard Hinnant 的民用曆演算法，在整個範圍內都是精確的。`unix_days` 從 1970-01-01 起算，該日為第 0 天。
+**範圍與曆法**。`Date` 是 `MIN_YEAR` 到 `MAX_YEAR` 之間外推格里曆的一天；與 ISO 8601 的計法相同，第 0 年是西元前 1 年。日數計算使用 Howard Hinnant 的民用曆演算法，在整個範圍內都是精確的。`unix_days` 從 1970-01-01 起算，該日為第 0 天。
 
-**錯誤的欄位會擲回，溢位的算術會觸發 panic。** 建構函式收到不構成日期或時間的欄位時（`Date::new(2023, 2, 29)`、`Time::new(24, 0, 0)`），會擲回一個指出該欄位與其範圍的 `ValueError`：`day 29 is out of range for 2023-02 (1..=28)`。超出範圍的算術（`Date::MAX.add_days(1)`）與 `Duration` 一樣會觸發 panic；`checked_*` 形式則改為回傳 `none`。
+**錯誤的欄位會擲回，溢位的算術會觸發 panic**。建構子收到不構成日期或時間的欄位時（`Date::new(2023, 2, 29)`、`Time::new(24, 0, 0)`），會擲回一個指出該欄位與其範圍的 `ValueError`：`day 29 is out of range for 2023-02 (1..=28)`。超出範圍的算術（`Date::MAX.add_days(1)`）與 `Duration` 一樣會觸發 panic；`checked_*` 形式則改為回傳 `none`。
 
-**月份會夾限。** 新月份有相同日期時，`add_months` 和 `add_years` 保留該月中的日，否則取新月份的最後一天：2024-01-31 加一個月是 2024-02-29，2024-02-29 加一年是 2025-02-28。每次呼叫各自夾限，因此從 1 月 31 日起連續兩次 `add_months(1)` 會落在 3 月 29 日，而 `add_months(2)` 落在 3 月 31 日。`Date + Period` 先將年與月一起相加（只夾限一次），再加日數。這是 java.time 與 Temporal 的規則。
+**月份會夾限**。新月份有相同日期時，`add_months` 和 `add_years` 保留該月中的日，否則取新月份的最後一天：2024-01-31 加一個月是 2024-02-29，2024-02-29 加一年是 2025-02-28。每次呼叫各自夾限，因此從 1 月 31 日起連續兩次 `add_months(1)` 會落在 3 月 29 日，而 `add_months(2)` 落在 3 月 31 日。`Date + Period` 先將年與月一起相加（只夾限一次），再加日數。這是 java.time 與 Temporal 的規則。
 
 **`until`** 是從 `self` 到 `later` 的曆法間隔：先是整年，再是整月，最後是日數，全部帶有該間隔的正負號，其選法使得對任意兩個日期都有 `d + d.until(e) == e`。`days_since` 則是單純的日數差。
 
-**ISO 週。** `iso_week` 是 ISO 8601 的週編號：每週從星期一開始，而第 1 週包含該年的第一個星期四，因此 2021-01-03 屬於 2020 年第 53 週，2024-12-30 屬於 2025 年第 1 週。
+**ISO 週**。`iso_week` 是 ISO 8601 的週編號：每週從星期一開始，而第 1 週包含該年的第一個星期四，因此 2021-01-03 屬於 2020 年第 53 週，2024-12-30 屬於 2025 年第 1 週。
 
 ### 範例
 
@@ -430,11 +430,11 @@ impl Add<Period> for Zoned { ... }     // calendar time, as add_months then add_
 impl Sub<Period> for Zoned { ... }
 ```
 
-**時區從哪裡來。** `TimeZone::get` 以 TZif 檔案（RFC 8536，版本 1 至 4）的形式讀取 tz 資料庫（IANA）中的時區：設定了 `$TZDIR` 時從該處讀取，否則從 `/usr/share/zoneinfo`、`/usr/lib/zoneinfo`、`/usr/share/lib/zoneinfo` 和 `/etc/zoneinfo` 中第一個存在的目錄讀取。超過檔案中最後一次轉換之後，由其結尾的 POSIX `TZ` 規則給出時差，因此遙遠未來的日期會遵循現行規則。`UTC`、其他 UTC 名稱（`Etc/UTC`、`GMT`、`Zulu`、...）和時差（`+09:00`）不需要資料庫即可使用。其他任何名稱在沒有資料庫時都會擲回，錯誤會說明系統沒有資料庫：Windows 與瀏覽器沒有 tz 資料庫，而 WASI 程式只有在主機授予該目錄時才看得到。`from_tzif` 讀取程式自行帶入的 TZif 檔案（例如用 `include_bytes!`），可在每個目標上使用。`from_posix` 接受 POSIX `TZ` 規則（`EST5EDT,M3.2.0,M11.1.0`；其時差以西為正，與 POSIX 的寫法相同）。
+**時區從哪裡來**。`TimeZone::get` 以 TZif 檔案（RFC 8536，版本 1 至 4）的形式讀取 tz 資料庫（IANA）中的時區：設定了 `$TZDIR` 時從該處讀取，否則從 `/usr/share/zoneinfo`、`/usr/lib/zoneinfo`、`/usr/share/lib/zoneinfo` 和 `/etc/zoneinfo` 中第一個存在的目錄讀取。超過檔案中最後一次轉換之後，由其結尾的 POSIX `TZ` 規則給出時差，因此遙遠未來的日期會遵循現行規則。`UTC`、其他 UTC 名稱（`Etc/UTC`、`GMT`、`Zulu`、...）和時差（`+09:00`）不需要資料庫即可使用。其他任何名稱在沒有資料庫時都會擲回，錯誤會說明系統沒有資料庫：Windows 與瀏覽器沒有 tz 資料庫，而 WASI 程式只有在主機授予該目錄時才看得到。`from_tzif` 讀取程式自行帶入的 TZif 檔案（例如用 `include_bytes!`），可在每個目標上使用。`from_posix` 接受 POSIX `TZ` 規則（`EST5EDT,M3.2.0,M11.1.0`；其時差以西為正，與 POSIX 的寫法相同）。
 
-**本地時區。** `TimeZone::local()` 先讀取 `$TZ`：資料庫名稱（`Asia/Seoul`）、TZif 檔案的路徑（`/usr/share/zoneinfo/Asia/Seoul`，開頭的 `:` 會去掉）或 POSIX 規則。沒有 `$TZ` 時，它讀取 `/etc/localtime`；若 `/etc/timezone` 指名了某個時區，就以該名稱命名，否則命名為 `localtime`。這些都無法給出時區時，就是 UTC。它每次呼叫都會讀取檔案，因此程式應當保留結果。
+**本地時區**。`TimeZone::local()` 先讀取 `$TZ`：資料庫名稱（`Asia/Seoul`）、TZif 檔案的路徑（`/usr/share/zoneinfo/Asia/Seoul`，開頭的 `:` 會去掉）或 POSIX 規則。沒有 `$TZ` 時，它讀取 `/etc/localtime`；若 `/etc/timezone` 指名了某個時區，就以該名稱命名，否則命名為 `localtime`。這些都無法給出時區時，就是 UTC。它每次呼叫都會讀取檔案，因此程式應當保留結果。
 
-**間隙與重疊。** 時鐘向前撥（間隙）時，有些本地時間從未發生；向後撥（重疊）時，有些本地時間發生兩次。`in_zone_with` 與 java.time 和 Temporal 一樣接受一個選擇：
+**間隙與重疊**。時鐘向前撥（間隙）時，有些本地時間從未發生；向後撥（重疊）時，有些本地時間發生兩次。`in_zone_with` 與 java.time 和 Temporal 一樣接受一個選擇：
 
 | `Disambiguation` | 重疊時（01:30 顯示兩次） | 間隙時（跳過 02:30，02:00 至 03:00） |
 |------------------|-----------------------------------|-------------------------------------------|
@@ -447,7 +447,7 @@ impl Sub<Period> for Zoned { ... }
 
 `is_dst_at` 和 `Zoned::is_dst` 回報時區資料中的日光節約時間旗標。大多數時區標記的是夏令時間；負 DST 的時區則改為標記冬令時間（`IST-1GMT0,M10.5.0,M3.5.0/1`，多數 tz 建置中 Europe/Dublin 的規則）。
 
-**相等性。** 兩個 `Zoned` 值只依其時刻判斷相等、排序與雜湊：`2024-01-01T09:00:00+09:00` 等於 `2024-01-01T00:00:00Z`。兩個 `TimeZone` 名稱相同時即相等。
+**相等性**。兩個 `Zoned` 值只依其時刻判斷相等、排序與雜湊：`2024-01-01T09:00:00+09:00` 等於 `2024-01-01T00:00:00Z`。兩個 `TimeZone` 名稱相同時即相等。
 
 ### 範例
 
@@ -493,9 +493,9 @@ EST EDT
 
 0..=9999 之外的年份與 ISO 8601 的擴充形式一樣，帶有正負號與六位數。小數以 3、6 或 9 位數寫出，取能容納它的最少位數，為零時則省略。時差為零的 `Zoned` 寫出 `Z`；其 `Debug` 會在方括號中加上時區名稱（`2024-03-10T03:30:00-04:00[America/New_York]`）。讀取帶有方括號時區的 `Zoned` 時會載入該時區；時差必須與之一致，否則錯誤會指出兩者（沒有時差時，本地時間以 `Compatible` 解析）。沒有方括號時，時區就是該固定時差。帶有時差的 `DateTime` 文字是錯誤，錯誤會說明應剖析為 `Zoned` 或 `SystemTime`。
 
-**錯誤會指出位置。** 剖析錯誤是一個 `ParseError`，其訊息指出位元組偏移量以及該處應有的內容：``cannot parse "2024/02/03": expected `-` after the year at byte 4, found `/` ``、`cannot parse "2024-13-01": month 13 is out of range (1..=12) at byte 5`。`position()` 是同一個偏移量。
+**錯誤會指出位置**。剖析錯誤是一個 `ParseError`，其訊息指出位元組偏移量以及該處應有的內容：``cannot parse "2024/02/03": expected `-` after the year at byte 4, found `/` ``、`cannot parse "2024-13-01": month 13 is out of range (1..=12) at byte 5`。`position()` 是同一個偏移量。
 
-**樣式。** `Date`、`Time`、`DateTime` 和 `Zoned` 上的 `format(pattern)` 寫出 strftime 風格的指示詞；`parse_with(text, pattern)` 讀回相同的指示詞。名稱為英文（C 地區設定）。
+**樣式**。`Date`、`Time`、`DateTime` 和 `Zoned` 上的 `format(pattern)` 寫出 strftime 風格的指示詞；`parse_with(text, pattern)` 讀回相同的指示詞。名稱為英文（C 地區設定）。
 
 | 指示詞 | 意義 | 指示詞 | 意義 |
 |-----------|---------|-----------|---------|
@@ -519,7 +519,7 @@ EST EDT
 
 `parse_with` 讀取最多到指示詞寬度的數字（`%Y` 最多 4 位數，帶正負號時為 6 位數），名稱不分大小寫、可為全名或三個字母，並讓樣式中的一個空格比對任意長度的連續空白字元。缺少的時間欄位為零；`Date` 需要年（`%Y`，或將 69..99 視為 19xx 的 `%y`），以及月與日或 `%j`。與日期不符的星期是錯誤。`%Z` 讀取 `UTC`、`GMT`、`UT`、`Z` 或像 `Europe/Paris` 這樣的時區名稱；像 `EST` 這樣的縮寫有歧義，會被拒絕，並提示改用 `%z`。`Zoned::parse_with` 需要時差、時區或 `%s`。`%C`、`%g`、`%G`、`%V`、`%U` 和 `%W` 只能寫出。
 
-**郵件與 HTTP。** `Zoned::to_rfc2822` 和 `Zoned::parse_rfc2822` 處理 RFC 5322 郵件的日期（`Sat, 14 Nov 2026 09:30:00 +0900`）；剖析時星期與秒數為選擇性，並接受過時的時區名稱（`GMT`、`EST`、`PDT`、...）。`SystemTime::to_http_date` 是 RFC 9110 的 IMF-fixdate（`Sun, 06 Nov 1994 08:49:37 GMT`），而 `parse_http_date` 也讀取伺服器必須接受的兩種過時形式（`Sunday, 06-Nov-94 08:49:37 GMT`、`Sun Nov  6 08:49:37 1994`）。
+**郵件與 HTTP**。`Zoned::to_rfc2822` 和 `Zoned::parse_rfc2822` 處理 RFC 5322 郵件的日期（`Sat, 14 Nov 2026 09:30:00 +0900`）；剖析時星期與秒數為選擇性，並接受過時的時區名稱（`GMT`、`EST`、`PDT`、...）。`SystemTime::to_http_date` 是 RFC 9110 的 IMF-fixdate（`Sun, 06 Nov 1994 08:49:37 GMT`），而 `parse_http_date` 也讀取伺服器必須接受的兩種過時形式（`Sunday, 06-Nov-94 08:49:37 GMT`、`Sun Nov  6 08:49:37 1994`）。
 
 ```nabi
 impl Date {

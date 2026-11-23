@@ -138,7 +138,7 @@ impl StrBuf {
 impl !Sync for StrBuf {}
 ```
 
-與集合型別一樣，`StrBuf` 是參考控制代碼，因此其方法接受 `self`（[2.9](209-collections.md)）；控制代碼的複本共用同一個緩衝區，所以它不是 `Sync`（[2.13.9](213-marker.md#2139-send--sync執行緒邊界標記)）。它顯示為其內容。
+與集合型別一樣，`StrBuf` 是參照控制代碼，因此其方法接受 `self`（[2.9](209-collections.md)）；控制代碼的複本共用同一個緩衝區，所以它不是 `Sync`（[2.13.9](213-marker.md#2139-send--sync執行緒邊界標記)）。它顯示為其內容。
 
 ```nabi
 let buf = StrBuf::new();
@@ -362,7 +362,7 @@ let n: c_char = c'\n';       //→ 10
 
 ## 2.15.6. UTF-8 不變式：行程內的每個字串
 
-`str` 始終保證是有效的 UTF-8，理由如下。建構函式會驗證：`str::from_utf8(bytes)` 遇到無效的位元組序列時擲回 `Utf8Error`（`throws (Utf8Error)`）。切片會驗證位元組邊界，拒絕落在多位元組序列中間的位置。`StrBuf::push` 或 `push_str` 等原地修改也會維持 UTF-8 完整性。只有 `unsafe` 程式碼能繞過驗證：`StrBuf::push_byte`（不經檢查附加一個位元組的 `unsafe fn`）與 `bare::mem::transmute_unchecked`。
+`str` 始終保證是有效的 UTF-8，理由如下。建構子會驗證：`str::from_utf8(bytes)` 遇到無效的位元組序列時擲回 `Utf8Error`（`throws (Utf8Error)`）。切片會驗證位元組邊界，拒絕落在多位元組序列中間的位置。`StrBuf::push` 或 `push_str` 等原地修改也會維持 UTF-8 完整性。只有 `unsafe` 程式碼能繞過驗證：`StrBuf::push_byte`（不經檢查附加一個位元組的 `unsafe fn`）與 `bare::mem::transmute_unchecked`。
 
 ### 為何限制繞過驗證
 

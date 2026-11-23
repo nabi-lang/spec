@@ -19,7 +19,7 @@ nabic build --emit=c-header      # C header for the package's exports (9.3.3)
 
 `mir` 是代码生成器所编译的 nabi-mir：在 `-O0` 以上的级别，是优化之后的结果（[9.2.10](902-aot-pipeline.md#9210-优化级别)）。`obj` 是它写出的目标文件。`objdump -d` 这样的反汇编器可以显示 `obj` 的机器码。
 
-`asm` 是以汇编源代码形式表示的目标文件，与 `clang -S` 写出的形式相同：为目标汇编它（`clang -c`、`llvm-mc -filetype=obj`）得到的目标文件，与 `obj` 有相同的代码字节、在相同偏移处指向相同位置的同类型重定位以及相同的符号，因此链接和运行的结果也相同。它从 `nabic` 写出的目标文件读回，采用目标的 GNU / LLVM 语法（在 x86_64 和 x86 上是 `.intel_syntax noprefix` 下的 Intel 语法）。每个节都带有按目标文件格式命名的 `.section` 指令（ELF 的 `.text.<symbol>`、`.rodata.<symbol>`；Mach-O 的 `__TEXT,__text`；COFF 带有选择方式和 leader 的 `.text` COMDAT，以及与其函数关联的 `.pdata`）和它的 `.p2align`。符号带有其绑定和可见性（`.globl`、`.weak`、`.hidden`；ELF 上的 `.type` 和 `.size`；Mach-O 上的 `.private_extern` 和 `.weak_definition`；COFF 上的 `.def`；powerpc64 上的 `.localentry`）。每个函数就是代码生成器所编码的那些指令：分支目标是局部标签（`.LBB0_3`；在 Mach-O 和 x86 Windows 上是 `LBB0_3`），每个被重定位的字段都是让汇编器发出该重定位的表达式（`call nabi_panic_at@PLT`、`[rip + x@GOTPCREL]`、`[rip + x@GOTTPOFF]`、`[rcx + x@SECREL32]`、`[ebx + s@GOTOFF]`、`adrp x0, s@PAGE` / `:lo12:s`、`x@TLVPPAGE`、`#:lower16:(s-(.+16))`、`.word x(GOT_PREL)+0x1c`、`%pcrel_hi(s)` 配合 `%pcrel_lo(.Lpcrel_hi0)`、`s@toc@ha`、`x@got@tprel@l`、`brasl %r14, f@PLT`、`x@INDNTPOFF`、..）。如果某种编码不是汇编器根据指令文本会选择的编码，则在语法允许处强制指定（长分支上的 `{disp32}`、`{disp8}`、`{rex}`，以及表示另一种 `mov` 形式的 `mov.s`）；否则该指令写成它的字节，文本放在注释中（x86 的栈帧建立指令 `sub rsp, imm32`，其立即数可以放进 8 位）。数据（字符串字面量、静态变量、GC 类型描述符、扫描表、虚表）是 `.asciz`、`.byte`、`.zero` 以及指明其目标的指针大小指令（`.quad`、`.long s-.`、`.rva`、`.secrel32`、`.secidx`）。展开表是汇编器据以构建它们的指令，每条紧跟在它所描述的指令之后：ELF 的 `.eh_frame`（汇编器的 CIE 即 `nabic` 的 CIE）以及 Mach-O arm64 的 compact unwind（汇编器根据这些指令所描述的帧记录和寄存器对推导出它）使用 `.cfi_startproc`、`.cfi_def_cfa_offset`、`.cfi_def_cfa_register`、`.cfi_offset` 和 `.cfi_endproc`；x64 COFF 的 `.pdata` / `.xdata` 使用 `.seh_proc`、`.seh_pushreg`、`.seh_stackalloc`、`.seh_setframe`、`.seh_savereg`、`.seh_savexmm`、`.seh_endprologue` 和 `.seh_endproc`；32 位 ARM 的 `.ARM.exidx` 使用 `.fnstart`、`.save`、`.setfp`（或 `.cantunwind`）和 `.fnend`。汇编器生成的表解码结果相同（`llvm-dwarfdump --eh-frame`、`llvm-readobj --unwind`、`llvm-objdump --unwind-info`）。arm64 Windows 把它的 `.pdata` / `.xdata` 作为带重定位的数据保留：在 `nabic` 逐条写出展开代码的地方，汇编器会把它们打包（打包的 `.pdata` 条目、与序言共享代码的尾声）。`-g` 的调试节（DWARF、CodeView）同样是数据，32 位 ARM 的构建属性是 `.eabi_attribute` 指令。RISC-V 源代码以 `.option arch`、`.option norvc` 和 `.option norelax` 开头；16 位压缩形式的指令（`-O0` 以上）写成其 `c.` 助记符（`c.addi sp, -0x10`、`c.beqz a0, .LBB0_3`），位于 `.option rvc` 之下，并在下一条 32 位指令之前切回 `.option norvc`；它的 ELF 标志仍来自汇编器的选项（`clang --target=riscv64-linux-gnu`，或 `llvm-mc -mattr=+m,+a,+f,+d,+c -target-abi=lp64d`）。汇编器可能写得不同、但含义相同的部分有：针对局部符号所在节、带该符号偏移的重定位；它总会添加的节符号、映射符号（`$x`、`$d`）和 Mach-O `ltmp` 符号；作为符号保留的 RISC-V 局部标签；x86_64 `.eh_frame` 的 `SHT_X86_64_UNWIND` 类型；在节内解析的 Mach-O 函数对自身的调用及其 compact unwind 条目；32 位 ARM 的硬浮点 ELF 标志，它没有指令可以设置（由构建属性表明）；COFF 弱外部符号的默认符号名称（`.weak.<symbol>.default`，带汇编器添加的后缀）；展开表的布局：在 `nabic` 共享一个 `UNWIND_INFO` 的地方，汇编器为每个函数生成一个 x64 `UNWIND_INFO`，以及 32 位 ARM 短形式的 `pop {r4-r11, lr}`。
+`asm` 是以汇编源代码形式表示的目标文件，与 `clang -S` 写出的形式相同：为目标汇编它（`clang -c`、`llvm-mc -filetype=obj`）得到的目标文件，与 `obj` 有相同的代码字节、在相同偏移处指向相同位置的同类型重定位以及相同的符号，因此链接和运行的结果也相同。它从 `nabic` 写出的目标文件读回，采用目标的 GNU / LLVM 语法（在 x86_64 和 x86 上是 `.intel_syntax noprefix` 下的 Intel 语法）。每个节都带有按目标文件格式命名的 `.section` 指令（ELF 的 `.text.<symbol>`、`.rodata.<symbol>`；Mach-O 的 `__TEXT,__text`；COFF 带有选择方式和 leader 的 `.text` COMDAT，以及与其函数关联的 `.pdata`）和它的 `.p2align`。符号带有其绑定和可见性（`.globl`、`.weak`、`.hidden`；ELF 上的 `.type` 和 `.size`；Mach-O 上的 `.private_extern` 和 `.weak_definition`；COFF 上的 `.def`；powerpc64 上的 `.localentry`）。每个函数就是代码生成器所编码的那些指令：分支目标是局部标签（`.LBB0_3`；在 Mach-O 和 x86 Windows 上是 `LBB0_3`），每个被重定位的字段都是让汇编器发出该重定位的表达式（`call nabi_panic_at@PLT`、`[rip + x@GOTPCREL]`、`[rip + x@GOTTPOFF]`、`[rcx + x@SECREL32]`、`[ebx + s@GOTOFF]`、`adrp x0, s@PAGE` / `:lo12:s`、`x@TLVPPAGE`、`#:lower16:(s-(.+16))`、`.word x(GOT_PREL)+0x1c`、`%pcrel_hi(s)` 配合 `%pcrel_lo(.Lpcrel_hi0)`、`s@toc@ha`、`x@got@tprel@l`、`brasl %r14, f@PLT`、`x@INDNTPOFF`、..）。如果某种编码不是汇编器根据指令文本会选择的编码，则在语法允许处强制指定（长分支上的 `{disp32}`、`{disp8}`、`{rex}`，以及表示另一种 `mov` 形式的 `mov.s`）；否则该指令写成它的字节，文本放在注释中（x86 的栈帧建立指令 `sub rsp, imm32`，其立即数可以放进 8 位）。数据（字符串字面量、静态变量、GC 类型描述符、扫描表、虚表）是 `.asciz`、`.byte`、`.zero` 以及指明其目标的指针大小指令（`.quad`、`.long s-.`、`.rva`、`.secrel32`、`.secidx`）。展开表是汇编器据以构建它们的指令，每条紧跟在它所描述的指令之后：ELF 的 `.eh_frame`（汇编器的 CIE 即 `nabic` 的 CIE）以及 Mach-O arm64 的 compact unwind（汇编器根据这些指令所描述的帧记录和寄存器对推导出它）使用 `.cfi_startproc`、`.cfi_def_cfa_offset`、`.cfi_def_cfa_register`、`.cfi_offset` 和 `.cfi_endproc`；x64 COFF 的 `.pdata` / `.xdata` 使用 `.seh_proc`、`.seh_pushreg`、`.seh_stackalloc`、`.seh_setframe`、`.seh_savereg`、`.seh_savexmm`、`.seh_endprologue` 和 `.seh_endproc`；32 位 ARM 的 `.ARM.exidx` 使用 `.fnstart`、`.save`、`.setfp`（或 `.cantunwind`）和 `.fnend`。汇编器生成的表解码结果相同（`llvm-dwarfdump --eh-frame`、`llvm-readobj --unwind`、`llvm-objdump --unwind-info`）。arm64 Windows 把它的 `.pdata` / `.xdata` 作为带重定位的数据保留：在 `nabic` 逐条写出展开代码的地方，汇编器会把它们打包（打包的 `.pdata` 条目、与序言共享代码的尾声）。`-g` 的调试节（DWARF、CodeView）同样是数据，32 位 ARM 的构建属性是 `.eabi_attribute` 指令。RISC-V 源代码以 `.option arch`、`.option norvc` 和 `.option norelax` 开头；16 位压缩形式的指令（`-O0` 以上）写成其 `c.` 助记符（`c.addi sp, -0x10`、`c.beqz a0, .LBB0_3`），位于 `.option rvc` 之下，并在下一条 32 位指令之前切回 `.option norvc`；它的 ELF 标志仍来自汇编器的选项（`clang --target=riscv64-linux-gnu`，或 `llvm-mc -mattr=+m,+a,+f,+d,+c -target-abi=lp64d`）。汇编器可能写得不同、但含义相同的部分有：针对局部符号所在节、带该符号偏移的重定位；它总会添加的节符号、映射符号（`$x`、`$d`）和 Mach-O `ltmp` 符号；作为符号保留的 RISC-V 局部标签；x86_64 `.eh_frame` 的 `SHT_X86_64_UNWIND` 类型；在节内解析的 Mach-O 函数对自身的调用及其 compact unwind 条目；32 位 ARM 的硬浮点 ELF 标志，它没有指令可以设置（由构建属性表明）；COFF 弱外部符号的默认符号名称（`.weak.<symbol>.default`，带汇编器添加的后缀）；展开表的布局：在 `nabic` 共享一个 `UNWIND_INFO` 的地方，汇编器为每个函数生成一个 x64 `UNWIND_INFO`；32 位 ARM 的 `pop {r4-r11, lr}` 采用短形式。
 
 在 wasm32 上，源代码是 LLVM 的 WebAssembly 汇编，供 `clang --target=wasm32-wasi -c` 或 `llvm-mc -triple=wasm32-wasi -filetype=obj` 使用。指令所需的特性来自汇编器的选项，因为没有指令可以设置它们：clang 使用 `-msimd128`（在 `wasm32-wasip1-threads` 上还有 `-matomics`），`llvm-mc` 使用 `-mattr=+bulk-memory,+mutable-globals,+nontrapping-fptoint,+reference-types,+sign-ext,+simd128`（以及 `+atomics`）。源代码声明它用到的全局变量、表和每个函数（`.globaltype __stack_pointer, i32`、`.tabletype __indirect_function_table, funcref`、`.functype f (i32, i64) -> (f64)`），以另一个名称导入的函数还带有 `.import_module` 和 `.import_name`。每个函数位于自己的节中（`.section .text.<symbol>,"",@`），带有其绑定（`.globl`、`.weak`、`.hidden`、`.export_name`）、`.functype` 和 `.local` 行；在它的指令中，每个 `end` 按其所闭合的结构命名（`end_block`、`end_loop`、`end_if`、`end_function`），无类型的 `select` 按其操作数的类型命名（`i32.select`），每个被重定位的操作数都是它的符号：`call f`、`global.get __stack_pointer`、`i32.const s`（数据地址，或函数的表索引）、`i32.const s@TLSREL`、`call_indirect __indirect_function_table, (i32) -> (i32)`。每个数据段是一个单独的节（`.section .data.<symbol>,"",@`，线程局部时为 `"T"`），带有它的 `.p2align`、它的符号（`.type s,@object`、`.size`），每个指针写成 `.int32 s`；调试节和 `target_features` 是数据，代码偏移写成 `.int32 f+0x2b`。汇编器生成的目标文件具有相同的函数、代码（被重定位的操作数长 5 个字节，与这里相同）、重定位、数据段、符号和自定义节。它写得不同、但含义相同的部分有：函数索引和类型索引的顺序、内存导入和表导入的初始大小、它在 `__indirect_function_table` 上设置的 `NO_STRIP` 标志，以及它的 `DATACOUNT` 节。
 
@@ -500,17 +500,17 @@ perf report --stdio | nabi demangle
 
 | 变量                      | 作用                                                                         |
 |---------------------------|------------------------------------------------------------------------------|
-| `NABIR_GC_LOG=1`           | 每次回收在标准错误上打印一行：种类（minor / full）、停顿时间、标记数和清除结果（存活字节数，前 -> 后），然后是以微秒为单位的停顿各部分（到达安全点的时间、标记、清除、疏散）、线程数以及自回收器启动以来的时间。并发的完全回收分别记录其开始停顿（一次 minor 回收；其标记数为该 minor 回收的）和结束停顿。到达安全点的时间是从发出停止请求到其他所有线程都停下来的等待时间：该值较大意味着有线程拖延了停止，而不是回收本身慢 |
-| `NABIR_GC_STATS=1`         | 退出时在标准错误上打印回收次数（minor / full）、停顿时间和回收器 CPU 时间。第二行给出块数 / 常驻大小 / 疏散次数 / 移动的字节数，第三行给出完全局停顿次数、并发标记次数（以及其中由分配在停顿中完成的次数）、标记器的 CPU 时间和标记协助（[7.5.4](../007-runtime/705-concurrent-collection.md#754-分配与回收)）。然后，对运行过的每种停顿（minor、full、concurrent start、concurrent finish）各打印一行：次数、p50 / p90 / p99（基于直方图，误差在八分之一以内）、最长和总停顿时间、最长和总的到达安全点时间 |
-| `NABIR_GC_CONCURRENT=auto\|always\|off` | 完全回收的并发标记。`auto` 在老对象达到 32 MiB 或以上，或者设置了停顿目标时生效（[7.5](../007-runtime/705-concurrent-collection.md)） |
-| `NABIR_GC_EVAC=always`     | 用于测试。每次完全回收都进行疏散（[7.3.1](../007-runtime/703-gc-algorithm.md#731-immix-mark-region)） |
+| `NABIR_GC_LOG=1`           | 每次回收在标准错误上打印一行：种类（minor / full）、停顿时间、标记数和清除结果（存活字节数，前 -> 后），然后是以微秒为单位的停顿各部分（到达安全点的时间、标记、清除、疏散）、线程数以及自回收器启动以来的时间。并发的完整回收分别记录其开始停顿（一次 minor 回收；其标记数为该 minor 回收的）和结束停顿。到达安全点的时间是从发出停止请求到其他所有线程都停下来的等待时间：该值较大意味着有线程拖延了停止，而不是回收本身慢 |
+| `NABIR_GC_STATS=1`         | 退出时在标准错误上打印回收次数（minor / full）、停顿时间和回收器 CPU 时间。第二行给出块数 / 常驻大小 / 疏散次数 / 移动的字节数，第三行给出完整回收的停顿次数、并发标记次数（以及其中由分配在停顿中完成的次数）、标记器的 CPU 时间和标记协助（[7.5.4](../007-runtime/705-concurrent-collection.md#754-分配与回收)）。然后，对运行过的每种停顿（minor、full、concurrent start、concurrent finish）各打印一行：次数、p50 / p90 / p99（基于直方图，误差在八分之一以内）、最长和总停顿时间、最长和总的到达安全点时间 |
+| `NABIR_GC_CONCURRENT=auto\|always\|off` | 完整回收的并发标记。`auto` 在老对象达到 32 MiB 或以上，或者设置了停顿目标时生效（[7.5](../007-runtime/705-concurrent-collection.md)） |
+| `NABIR_GC_EVAC=always`     | 用于测试。每次完整回收都进行疏散（[7.3.1](../007-runtime/703-gc-algorithm.md#731-immix-mark-region)） |
 | `NABIR_GC_YOUNG=<bytes>`   | 年轻代预算：两次回收之间分配出去的字节数，精确值（默认：每个进行分配的线程 8 MiB，范围 32 MiB 到 128 MiB；如果老年代字节更多，则与老年代字节数相同，最多 128 MiB）（[7.2.8](../007-runtime/702-allocation.md#728-gc-触发)） |
 | `NABIR_GC_WORKERS=<n>`     | 在全局停顿（stop-the-world）期间与回收器一起标记的辅助线程数（默认：除第一个之外每个在线 CPU 一个，最多 7 个；`0`：不使用）（[7.3.3](../007-runtime/703-gc-algorithm.md#733-标记过程)） |
-| `NABIR_GC_STRESS=N`        | 用于测试。每 N 次分配回收一次；自上次完全回收以来分配量达到老年代的十六分之一后，其中每第 8 次为完全回收 |
+| `NABIR_GC_STRESS=N`        | 用于测试。每 N 次分配回收一次；自上次完整回收以来分配量达到老年代的十六分之一后，其中每第 8 次为完整回收 |
 | `NABIR_HEAP_DUMP=on_oom`   | OOM 时在标准错误上打印总量、按字节数排列的前 32 种类型以及最大的 32 个大对象。尽力而为：它不分配内存，也不获取锁。格式由运行时定义 |
 | `NABIR_WORKERS=<n>`        | 执行器工作线程数 N（默认：在线 CPU 数）（[7.6.8](../007-runtime/706-scheduler.md#768-每核一线程选项)） |
 | `NABIR_THREAD_PER_CORE=1`  | 每核一线程：任务固定在其工作线程上，不进行窃取（7.6.8） |
-| `NABIR_DYNAMIC_WORKERS=1`  | 空闲的工作线程驻留，在所有活跃工作线程都繁忙时被重新启用（[7.7.8](../007-runtime/707-io-and-timer.md#778-动态调整工作线程数)） |
+| `NABIR_DYNAMIC_WORKERS=1`  | 空闲的工作线程挂起（park），在所有活跃工作线程都繁忙时重新投入使用（[7.7.8](../007-runtime/707-io-and-timer.md#778-动态调整工作线程数)） |
 
 未设置或为空的变量取其默认值。取值不在所列范围内时，在标准错误上打印一行警告，指明该变量、该值以及可接受的取值，该变量取其默认值。
 
@@ -519,24 +519,24 @@ perf report --stdio | nabi demangle
 | 辅助手段             | 作用                                                                 |
 |----------------------|----------------------------------------------------------------------|
 | `<expr>?`            | 对表达式求值并打印其 `Debug` 形式（[9.7.7](907-jit-cells.md#977-可视化--输出)） |
-| `it`                 | 最后一个表达式单元显示的值；用户自己定义的 `it` 优先（[9.7.7](907-jit-cells.md#977-可视化--输出)） |
+| `it`                 | 最后一个表达式单元格显示的值；用户自己定义的 `it` 优先（[9.7.7](907-jit-cells.md#977-可视化--输出)） |
 | `:type <expr>`、`:t` | 打印表达式的静态类型（不运行它）                                      |
 | `:doc <name>`        | 打印该名称的签名和文档注释，即 Jupyter `inspect_request` 的文本（[9.8.6](908-jupyter-integration.md#986-inspect_request帮助)）；方法写作 `:doc xs.len` |
-| `:time <expr>`       | 把表达式作为一个单元求值，并在标准错误上打印每个阶段的耗时（与 `NABI_REPL_TIME=1` 相同）以及总耗时 |
+| `:time <expr>`       | 把表达式作为一个单元格求值，并在标准错误上打印每个阶段的耗时（与 `NABI_REPL_TIME=1` 相同）以及总耗时 |
 | `:vars`              | 以 `name: type` 形式列出绑定，然后列出各项的签名                     |
-| `:load <file>`       | 把程序加载到正在运行的会话中（[9.7.10](907-jit-cells.md#9710-加载程序repl-path)）；其中的项替换同名的项。由 `:save` 写出的脚本会逐个重新运行其单元 |
+| `:load <file>`       | 把程序加载到正在运行的会话中（[9.7.10](907-jit-cells.md#9710-加载程序repl-path)）；其中的项替换同名的项。由 `:save` 写出的脚本会逐个重新运行其单元格 |
 | `:reload`            | 重新加载上次加载的程序                                               |
-| `:edit`              | 用 `$VISUAL` 或 `$EDITOR`（否则用 `vi`；Windows 上用 `notepad`）打开一个临时文件，然后把其中的内容作为单元运行；某个单元失败后，下一次 `:edit` 会再次打开该文本 |
-| `:save <file>`       | 把会话写成脚本：先是各项，然后是运行过的单元，保持输入时的原样；再次声明的名称在脚本中也是重新声明（[5.1.4](../005-modules/501-variable-declaration.md#514-在同一作用域中重新声明)）。只在后面的单元读取 `it` 的地方声明 `it`。第一行是 `// nabi repl session (:save); :load replays it cell by cell`，每个单元之前有一行 `// :cell`：用 `:load` 加载该脚本会逐个重新运行其单元，因此再次声明的名称保留其最后的绑定；`nabi run` 把它作为程序运行 |
-| `:opt [<level>]`     | 打印优化级别，或为之后的单元设置优化级别（`0`、`1`、`2`、`3`、`s`，与 `-O` 相同） |
+| `:edit`              | 用 `$VISUAL` 或 `$EDITOR`（否则用 `vi`；Windows 上用 `notepad`）打开一个临时文件，然后把其中的内容作为单元格运行；某个单元格失败后，下一次 `:edit` 会再次打开该文本 |
+| `:save <file>`       | 把会话写成脚本：先是各项，然后是运行过的单元格，保持输入时的原样；再次声明的名称在脚本中也是重新声明（[5.1.4](../005-modules/501-variable-declaration.md#514-在同一作用域中重新声明)）。只在后面的单元格读取 `it` 的地方声明 `it`。第一行是 `// nabi repl session (:save); :load replays it cell by cell`，每个单元格之前有一行 `// :cell`：用 `:load` 加载该脚本会逐个重新运行其单元格，因此再次声明的名称保留其最后的绑定；`nabi run` 把它作为程序运行 |
+| `:opt [<level>]`     | 打印优化级别，或为之后的单元格设置优化级别（`0`、`1`、`2`、`3`、`s`，与 `-O` 相同） |
 | `:reset`             | 把会话重置为初始状态（库路径的 `use` 会重新插入）                    |
 | `:add <dep> ..`      | 添加依赖（在当前环境中执行 `nabi install`，或在包的会话中执行 `nabi add`），并把它们挂接到会话上（[9.10.5](910-nabi-frontend.md#9105-环境)） |
 | `:help`、`:h`        | 列出所有命令和别名                                                   |
 | `:quit`、`:q`、`:exit` | 退出（输入结束也会退出）                                           |
-| `exit`、`quit`、`exit()`、`quit()` | 单独位于一个单元中时退出；除非会话定义了该名称（绑定、项或 `use`），此时以该定义为准 |
-| `NABI_REPL_TIME=1`    | 对每个单元显示各阶段的耗时，以及新编译的函数数 / 从之前单元复用的函数数（[9.6.4](906-jit-engine.md#964-库代码的复用)） |
+| `exit`、`quit`、`exit()`、`quit()` | 单独位于一个单元格中时退出；除非会话定义了该名称（绑定、项或 `use`），此时以该定义为准 |
+| `NABI_REPL_TIME=1`    | 对每个单元格显示各阶段的耗时，以及新编译的函数数 / 从之前单元格复用的函数数（[9.6.4](906-jit-engine.md#964-库代码的复用)） |
 
-要查看某个单元的 nabi-mir，把同样的代码放进 `main.nabi`，然后使用 `nabic build --emit=mir`（9.9.1）。
+要查看某个单元格的 nabi-mir，把同样的代码放进 `main.nabi`，然后使用 `nabic build --emit=mir`（9.9.1）。
 
 ## 9.9.10. 元块调试
 
@@ -649,7 +649,7 @@ nabils
 
 ## 9.9.14. 包检查
 
-可以一次查看预构建库包的信息。
+可以一次性查看预构建库包的全部信息。
 
 ```
 nabi inspect path/to/libfoo.a        # or foo.nabihir; the sibling file is read too
@@ -684,4 +684,4 @@ Concrete .o files:
 
 ## 9.9.15. 总结
 
-上述工具包括 Nabi 所配合的标准工具（gdb、lldb、perf、Jupyter）以及 Nabi 自己的工具（`--emit`、`nabi demangle`、`nabi inspect`、LSP 服务器）。前端 `nabi` 及其工具在 [9.10](910-nabi-frontend.md) 中定义，nabi-mir 文件格式在 [9.11](911-mir-format.md) 中定义。
+上述工具既包括 Nabi 能够配合使用的标准工具（gdb、lldb、perf、Jupyter），也包括 Nabi 自己的工具（`--emit`、`nabi demangle`、`nabi inspect`、LSP 服务器）。前端 `nabi` 及其工具在 [9.10](910-nabi-frontend.md) 中定义，nabi-mir 文件格式在 [9.11](911-mir-format.md) 中定义。

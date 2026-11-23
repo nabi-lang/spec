@@ -45,7 +45,7 @@ parent/
     └── baz.nabi                   declared as `mod baz;` inside foo.nabi
 ```
 
-这里 `foo.nabi` 是模块 foo 的主体，包含普通的项、`mod bar;` 这样的子模块声明、可见性等。`foo/` 目录中的每个 `.nabi` 文件都是 foo 的子模块，必须在主体中以 `mod name;` 显式声明。只有 `foo/` 而没有 `foo.nabi` 是错误（ERROR）。主体文件是必需的。
+这里 `foo.nabi` 是模块 foo 的主体，包含普通的项、`mod bar;` 这样的子模块声明、可见性等。`foo/` 目录中的每个 `.nabi` 文件都是 foo 的子模块，必须在主体中以 `mod name;` 显式声明。只有 `foo/` 而没有 `foo.nabi` 是错误。主体文件是必需的。
 
 这一模型与 Rust 2018+ 的 `foo.rs` + `foo/` 结构完全相同；没有 `mod.nabi` 这样单独的主体文件名。
 
@@ -61,7 +61,7 @@ parent/
     └── ...
 ```
 
-总结：只有 `foo.nabi` 是单文件模块；`foo.nabi` 加 `foo/` 是文件夹模块；只有 `foo/` 是错误（ERROR）。
+总结：只有 `foo.nabi` 是单文件模块；`foo.nabi` 加 `foo/` 是文件夹模块；只有 `foo/` 是错误。
 
 ## 5.4.3. 子模块
 
@@ -143,7 +143,7 @@ mod inner {
 let r = inner::helper();
 ```
 
-内联模块写作 `mod name { ... }`，其主体可以包含任何项：函数、类型、trait、`const`、`static`，以及更多的 `mod`。它旁边不得存在同名的文件或文件夹；冲突是错误（ERROR）。
+内联模块写作 `mod name { ... }`，其主体可以包含任何项：函数、类型、trait、`const`、`static`，以及更多的 `mod`。它旁边不得存在同名的文件或文件夹；冲突是错误。
 
 ## 5.4.6. 自定义路径：`#[path("...")]`
 
@@ -179,7 +179,7 @@ mod geom {
 }
 ```
 
-模块只能包含项；可执行语句（顶层 `let`、表达式语句）只允许出现在入口模块 `main.nabi` 中（[4.16.6](../004-functions/416-entry-point.md#4166-模块只包含定义)）。所有这些项都是该模块的一部分，从外部引用它们既需要[可见性](506-visibility.md)关键字，也需要[路径](507-paths.md)。在函数体中声明的项（[3.9.1](../003-expressions/309-block-expressions.md#391-形式)）就一致性而言属于该模块，但只能在其所在块内通过名称引用。
+模块只能包含项；可执行语句（顶层 `let`、表达式语句）只允许出现在入口模块 `main.nabi` 中（[4.16.6](../004-functions/416-entry-point.md#4166-模块只包含定义)）。所有这些项都是该模块的一部分，从外部引用它们既需要[可见性](506-visibility.md)关键字，也需要[路径](507-paths.md)。在函数体中声明的项（[3.9.1](../003-expressions/309-block-expressions.md#391-形式)）就一致性规则（coherence）而言属于该模块，但只能在其所在块内通过名称引用。
 
 ## 5.4.8. 模块的可见性
 
@@ -206,7 +206,7 @@ child_mod::item                // within the same module (an identifier suffices
 
 ## 5.4.10. 模块声明可以出现的位置
 
-`mod` 声明只能出现在模块级，即另一个 `mod` 的主体中或包根处。在函数体中声明 `mod` 是错误（ERROR）（[3.9.1](../003-expressions/309-block-expressions.md#391-形式) 列出了块可以声明的项）。
+`mod` 声明只能出现在模块级，即另一个 `mod` 的主体中或包根处。在函数体中声明 `mod` 是错误（[3.9.1](../003-expressions/309-block-expressions.md#391-形式) 列出了块可以声明的项）。
 
 ```nabi
 fn f() {
@@ -240,7 +240,7 @@ foo/
 
 ## 5.4.12. 同一父模块中不能有重复模块
 
-在同一个父模块中两次声明同名模块是错误（ERROR）。
+在同一个父模块中两次声明同名模块是错误。
 
 ```nabi
 mod foo;

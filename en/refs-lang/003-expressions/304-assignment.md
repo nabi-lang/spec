@@ -151,7 +151,7 @@ Like other operators, the `*Assign` traits are registered through `#[infix("op="
 
 ## 3.4.4. Chained assignment
 
-C- and Python-style chained assignment (`a = b = c = 1`) is not allowed in nabi.
+C- and Python-style chained assignment (`a = b = c = 1`) is not allowed in Nabi.
 
 ```
 a = b = c = 1;             // ERROR

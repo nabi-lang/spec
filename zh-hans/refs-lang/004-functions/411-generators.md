@@ -165,7 +165,7 @@ yield fn early_stop(stop: i32) -> i32 {
 }
 ```
 
-被 `for` 循环提前离开的生成器会被关闭。当循环体通过 `break`（也包括带标签的 `break` 或外层循环的 `continue`）、`return`、抛出的错误、`try` 传播、任务的取消，或外围生成器的 `yield` 离开循环时，就会发生这种情况。关闭会在生成器所等待的 `yield` 处恢复它，随后它像执行 `return` 一样离开函数体：该 `yield` 外围的 `finally` 块和 `using` 释放从最内层开始依次运行。关闭过程中到达的 `yield` 以同样方式结束生成器；它的值被丢弃。在第一次 `next()` 之前就被关闭的生成器，不运行函数体的任何部分。关闭之后，`next()` 返回 `none`。
+被 `for` 循环提前离开的生成器会被关闭。当循环体通过 `break`（也包括作用于外层循环的带标签 `break` 或 `continue`）、`return`、抛出的错误、`try` 传播、任务的取消，或外围生成器的 `yield` 离开循环时，就会发生这种情况。关闭会在生成器所等待的 `yield` 处恢复它，随后它像执行 `return` 一样离开函数体：该 `yield` 外围的 `finally` 块和 `using` 释放从最内层开始依次运行。关闭过程中到达的 `yield` 以同样方式结束生成器；它的值被丢弃。在第一次 `next()` 之前就被关闭的生成器，不运行函数体的任何部分。关闭之后，`next()` 返回 `none`。
 
 ```nabi
 yield fn lines() -> str {
@@ -187,7 +187,7 @@ for header in g { if header == "" { break; } }   // g stays open
 for body in g { print(body); }                    // goes on after the blank line
 ```
 
-从未被关闭、也从未完成的生成器，其清理操作会一直挂起，直到 GC 回收它；届时这些清理操作不会运行。
+从未被关闭、也从未完成的生成器，其清理操作会一直挂起，直到 GC 回收它；即使到那时，这些清理操作也不会运行。
 
 ## 4.11.11. 生成器状态
 

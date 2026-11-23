@@ -141,7 +141,7 @@ catch HttpError { code, msg } { fail(code, msg) }
 catch e: any Error { log(f"{e}"); fallback() }
 ```
 
-`catch` 之後可以接[模式](311-patterns.md)的任何模式形式。`e: TimeoutError` 是型別檢查模式，在相符的分支中 `e` 被收窄為該型別。`catch e: A | B` 把捕捉到的錯誤繫結為和型別 `A | B`（錯誤和型別的子集）。未定型 `throws` 的錯誤是 [`any Error`](../002-types/202-any-slot.md) 值，因此要以一個名稱接收所有錯誤，請使用 `catch e: any Error` 或 `catch e`。依照 [trait 不能作為型別](../002-types/212-trait-as-type-banned.md)，寫出單獨的 trait 名稱 `catch e: Error` 是編譯錯誤（E0071）。
+`catch` 之後可以接[模式](311-patterns.md)的任何模式形式。`e: TimeoutError` 是型別檢查模式，在相符的分支中 `e` 被收窄為該型別。`catch e: A | B` 把攔截到的錯誤繫結為和型別 `A | B`（錯誤和型別的子集）。未定型 `throws` 的錯誤是 [`any Error`](../002-types/202-any-slot.md) 值，因此要以一個名稱接收所有錯誤，請使用 `catch e: any Error` 或 `catch e`。依照 [trait 不能作為型別](../002-types/212-trait-as-type-banned.md)，寫出單獨的 trait 名稱 `catch e: Error` 是編譯錯誤（E0071）。
 
 省略模式的 `catch { ... }` 與 `catch _ { ... }` 相同。
 
@@ -200,7 +200,7 @@ panic 與致命錯誤（3.14.8）會終止行程，因此 `finally` 不會執行
 let x = try parse(input) catch _ { default };
 ```
 
-`catch` 運算式的值，在左側運算式正常完成時是其值，在捕捉到錯誤時是處理區塊的值。左側運算式與每個處理區塊都必須是相同型別（[運算式概觀](README.md)的分支結果規則）；以 `throw` 或 `return` 結尾的處理區塊是發散的，不納入型別檢查。`finally` 區塊不產生值，也不影響運算式的結果。
+`catch` 運算式的值，在左側運算式正常完成時是其值，在攔截到錯誤時是處理區塊的值。左側運算式與每個處理區塊都必須是相同型別（[運算式概觀](README.md)的分支結果規則）；以 `throw` 或 `return` 結尾的處理區塊是發散的，不納入型別檢查。`finally` 區塊不產生值，也不影響運算式的結果。
 
 ## 3.14.7. 擲回的值與函式簽章
 
@@ -218,14 +218,14 @@ fn parse(s: str) throws (A | B | C) -> i32 { ... }  // sum type
 
 ## 3.14.8. panic 與致命錯誤
 
-與 `throws` 錯誤不同，下列情況不會以值的形式交付，也無法以 `catch` 捕捉。
+與 `throws` 錯誤不同，下列情況不會以值的形式交付，也無法以 `catch` 攔截。
 
 - panic。包括呼叫標準函式庫的 `panic`、`try!` 失敗、除以零、整數溢位、邊界檢查失敗等。
 - 致命錯誤。無法繼續執行的狀態，例如 `StackOverflowError`、`OutOfMemoryError` 與 `InternalError`。
 
 在這兩種情況下，執行環境都會把訊息印到標準錯誤（stderr），並以結束碼 `101` 終止行程。哪些情況是 panic 或致命錯誤的確切清單，由標準函式庫定義。
 
-失敗的 `try!` 在 `try!` 的位置 panic。其訊息以與離開 `main` 之未捕捉錯誤相同的方式顯示錯誤（[4.16.4](../004-functions/416-entry-point.md)：其 `Display`，否則其 `Debug`，否則其型別名稱），接著顯示引發它的 `throw` 的位置，以及它到達 `try!` 所經過的位置：
+失敗的 `try!` 在 `try!` 的位置 panic。其訊息以與離開 `main` 之未攔截錯誤相同的方式顯示錯誤（[4.16.4](../004-functions/416-entry-point.md)：其 `Display`，否則其 `Debug`，否則其型別名稱），接著顯示引發它的 `throw` 的位置，以及它到達 `try!` 所經過的位置：
 
 ```text
 thread 'main' panicked at src/main.nabi:12:13:
@@ -261,7 +261,7 @@ fn first_word_len(text: str | none) -> usize | none {
 
 在 `e: T | none` 的 `e?` 中，運算式的值是 `T`。若 `e` 是 `none`，外層函式執行 `return none`。因此外層函式的回傳型別必須包含 `none` 成員（`_ | none`）；否則就是編譯錯誤（E0064）。由於是後綴的，它可以自然地放在方法鏈的末端。
 
-### 去糖規則
+### 去語法糖規則
 
 `?` 由編譯器直接展開，不經過任何 trait。
 

@@ -32,11 +32,11 @@ for r in results {
 }
 ```
 
-選擇依循一條規則：**錯誤必須流向呼叫端時用 `throws`；錯誤必須保留下來稍後處理時用 `Result`。**
+選擇依循一條規則：**錯誤必須流向呼叫端時用 `throws`；錯誤必須保留下來稍後處理時用 `Result`**。
 
 | 情況                                             | 工具                    | 理由                                      |
 |--------------------------------------------------|-------------------------|-------------------------------------------|
-| 可能失敗的操作（I/O、剖析、查找）                | `throws`                | 每個呼叫處的 `try` 讓流程一目了然         |
+| 可能失敗的操作（I/O、剖析、查詢）                | `throws`                | 每個呼叫處的 `try` 讓流程一目了然         |
 | API 邊界／公開 API                               | `throws (E)` / `throws` | 錯誤型別公開在簽章中                      |
 | 收集平行執行的結果、把結果傳給回呼               | `Result<T, E>`          | 把錯誤保存為值                            |
 | 蒐集多個錯誤一次回報、快取結果                   | `Result<T, E>`          | 存為值，稍後處理                          |
@@ -213,9 +213,9 @@ struct ZeroError;                     // core::num::niche; message()
 | `ConversionError` | `TryFrom::Error` 的預設值；非數值轉換失敗（[2.11.4](211-conversion.md#2114-tryfromu-trait可能失敗的轉換)）；`NonNan` / `Finite` 的 `try_from` |
 | `ZeroError`       | 把 0 傳給 `NonZero::try_from`（[2.2.2](202-non-zero.md#222-nonzerot禁止零)） |
 
-### Fatal 錯誤
+### 致命錯誤
 
-下列型別歸類為 Fatal。
+下列型別歸類為致命錯誤（Fatal）。
 
 ```nabi
 struct StackOverflowError;     // Fatal: cannot be caught
@@ -223,7 +223,7 @@ struct OutOfMemoryError;       // Fatal: cannot be caught
 struct InternalError;          // Fatal: compiler-internal bug
 ```
 
-它們也各有 `message()`（`"stack overflow"` 等）。Fatal 錯誤不是 `throws` 錯誤，無法以 `catch` 攔截。它與 panic 一樣，把訊息印到 stderr，並以結束碼 `101` 結束行程（[refs-lang 3.14.8](../../refs-lang/003-expressions/314-error-control-flow.md#3148-panic-與致命錯誤)）。
+它們也各有 `message()`（`"stack overflow"` 等）。致命錯誤不是 `throws` 錯誤，無法以 `catch` 攔截。它與 panic 一樣，把訊息印到 stderr，並以結束碼 `101` 結束行程（[refs-lang 3.14.8](../../refs-lang/003-expressions/314-error-control-flow.md#3148-panic-與致命錯誤)）。
 
 ## 2.14.5. `panic_fn` / `oom_fn` / `unreachable_fn`：編譯器鉤子
 
@@ -275,7 +275,7 @@ nabi_gc_alloc_slow:
 
 core 的 `oom()` 呼叫同一個 `nabi_oom`，因此兩條路徑產生相同的輸出與結束碼。
 
-OOM 屬於 Fatal，不會被攔截。
+OOM 屬於致命錯誤，不會被攔截。
 
 ### 使用 `unreachable`
 
@@ -367,7 +367,7 @@ try {
 - 在 catch 之後完成時執行。
 - 未被攔截的錯誤傳遞時，先執行它，再傳遞錯誤。
 - 以 `return` / `break` / `continue` 離開時執行。
-- 發生 panic 或 Fatal 錯誤時不執行，因為行程會立即結束。
+- 發生 panic 或致命錯誤時不執行，因為行程會立即結束。
 
 在 `finally` 內擲回的錯誤會取代目前的錯誤。
 
@@ -424,9 +424,9 @@ if let n: i32 = r.ok() { process(n); }     // extracted as T | none
 | `FmtError`           | ✓       | ✓             | ✓     | 寫入失敗（[2.10](210-fmt.md)） |
 | `Utf8Error`          | ✓       | ✓             | ✓     | 唯一的 UTF-8 錯誤（[2.15](215-string.md)） |
 | `IoError`            | ✓       | ✓             | ✓     | std 層級（依目標而定）         |
-| `StackOverflowError` | ✓       | ✓             | ✓     | Fatal：無法攔截                |
-| `OutOfMemoryError`   | ✓       | ✓             | ✓     | Fatal：無法攔截                |
-| `InternalError`      | ✓       | ✓             | ✓     | Fatal：編譯器錯誤時            |
+| `StackOverflowError` | ✓       | ✓             | ✓     | 致命：無法攔截                 |
+| `OutOfMemoryError`   | ✓       | ✓             | ✓     | 致命：無法攔截                 |
+| `InternalError`      | ✓       | ✓             | ✓     | 致命：編譯器內部錯誤           |
 | `Result<T, E>`       | ✗       | ✓ (T,E:Debug) | ✗     | 用於保存的列舉；`T` 與 `E` 具備時實作 `Clone` / `PartialEq` / `Eq` / `Hash` |
 | `any Error`          | ✓       | ✓             | ✓     | 受約束的 any，可形成鏈         |
 

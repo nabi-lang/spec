@@ -207,7 +207,7 @@ Opaque
 
 ### Jupyter 출력
 
-각 셀의 결과는 `text/plain` 항목 하나만 담은 `execute_result`로 보냅니다. 그 내용은 REPL이 출력하는 텍스트와 같습니다. 다른 MIME 타입은 만들지 않습니다.
+각 셀의 결과는 `execute_result`로 보내며, 그 `text/plain` 항목은 REPL이 출력하는 텍스트입니다. 타입이 `RichDisplay`를 구현한 값은 그 묶음의 MIME 타입을 더합니다([9.8](908-jupyter-integration.md)).
 
 Jupyter 통합은 [Jupyter 통합](908-jupyter-integration.md)이 자세히 정의합니다.
 

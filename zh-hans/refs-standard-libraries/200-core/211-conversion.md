@@ -384,7 +384,7 @@ let auto: i64 = (a + b).into();  // explicit From<i32> for i64 (lossless)
 
 ## 2.11.12. 模块对应
 
-| Trait               | lang 槽                | 标准库位置                |
+| trait               | lang 槽                | 标准库位置                |
 |---------------------|------------------------|---------------------------|
 | `From<U>`           | （无）                 | `core::convert`     |
 | `Into`              | （通用实现）           | `core::convert`     |

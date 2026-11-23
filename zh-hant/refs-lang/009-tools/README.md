@@ -61,7 +61,7 @@ nabils  (= nabi lsp, for editors)
 libnabir.a  (runtime, nabir)
 ```
 
-工具鏈由編譯器 `nabic`（相當於 rustc）、cargo 風格的前端 `nabi`、C 編譯器 `nabicc`（[9.13](913-c-compiler.md)）、編輯器 LSP 執行檔 `nabils`，以及執行環境 `libnabir.a` 組成。`nabi` 負責資訊清單 `nabi.nabion` / `nabi.lock`、相依套件、環境與工具鏈釘選；建置指令委派給 `nabic`，並以 `--extern` 附上已解析的相依套件，而各工具在連結了編譯器的 `nabi` 本身之中執行（[9.10](910-nabi-frontend.md)）。沒有另外的工具（`nabi-fmt` 等）。
+工具鏈由編譯器 `nabic`（相當於 rustc）、cargo 風格的前端 `nabi`、C 編譯器 `nabicc`（[9.13](913-c-compiler.md)）、編輯器 LSP 執行檔 `nabils`，以及執行環境 `libnabir.a` 組成。`nabi` 負責清單 `nabi.nabion` / `nabi.lock`、相依套件、環境與工具鏈釘選；建置指令委派給 `nabic`，並以 `--extern` 附上已解析的相依套件，而各工具在連結了編譯器的 `nabi` 本身之中執行（[9.10](910-nabi-frontend.md)）。沒有另外的工具（`nabi-fmt` 等）。
 
 ## 兩個引擎的實作
 

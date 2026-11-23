@@ -40,11 +40,11 @@ let v = loop {
 };
 ```
 
-如果 `break` 之后跟一个表达式，它的值就是 `loop` 表达式的结果。如果循环像 `break;` 那样不带值退出，`loop` 的结果为 unit。与分支一样，一个 `loop`（或带标签的块）的所有 `break` 值必须是同一种类型：某个 `break` 值的和类型包含其他所有 `break` 值的类型时，该和类型就是这一类型，与哪个 `break` 在前无关（当 `x: i32 | none` 时，`break none` 和 `break x` 得到 `i32 | none`）。如果接收方有类型标注，它们必须具有该类型。混用 `break;` 和 `break v` 是编译错误（E0041）。
+如果 `break` 之后跟一个表达式，它的值就是 `loop` 表达式的结果。如果循环像 `break;` 那样不带值退出，`loop` 的结果为单元值。与分支一样，一个 `loop`（或带标签的块）的所有 `break` 值必须是同一种类型：某个 `break` 值的和类型包含其他所有 `break` 值的类型时，该和类型就是这一类型，与哪个 `break` 在前无关（当 `x: i32 | none` 时，`break none` 和 `break x` 得到 `i32 | none`）。如果接收方有类型标注，它们必须具有该类型。混用 `break;` 和 `break v` 是编译错误（E0041）。
 
 ### 结果类型
 
-至少出现一次 `break value` 的 `loop`，以该值的类型为结果类型。只有 `break;` 的 `loop` 的结果类型为 unit。完全没有 `break` 的 `loop` 是发散的，永远不会完成。
+至少出现一次 `break value` 的 `loop`，以该值的类型为结果类型。只有 `break;` 的 `loop` 的结果类型为单元类型。完全没有 `break` 的 `loop` 是发散的，永远不会完成。
 
 ## 3.13.2. `while`：基于条件的重复
 
@@ -58,7 +58,7 @@ while cond {
 
 ### 结果值
 
-`while` 的结果值总是 unit。
+`while` 的结果值总是单元值。
 
 ```nabi
 let x = while cond { ... };     // x: unit
@@ -142,7 +142,7 @@ loop {
 
 ### 结果值
 
-`for` 的结果值总是 unit（理由与 `while` 相同），目标为 `for` 的带值 `break` 是编译错误（E0059）。
+`for` 的结果值总是单元值（理由与 `while` 相同），目标为 `for` 的带值 `break` 是编译错误（E0059）。
 
 ### 模式位置
 

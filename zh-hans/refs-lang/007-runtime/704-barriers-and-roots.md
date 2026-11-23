@@ -82,7 +82,7 @@ minor 回收不进入老对象（[7.3.2](703-gc-algorithm.md#732-sticky-mark-bit
 
 ### 对象记忆（object-remembering）
 
-屏障**只检查目标对象 `p` 的头**。存活下来的（老）对象在设置 `STICKY` 的同时设置了 `UNLOGGED` 位（[8.1.3](../008-abi/801-object-header-abi.md#813-gc_flags偏移-4u32)）；对该对象的第一次写入时，整个对象被记录到记忆集中。
+屏障**只检查目标对象 `p` 的头**。存活下来的（老）对象在设置 `STICKY` 的同时设置了 `UNLOGGED` 位（[8.1.3](../008-abi/801-object-header-abi.md#813-gc_flags偏移-4u32)）；第一次写入该对象时，整个对象被记录到记忆集中。
 
 ```
 *p = q;

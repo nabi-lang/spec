@@ -98,7 +98,7 @@ let m: Ptr<u8> = const_cast(p);
 unsafe { m.write(72u8) };          // 'H': SEGFAULT (write to immortal const)
 ```
 
-它与 C 的 `const_cast<T*>` 完全同构。它的用途仅限于在要求可变性的地方临时包装只读 API；普通代码**不得使用它**。
+它与 C 的 `const_cast<T*>` 完全对应。它的用途仅限于在要求可变性的地方临时包装只读 API；普通代码**不得使用它**。
 
 ## 1.2.5. `reinterpret<A: Pod, B: Pod>`：位强制转换（安全）
 

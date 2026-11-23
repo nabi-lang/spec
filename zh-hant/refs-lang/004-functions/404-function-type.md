@@ -101,7 +101,7 @@ let f: fn(i32) -> i32 = |x| x + n;     // captures n, but the type is fn(i32) ->
 
 擷取在內部附加於閉包物件上，並在呼叫時自動使用。因此使用者程式碼不需要在意是否有擷取，擷取也不會出現在型別中。
 
-nabi 沒有 Rust 中 `Fn`、`FnMut` 與 `FnOnce` trait 的區分。擷取預設是依值的，這降低了語意的複雜度。詳細的擷取語意定義於[擷取語意](406-capture-semantics.md)。
+Nabi 沒有 Rust 中 `Fn`、`FnMut` 與 `FnOnce` trait 的區分。擷取預設是依值的，這降低了語意的複雜度。詳細的擷取語意定義於[擷取語意](406-capture-semantics.md)。
 
 ### `Send` / `Sync` 約束
 
@@ -114,10 +114,10 @@ fn() + Send + Sync
 
 - 當閉包字面值出現在 `+ Send` 位置時，每個一般擷取都必須是 `Send + Sync`：一般擷取是建立者會繼續使用的控制代碼，因此兩個執行緒都能存取它。`[move x]` 擷取只屬於該閉包（[4.6.11](406-capture-semantics.md#4611-移動擷取move-x-擷取清單)），因此只需要 `Send`。
 - `+ Sync` 位置要求每個擷取都是 `Sync`，無論是否移動。`fn(..) + Send` 值不是 `Sync`，除非其型別這樣寫：它背後的閉包可能擁有一個不是 `Sync` 的移動擷取。會被多個執行緒同時呼叫的值（`static`、`par::*` 閉包）具有型別 `fn(..) + Send + Sync`。
-- 產生執行緒 / 任務的函式（`task::spawn_blocking`、`thread::spawn`、`par::Scope::spawn`）接受 `+ Send` 閉包，因此被產生的程式碼不與其建立者共享任何非 `Sync` 的值；`[move x]` 則改為交給它一個值。`par::for_each`、`par::map` 與 `par::filter` 接受 `+ Send + Sync` 閉包，由每個工作者呼叫。
+- 啟動函式（`task::spawn_blocking`、`thread::spawn`、`par::Scope::spawn`）接受 `+ Send` 閉包，因此被啟動的程式碼不與其建立者共享任何非 `Sync` 的值；`[move x]` 則改為交給它一個值。`par::for_each`、`par::map` 與 `par::filter` 接受 `+ Send + Sync` 閉包，由每個工作者呼叫。
 - 要使用 `fn` 型別的變數，該變數的型別必須已經具有相同的約束。`fn() -> T` 值不適合 `fn() -> T + Send` 位置。擷取了 `fn(..) + Send` 值的閉包，只有在把該值移入（`[move f]`），或該值的型別是 `+ Send + Sync` 時，才能跨越執行緒。
 - 具名函式沒有擷取，因此一律是 `Send + Sync`。
-- 約束是型別的一部分：分別以 `fn(i32) + Send + Sync` 值與 `fn(i32)` 值呼叫的泛型函式有兩個實例。`fn(i32)` 上的 impl 服務兩者。
+- 約束是型別的一部分：分別以 `fn(i32) + Send + Sync` 值與 `fn(i32)` 值呼叫的泛型函式有兩個實例。`fn(i32)` 上的 impl 同時適用於兩者。
 
 ```nabi
 let c: Cell<i32> = Cell::new(0);
@@ -165,7 +165,7 @@ let f: fn() -> i32 = || panic("never");     // fn() -> ! value → fn() -> i32 p
 ## 4.4.9. 函式型別之間的子型別關係（無）
 
 > [!IMPORTANT]
-> Rust 或 TypeScript 這類語言中的函式型別子型別關係，在 nabi 中不存在。函式型別不會被自動轉換為更一般或更特定的函式型別。參數型別與回傳型別必須完全相符。
+> Rust 或 TypeScript 這類語言中的函式型別子型別關係，在 Nabi 中不存在。函式型別不會被自動轉換為更一般或更特定的函式型別。參數型別與回傳型別必須完全相符。
 
 ```nabi
 let f: fn(i32 | f64) -> i32 = |x: i32| x;     // ERROR: parameter type does not match exactly

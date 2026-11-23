@@ -216,7 +216,7 @@ Nabi 原样沿用 Rust 的模型。危险区域的视觉分隔由单一关键字
 
 ## 4.15.8. 未定义行为
 
-以下是 Nabi 中未定义行为的完整列表。运行时做了其中任何一件事的程序都没有意义：编译器可以假定它永远不会发生，之后可能发生任何事情。每一项都需要 `unsafe` 代码（或外部代码）才会发生；安全的 Nabi 不会引发其中任何一项。每个提到未定义行为的库章节，所指的都是以下种类之一。
+以下是 Nabi 中未定义行为的完整列表。在运行中做了其中任何一件事的程序都没有意义：编译器可以假定它永远不会发生，之后可能发生任何事情。每一项都需要 `unsafe` 代码（或外部代码）才会发生；安全的 Nabi 不会引发其中任何一项。每个提到未定义行为的库章节，所指的都是以下种类之一。
 
 内存与指针：
 
@@ -233,7 +233,7 @@ Nabi 原样沿用 Rust 的模型。危险区域的视觉分隔由单一关键字
 8. 以任何类型读取未初始化的内存：在值被写入之前调用 `MaybeUninit::assume_init`，或读取没有任何东西写入过的字节（[标准库 1.3](../../refs-standard-libraries/100-bare/103-mem.md)）。
 9. 通过 `union` 读取（[2.5.2](../002-types/205-union.md)）、`transmute_unchecked`、裸写入或虚假的 `unsafe impl Pod`，产生对其类型无效的值：不是 `0` / `1` 的 `bool`、不是 Unicode 标量值的 `char`、没有任何变体对应的枚举或和类型标签、既不是 null 也不是存活对象的 GC 引用、为 null 的非 `none` `extern "C" fn`（[标准库 1.2.6](../../refs-standard-libraries/100-bare/102-cast.md)、[5.9.4](../005-modules/509-extern-block.md)）。
 10. 破坏用 `new_unchecked` 创建的受检包装类型的不变量：为零的 `NonZero`、为 NaN 的 `NonNan`、为 NaN 或无穷的 `Finite`、为负的 `Positive`（[标准库 2.2.6](../../refs-standard-libraries/200-core/202-non-zero.md)）。
-11. 位于 GC 堆之外、收集器不扫描的内存中的 GC 引用：在这样的内存上保存 GC 引用的 `ManyPtr::slice`，或通过裸写入存放在那里的 GC 引用（[标准库 1.1.4](../../refs-standard-libraries/100-bare/101-ptr.md)）。
+11. 位于 GC 堆之外、回收器不扫描的内存中的 GC 引用：在这样的内存上保存 GC 引用的 `ManyPtr::slice`，或通过裸写入存放在那里的 GC 引用（[标准库 1.1.4](../../refs-standard-libraries/100-bare/101-ptr.md)）。
 
 线程：
 

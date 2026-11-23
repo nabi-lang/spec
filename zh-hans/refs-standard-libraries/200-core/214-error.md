@@ -1,6 +1,6 @@
 # 2.14. error：错误 trait 与类型
 
-`core::error` / `core::panic` 模块是错误处理的权威定义（`ZeroError` 与 `NonZero` 一起位于 `core::num::niche`）。Nabi 只有一种错误模型。可能抛出错误的函数在签名中写 `throws`，调用方用 `try` 标记该调用（[refs-lang 4.14](../../refs-lang/004-functions/414-throws.md)）。`Result<T, E>` 是用于**把错误作为值保存**的普通 enum，它不是传播错误的手段。
+`core::error` / `core::panic` 模块是错误处理的权威定义（`ZeroError` 与 `NonZero` 一起位于 `core::num::niche`）。Nabi 只有一种错误模型。可能抛出错误的函数在签名中写 `throws`，调用方用 `try` 标记该调用（[refs-lang 4.14](../../refs-lang/004-functions/414-throws.md)）。`Result<T, E>` 是用于**把错误作为值保存**的普通枚举，它不是传播错误的手段。
 
 本章定义 100 个 lang 槽中的三个：`panic_fn` / `oom_fn` / `unreachable_fn`。
 
@@ -32,7 +32,7 @@ for r in results {
 }
 ```
 
-选择哪一种遵循一条规则：**错误必须流向调用方时用 `throws`，错误必须保留下来以后再处理时用 `Result`。**
+选择哪一种遵循一条规则：**错误必须流向调用方时用 `throws`，错误必须保留下来以后再处理时用 `Result`**。
 
 | 场景                                             | 工具                    | 原因                                      |
 |--------------------------------------------------|-------------------------|-------------------------------------------|
@@ -43,9 +43,9 @@ for r in results {
 | 忽略失败，只需要值                               | `try?`                  | 以 `T \| none` 接收                       |
 | 失败即程序 bug                                   | `try!`                  | 失败时 panic                              |
 
-## 2.14.2. `Result<T, E>`：用于保存的 enum
+## 2.14.2. `Result<T, E>`：用于保存的枚举
 
-`Result<T, E>` 是 `core::error` 中的普通 enum。
+`Result<T, E>` 是 `core::error` 中的普通枚举。
 
 ```nabi
 enum Result<T, E> {
@@ -55,8 +55,8 @@ enum Result<T, E> {
 ```
 
 > [!NOTE]
-> Nabi **没有 `Some` / `None` 这样的 enum 变体**。`Option<T>` 本身**不存在**，
-> 用和类型 `T | none` 代替。`Result` 之所以定义为单独的 enum，是因为**两个分支都携带有意义的数据**。
+> Nabi **没有 `Some` / `None` 这样的枚举变体**。`Option<T>` 本身**不存在**，
+> 用和类型 `T | none` 代替。`Result` 之所以定义为单独的枚举，是因为**两个分支都携带有意义的数据**。
 
 ### 核心方法
 
@@ -427,7 +427,7 @@ if let n: i32 = r.ok() { process(n); }     // extracted as T | none
 | `StackOverflowError` | ✓       | ✓             | ✓     | 致命：不能捕获                 |
 | `OutOfMemoryError`   | ✓       | ✓             | ✓     | 致命：不能捕获                 |
 | `InternalError`      | ✓       | ✓             | ✓     | 致命：编译器 bug 时            |
-| `Result<T, E>`       | ✗       | ✓ (T,E:Debug) | ✗     | 用于保存的 enum；`T` 和 `E` 实现 `Clone` / `PartialEq` / `Eq` / `Hash` 时也实现它们 |
+| `Result<T, E>`       | ✗       | ✓ (T,E:Debug) | ✗     | 用于保存的枚举；`T` 和 `E` 实现 `Clone` / `PartialEq` / `Eq` / `Hash` 时也实现它们 |
 | `any Error`          | ✓       | ✓             | ✓     | 受约束的 any，可以成链         |
 
 `Display` 提供对用户友好的消息；例如 `TypeError::new("i32", "str")` 显示为 ``"expected `i32`, found `str`"``。`Debug` 按原样显示结构。表中每个错误类型也都实现 `PartialEq`、`Eq` 和 `Clone`（0.5.10）。`any Error` 值通过运行时标签调用其实际类型的 `Display` / `Debug` / `source`。

@@ -59,7 +59,7 @@ GC 把每个对象放在以下三种空间之一。字面量以及 `const` / `st
 
 大多数普通对象所在的空间，使用 Immix mark-region 算法。
 
-它被划分为 32 KiB 的[块](../000-meta/007-glossary.md#block块)和 128 B 的行。默认采用标记-清除，完整回收可以把对象移出碎片化的块（机会式疏散）。代由 sticky mark-bit 区分（[7.3](703-gc-algorithm.md)）。
+它被划分为 32 KiB 的[块](../000-meta/007-glossary.md#block块)和 128 B 的行。默认采用标记-清除，完整回收可以把对象移出碎片化的块（机会式疏散）。各代通过 sticky mark-bit 区分（[7.3](703-gc-algorithm.md)）。
 
 ### 2. 大对象空间（LOS）
 

@@ -99,9 +99,9 @@ let z = x + y;        //→ 4.0 (f64)
 | 由输入、环境或 I/O 引起，或有多种调用方可能需要区分的原因 | `throws (E)` | `FromStr::from_str`、`str::from_utf8`、`Int::parse_radix`、`FormatSpec::parse`、`ClientConfig::new`、`fs` 和 `net` 的操作 |
 | 调用方可以事先廉价检查的调用方缺陷 | panic，`#[track_caller]` | 运算符索引越界、基数不在 2..=36 内、块大小为零 |
 
-1. **没有孪生函数。** 不存在只在失败渠道上不同的两个函数。`try? f()` 就是每个抛出调用的 `T | none` 形式（[refs-lang 3.14.3](../../refs-lang/003-expressions/314-error-control-flow.md)），所以库中没有抛出函数的 `_or_none` 孪生版本，也没有它的 panic 孪生版本。
-2. **没有哨兵值。** 结果从不用其自身类型的某个值（`0`、`-1`、`""`）编码失败：它要么是 `T | none`，要么函数抛出错误。
-3. **关闭会抛出错误。** 操作系统资源（文件、套接字、TLS 连接）的 `close()` 抛出操作系统报告的错误。`Drop` 从不抛出错误：由 `Drop` 释放的值会丢弃该错误。
+1. **没有孪生函数**。不存在只在失败渠道上不同的两个函数。`try? f()` 就是每个抛出调用的 `T | none` 形式（[refs-lang 3.14.3](../../refs-lang/003-expressions/314-error-control-flow.md)），所以库中没有抛出函数的 `_or_none` 孪生版本，也没有它的 panic 孪生版本。
+2. **没有哨兵值**。结果从不用其自身类型的某个值（`0`、`-1`、`""`）编码失败：它要么是 `T | none`，要么函数抛出错误。
+3. **关闭会抛出错误**。操作系统资源（文件、套接字、TLS 连接）的 `close()` 抛出操作系统报告的错误。`Drop` 从不抛出错误：由 `Drop` 释放的值会丢弃该错误。
 4. 运算符与其具名方法可以不同：`xs[i]` 触发 panic 的地方，`xs.get(i)` 返回 `none`。
 5. 运算符不能抛出错误（[2.3](../200-core/203-ops.md)）：可能失败的运算符返回 `Result`（`Finite<F> + Finite<F>` 是 `Result<Finite<F>, OverflowError>`）。
 
@@ -110,12 +110,12 @@ let z = x + y;        //→ 4.0 (f64)
 
 标准库中的每个错误类型都遵循以下规则：
 
-1. **私有字段。** 错误由构造函数（`new(..)`，或 `IoError::from_os_code` 这类具名构造函数）构建，从不使用结构体字面量；通过以事实命名的 getter 读取（`kind()`、`position()`、`path()`、`os_code()`）。只由库引发的错误（`LayoutError`、`NulError`）可以没有公开构造函数。由多种原因组成的枚举型错误（`FromBytesWithNulError`、`VarError`）把数据放在变体字段中，通过模式读取。每个错误类型都有 `message() -> str`：出了什么问题，不含其 `Display` 可能附加的上下文。
-2. **trait 集合。** 每个错误类型都实现 `Display`、`Debug`、`Error`、`PartialEq`、`Eq` 和 `Clone`。携带类型参数值的错误（`SendError<T>`、`TrySendError<T>`）实现前三个。
-3. **种类。** 种类 getter 返回枚举（`IoErrorKind`、`TlsErrorKind`、`JoinErrorKind`），从不返回 `str` 或整数，并且该枚举是 `#[non_exhaustive]`（`DecodeErrorKind` 也是）。操作系统错误码是 `os_code() -> i32 | none`，错误不是来自操作系统时为 `none`。
-4. **单元结构体。** 没有字段的错误是单元结构体（`struct TimeoutError;`），写作 `TimeoutError`，而不是 `TimeoutError {}`。
-5. **每个失败空间一个错误。** core 保留共享的错误（`ValueError`、`ParseError`、`OverflowError`、`ConversionError`、`TypeError`、`Utf8Error`）以及它自身各失败空间的错误（`ZeroError`、`DecodeError`、`FmtError`、`CancellationError`、`TimeoutError`）；std 的模块每个失败空间有一个错误类型（`IoError`、`TlsError`、`NabionError`；`env` 有读取变量用的 `VarError` 和 `join_paths` 用的 `JoinPathsError`；`process` 在 `IoError` 之外还有安装处理函数用的 `SignalError`）。两个错误从不覆盖同一种失败。每次失败的 UTF-8 检查都抛出 `Utf8Error`。
-6. **消息。** 消息以小写开头（专有名词和类型名除外），没有结尾的句号，也没有 `error:` 前缀。运算符的 panic 使用 Rust 的文本（`index 5 out of bounds for length 3`）。方法的 panic 以 `Type::method: ` 开头（自由函数为 `module::fn: `），然后是问题，有替代写法时再接 `; <what to write instead>`：`i32::isqrt: the number is negative; use `checked_isqrt` to get `none` instead`。对错误实参触发 panic 的公开函数是 `#[track_caller]`。
+1. **私有字段**。错误由构造函数（`new(..)`，或 `IoError::from_os_code` 这类具名构造函数）构建，从不使用结构体字面量；通过以事实命名的 getter 读取（`kind()`、`position()`、`path()`、`os_code()`）。只由库引发的错误（`LayoutError`、`NulError`）可以没有公开构造函数。由多种原因组成的枚举型错误（`FromBytesWithNulError`、`VarError`）把数据放在变体字段中，通过模式读取。每个错误类型都有 `message() -> str`：出了什么问题，不含其 `Display` 可能附加的上下文。
+2. **trait 集合**。每个错误类型都实现 `Display`、`Debug`、`Error`、`PartialEq`、`Eq` 和 `Clone`。携带类型参数值的错误（`SendError<T>`、`TrySendError<T>`）实现前三个。
+3. **种类**。种类 getter 返回枚举（`IoErrorKind`、`TlsErrorKind`、`JoinErrorKind`），从不返回 `str` 或整数，并且该枚举是 `#[non_exhaustive]`（`DecodeErrorKind` 也是）。操作系统错误码是 `os_code() -> i32 | none`，错误不是来自操作系统时为 `none`。
+4. **单元结构体**。没有字段的错误是单元结构体（`struct TimeoutError;`），写作 `TimeoutError`，而不是 `TimeoutError {}`。
+5. **每个失败空间一个错误**。core 保留共享的错误（`ValueError`、`ParseError`、`OverflowError`、`ConversionError`、`TypeError`、`Utf8Error`）以及它自身各失败空间的错误（`ZeroError`、`DecodeError`、`FmtError`、`CancellationError`、`TimeoutError`）；std 的模块每个失败空间有一个错误类型（`IoError`、`TlsError`、`NabionError`；`env` 有读取变量用的 `VarError` 和 `join_paths` 用的 `JoinPathsError`；`process` 在 `IoError` 之外还有安装处理函数用的 `SignalError`）。两个错误从不覆盖同一种失败。每次失败的 UTF-8 检查都抛出 `Utf8Error`。
+6. **消息**。消息以小写开头（专有名词和类型名除外），没有结尾的句号，也没有 `error:` 前缀。运算符的 panic 使用 Rust 的文本（`index 5 out of bounds for length 3`）。方法的 panic 以 `Type::method: ` 开头（自由函数为 `module::fn: `），然后是问题，有替代写法时再接 `; <what to write instead>`：`i32::isqrt: the number is negative; use `checked_isqrt` to get `none` instead`。对错误实参触发 panic 的公开函数是 `#[track_caller]`。
 
 
 ## 0.5.11. 命名
@@ -220,7 +220,7 @@ let z = x + y;        //→ 4.0 (f64)
 
 ## 0.5.14. 文档与属性
 
-标准库的每个公开项都有 `///` 文档注释：每个函数、类型、trait、trait 方法和固有方法，包括 `const fn`、`async fn` 以及位于 `cfg` 之后的项。文档说明该项做什么、返回什么；会抛出错误、返回 `none` 或触发 panic 的函数说明在什么情况下会这样，`unsafe` 函数说明其调用方必须遵守什么。库自身的检查（`nabic check --check-library`）拒绝 `missing_docs`（[refs-lang 6.2.9](../../refs-lang/006-meta-system/602-built-in-attributes.md)）。
+标准库的每个公开项都有 `///` 文档注释：每个函数、类型、trait、trait 方法和固有方法，包括 `const fn`、`async fn` 以及受 `cfg` 控制的项。文档说明该项做什么、返回什么；会抛出错误、返回 `none` 或触发 panic 的函数说明在什么情况下会这样，`unsafe` 函数说明其调用方必须遵守什么。库自身的检查（`nabic check --check-library`）拒绝 `missing_docs`（[refs-lang 6.2.9](../../refs-lang/006-meta-system/602-built-in-attributes.md)）。
 
 结果有顺序的函数会说明其顺序：
 

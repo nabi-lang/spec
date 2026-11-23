@@ -153,7 +153,7 @@ let qs = ps.map(|p| { p.x = 0.0; p }).to_list();  // returned: kept
 let c = self;                     // a local copy on purpose: change `c`, then read or return it
 ```
 
-共享要透過參照控制代碼：集合型別（`List`、`Dict`、`Set`、`StrBuf`、`Deque`……，[stdlib 2.9](../../refs-standard-libraries/200-core/209-collections.md#參考控制代碼)）、`Mutex`、`RwLock`、atomics、通道，以及 `[ref x]` 擷取儲存格。複製控制代碼會共享物件。
+共享要透過參照控制代碼：集合型別（`List`、`Dict`、`Set`、`StrBuf`、`Deque`……，[stdlib 2.9](../../refs-standard-libraries/200-core/209-collections.md#參照控制代碼)）、`Mutex`、`RwLock`、原子型別、通道，以及 `[ref x]` 擷取儲存格。複製控制代碼會共享物件。
 
 |                         | 值型別（`struct`、`enum`、元組、基本型別）      | 參照控制代碼（`List`、`Dict`、`Mutex`……）     |
 |-------------------------|-------------------------------------------------|-----------------------------------------------|

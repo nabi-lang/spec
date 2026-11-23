@@ -202,7 +202,7 @@ any Iterator<Item = i32>
 any Future<Output = User>
 ```
 
-`any` 是[关键字](../001-lexical/105-keywords.md)中保留的类型名槽关键字；其含义在 [`any` 槽](202-any-slot.md)中定义。在 `any` 之后跟一个 trait 路径，或跟用括号括起、以 `+` 连接的多个 trait 路径，就构成受约束的动态槽，它只持有实现了这些 trait 的值（[2.2.10](202-any-slot.md#2210-受约束的-anyany-trait)）。在 trait 路径的 `<...>` 中，除类型实参外，还可以出现固定关联类型的绑定，例如 `Item = T`（`trait_arg`）。两个或更多 trait 路径必须加括号；`any` 只绑定紧随其后的那一个 trait，所以 `any Error | none` 是 `(any Error) | none`。trait 路径只能在 `any` 之后出现在类型位置中（[trait 不能作类型](212-trait-as-type-banned.md)）。
+`any` 是[关键字](../001-lexical/105-keywords.md)中保留的类型名槽关键字；其含义在 [`any` 槽](202-any-slot.md)中定义。在 `any` 之后跟一个 trait 路径，或跟用括号括起、以 `+` 连接的多个 trait 路径，就构成受约束的动态槽，它只持有实现了这些 trait 的值（[2.2.10](202-any-slot.md#2210-受约束的-anyany-trait)）。在 trait 路径的 `<...>` 中，除类型实参外，还可以出现固定关联类型的绑定，例如 `Item = T`（`trait_arg`）。两个或更多 trait 路径必须加括号；`any` 只绑定紧随其后的那一个 trait，所以 `any Error | none` 是 `(any Error) | none`。在类型位置中，trait 路径只能出现在 `any` 之后（[trait 不能作类型](212-trait-as-type-banned.md)）。
 
 ## 2.1.10. 优先级与结合
 

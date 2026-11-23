@@ -166,7 +166,7 @@ C89、C99、C11、C17 和 C23 作为同一种方言读取：为其中任何一�
 
 当目标就是主机且工具链没有为其随附 sysroot 时，使用主机的 `/usr/include`。对于以上都不具备的目标，会报错并指出缺失的目录和 `--sysroot <dir>`。`--sysroot <dir>`（或 `-isysroot <dir>`）覆盖上表：改为搜索其下的头文件（`usr/include`，在 Linux 上加上目标的 multiarch 目录；在 wasm32 上为 `include`）。
 
-在 C 库的头文件之前是内置头文件，即代替 clang 自带头文件的独立环境头文件：`stddef.h`、`stdint.h`、`stdarg.h`、`stdbool.h`、`stdalign.h`、`stdnoreturn.h`、`stdatomic.h`、`limits.h`、`float.h`、`inttypes.h`、`iso646.h`，以及 [std 1.7.6](../../refs-standard-libraries/100-bare/107-ffi.md#bindgen-读取的-c) 中的内建函数头文件，其中的函数在这里没有定义。`-nobuiltininc` 不使用它们；`-nostdinc` 不使用任何系统目录。
+在 C 库的头文件之前是内置头文件，即代替 clang 自带头文件的独立环境头文件：`stddef.h`、`stdint.h`、`stdarg.h`、`stdbool.h`、`stdalign.h`、`stdnoreturn.h`、`stdatomic.h`、`limits.h`、`float.h`、`inttypes.h`、`iso646.h`，以及 [标准库 1.7.6](../../refs-standard-libraries/100-bare/107-ffi.md#bindgen-读取的-c) 中的内建函数头文件，其中的函数在这里没有定义。`-nobuiltininc` 不使用它们；`-nostdinc` 不使用任何系统目录。
 
 ## 9.13.8. 包的 C 源文件
 

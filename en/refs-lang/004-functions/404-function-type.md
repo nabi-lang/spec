@@ -101,7 +101,7 @@ let f: fn(i32) -> i32 = |x| x + n;     // captures n, but the type is fn(i32) ->
 
 Captures are attached internally to the closure object and used automatically at call time. User code therefore need not care whether there are captures, and captures do not appear in the type.
 
-Rust's distinction between the `Fn`, `FnMut` and `FnOnce` traits does not exist in nabi. Captures are by value by default, which reduces semantic complexity. The detailed capture semantics are defined in [Capture semantics](406-capture-semantics.md).
+Rust's distinction between the `Fn`, `FnMut` and `FnOnce` traits does not exist in Nabi. Captures are by value by default, which reduces semantic complexity. The detailed capture semantics are defined in [Capture semantics](406-capture-semantics.md).
 
 ### `Send` / `Sync` bounds
 
@@ -165,7 +165,7 @@ A function value is a `{code, env}` pair: `code` is a code pointer and `env` is 
 ## 4.4.9. Subtyping between function types (none)
 
 > [!IMPORTANT]
-> Function type subtyping, as found in languages like Rust or TypeScript, does not exist in nabi. A function type is not automatically converted to a more general or more specific function type. Parameter and return types must match exactly.
+> Function type subtyping, as found in languages like Rust or TypeScript, does not exist in Nabi. A function type is not automatically converted to a more general or more specific function type. Parameter and return types must match exactly.
 
 ```nabi
 let f: fn(i32 | f64) -> i32 = |x: i32| x;     // ERROR: parameter type does not match exactly

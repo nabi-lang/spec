@@ -137,7 +137,7 @@ impl Iterator {
 - `step_by(step)` 產出第一個項目，之後每隔 `step` 個產出一個。`step` 為 0 時觸發 panic。
 - `peekable()` 回傳 `Peekable<Self>`，其 `peek(ref self) -> Item | none` 給出下一個項目，並把它留給接下來的 `next`。
 - `inspect(f)` 把每個項目傳給 `f`，並原樣產出。
-- `cycle()` 每當迭代器耗盡時，就從 `cycle` 接收當時的迭代器複本重新開始，因此除非迭代器為空，否則永無止境；迭代器為空時則什麼都不產出。產生器的複本共用同一個位置（2.7.10a），所以對產生器使用 `cycle` 不會重複。
+- `cycle()` 每當迭代器耗盡時，就從 `cycle` 收到迭代器那一刻的複本重新開始，因此除非迭代器為空，否則永無止境；迭代器為空時則什麼都不產出。產生器的複本共用同一個位置（2.7.10a），所以對產生器使用 `cycle` 不會重複。
 - `chunks(size)` 依序產出每 `size` 個項目一組的串列，項目用盡時最後一組較短。`windows(size)` 產出 `size` 個連續項目的串列，每次滑動一格；項目少於 `size` 個時什麼都不產出。兩者在 `size` 為 0 時都會觸發 panic。`List` 與 `Slice` 有自己的 `chunks` / `windows`，產出的是檢視（[2.9.7](209-collections.md#297-slicet檢視)）。
 - `try_fold` 與 `try_for_each` 接受會擲回錯誤的 `f`：第一個錯誤就停止迴圈，之後的項目都不會走訪，該錯誤擲回給呼叫端。
 - `partition(pred)` 以兩個串列回傳 `pred` 接受的項目與其餘項目，各自保持原順序。`unzip()` 把成對 `(A, B)` 的迭代器拆成 `List<A>` 與 `List<B>`。它的項目必須是成對的：`A` 與 `B` 由 `Item = (A, B)` 推論，其他形式的項目在呼叫處是錯誤。
@@ -466,7 +466,7 @@ let v: List<i32> = (0..5).collect();
 (0..).take(10).sum();        //→ 0+1+...+9 = 45
 ```
 
-`Iterator` 不會偵測無限。使用者必須刻意組合惰性配接器。
+`Iterator` 不會偵測迭代器是否無限。使用者必須刻意組合惰性配接器。
 
 ## 2.7.8. 函式廣播：`f.(x)` 的去語法糖
 
@@ -616,12 +616,12 @@ trait TryIterator {
 
 `TryIterator` 在 prelude 中（[0.2](../000-meta/002-import.md)）。它是獨立的 trait，而不是 `Iterator` 上的錯誤參數：一個值只會是其中之一。
 
-- **擲回之後。** 擲回錯誤之後再呼叫 `next` 會怎樣，由各型別在文件中自行選擇。型別可以繼續給出下一個項目（`io::Bytes`），也可以結束，從此給出 `none`（`TryGenIter`）。
-- **配接器的函式擲回 `Error`。** 傳給 `map`、`filter`、`fold` 等的函式可以擲回迭代器自身的 `Error`；不會擲回錯誤的函式也適用（[refs-lang 4.14.8](../../refs-lang/004-functions/414-throws.md#4148-函式型別中的-throws)）。擲回其他型別的函式在呼叫處是型別錯誤：先用 `.map_err(..)` 轉換，或在函式內以 `catch` 處理錯誤。`map_err` 是改變 `Error` 的唯一方式：`.map_err(|e| -> IoError | ParseError { e })` 加寬它，`.map_err(|e| -> any Error { e })` 抹除它。
-- **沒有 `try_fold` / `try_for_each`。** `fold` 與 `for_each` 本來就接受會擲回錯誤的函式。`Iterator::try_fold` / `try_for_each`（2.7.1）仍然保留：它們為不會擲回錯誤的迭代器加上擲回。
+- **擲回之後**。擲回錯誤之後再呼叫 `next` 會怎樣，由各型別在文件中自行選擇。型別可以繼續給出下一個項目（`io::Bytes`），也可以結束，從此給出 `none`（`TryGenIter`）。
+- **配接器的函式擲回 `Error`**。傳給 `map`、`filter`、`fold` 等的函式可以擲回迭代器自身的 `Error`；不會擲回錯誤的函式也適用（[refs-lang 4.14.8](../../refs-lang/004-functions/414-throws.md#4148-函式型別中的-throws)）。擲回其他型別的函式在呼叫處是型別錯誤：先用 `.map_err(..)` 轉換，或在函式內以 `catch` 處理錯誤。`map_err` 是改變 `Error` 的唯一方式：`.map_err(|e| -> IoError | ParseError { e })` 加寬它，`.map_err(|e| -> any Error { e })` 抹除它。
+- **沒有 `try_fold` / `try_for_each`**。`fold` 與 `for_each` 本來就接受會擲回錯誤的函式。`Iterator::try_fold` / `try_for_each`（2.7.1）仍然保留：它們為不會擲回錯誤的迭代器加上擲回。
 - **`collect`** 建構任何 `FromIterator` 集合型別（2.7.5）；沒有另外的 trait。它在第一個錯誤處停止並擲回該錯誤。
-- **命名。** 配接器型別加上 `Try` 前綴，與 `Map`、`Filter` 等一起位於 `core::iter`；`MapErr` 與 `Results` 只存在於這裡。
-- **`for`。** `TryIterator` 以 `try for x in it { .. }` 步進（[refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for以迭代器為基礎的重複)）。`try` 涵蓋可迭代物與每次 `next`，不涵蓋主體。對 `TryIterator` 使用一般的 `for` 是編譯錯誤，錯誤會要求改用 `try for` 或 `.results()`。
+- **命名**。配接器型別加上 `Try` 前綴，與 `Map`、`Filter` 等一起位於 `core::iter`；`MapErr` 與 `Results` 只存在於這裡。
+- **`for`**。`TryIterator` 以 `try for x in it { .. }` 步進（[refs-lang 3.13.3](../../refs-lang/003-expressions/313-loop-expressions.md#3133-for以迭代器為基礎的重複)）。`try` 涵蓋可迭代物與每次 `next`，不涵蓋主體。對 `TryIterator` 使用一般的 `for` 是編譯錯誤，錯誤會要求改用 `try for` 或 `.results()`。
 
 ### 轉換
 

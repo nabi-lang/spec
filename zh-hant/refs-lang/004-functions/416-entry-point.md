@@ -80,7 +80,7 @@ fn main() throws {          // form of the implicit main (see 4.16.4)
 
 | 簽章                              | 正常結束時的結束碼       | 備註                                   |
 |-----------------------------------|--------------------------|----------------------------------------|
-| `fn main()`                       | `0`                      | 隱含地 throws：未處理的例外 → 4.16.4   |
+| `fn main()`                       | `0`                      | 隱含擲回錯誤：未處理的例外 → 4.16.4   |
 | `fn main() -> i32`                | 回傳值                   | 回傳值就是行程的結束碼                 |
 | `fn main() throws` / `throws (E)` | `0`                      | 未處理的例外 → 4.16.4                  |
 | 上述三種形式加上 `async`          | 同上                     | 4.16.5                                 |
@@ -96,8 +96,8 @@ fn main() throws {          // form of the implicit main (see 4.16.4)
 行程的結束碼由進入點的結束方式決定。
 
 - **正常結束**：依 4.16.3 的表格，為 `0` 或回傳的 `i32`。
-- **未處理的例外**：若在會 throws 的 main（包括沒有 `->` 的 `fn main()`）中有錯誤傳播出進入點，執行環境會把 ``error: `main` returned an uncaught error: `` 及其後的例外值印到標準錯誤（stderr），並以結束碼 **`1`** 結束。輸出格式在值實作了 [`Display`](../../refs-standard-libraries/200-core/210-fmt.md) 時是 `Display`，否則是 `Debug`，兩者都沒有時則是型別名稱（[`Error`](../../refs-standard-libraries/200-core/214-error.md) trait 要求 `Display`，因此一般的錯誤型別以 `Display` 印出）。下一行以 `  --> path:line:col` 給出錯誤離開 `main` 的位置。當引發它的 `throw` 已知且位於他處時，最後一行以 `  raised at path:line:col` 給出其位置（指出哪個 `throw` 遵循失敗的 `try!` 的規則，[3.14.8](../003-expressions/314-error-control-flow.md#3148-panic-與致命錯誤)）。
-- **panic**：panic 與致命錯誤不會被 `catch` 捕捉；執行環境把訊息印到標準錯誤，並以結束碼 **`101`** 結束；在 C 所呼叫的函式之下則改為中止（[4.14.13](414-throws.md#41413-panic-與致命錯誤)）。
+- **未處理的例外**：若在帶 `throws` 的 main（包括沒有 `->` 的 `fn main()`）中有錯誤傳播出進入點，執行環境會把 ``error: `main` returned an uncaught error: `` 及其後的例外值印到標準錯誤（stderr），並以結束碼 **`1`** 結束。輸出格式在值實作了 [`Display`](../../refs-standard-libraries/200-core/210-fmt.md) 時是 `Display`，否則是 `Debug`，兩者都沒有時則是型別名稱（[`Error`](../../refs-standard-libraries/200-core/214-error.md) trait 要求 `Display`，因此一般的錯誤型別以 `Display` 印出）。下一行以 `  --> path:line:col` 給出錯誤離開 `main` 的位置。當引發它的 `throw` 已知且位於他處時，最後一行以 `  raised at path:line:col` 給出其位置（指出的是哪個 `throw`，依失敗之 `try!` 的規則決定，[3.14.8](../003-expressions/314-error-control-flow.md#3148-panic-與致命錯誤)）。
+- **panic**：panic 與致命錯誤不會被 `catch` 攔截；執行環境把訊息印到標準錯誤，並以結束碼 **`101`** 結束；在 C 所呼叫的函式之下則改為中止（[4.14.13](414-throws.md#41413-panic-與致命錯誤)）。
 - **明確結束**：[`std::process::exit(code)`](../../refs-standard-libraries/300-std/306-process.md) 從任何位置立即終止行程。這條路徑不會執行 `finally` 或 `Drop`。
 
 沒有 `->` 也沒有 `throws` 的明確 `fn main()`，與隱含 `main` 一樣被讀作 `fn main() throws`（未定型）：指令碼的 `try` 不需要 `main` 上的 `throws`。`fn main() -> i32` 不會擲回錯誤（帶 `-> i32` 的 `throws` 不是進入點的形式）。
@@ -126,7 +126,7 @@ println(body.len());
 
 頂層陳述式**只允許出現在進入模組 `main.nabi` 中**。`lib.nabi` 以及 `main.nabi` 以外的每個模組檔案（以及行內 `mod { ... }` 主體）只能包含項目（`module_file ::= item*`）；那裡的頂層陳述式是**編譯錯誤**。對於行內 `mod x { stmt }` 主體中的陳述式，會發出指向本節的專用診斷。
 
-結果是，**匯入模組（`mod`、`use`）不會執行任何程式碼。**這與 Python 刻意不同。在 Python 中，`import` 會執行模組檔案的頂層程式碼，因此同時用作函式庫與指令碼的檔案必須以 `if __name__ == "__main__":` 守衛區分兩種用途。Nabi 不需要這種守衛：作為指令碼執行的程式碼只存在於 `main.nabi` 中，而其他每個檔案在匯入時都不會造成任何事。
+結果是，**匯入模組（`mod`、`use`）不會執行任何程式碼**。這與 Python 刻意不同。在 Python 中，`import` 會執行模組檔案的頂層程式碼，因此同時用作函式庫與指令碼的檔案必須以 `if __name__ == "__main__":` 守衛區分兩種用途。Nabi 不需要這種守衛：作為指令碼執行的程式碼只存在於 `main.nabi` 中，而其他每個檔案在匯入時都不會產生任何效果。
 
 這個決定的理由：
 
@@ -148,7 +148,7 @@ nabi run hello.nabi
 nabic build hello.nabi
 ```
 
-若作為引數給出的檔案不在某個套件的 `src/` 中，編譯器會建構一個只由該檔案組成的**匿名可執行套件**，並把該檔案視為該套件的 `main.nabi`。檔名沒有意義，進入點規則（4.16.1 到 4.16.5）與 `main.nabi` 完全相同地適用。位於套件 `src/` 旁邊的 `.nabi` 檔案，例如其根目錄中的指令碼，也以這種方式執行。匿名套件可以有檔案子模組：`mod foo;` 載入該檔案旁邊的 `foo.nabi`（其子模組位於 `foo/`），與套件 `src/` 中完全相同（[5.4.4](../005-modules/504-modules.md#544-套件根)）。只有沒有檔案的原始碼（標準輸入、REPL 工作階段）不行；它們使用行內模組。若需要相依套件，就在該檔案及其任何子模組檔案開頭的行內清單區塊中宣告（[9.10.7](../009-tools/910-nabi-frontend.md#9107-單檔指令碼的行內資訊清單)）。詳細的指令形式定義於 [`nabic` CLI](../009-tools/901-nabic-cli.md) 與 [`nabi run`](../009-tools/910-nabi-frontend.md#nabi-run建置並執行)。
+若作為引數給出的檔案不在某個套件的 `src/` 中，編譯器會建構一個只由該檔案組成的**匿名可執行套件**，並把該檔案視為該套件的 `main.nabi`。檔名沒有意義，進入點規則（4.16.1 到 4.16.5）與 `main.nabi` 完全相同地適用。位於套件 `src/` 旁邊的 `.nabi` 檔案，例如其根目錄中的指令碼，也以這種方式執行。匿名套件可以有檔案子模組：`mod foo;` 載入該檔案旁邊的 `foo.nabi`（其子模組位於 `foo/`），與套件 `src/` 中完全相同（[5.4.4](../005-modules/504-modules.md#544-套件根)）。只有沒有檔案的原始碼（標準輸入、REPL 工作階段）不行；它們使用行內模組。若需要相依套件，就在該檔案及其任何子模組檔案開頭的行內清單區塊中宣告（[9.10.7](../009-tools/910-nabi-frontend.md#9107-單檔指令碼的行內清單)）。詳細的指令形式定義於 [`nabic` CLI](../009-tools/901-nabic-cli.md) 與 [`nabi run`](../009-tools/910-nabi-frontend.md#nabi-run建置並執行)。
 
 ## 4.16.9. 沒有進入點屬性
 

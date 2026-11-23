@@ -22,9 +22,9 @@ let m = matrix[i, j];        // multidimensional, indices separated by commas
 
 左側可以是任何運算式；方括號內放一個或多個以逗號分隔的索引運算式。結果是索引所指位置的值。
 
-### 去糖
+### 去語法糖
 
-索引運算式去糖為下列 trait 呼叫。
+索引運算式去語法糖為下列 trait 呼叫。
 
 ```
 arr[i]                 →   <typeof(arr) as Index<typeof(i)>>::index(arr, i)
@@ -42,9 +42,9 @@ d[k, default: v].f op= e;         →   the same, with t[i].f op= e
 d[k, default: v].m(args)          →   d.get_or_insert(k, v).m(args)
 ```
 
-`d` 與 `k` 只求值一次；`v` 則在每次執行該運算式時求值。型別只要有 `get_or` 與 `get_or_insert` 就能使用這種形式（`Dict`，[stdlib 2.9.13](../../refs-standard-libraries/200-core/209-collections.md#2913-預設值運算子與建構函式)）。
+`d` 與 `k` 只求值一次；`v` 則在每次執行該運算式時求值。型別只要有 `get_or` 與 `get_or_insert` 就能使用這種形式（`Dict`，[stdlib 2.9.13](../../refs-standard-libraries/200-core/209-collections.md#2913-預設值運算子與建構子)）。
 
-讀取與寫入對應到不同的 trait，因此嘗試寫入唯讀資料是編譯錯誤。多維索引去糖為單一的索引 trait 呼叫，其索引被打包成一個元組：`g[i, j]` 是透過 `Index<(I, J)>` 的 `g[(i, j)]`。當一個型別有多個 `Index<K>` impl 時，由引數型別選出一個。
+讀取與寫入對應到不同的 trait，因此嘗試寫入唯讀資料是編譯錯誤。多維索引去語法糖為單一的索引 trait 呼叫，其索引被打包成一個元組：`g[i, j]` 是透過 `Index<(I, J)>` 的 `g[(i, j)]`。當一個型別有多個 `Index<K>` impl 時，由引數型別選出一個。
 
 ### 負索引
 
@@ -131,9 +131,9 @@ xs[::0];               // panic: step 0
 
 `str` / `StrBuf` 的邊界是位元組偏移；它們先被夾住，若所得位置落在 UTF-8 字元的中間，就會 panic。`str` 的切片沒有步長（`s[::2]` 是錯誤，E0056）。
 
-### 去糖
+### 去語法糖
 
-切片去糖為一個範圍以及對 `Sliceable` trait 的呼叫（[stdlib 2.3.4](../../refs-standard-libraries/200-core/203-ops.md#234-索引-trait)）。
+切片去語法糖為一個範圍以及對 `Sliceable` trait 的呼叫（[stdlib 2.3.4](../../refs-standard-libraries/200-core/203-ops.md#234-索引-trait)）。
 
 ```
 arr[a : b]            →   arr.slice(a..b)                       // unsigned bounds, no step
@@ -152,7 +152,7 @@ arr[a : b]            →   slice_mut(arr, a..b)                  // a List wher
 | `slice_bound(i: isize, len: usize) -> usize`                   | 為負時是 `len + i`；低於 0 時變成 0                                |
 | `slice_range(start: isize \| none, stop: isize \| none, step: isize, len: usize) -> Range<usize>` | 等價於 Python `slice.indices` 的正向範圍。附加 `.step(step)` 後得到 `arr[start:stop:step]` |
 | `index_from_end(i: isize, len: usize) -> usize`                | 用於單一索引。為負時是 `len + i`；溢位時 panic                     |
-| `slice_mut(xs: List<T>, r: Range<usize> \| none) -> SliceMut<T>` | `xs[r]` 的可寫視圖（`none`：整個 `xs`），`r` 會被夾住；僅供降階後的程式碼使用 |
+| `slice_mut(xs: List<T>, r: Range<usize> \| none) -> SliceMut<T>` | `xs[r]` 的可寫入檢視（`none`：整個 `xs`），`r` 會被夾住；僅供降階後的程式碼使用 |
 
 ### `Slice` 結果的種類
 
@@ -160,11 +160,11 @@ arr[a : b]            →   slice_mut(arr, a..b)                  // a List wher
 
 | 目標                 | 結果                                                                 |
 |----------------------|----------------------------------------------------------------------|
-| `List<T>`            | `Slice<T>`：串列緩衝區的視圖（元素的寫入看得到）                     |
-| `Slice<T>`           | `Slice<T>`：視圖的視圖                                               |
-| `[T; N]`             | `Slice<T>`：陣列複本的視圖（陣列是值）                               |
-| 在預期 `SliceMut<T>` 之處的 `List<T>` | `SliceMut<T>`：串列的可寫視圖（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可寫入檢視)）；沒有步長 |
-| `SliceMut<T>`        | `SliceMut<T>`：該視圖的可寫視圖                                      |
+| `List<T>`            | `Slice<T>`：串列緩衝區的檢視（元素的寫入看得到）                     |
+| `Slice<T>`           | `Slice<T>`：檢視的檢視                                               |
+| `[T; N]`             | `Slice<T>`：陣列複本的檢視（陣列是值）                               |
+| 在預期 `SliceMut<T>` 之處的 `List<T>` | `SliceMut<T>`：串列的可寫入檢視（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可寫入檢視)）；沒有步長 |
+| `SliceMut<T>`        | `SliceMut<T>`：該檢視的可寫入檢視                                      |
 | `str`、`StrBuf`      | 新的 `str`：位元組複本（因為 `str` 必須保持為 C 字串），並檢查 UTF-8 邊界 |
 
 ### 切片指派
@@ -177,8 +177,8 @@ m[a : b : k] = v;     →   IndexSet::index_set(m, SliceArg::new(a, b, k), v)   
 ```
 
 - 在 `List` 上，值來自長度完全相同的 `List` / `Slice`（否則 `copy_from_slice` 會 panic；改變長度要用 `splice`）。串列帶步長的切片不能被指派（錯誤，說明會提示逐一存入元素）。
-- 在 `Array` 這類以軸索引的型別上，選取的部分是視圖，而值要麼是填滿它的純量（`a[1:3] = 0.0`），要麼是伸展為其形狀的陣列（`a[1:3] = b`），取決於哪個 `IndexSet` impl 接受該值的型別。
-- `str`、`StrBuf`、`Slice` 與固定長度陣列不接受切片指派（錯誤）；`SliceMut` 視圖則逐元素寫入，或以 `copy_from_slice` 寫入。
+- 在 `Array` 這類以軸索引的型別上，選取的部分是檢視，而值要麼是填滿它的純量（`a[1:3] = 0.0`），要麼是伸展為其形狀的陣列（`a[1:3] = b`），取決於哪個 `IndexSet` impl 接受該值的型別。
+- `str`、`StrBuf`、`Slice` 與固定長度陣列不接受切片指派（錯誤）；`SliceMut` 檢視則逐元素寫入，或以 `copy_from_slice` 寫入。
 
 ## 3.6.3. 多軸索引
 
@@ -235,4 +235,4 @@ arr[: : :]          // ERROR: three colons
 
 語言本身不決定哪些型別支援索引或切片。只有在標準函式庫為某個型別實作了 `Index`、`IndexSet` 與 `Sliceable` 之後，`arr[i]` 與 `arr[1:3]` 才能對該型別運作。
 
-語言定義方括號語彙單元的形式與去糖規則；意義屬於函式庫。
+語言定義方括號語彙單元的形式與去語法糖規則；意義屬於函式庫。

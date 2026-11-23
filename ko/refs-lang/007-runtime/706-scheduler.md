@@ -66,7 +66,7 @@ Global injector:
 | `task::join([...])`     | 모두 끝날 때까지 (`List<Task<T>>`, await).                               |
 | `task::timeout(d, t)`   | 시간 제한. 초과하면 `try await`에서 `TimeoutError`.                      |
 | `thread::spawn(f)`      | 새 OS 스레드 만들기 (1:1).                                               |
-| `par::for_each(xs, f)`  | 병렬 for-each ([block](../000-meta/007-glossary.md#block-블록) on join). |
+| `par::for_each(xs, f)`  | 병렬 for-each (모든 호출이 끝나면 반환). |
 | `par::scope { ... }`    | 병렬 스코프 (트레일링 클로저).                                           |
 
 이 함수는 키워드가 아니므로 사용자 코드에서 `spawn`이나 `race` 같은 식별자를 자유롭게 쓸 수 있습니다.

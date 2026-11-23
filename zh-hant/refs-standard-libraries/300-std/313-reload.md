@@ -31,7 +31,7 @@ pub fn host_main();
 
 程式在 `nabi dev` 下執行且其通道已連線時，`active()` 為 true。
 
-`point()` 在呼叫它的執行緒上套用一個已就緒的變更。保留所有型別佈局的變更一到達就套用；改變佈局的變更，則在第一個沒有任何執行中框架或舊程式碼的存活值依賴已變更型別的停止點套用（[refs-lang 9.14.4](../../refs-lang/009-tools/914-hot-reload.md#9144-仍在執行的程式碼)），而 `point()` 通常就是滿足這個條件的地方。應當在沒有任何區域變數持有你可能修改之型別的值的地方呼叫它：影格迴圈的開頭。
+`point()` 在呼叫它的執行緒上套用一個已就緒的變更。保留所有型別佈局的變更一到達就套用；改變佈局的變更，則在第一個沒有任何執行中框架或舊程式碼的存活值相依於已變更型別的停止點套用（[refs-lang 9.14.4](../../refs-lang/009-tools/914-hot-reload.md#9144-仍在執行的程式碼)），而 `point()` 通常就是滿足這個條件的地方。應當在沒有任何區域變數持有你可能修改之型別的值的地方呼叫它：影格迴圈的開頭。
 
 ## 3.13.2. `on_reload` / `before_reload`
 
@@ -57,6 +57,6 @@ fn new_state() -> reload::State<World> { reload::State::new(World::new()) }
 
 ## 3.13.4. `host_main`
 
-`host_main()` 是 `nabi dev` 建置並執行的程式的完整 `main`：它連接通道（`NABI_DEV`），用 [`plugin::load`](311-plugin.md) 載入每個熱套件的第一個版本（`NABI_DEV_PLUGINS`，每行一個路徑，相依套件在前），並呼叫最後一個套件中 `NABI_DEV_MAIN` 所指名的函式。載入失敗時會印出外掛錯誤，並以狀態 101 結束。程式不會自行呼叫它。
+`host_main()` 是 `nabi dev` 建置並執行的程式的完整 `main`：它連接通道（`NABI_DEV`），用 [`plugin::load`](311-plugin.md) 載入每個熱套件的第一個版本（`NABI_DEV_PLUGINS`，每行一個路徑，相依套件在前），並呼叫最後一個套件中 `NABI_DEV_MAIN` 所指名的函式。載入失敗時會印出外掛錯誤，並以結束碼 101 結束。程式不會自行呼叫它。
 
 執行環境端是 `nabi_hot_*`（`active`、`connect`、`ready`、`point`、`events`、`hold`）。

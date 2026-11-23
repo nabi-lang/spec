@@ -63,7 +63,7 @@ GC 把每個物件放在下列三個空間之一。字面值與 `const` / `stati
 
 ### 2. 大型物件空間（LOS）
 
-8 KiB 以上，或需要大於 8 位元組之對齊的物件，以及機密緩衝區（`nabi_gc_secret_new`，[8.5.1](../008-abi/805-extern-symbols.md#nabi_gc_secret_new--nabi_gc_secret_wipe)），在 LOS 中個別配置，並設定 `gc_flags` 的 `LARGE` 位元。LOS 以標記-清除回收，不會移動物件。老的 LOS 物件有卡片表（[7.4.2](704-barriers-and-roots.md#742-寫入屏障物件記錄)）。機密緩衝區有 `WIPE` 位元（[8.1.3](../008-abi/801-object-header-abi.md#813-gc_flags偏移-4u32)）：釋放它的清除階段會先以零覆寫其酬載。
+8 KiB 以上，或需要大於 8 位元組之對齊的物件，以及機密緩衝區（`nabi_gc_secret_new`，[8.5.1](../008-abi/805-extern-symbols.md#nabi_gc_secret_new--nabi_gc_secret_wipe)），在 LOS 中個別配置，並設定 `gc_flags` 的 `LARGE` 位元。LOS 以標記-清除回收，不會移動物件。已成為老物件的 LOS 物件有卡片表（[7.4.2](704-barriers-and-roots.md#742-寫入屏障物件記錄)）。機密緩衝區有 `WIPE` 位元（[8.1.3](../008-abi/801-object-header-abi.md#813-gc_flags偏移-4u32)）：釋放它的清除階段會先以零覆寫其酬載。
 
 ### 3. 釘選的物件（FFI 釘選）
 

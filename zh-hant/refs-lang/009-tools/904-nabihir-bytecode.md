@@ -100,7 +100,7 @@ PrefixVarInt 是 LEB128 的一種變體。第一個位元組開頭的 1 位元�
 - `g <root> <mutex|rwlock|channel> <line> <function> <file>`：交出 `<root>`；
 - `s <root> <root>`：同一個物件；
 - `i <root> <root>`：第一個消失時會一併帶走第二個；
-- `t <guard parameter> <root>`：綁定到該 guard。
+- `t <guard parameter> <root>`：繫結到該 guard。
 - `x <tag|*> [<root>]`：在回傳值帶有該標籤的出口上（`*`：未知；`bool` 的 0 / 1、和型別或 enum 的變體、承載結構的 1 表示錯誤、0 表示值、2 + 值的標籤），`<root>` 屬於被交出者；沒有 `x` 行時，每個出口都交出所有 `g` 根。
 
 根是一個參數索引或 `r`（回傳值），然後是以 `.` 分隔的欄位路徑（元組索引會設定位元 31）。名為 `#fn`（`#fne`：閉包，環境在前）、其後接以 U+001F 分隔之參數型別鍵的項目，合併以那些參數型別作為值使用之函式的摘要。

@@ -78,4 +78,4 @@ struct Real { value: f64; }
 | `NonZero<T>`  | 0（仅限整数 T）                       | [标准库 2.2.2](../../refs-standard-libraries/200-core/202-non-zero.md#222-nonzerot禁止零) |
 | `NonNan<F>`   | NaN                                   | [标准库 2.2.3](../../refs-standard-libraries/200-core/202-non-zero.md#223-nonnanf禁止-nan) |
 | `Finite<F>`   | NaN、±∞                               | [标准库 2.2.4](../../refs-standard-libraries/200-core/202-non-zero.md#224-finitef禁止-nan-和-) |
-| `Positive<T>` | 负数（含 0）。无符号 `T` 没有 niche（`Positive<u32> \| none` 为 8 字节） | [标准库 2.2.5](../../refs-standard-libraries/200-core/202-non-zero.md#225-positivet禁止负值) |
+| `Positive<T>` | 负数（0 是合法值）。无符号 `T` 没有 niche（`Positive<u32> \| none` 为 8 字节） | [标准库 2.2.5](../../refs-standard-libraries/200-core/202-non-zero.md#225-positivet禁止负值) |

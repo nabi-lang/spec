@@ -1,12 +1,12 @@
 # 1.10. Objective-C：`extern "objc"` 與 `ffi::objc`
 
-Objective-C 物件可以直接使用：方法呼叫就是在該方法簽章的 C ABI 下呼叫 `objc_msgSend`（[1.7](107-ffi.md)），選擇器（selector）和類別則是靜態參照，由執行環境在映像載入時修正。過程中沒有 C 編譯器，也沒有 shim。類別及其方法宣告在 `extern "objc"` 區塊中（1.10.2），可以手寫，也可以由 `ffi::objc::import` 從 SDK 的標頭檔讀取（1.10.12）；`bare::ffi::objc` 存放每個程式共用的部分：`Id<T>`、`Sel`、`Class`、`IsA`、根類別 `NSObject`、`NSString`、`NSError`、autorelease pool、block、dispatch 佇列，以及執行時建立的類別。
+Objective-C 物件可以直接使用：方法呼叫就是在該方法簽章的 C ABI 下呼叫 `objc_msgSend`（[1.7](107-ffi.md)），選擇器（selector）和類別則是靜態參考，由執行環境在映像載入時修正。過程中沒有 C 編譯器，也沒有 shim。類別及其方法宣告在 `extern "objc"` 區塊中（1.10.2），可以手寫，也可以由 `ffi::objc::import` 從 SDK 的標頭檔讀取（1.10.12）；`bare::ffi::objc` 存放每個程式共用的部分：`Id<T>`、`Sel`、`Class`、`IsA`、根類別 `NSObject`、`NSString`、`NSError`、autorelease pool、block、dispatch 佇列，以及執行時建立的類別。
 
 ## 1.10.1. 目標與連結
 
-Objective-C 只存在於 Apple 目標上（`aarch64-apple-darwin`、`aarch64-apple-ios-sim`，以及進行中的 `aarch64-apple-ios`），`bare::ffi::objc` 也是如此。在其他任何目標上，`extern "objc"` 區塊都是編譯錯誤（E0084），其說明會指示把該區塊和使用它的程式碼放到 `#[cfg(any(target_os = "macos", target_os = "ios"))]` 之下。
+Objective-C 只存在於 Apple 目標上（`aarch64-apple-darwin`、`aarch64-apple-ios-sim`，以及進行中的 `aarch64-apple-ios`），`bare::ffi::objc` 也是如此。在其他任何目標上，`extern "objc"` 區塊都是編譯錯誤（E0084），其 help 提示會指示把該區塊和使用它的程式碼放到 `#[cfg(any(target_os = "macos", target_os = "ios"))]` 之下。
 
-呼叫 Objective-C 執行環境的程式（呼叫 `extern "objc"` 區塊的方法，或 `bare::ffi::objc` 的函式）不需另外要求就會連結 libobjc。framework 的連結方式與任何函式庫相同，在區塊（或 `extern "C"` 區塊）上加上 `#[link(name = "Foundation", kind = "framework")]`。
+呼叫 Objective-C 執行環境的程式（呼叫 `extern "objc"` 區塊的方法，或 `bare::ffi::objc` 的函式）會自動連結 libobjc。framework 的連結方式與任何函式庫相同，在區塊（或 `extern "C"` 區塊）上加上 `#[link(name = "Foundation", kind = "framework")]`。
 
 ## 1.10.2. `extern "objc"` 區塊
 
@@ -82,18 +82,18 @@ println(f"{a.count()} {ns("héllo").length()}");      // 1 5
 
 ## 1.10.5. 所有權：`Id<T>`
 
-`Id<T>` 是對類別 `T`（或其子類別）的 Objective-C 物件的參照，並持有該物件的一次 retain。它是 GC 值：`Id` 的副本共用它，也共用那一次 retain。
+`Id<T>` 是對類別 `T`（或其子類別）的 Objective-C 物件的參考，並持有該物件的一次 retain。它是 GC 值：`Id` 的複本共用它，也共用那一次 retain。
 
 | 選擇器的方法家族 | 結果 |
 |-------------------------------|------------|
 | `alloc`、`new`、`copy`、`mutableCopy`、`init`（選擇器的第一個單字，與 ARC 的判讀方式相同），或 `#[returns_retained]` | 已 retain（`+1`）：由 `Id` 接管 |
 | 其他任何方法，或 `#[returns_not_retained]` | 已 autorelease（`+0`）：傳送後 `Id` 立即以 `objc_retainAutoreleasedReturnValue` retain 它 |
 
-`init` 方法會接管其接收者的 retain，與 Objective-C 相同：之後，被呼叫的那個 `Id` 及其所有副本都會讀作已釋放。因此 `NSArray::alloc().init()` 只留下一次 retain，由結果持有。
+`init` 方法會接管其接收者的 retain，與 Objective-C 相同：之後，被呼叫的那個 `Id` 及其所有複本都會讀作已釋放。因此 `NSArray::alloc().init()` 只留下一次 retain，由結果持有。
 
 | `Id<T>` 方法 | 意義 |
 |----------------|---------|
-| `release_now()` | 立即釋放物件；之後所有副本都讀作已釋放，第二次呼叫不做任何事 |
+| `release_now()` | 立即釋放物件；之後所有複本都讀作已釋放，第二次呼叫不做任何事 |
 | `is_released() -> bool` | `release_now()` 是否已執行 |
 | `as_raw() -> CPtr<u8>` | 物件指標；在 `release_now()` 之後觸發 panic：「an `Id<NSWindow>` was used after `release_now()`; release an object only once nothing uses it any more」 |
 | `retained_raw() -> CPtr<u8>` | 多一次 retain，給會接管它的被呼叫端（`NS_CONSUMED`） |
@@ -102,9 +102,9 @@ println(f"{a.count()} {ns("héllo").length()}");      // 1 5
 | `as_object() -> Id<NSObject>` | 同一個物件，視為 `NSObject` |
 | `unsafe Id::<T>::from_retained(p)`, `unsafe Id::<T>::retain(p)` | 從 `+1`／`+0` 物件指標建立 `Id`；nil 時為 `none` |
 
-當 `Id` 的副本都不存在時，回收器會釋放物件：每個 `Id` 都向回收器登記一個清理動作，回收器在某次回收發現該 `Id` 已死亡後執行 `objc_release`（在下一個進行配置的執行緒上、所有鎖之外執行；清理動作沒有順序，程式結束時不會執行任何清理）。`release_now()` 會立即釋放並取消該清理動作。`dealloc` 必須在主執行緒上執行的類別的物件，也就是 `NSResponder` 系列（`NSView`、`NSWindow`……，在宣告型別時依父類別判定，即 `Object::main_thread()`），會在主執行緒上釋放：在其他執行緒上的清理動作會把釋放傳送到主佇列（`dispatch_async_f`）。
+當 `Id` 的複本都不存在時，回收器會釋放物件：每個 `Id` 都向回收器登記一個清理動作，回收器在某次回收發現該 `Id` 已死亡後執行 `objc_release`（在下一個進行配置的執行緒上、所有鎖之外執行；清理動作沒有順序，程式結束時不會執行任何清理）。`release_now()` 會立即釋放並取消該清理動作。`dealloc` 必須在主執行緒上執行的類別的物件，也就是 `NSResponder` 系列（`NSView`、`NSWindow`……，在宣告型別時依父類別判定，即 `Object::main_thread()`），會在主執行緒上釋放：在其他執行緒上的清理動作會把釋放傳送到主佇列（`dispatch_async_f`）。
 
-`WeakId<T>`（`WeakId::new(id)`）參照物件但不讓它存活：物件被 dealloc 後，`load() -> Id<T> | none` 為 `none`。它的 weak 槽位由回收器歸還，或由 `release_now()` 立即歸還。它可以打斷經過 Objective-C 的環狀參照，例如一個 delegate 持有持有它的那個物件。
+`WeakId<T>`（`WeakId::new(id)`）參考物件但不讓它存活：物件被 dealloc 後，`load() -> Id<T> | none` 為 `none`。它的 weak 槽位由回收器歸還，或由 `release_now()` 立即歸還。它可以打斷經過 Objective-C 的循環參考，例如 delegate 持有了反過來持有它的那個物件。
 
 ## 1.10.6. `Sel`、`Class` 與 `Object`
 
@@ -136,7 +136,7 @@ Objective-C 例外屬於程式設計者的錯誤，不會被攔截，與 Swift �
 
 ## 1.10.9. Block
 
-閉包型別 `fn(A, ..) -> R` 的參數會傳遞一個呼叫該閉包的 Objective-C block。block 依照 Apple block ABI 佈局：`isa = _NSConcreteStackBlock`、`BLOCK_HAS_COPY_DISPOSE | BLOCK_HAS_SIGNATURE`、每種閉包型別各產生一個 trampoline 作為 `invoke`、一個帶有 copy 與 dispose 輔助函式和型別編碼的描述元，以及一個擷取的字組。該字組是存放閉包的已固定 GC 儲存格的位址；固定計數等於持有該儲存格的 block 數量，因此只要 Objective-C 保留任何副本，閉包就會存活。方法以 `_Block_copy` 建立 block，並在傳送後釋放自己的副本。
+閉包型別 `fn(A, ..) -> R` 的參數會傳遞一個呼叫該閉包的 Objective-C block。block 依照 Apple block ABI 佈局：`isa = _NSConcreteStackBlock`、`BLOCK_HAS_COPY_DISPOSE | BLOCK_HAS_SIGNATURE`、每種閉包型別各產生一個 trampoline 作為 `invoke`、一個帶有 copy 與 dispose 輔助函式和型別編碼的描述元，以及一個擷取的字組。該字組是存放閉包的已固定 GC 儲存格的位址；固定計數等於持有該儲存格的 block 數量，因此只要 Objective-C 保留任何複本，閉包就會存活。方法以 `_Block_copy` 建立 block，並在傳送後釋放自己的複本。
 
 閉包的引數依 1.10.4 的表格跨越邊界，但方向相反：物件引數以 `Id`（已 retain）傳入，物件結果以 autorelease 方式回傳。
 
@@ -164,7 +164,7 @@ dispatch_async(Queue::main(), Block::new_main_thread(|| { window.performClose(no
 ## 1.10.11. 降階
 
 - 每個方法都是一個 Nabi 函式，以 C 簽章 `R (*)(id, SEL, A..)`（會擲回錯誤的方法最後還有一個 `NSError **`）呼叫 `objc_msgSend` 的 `extern "C"` 宣告，因此由目標的 C ABI 分類引數與結果，包括透過結果指標回傳的結構結果。arm64 對所有回傳型別只有一個 `objc_msgSend`。（不需要 x86_64 的 `objc_msgSend_stret` / `_fpret`：Nabi 沒有 x86_64 Apple 目標。）
-- 以字串字面值呼叫 `sel_registerName("..")` / `objc_getRequiredClass("..")`，在 Mach-O 上會編譯成載入一個靜態參照：`__TEXT,__objc_methname` 存放名稱，`__DATA,__objc_selrefs`（`S_LITERAL_POINTERS`，不做 dead strip）存放指向它的指標，執行環境在載入時把它換成已登記的選擇器；`__DATA,__objc_classrefs` 存放指向 `_OBJC_CLASS_$_C` 的指標，由 dyld 依 framework 的 `.tbd`（`objc-classes`）繫結。含有其中任一者的目的檔也會有 `__objc_imageinfo`（版本 0，旗標 `0x40`），連結器在每個映像中保留一份。產生的方法使用這些呼叫，因此執行時不會查找任何選擇器或類別。
+- 以字串字面值呼叫 `sel_registerName("..")` / `objc_getRequiredClass("..")`，在 Mach-O 上會編譯成載入一個靜態參考：`__TEXT,__objc_methname` 存放名稱，`__DATA,__objc_selrefs`（`S_LITERAL_POINTERS`，不做 dead strip）存放指向它的指標，執行環境在載入時把它換成已登記的選擇器；`__DATA,__objc_classrefs` 存放指向 `_OBJC_CLASS_$_C` 的指標，由 dyld 依 framework 的 `.tbd`（`objc-classes`）繫結。含有其中任一者的目的檔也會有 `__objc_imageinfo`（版本 0，旗標 `0x40`），連結器在每個映像中保留一份。產生的方法使用這些呼叫，因此執行時不會尋找任何選擇器或類別。
 
 ## 1.10.12. 標頭檔：`ffi::objc::import`
 
@@ -175,7 +175,7 @@ mod ns {
 use ns::*;
 ```
 
-`ffi::objc::import { "Framework/Header.h", .. }` 以工具鏈 C 編譯器（[9.13](../../refs-lang/009-tools/913-c-compiler.md)）的 Objective-C 前端讀取 SDK 的標頭檔，並把它們的繫結以 `extern "objc"` 區塊和 C 宣告的形式放入包含它的模組。名稱可以是 framework 標頭檔（`Metal/Metal.h`：SDK 中的 `Metal.framework/Headers/Metal.h`）、SDK 的 `usr/include` 底下的標頭檔，或相對於匯入檔案的路徑。到處都找不到的標頭檔是錯誤，錯誤訊息會列出應寫的形式。在非 Apple 目標上，匯入是錯誤，說明與 `extern "objc"` 區塊相同。
+`ffi::objc::import { "Framework/Header.h", .. }` 以工具鏈 C 編譯器（[9.13](../../refs-lang/009-tools/913-c-compiler.md)）的 Objective-C 前端讀取 SDK 的標頭檔，並把它們的繫結以 `extern "objc"` 區塊和 C 宣告的形式放入包含它的模組。名稱可以是 framework 標頭檔（`Metal/Metal.h`：SDK 中的 `Metal.framework/Headers/Metal.h`）、SDK 的 `usr/include` 底下的標頭檔，或相對於匯入檔案的路徑。到處都找不到的標頭檔是錯誤，錯誤訊息會列出應寫的形式。在非 Apple 目標上，匯入是錯誤，help 提示與 `extern "objc"` 區塊相同。
 
 會繫結的內容：在指定標頭檔所在目錄中宣告的每個類別、協定和 category，其中的每個 C 宣告（依 [1.7.6](107-ffi.md#176-自動產生繫結) 的方式繫結），以及這些內容從其他地方用到的類別和協定（不含方法）。程式會呼叫其方法的每個 framework，都要在同一個 `ffi::objc::import` 中匯入：被兩次匯入繫結的類別是錯誤，錯誤訊息會說明這一點。模組也會得到 `Id`、`NSObject`、`NSString` 和 `NSError`，所以 `use ns::*` 會帶入繫結所用到的所有名稱。
 
@@ -200,7 +200,7 @@ use ns::*;
 | 帶有物件參數或結果的 C 函式（`MTLCreateSystemDefaultDevice`） | 接受並回傳 `Id` 的函式（有 `NS_RETURNS_RETAINED` 時為 `+1`，否則 retain），建立在其 `extern "C"` 宣告之上 |
 | `extern NSString *const NSFoo` | `fn NSFoo() -> Id<NSString>` |
 
-型別沒有 Nabi 形式的方法，會在其區塊中成為一行 `// skipped -[C sel]: why`。前端讀取 `@class`、`@protocol`、`@interface`（category、class extension、ivar）、方法、屬性、`@optional` / `@required`、`@compatibility_alias`、所有權限定詞、可空性（`_Nonnull` 及其同類、上下文關鍵字 `nullable` / `nonnull` / `null_unspecified` / `null_resettable`、`NS_ASSUME_NONNULL`）、帶有變異性與界限的輕量泛型、`__kindof`、block 型別，以及可用性、所有權和列舉屬性；它預先定義 `__OBJC__`、`__OBJC2__`、ARC 的功能（`__has_feature(objc_arc)`）和 Interface Builder 的標記，並且每個檔案只讀取一次 `#import`。含有 `@implementation` 或方法主體的標頭檔是錯誤，錯誤訊息會指示把它移到 `.m` 檔案。
+型別沒有 Nabi 形式的方法，會在其區塊中成為一行 `// skipped -[C sel]: why`。前端讀取 `@class`、`@protocol`、`@interface`（category、class extension、ivar）、方法、屬性、`@optional` / `@required`、`@compatibility_alias`、所有權限定詞、可空性（`_Nonnull` 及其同類、上下文關鍵字 `nullable` / `nonnull` / `null_unspecified` / `null_resettable`、`NS_ASSUME_NONNULL`）、帶有變異性與界限的輕量泛型、`__kindof`、block 型別，以及可用性、所有權和列舉屬性；它預先定義 `__OBJC__`、`__OBJC2__`、ARC 的功能（`__has_feature(objc_arc)`）和 Interface Builder 的標記，並且以 `#import` 引入的每個檔案只讀取一次。含有 `@implementation` 或方法主體的標頭檔是錯誤，錯誤訊息會指示把它移到 `.m` 檔案。
 
 ### 快取
 

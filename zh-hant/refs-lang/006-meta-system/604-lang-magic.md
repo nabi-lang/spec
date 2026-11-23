@@ -46,18 +46,18 @@ trait Display { ... }              // the default f"{x}" format
 
 | 槽位                    | 所連接項目的種類       | 編譯器的用途                      |
 |-------------------------|------------------------|-----------------------------------|
-| `"add_trait"`           | trait                  | `+` 運算子去糖                    |
-| `"sub_trait"`           | trait                  | `-` 運算子去糖                    |
-| `"mul_trait"`           | trait                  | `*` 運算子去糖                    |
+| `"add_trait"`           | trait                  | `+` 運算子去語法糖                |
+| `"sub_trait"`           | trait                  | `-` 運算子去語法糖                |
+| `"mul_trait"`           | trait                  | `*` 運算子去語法糖                |
 | ...                     | ...                    | ...                               |
 | `"none_type"`           | 型別                   | `none` 字面值的型別               |
-| `"iterator_trait"`      | trait                  | `for` 迴圈去糖                    |
-| `"into_iterator_trait"` | trait                  | `for` 迴圈去糖                    |
-| `"future_trait"`        | trait                  | `await` 去糖                      |
-| `"index_trait"`         | trait                  | `[i]` 索引去糖                    |
-| `"slice_trait"`         | trait                  | `[1:3]` 切片去糖                  |
+| `"iterator_trait"`      | trait                  | `for` 迴圈去語法糖                |
+| `"into_iterator_trait"` | trait                  | `for` 迴圈去語法糖                |
+| `"future_trait"`        | trait                  | `await` 去語法糖                  |
+| `"index_trait"`         | trait                  | `[i]` 索引去語法糖                |
+| `"slice_trait"`         | trait                  | `[1:3]` 切片去語法糖              |
 | `"display_trait"`       | trait                  | `f"{x}"` 格式化                   |
-| `"debug_trait"`         | trait                  | `f"{x:?}"` 除錯格式               |
+| `"debug_trait"`         | trait                  | `f"{x:?}"` 偵錯格式               |
 | `"clone_trait"`         | trait                  | `#[derive(Clone)]`                |
 | `"eq_trait"`            | trait                  | `==` / `!=` 運算子（`PartialEq`） |
 | ...                     | ...                    | ...                               |
@@ -66,7 +66,7 @@ trait Display { ... }              // the default f"{x}" format
 
 ## 6.4.4. 對應的效果
 
-當某個 trait 帶有 `#[lang("add_trait")]` 時，編譯器把該 trait 連接到加法的意義。之後的 `+` 運算子去糖如下：
+當某個 trait 帶有 `#[lang("add_trait")]` 時，編譯器把該 trait 連接到加法的意義。之後的 `+` 運算子去語法糖如下：
 
 ```
 a + b    →    <typeof(a) as the_trait<typeof(b)>>::add(a, b)

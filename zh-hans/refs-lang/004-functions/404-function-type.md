@@ -101,7 +101,7 @@ let f: fn(i32) -> i32 = |x| x + n;     // captures n, but the type is fn(i32) ->
 
 捕获在内部附加到闭包对象上，并在调用时自动使用。因此用户代码不需要关心是否有捕获，捕获也不出现在类型中。
 
-Rust 中 `Fn`、`FnMut` 和 `FnOnce` trait 的区分在 nabi 中不存在。捕获默认按值进行，这降低了语义上的复杂度。详细的捕获语义在[捕获语义](406-capture-semantics.md)中定义。
+Rust 中 `Fn`、`FnMut` 和 `FnOnce` trait 的区分在 Nabi 中不存在。捕获默认按值进行，这降低了语义上的复杂度。详细的捕获语义在[捕获语义](406-capture-semantics.md)中定义。
 
 ### `Send` / `Sync` 约束
 
@@ -114,7 +114,7 @@ fn() + Send + Sync
 
 - 闭包字面量出现在 `+ Send` 位置时，每个普通捕获都必须是 `Send + Sync`：普通捕获是创建者会继续使用的句柄，所以两个线程都能访问它。`[move x]` 捕获只属于该闭包（[4.6.11](406-capture-semantics.md#4611-移动捕获move-x-捕获列表)），所以只需要 `Send`。
 - `+ Sync` 位置要求每个捕获都是 `Sync`，无论是否移动。`fn(..) + Send` 值不是 `Sync`，除非其类型写明：它背后的闭包可能拥有一个不是 `Sync` 的移动捕获。被多个线程同时调用的值（`static`、`par::*` 闭包）的类型是 `fn(..) + Send + Sync`。
-- 派生任务的函数（`task::spawn_blocking`、`thread::spawn`、`par::Scope::spawn`）接受 `+ Send` 闭包，所以被派生的代码不与其创建者共享任何非 `Sync` 的值；`[move x]` 改为把值交给它。`par::for_each`、`par::map` 和 `par::filter` 接受 `+ Send + Sync` 闭包，每个工作线程都会调用它。
+- 启动函数（`task::spawn_blocking`、`thread::spawn`、`par::Scope::spawn`）接受 `+ Send` 闭包，所以被启动的代码不与其创建者共享任何非 `Sync` 的值；`[move x]` 改为把值交给它。`par::for_each`、`par::map` 和 `par::filter` 接受 `+ Send + Sync` 闭包，每个工作线程都会调用它。
 - 要使用 `fn` 类型的变量，该变量的类型必须已经带有同样的约束。`fn() -> T` 值不适用于 `fn() -> T + Send` 位置。捕获了 `fn(..) + Send` 值的闭包，只有在把该值移入（`[move f]`），或者该值的类型是 `+ Send + Sync` 时，才能跨线程。
 - 具名函数没有捕获，因此总是 `Send + Sync`。
 - 约束是类型的一部分：分别以 `fn(i32) + Send + Sync` 值和 `fn(i32)` 值调用的泛型函数有两个实例。`fn(i32)` 上的 impl 对两者都适用。
@@ -165,7 +165,7 @@ let f: fn() -> i32 = || panic("never");     // fn() -> ! value → fn() -> i32 p
 ## 4.4.9. 函数类型之间的子类型关系（不存在）
 
 > [!IMPORTANT]
-> Rust 或 TypeScript 等语言中的函数类型子类型关系在 nabi 中不存在。函数类型不会自动转换为更一般或更具体的函数类型。参数类型和返回类型必须完全一致。
+> Rust 或 TypeScript 等语言中的函数类型子类型关系在 Nabi 中不存在。函数类型不会自动转换为更一般或更具体的函数类型。参数类型和返回类型必须完全一致。
 
 ```nabi
 let f: fn(i32 | f64) -> i32 = |x: i32| x;     // ERROR: parameter type does not match exactly

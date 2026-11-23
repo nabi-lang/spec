@@ -71,7 +71,7 @@ extern "nabi" {
 
 ### `nabi_gc_wb_slow`
 
-[屏障与根追踪](../007-runtime/704-barriers-and-roots.md)中写屏障的慢速路径。**线程安全性：`caller-thread-only`**（记录到 TLS 中的写屏障日志缓冲区）。
+[屏障与根跟踪](../007-runtime/704-barriers-and-roots.md)中写屏障的慢速路径。**线程安全性：`caller-thread-only`**（记录到 TLS 中的写屏障日志缓冲区）。
 
 ```
 extern "nabi" {
@@ -130,7 +130,7 @@ extern "nabi" {
 }
 ```
 
-`nabi_gc_secret_new` 分配一个类型 id 为 1（无引用）、设置了 `WIPE` 的 LOS 对象（[8.1.3](801-object-header-abi.md#813-gc_flags偏移-4u32)）。其清零的载荷容纳 `len` 字节，向上取整到 8 的倍数。它可能先进行一次回收，超过 `isize::MAX` 的请求是致命错误“allocation too large”。`nabi_gc_secret_wipe` 用 volatile 存储覆写整个载荷，随后加一道编译器屏障；它既不分配也不阻塞，因此不是安全点（[8.4](804-safepoint.md)）。回收器在释放该对象之前也以同样方式覆写其载荷。
+`nabi_gc_secret_new` 分配一个类型 id 为 1（无引用）、设置了 `WIPE` 的 LOS 对象（[8.1.3](801-object-header-abi.md#813-gc_flags偏移-4u32)）。其清零的载荷容纳 `len` 字节，向上取整到 8 的倍数。它可能先进行一次回收，超过 `isize::MAX` 的请求是致命错误“allocation too large”。`nabi_gc_secret_wipe` 用 volatile 存储覆写整个载荷，随后加一道编译器栅栏；它既不分配也不阻塞，因此不是安全点（[8.4](804-safepoint.md)）。回收器在释放该对象之前也以同样方式覆写其载荷。
 
 ## 8.5.2. 运行时区域
 
@@ -236,7 +236,7 @@ extern "nabi" {
 }
 ```
 
-入口把记录保存在自己的帧中：`64 + 768` 字节，16 字节对齐，运行时的部分在前，`jmp_buf` 位于偏移 64 处。它调用 `nabi_catch_push`，然后对 `jmp_buf` 调用 `_setjmp`。恢复时，恢复记录中保存的影子栈和线程状态，并 `longjmp` 到那里，入口返回其 `#[on_panic]` 值；在正常路径上，入口调用 `nabi_catch_pop`。wasm32 和没有 OS 的目标没有这种记录。
+入口把记录保存在自己的帧中：`64 + 768` 字节，16 字节对齐，运行时的部分在前，`jmp_buf` 位于偏移 64 处。它调用 `nabi_catch_push`，然后对 `jmp_buf` 调用 `_setjmp`。恢复时，恢复记录中保存的影子栈和线程状态，并 `longjmp` 到那里，入口返回其 `#[on_panic]` 值；在正常路径上，入口调用 `nabi_catch_pop`。wasm32 和没有操作系统的目标没有这种记录。
 
 ### `nabi_errno_save`
 
@@ -339,7 +339,7 @@ extern "nabi" {
 
 ### `nabi_thread_spawn`
 
-创建一个 1:1 的 OS 线程。**线程安全性：`thread-safe`**。
+创建一个 1:1 的操作系统线程。**线程安全性：`thread-safe`**。
 
 ```
 extern "nabi" {
@@ -351,7 +351,7 @@ extern "nabi" {
 }
 ```
 
-`nabi_thread_spawn` 在一个 OS 线程上运行 Nabi 闭包 `f`（一个按值传递的 `NabiFn`）（`stack_size` 为 0 表示默认值）。`id` 是从 `nabi_thread_new_id` 获得的值，成为新线程的 `nabi_tls_worker_id`。返回值是一个 join 句柄，创建失败时为 0。在线程结束之前，`env` 一直是 GC 根。
+`nabi_thread_spawn` 在一个操作系统线程上运行 Nabi 闭包 `f`（一个按值传递的 `NabiFn`）（`stack_size` 为 0 表示默认值）。`id` 是从 `nabi_thread_new_id` 获得的值，成为新线程的 `nabi_tls_worker_id`。返回值是一个 join 句柄，创建失败时为 0。在线程结束之前，`env` 一直是 GC 根。
 
 ### `nabi_task_hooks_install` / `nabi_task_key`
 
@@ -429,7 +429,7 @@ extern "nabi" {
 
 编译器生成的启动代码为每个持有 GC 引用的 `static` 调用此函数。
 
-### `nabi_os_*` - OS 辅助函数（内部，可能变更）
+### `nabi_os_*` - 操作系统辅助函数（内部，可能变更）
 
 支撑标准库 `std`（fs、io、env、process）的内部符号。它们不受 ABI 稳定性保证，可能变更，因此用户代码不直接调用它们。
 
@@ -613,7 +613,7 @@ thread '<name>' has overflowed its stack
 fatal runtime error: stack overflow, aborting
 ```
 
-`<name>` 是用 `thread::Builder::name` 指定的线程名（同时也被设为 OS 线程名，[7. 运行时](../007-runtime/README.md#运行时错误栈溢出)）。这覆盖主线程（`nabi_runtime_init`）、`nabi_thread_spawn` 线程（包括执行器工作线程以及深层 `await` 链）以及调用了 `nabi_thread_init` 的 C 线程。运行时把每个线程栈下方的保护范围记录在 TLS 槽 `nabi_tls_stack_guard`（[8.3.1](803-tls-slots.md#831-tls-槽结构)）中，并安装一个备用信号栈（`sigaltstack`）。只有该范围内的 SIGSEGV / SIGBUS 才被报告为栈溢出；其他故障交给运行时安装其处理器之前设置的动作（默认动作，除非把 Nabi 作为共享库加载的宿主进程设置了别的动作）。在 wasm 上，模块无法捕获陷阱；由宿主报告（随附的 JS 宿主打印上述消息）。
+`<name>` 是用 `thread::Builder::name` 指定的线程名（同时也被设为操作系统线程名，[7. 运行时](../007-runtime/README.md#运行时错误栈溢出)）。这覆盖主线程（`nabi_runtime_init`）、`nabi_thread_spawn` 线程（包括执行器工作线程以及深层 `await` 链）以及调用了 `nabi_thread_init` 的 C 线程。运行时把每个线程栈下方的保护范围记录在 TLS 槽 `nabi_tls_stack_guard`（[8.3.1](803-tls-slots.md#831-tls-槽结构)）中，并安装一个备用信号栈（`sigaltstack`）。只有该范围内的 SIGSEGV / SIGBUS 才被报告为栈溢出；其他故障交给运行时安装其处理器之前设置的动作（默认动作，除非把 Nabi 作为共享库加载的宿主进程设置了别的动作）。在 wasm 上，模块无法捕获陷阱；由宿主报告（随附的 JS 宿主打印上述消息）。
 
 ## 8.5.8. 符号命名约定
 
@@ -623,7 +623,7 @@ fatal runtime error: stack overflow, aborting
 |-----------------|----------------|
 | `nabi_gc_*`      | GC             |
 | `nabi_runtime_*` | 运行时总体     |
-| `nabi_thread_*`  | OS 线程        |
+| `nabi_thread_*`  | 操作系统线程        |
 | `nabi_coro_*`    | 协程           |
 | `nabi_task_*`    | 任务           |
 | `nabi_io_*`      | I/O            |

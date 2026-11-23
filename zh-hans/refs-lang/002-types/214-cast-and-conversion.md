@@ -28,7 +28,7 @@ try_into    ::= expr "." "try_into" ("::" "<" type_expr ">")? "(" ")"
 expr as Type
 ```
 
-`as` 是[关键字](../001-lexical/105-keywords.md)；左边是任意表达式，右边是[类型表达式](201-type-expressions.md)。编译器直接降级该强制转换；不调用任何 trait 方法。它用于不一定保持值的转换，例如位截断、符号扩展和表示形式的改变，其结果与 `.wrapping_into::<T>()` 相同（[stdlib 2.11.5](../../refs-standard-libraries/200-core/211-conversion.md)）。
+`as` 是[关键字](../001-lexical/105-keywords.md)；左边是任意表达式，右边是[类型表达式](201-type-expressions.md)。编译器直接降级该强制转换；不调用任何 trait 方法。它用于不一定保持值的转换，例如位截断、符号扩展和表示形式的改变，其结果与 `.wrapping_into::<T>()` 相同（[标准库 2.11.5](../../refs-standard-libraries/200-core/211-conversion.md)）。
 
 ```nabi
 let x: i32 = 256i32;
@@ -43,7 +43,7 @@ let z: f64 = x as f64;        // 256.0
 - 无载荷的 `enum` 到整数类型，得到其标签或值（[2.4.2](204-enum.md#强制转换为整数)）。
 - 与任意精度的 std 类型 `int` / `float` 之间的互相转换。转换为它们时执行无损的 `From` impl，因此没有该 impl 的类型对（`f64 as int`）是错误；从它们转换出来时执行目标的 `WrappingFrom` impl。
 
-从浮点类型到整数类型，`as` 向零截断并饱和：超出目标范围的值得到最接近的端点（`1e10 as i32` 是 `i32::MAX`，`-1.5 as u8` 是 `0`），NaN 得到 `0`，在每个优化级别下都是如此。`as` 结果的完整表格见 [stdlib 2.11.6](../../refs-standard-libraries/200-core/211-conversion.md#2116-as-t位重新解释--数值强制转换)。
+从浮点类型到整数类型，`as` 向零截断并饱和：超出目标范围的值得到最接近的端点（`1e10 as i32` 是 `i32::MAX`，`-1.5 as u8` 是 `0`），NaN 得到 `0`，在每个优化级别下都是如此。`as` 结果的完整表格见 [标准库 2.11.6](../../refs-standard-libraries/200-core/211-conversion.md#2116-as-t位重新解释--数值强制转换)。
 
 整数、浮点或 `char` 值 `as bool` 是编译错误，``cannot cast `i32` as `bool` ``：应改写为比较，整数写 `x != 0`，浮点值写 `x != 0.0`。该错误附带这一修改作为修复建议。`bool` 强制转换为整数类型时得到 `0` 和 `1`。
 
@@ -80,7 +80,7 @@ let y = x.into::<int>();
 expr.try_into::<Type>()
 ```
 
-它脱糖为 `Target::try_from(expr)`（`Target: TryFrom<typeof(expr)>`）。`try_into` 是 [`throws`](../004-functions/414-throws.md) 方法：成功时返回目标类型的值，失败时抛出错误（目标的 `TryFrom::Error`；对数值转换为 `OverflowError`，[stdlib 2.11.4](../../refs-standard-libraries/200-core/211-conversion.md#2114-tryfromu-trait可失败转换)）。因此该调用必须用 `try` 标注。它用于转换可能失败的情况，例如把大整数转到较小的整数，或把浮点值转到整数。
+它脱糖为 `Target::try_from(expr)`（`Target: TryFrom<typeof(expr)>`）。`try_into` 是 [`throws`](../004-functions/414-throws.md) 方法：成功时返回目标类型的值，失败时抛出错误（目标的 `TryFrom::Error`；对数值转换为 `OverflowError`，[标准库 2.11.4](../../refs-standard-libraries/200-core/211-conversion.md#2114-tryfromu-trait可失败转换)）。因此该调用必须用 `try` 标注。它用于转换可能失败的情况，例如把大整数转到较小的整数，或把浮点值转到整数。
 
 ```nabi
 let big: i64 = 10_000_000_000i64;
@@ -106,7 +106,7 @@ let m: i32 | none = try? big.try_into::<i32>();
 
 无后缀的数值字面量不会被转换；其类型由期望类型确定。`let x: f64 = 1` 中的 `1` 从一开始就是 `f64`。确切规则在[数值字面量](../001-lexical/106-numeric-literals.md#163-无后缀字面量)中定义。
 
-与此相对，不允许对运行时变量进行自动转换。必须始终写出上述三种形式之一。唯一的例外是视图而非转换：在期望 `SliceMut<T>` 的地方，`List<T>` 作为整个列表的可写视图传递，`xs[a:b]` 则作为该区间的视图传递（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可写视图)）。不复制任何东西。
+与此相对，不允许对运行时变量进行自动转换。必须始终写出上述三种形式之一。唯一的例外是视图而非转换：在期望 `SliceMut<T>` 的地方，`List<T>` 作为整个列表的可写视图传递，`xs[a:b]` 则作为该区间的视图传递（[标准库 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可写视图)）。不复制任何东西。
 
 ```nabi
 let a: i64 = 100i64;

@@ -10,7 +10,7 @@
 - [9.4. NABIHIR 格式](904-nabihir-bytecode.md)
 - [9.5. 符号修饰方案](905-symbol-mangling.md)
 - [9.6. JIT 引擎](906-jit-engine.md)
-- [9.7. JIT 单元的执行流程与状态管理](907-jit-cells.md)
+- [9.7. JIT 单元格的执行流程与状态管理](907-jit-cells.md)
 - [9.8. Jupyter 内核集成](908-jupyter-integration.md)
 - [9.9. 调试与诊断工具](909-debug-tools.md)
 - [9.10. `nabi`：包与构建前端及工具](910-nabi-frontend.md)

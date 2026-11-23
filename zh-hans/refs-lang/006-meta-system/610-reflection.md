@@ -82,9 +82,9 @@ struct MethodInfo {
 ```
 
 - `get_field` 以 `any` 返回字段的值，名字不存在时返回 `none`。私有字段也可以读取。
-- 当值的类型与字段**完全相同**，或者值是另一种整数类型的整数且**能无损容纳**时（把 `u.set_field("id", 42)` 赋给 `u64` 字段），`set_field` 进行赋值并返回 `true`。否则不赋值并返回 `false`。没有其他转换（例如 `i32` → `f64`）。
+- 当值的类型与字段**完全相同**，或者值是另一种整数类型的整数且**能无损容纳**时（如对 `u64` 字段执行 `u.set_field("id", 42)`），`set_field` 进行赋值并返回 `true`。否则不赋值并返回 `false`。没有其他转换（例如 `i32` → `f64`）。
 - `methods()` **只返回**类型的**固有方法**（不含 trait 方法），按名字排序。泛型 `impl` 中的方法按书写形式显示类型（`T`）。
-- `fields()` 按声明顺序列出每个字段及其类型名和是否为 `pub`。**私有字段也会列出**：派生 `Inspect` 就是类型作者的同意，与 `get_field` 相同。类型名是实例化后的名字（`Box<f64>` 报告 `v: f64`、`items: List<f64>`），不带模块路径，与 `type_name` 的写法一致。
+- `fields()` 按声明顺序列出每个字段及其类型名和是否为 `pub`。**私有字段也会列出**：派生 `Inspect` 即表示类型作者已经同意，与 `get_field` 相同。类型名是实例化后的名字（`Box<f64>` 报告 `v: f64`、`items: List<f64>`），不带模块路径，与 `type_name` 的写法一致。
 - `enum` 在类型层面没有字段（`field_names()` 和 `fields()` 是空列表）。`variant_names()` 按声明顺序列出其变体。在值上，`variant_name()` 是它所持有的变体（`"Circle"`），`field_names_of_val()` 是该变体的字段（元组变体为 `"0"`、`"1"`，具名变体为字段名），`get_field` 读取这些字段。通过 `Inspect`，变体的载荷是只读的：在枚举上调用 `set_field` 返回 `false`。
 - 在结构体上，`variant_names()` 是空列表，`variant_name()` 是其类型名（`type_name_of_val()`），`field_names_of_val()` 是其字段。
 - 每个方法都有默认主体；`get_field`、`set_field` 和各名字列表读取 `type_info()`。derive 只写出 `type_info()` 所调用的访问器（6.10.7）。手写的 `impl Inspect` 可以覆盖任意方法。
@@ -127,7 +127,7 @@ Config { host: "h", port: 80 }
 Opaque
 ```
 
-单独的表达式使用 `Display`，否则使用 `Debug`，末尾带 `?` 时使用 `Debug`。两者都没有实现的值（对末尾带 `?` 的情形而言是没有 `Debug`）只打印其类型名。REPL 和 Jupyter 单元会话都使用这一行为（[9.7](../009-tools/907-jit-cells.md)）。
+两者都没有实现的值（对末尾带 `?` 的情形而言是没有 `Debug`）只打印其类型名。REPL 和 Jupyter 单元格会话都使用这一行为（[9.7](../009-tools/907-jit-cells.md)）。
 
 ## 6.10.4. 没有全局 `typeof` / `sizeof` 函数
 
@@ -143,7 +143,7 @@ sizeof(T)        // C / C++
 typeof(x)        // JS / TS
 ```
 
-这样做的理由是不增加任何语言语法。单一的 `Reflect` trait 覆盖了整个自省表面。
+这样做的理由是不增加任何语言语法。单一的 `Reflect` trait 覆盖了全部自省功能。
 
 ## 6.10.5. 在 `any` 槽和和类型上的分派
 
@@ -223,7 +223,7 @@ hp.attr::<Range>()                 // Range { min: 0.0, max: 100.0 }
 ```
 
 - 属性结构体的字段是数字、`bool`、`char` 或 `str`；整数字面量可以填入浮点字段。
-- 错误的参数是错误，报错会说明应写什么：``#[range] takes `min: f64, max: f64`; write `#[range(0, 10)]` ``。与已声明名字相近的名字会得到 ``no attribute `rnage`; did you mean `range` (`Range`)?``。
+- 参数写错是错误，报错会说明应写什么：``#[range] takes `min: f64, max: f64`; write `#[range(0, 10)]` ``。与已声明名字相近的名字会得到 ``no attribute `rnage`; did you mean `range` (`Range`)?``。
 - 两个包声明同一个名字时，使用它的包所声明的那个胜出；否则该使用是错误，报错会指出两者。
 - 只有以这种方式声明的属性才会被保留。`doc`、`cfg` 和其他内置属性从不保留。
 

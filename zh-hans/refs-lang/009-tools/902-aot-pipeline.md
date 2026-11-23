@@ -22,7 +22,7 @@
 
 > 依次为：包发现、依赖解析、源代码解析、名称 / 可见性解析、类型检查、nabi-hir 构建、特化（收集调用点并单态化）、nabi-mir 构建、生成目标文件的代码生成、归档或链接，最后是输出：一个 `.a` 归档文件或一个可执行文件。
 
-每个步骤的输入、输出和职责都划分得清清楚楚。
+各步骤的输入、输出和职责界限分明。
 
 ## 9.2.2. 包发现
 
@@ -149,7 +149,7 @@ MIR 是比 HIR 低一层的 IR。此步骤完成运算符脱糖（见[运算符�
 | `-O3`         | 在循环之内也内联较大的函数体，并对保持标量的循环进行展开：一个保持浮点累加和或调用函数的循环，其整段每 2 次或 4 次迭代才检查一次计数器 |
 | `-Os`         | 只在函数体与调用差不多小（在循环中为其数倍）时内联，循环仍变为计数循环并分段，函数体较短时进行向量化 |
 
-`-g` 既不改变优化，也不改变代码（8.7.3）：调试信息跟随优化后的代码，内联的函数体作为栈帧，每个变量位于寄存器中、栈槽中或已被优化掉（[9.9.6](909-debug-tools.md#996-调试器集成gdb--lldb)）。优化器在包被划分为代码生成单元（9.2.16）之前一次看到整个包，因此它可以跨模块内联，也可以内联进出标准库的函数，而标准库在每次构建时都与程序一起编译（[9.3.6](903-package-archive.md#936-标准库)）。在不同级别构建的目标文件遵循相同的运行时 ABI（[8](../008-abi/README.md)），可以链接在一起，包括在另一个级别构建的预构建依赖。REPL 按 `:opt` 设置的级别编译单元（[9.9.9](909-debug-tools.md#999-repl--jupyter-调试)），但不优化其 nabi-mir。
+`-g` 既不改变优化，也不改变代码（8.7.3）：调试信息跟随优化后的代码，内联的函数体作为栈帧，每个变量位于寄存器中、栈槽中或已被优化掉（[9.9.6](909-debug-tools.md#996-调试器集成gdb--lldb)）。优化器在包被划分为代码生成单元（9.2.16）之前一次看到整个包，因此它可以跨模块内联，也可以内联进出标准库的函数，而标准库在每次构建时都与程序一起编译（[9.3.6](903-package-archive.md#936-标准库)）。在不同级别构建的目标文件遵循相同的运行时 ABI（[8](../008-abi/README.md)），可以链接在一起，包括在另一个级别构建的预构建依赖。REPL 按 `:opt` 设置的级别编译单元格（[9.9.9](909-debug-tools.md#999-repl--jupyter-调试)），但不优化其 nabi-mir。
 
 ## 9.2.11. 代码生成器
 
@@ -180,7 +180,7 @@ target/debug/foo.nabihir
 foo.o + <deps>/lib*.a + <sysroot>/lib/libnabir.a + target libc  →  target/debug/foo
 ```
 
-Mach-O 可执行文件链接 macOS SDK（Xcode Command Line Tools）。Windows 可执行文件链接 `nabic` 根据其自带的模块定义（源自 mingw-w64）构建的导入库，并在 UCRT 之上使用 Nabi 自己的启动代码；不需要 MSVC 工具或 Windows SDK。Nabi 的 Windows 启动代码在 `main` 之前运行 `.CRT$XCA`..`.CRT$XCZ` 中的 C 初始化函数。对于 x86 Windows，导入名称来自 mingw-w64 的 `lib32` 定义，带有 stdcall 的 `@N` 修饰，映像以 `/SAFESEH:NO` 链接。Linux 目标无论是本机构建还是交叉构建，总是链接 `<sysroot>/lib/nabi/targets/<triple>/` 中随附的 C 库：musl 静态链接，glibc 通过链接桩链接（可执行文件需要 glibc 2.34 或更高版本）。其他库通过 `-L` 和 `LIBRARY_PATH` 查找。32 位 glibc 目标指定的动态加载器为 `/lib/ld-linux.so.2`（i686）和 `/lib/ld-linux-armhf.so.3`（armv7hf）。riscv32 映像（无操作系统，进行中）是静态的，不链接 C 库：运行时自带入口点和堆（[0.6.2](../000-meta/006-platform-targets.md#riscv32imac-unknown-none-elf)）。如果设置了 `NABI_CC`，则改由该 C 编译器驱动程序执行最终链接（`$NABI_CC <objects> <archives> -o <out>`）；这是一个可选的覆盖手段。用 `--native-runtime` 给出的共享库会被复制到可执行文件旁边，可执行文件获得 rpath `@loader_path`（Mach-O）/ `$ORIGIN`（ELF）；Windows 从可执行文件所在目录加载 DLL。可执行文件会经过死代码剥离：删除未被引用的函数和数据；`release` 构建还会折叠相同的函数，并合并相同的字符串字面量（[9.2.15](#9215-输出)）。Mach-O 可执行文件带有临时（ad-hoc）代码签名，arm64 macOS 要求有它才能运行。在 Apple 目标上，当可执行文件带有调试信息时，`nabic` 把目标文件中的 DWARF 汇集到可执行文件旁边的 `.dSYM` 包中；在 Windows 目标上，链接器写出 PDB（MSF 7.0）：合并后的目标文件 CodeView 类型、每个目标文件一个模块（含其符号和行表）、全局符号和公开符号，以及节贡献；可执行文件的调试目录指向它（一条带有 PDB 的 GUID 和 age 的 RSDS 记录）。`wasm32-wasip2` 可执行文件先链接为核心 wasm 模块，再用工具链为该目标随附的 preview 1 适配器制成 WASI preview 2 组件；`ffi::wit` world（[std 1.8](../../refs-standard-libraries/100-bare/108-wit.md)）决定它的导入和导出。
+Mach-O 可执行文件链接 macOS SDK（Xcode Command Line Tools）。Windows 可执行文件链接 `nabic` 根据其自带的模块定义（源自 mingw-w64）构建的导入库，并在 UCRT 之上使用 Nabi 自己的启动代码；不需要 MSVC 工具或 Windows SDK。Nabi 的 Windows 启动代码在 `main` 之前运行 `.CRT$XCA`..`.CRT$XCZ` 中的 C 初始化函数。对于 x86 Windows，导入名称来自 mingw-w64 的 `lib32` 定义，带有 stdcall 的 `@N` 修饰，映像以 `/SAFESEH:NO` 链接。Linux 目标无论是本机构建还是交叉构建，总是链接 `<sysroot>/lib/nabi/targets/<triple>/` 中随附的 C 库：musl 静态链接，glibc 通过链接桩链接（可执行文件需要 glibc 2.34 或更高版本）。其他库通过 `-L` 和 `LIBRARY_PATH` 查找。32 位 glibc 目标指定的动态加载器为 `/lib/ld-linux.so.2`（i686）和 `/lib/ld-linux-armhf.so.3`（armv7hf）。riscv32 映像（无操作系统，进行中）是静态的，不链接 C 库：运行时自带入口点和堆（[0.6.2](../000-meta/006-platform-targets.md#riscv32imac-unknown-none-elf)）。如果设置了 `NABI_CC`，则改由该 C 编译器驱动程序执行最终链接（`$NABI_CC <objects> <archives> -o <out>`）；这是一个可选的覆盖手段。用 `--native-runtime` 给出的共享库会被复制到可执行文件旁边，可执行文件获得 rpath `@loader_path`（Mach-O）/ `$ORIGIN`（ELF）；Windows 从可执行文件所在目录加载 DLL。可执行文件会经过死代码剥离：删除未被引用的函数和数据；`release` 构建还会折叠相同的函数，并合并相同的字符串字面量（[9.2.15](#9215-输出)）。Mach-O 可执行文件带有临时（ad-hoc）代码签名，arm64 macOS 要求有它才能运行。在 Apple 目标上，当可执行文件带有调试信息时，`nabic` 把目标文件中的 DWARF 汇集到可执行文件旁边的 `.dSYM` 包中；在 Windows 目标上，链接器写出 PDB（MSF 7.0）：合并后的目标文件 CodeView 类型、每个目标文件一个模块（含其符号和行表）、全局符号和公开符号，以及节贡献；可执行文件的调试目录指向它（一条带有 PDB 的 GUID 和 age 的 RSDS 记录）。`wasm32-wasip2` 可执行文件先链接为核心 wasm 模块，再用工具链为该目标随附的 preview 1 适配器制成 WASI preview 2 组件；`ffi::wit` world（[标准库 1.8](../../refs-standard-libraries/100-bare/108-wit.md)）决定它的导入和导出。
 
 ## 9.2.15. 输出
 
@@ -195,7 +195,7 @@ Mach-O 可执行文件链接 macOS SDK（Xcode Command Line Tools）。Windows �
 
 相同代码折叠按机器码和重定位比较函数：当两个函数的字节相同，并且每个引用都指向同一位置，或指向本身也会折叠在一起的函数时，二者折叠为一个。被取地址的函数（被存储、比较、导出、放入表中）永远不会被折叠，因此不同的函数保持不同的地址；只有被调用和跳转到的函数才会折叠，函数值所调用的 thunk（`<symbol>.v`，[8.11](../008-abi/811-backend-contract.md)）也会折叠：函数值不能比较，所以两个函数值共享代码不会改变程序能看到的任何东西。被折叠副本的展开条目和调试信息会像被删除的代码一样丢弃：调试器、性能分析器或栈回溯给出的是保留下来的那个副本的名称。字节相同的字符串字面量共享一个副本（它们的地址没有意义）。`-C icf=no` 在 `release` 构建中关闭此功能，`-C icf` 在 `debug` 构建中开启此功能（[9.1](901-nabic-cli.md)）。
 
-调试信息属于构建所生成的可执行文件或归档文件（`build`、`run`、`test`，以及显式指定 `-O0` / `-O1` 时的 `bench`），不属于 `--emit` 输出，也不属于 REPL 和 Jupyter 单元。在两种构建配置中，panic 都会给出其源代码位置。一次构建的目标文件从输出旁边的同一位置链接，因此相同的输入生成相同的可执行文件。两种构建配置都开启溢出检查；`nabi.nabion` 中的 `profile` 可以为某个构建配置关闭它（[9.10.3](910-nabi-frontend.md#9103-nabinabion--nabilock)）。构建配置没有其他设置。
+调试信息属于构建所生成的可执行文件或归档文件（`build`、`run`、`test`，以及显式指定 `-O0` / `-O1` 时的 `bench`），不属于 `--emit` 输出，也不属于 REPL 和 Jupyter 单元格。在两种构建配置中，panic 都会给出其源代码位置。一次构建的目标文件从输出旁边的同一位置链接，因此相同的输入生成相同的可执行文件。两种构建配置都开启溢出检查；`nabi.nabion` 中的 `profile` 可以为某个构建配置关闭它（[9.10.3](910-nabi-frontend.md#9103-nabinabion--nabilock)）。构建配置没有其他设置。
 
 ```
 target/

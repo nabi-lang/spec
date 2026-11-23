@@ -46,7 +46,7 @@ trait Numbers {
 }
 ```
 
-函数体中的 `const` 是其所在块的一个项（[3.9.1](../003-expressions/309-block-expressions.md#391-形式)）：在整个块以及块中声明的项中都可见。它不读取周围代码的任何局部变量或参数；此时的错误提示改写为 `let`（`let half = n / 2;`）。它可以读取所在泛型函数或 `impl` 的常量参数，以及其类型参数的关联常量和 `T::size()`：这时它每个实例各有一个值（5.2.7）。
+函数体中的 `const` 是其所在块的一个项（[3.9.1](../003-expressions/309-block-expressions.md#391-形式)）：在整个块以及块中声明的项中都可见。它不能读取周围代码的局部变量或参数；这样写时，错误信息会提示改用 `let`（`let half = n / 2;`）。它可以读取所在泛型函数或 `impl` 的常量参数，以及其类型参数的关联常量和 `T::size()`：这时它在每个实例中各有一个值（5.2.7）。
 
 ```nabi
 fn mid<const N: usize>(xs: [i32; N]) -> i32 {
@@ -116,7 +116,7 @@ let y = double(user_input);                      // runtime call
 - `const fn` 只能调用 `const fn`。`const fn` 内部通过 `fn` 值或闭包进行的调用只在求值时检查，因为静态检查无法追踪它们。标准库把纯函数标记为 `const fn`。
 - 函数体必须是纯的。I/O 和访问可变全局变量都是错误。
 - 在编译期成功求值的结果，与同样实参下的运行时结果相同。在运行时会溢出的运算，在编译期是错误（5.2.4）。
-- `const fn` 不能以类型作为实参（`const fn sizeof(T: type)` 是错误；帮助信息改写为 `const fn sizeof<T>() -> usize { T::size() }`）。类型内省属于元块。
+- `const fn` 不能以类型作为实参（`const fn sizeof(T: type)` 是错误；帮助信息给出的写法是 `const fn sizeof<T>() -> usize { T::size() }`）。类型内省属于元块。
 - `const fn` 也可以像普通函数一样在运行时调用。
 
 ### 泛型 `const fn`

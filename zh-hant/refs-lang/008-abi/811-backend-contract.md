@@ -121,7 +121,7 @@
 ## 8.11.8. 呼叫 C 與從 C 呼叫
 
 - **呼叫 C。** 在每次呼叫符號不以 `nabi_` 開頭的 `extern "C"` 函式前後：之前，以循序一致的方式把 `2`（PARKED）存入 `mutator_state`（`nabi_tls + 10p+9`），然後載入 `yield_flag`，若非零則呼叫 `nabi_enter_native()`；之後，存入 `0`（RUNNING），進行相同的載入，若非零則呼叫 `nabi_leave_native()`（[8.4.10](804-safepoint.md#8410-原生呼叫)）。呼叫者的根在呼叫期間保持註冊。
-- **從 C 呼叫。** `extern "C"` 定義有一個 C 進入點（`<symbol>.c` 或其匯出名稱），它接受 C 引數，呼叫 `nabi_native_reenter()`（它也會附加執行環境不認識的執行緒，[8.3.8](803-tls-slots.md#838-編譯器發出的形式)），以這個執行緒的 `nabi_tls` 位址呼叫主體，呼叫 `nabi_native_resume(<reenter 所回傳的值>)`，然後以 C 的方式回傳。在 wasm32 上，當函式被匯出時，它會先呼叫 `nabi_init_once()`。
+- **從 C 呼叫。** `extern "C"` 定義有一個 C 進入點（`<symbol>.c` 或其匯出名稱），它接受 C 引數，呼叫 `nabi_native_reenter()`（它也會附加執行環境不認識的執行緒，[8.3.8](803-tls-slots.md#838-編譯器發出的形式)），以這個執行緒的 `nabi_tls` 位址呼叫主體，呼叫 `nabi_native_resume(<what reenter returned>)`，然後以 C 的方式回傳。在 wasm32 上，當函式被匯出時，它會先呼叫 `nabi_init_once()`。
 - 對 `#[no_safepoint]` 執行環境函式以及 `nabi_*` 符號的呼叫不加上這些前後處理。
 
 ## 8.11.9. 執行緒區域存取
@@ -193,7 +193,7 @@ Nabi 程式中沒有任何東西會展開機器堆疊。
 
 **選擇。** `-C codegen-backend=<name>`（`native` 是預設值，或元件的名稱，例如 `llvm`），或 `nabi.nabion` 之設定檔中的 `codegen_backend: "<name>"`（[9.10.3](../009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock)），選項會覆寫它。這個選擇適用於建置所編譯的每個單元；預先建置的函式庫保留其既有的目的檔，而共用單元、REPL 儲存格與 Jupyter 儲存格一律是 `native`。其元件未安裝的名稱是錯誤，錯誤訊息會指出安裝它的指令：``codegen backend `llvm` is not installed; run `nabi component add codegen-llvm` ``。元件為 `nabic` 支援的每個目標編譯，或說明它不支援哪些（`E0129`）。
 
-**核心元件。** 元件可以只編譯部分函式：`codegen-mlir` 編譯函式庫為它標示的函式，而單元的其餘部分仍由所選的程式碼產生器處理。`nabic` 把這類函式放進它們自己的單元。函式如何被標示尚未規定。
+**核心函式元件。** 元件可以只編譯部分函式：`codegen-mlir` 編譯函式庫為它標示的函式，而單元的其餘部分仍由所選的程式碼產生器處理。`nabic` 把這類函式放進它們自己的單元。函式如何被標示尚未規定。
 
 **尋找它。** `nabic` 從它自己的 `bin/` 目錄（工具鏈的目錄，[9.2.19](../009-tools/902-aot-pipeline.md#9219-安裝配置)）執行 `nabic-codegen-<name>`；它不搜尋 `PATH`。元件依工具鏈安裝，其版本就是工具鏈的版本。
 

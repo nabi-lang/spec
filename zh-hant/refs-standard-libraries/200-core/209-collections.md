@@ -49,7 +49,7 @@ fn set_literal<T: Hash>(items: ...T) -> Set<T> { ... }
 
 沒有預期型別時，`[1, 2, 3]` 是 `List<T>`。只有在預期型別寫成 `[T; N]` 時，才會建立固定長度陣列 `[T; N]`，例如 `let a: [i32; 3] = [1, 2, 3];`。固定長度陣列由編譯器直接建立，不經過處理函式。
 
-沒有預期的元素型別時，各元素的型別以與分支相同的方式取得一致（[refs-lang 3](../../refs-lang/003-expressions/README.md)）：所有元素是同一個型別，或者某個元素的和型別包含其他所有元素的型別，取先成立者（當 `x: f64 | none` 時，`[none, x]` 和 `[x, none]` 都是 `List<f64 | none>`）。不會為不同型別的元素自行構造和型別：`[0.5, none]` 是錯誤（E0040），其說明會要求寫出串列的型別，即 `let xs: List<f64 | none> = [0.5, none];`。
+沒有預期的元素型別時，各元素的型別以與分支相同的方式取得一致（[refs-lang 3](../../refs-lang/003-expressions/README.md)）：所有元素是同一個型別，或者某個元素的和型別包含其他所有元素的型別，取先成立者（當 `x: f64 | none` 時，`[none, x]` 和 `[x, none]` 都是 `List<f64 | none>`）。不會為不同型別的元素自行建構和型別：`[0.5, none]` 是錯誤（E0040），其說明會要求寫出串列的型別，即 `let xs: List<f64 | none> = [0.5, none];`。
 
 重複字面值 `[v; N]` 一律是固定長度陣列。它只對 `v` 求值一次，並讓每個元素各自持有一份副本：`Copy` 或一般值的元素採逐位元複製，持有集合型別的元素則採 `v.clone()`，因此 `[List::<i32>::new(); 3]` 是三個各自獨立的串列（[refs-lang 2.11.6](../../refs-lang/002-types/211-const-generics.md#2116-參數推論)）。`[T; N]` 的 `Default` 同樣對每個元素各呼叫一次 `T::default()`。
 
@@ -85,9 +85,9 @@ a == [1, 2, 3];          //→ true
 a < [1, 2, 4];           //→ true (lexicographic)
 ```
 
-### 參考控制代碼
+### 參照控制代碼
 
-`List`、`Dict` 和 `Set` 的值是指向 GC 堆積物件的參考控制代碼。`let ys = xs;` 和引數傳遞複製的是控制代碼，因此共用同一個集合。所以修改集合的方法接收 `self`，而不是 `ref self`。需要獨立的副本時，呼叫 `clone()`。結構元素是值：`xs[i]` 和 `d[k]` 回傳副本，修改要以 `xs[i] = v` 存回（[refs-lang 2.3.8](../../refs-lang/002-types/203-struct.md#238-值語意)）。`iter` / `keys` / `values` 回傳不複製集合的惰性迭代器。
+`List`、`Dict` 和 `Set` 的值是指向 GC 堆積物件的參照控制代碼。`let ys = xs;` 和引數傳遞複製的是控制代碼，因此共用同一個集合。所以修改集合的方法接收 `self`，而不是 `ref self`。需要獨立的副本時，呼叫 `clone()`。結構元素是值：`xs[i]` 和 `d[k]` 回傳副本，修改要以 `xs[i] = v` 存回（[refs-lang 2.3.8](../../refs-lang/002-types/203-struct.md#238-值語意)）。`iter` / `keys` / `values` 回傳不複製集合的惰性迭代器。
 
 ## 2.9.2. `List<T>`：動態陣列
 
@@ -317,7 +317,7 @@ impl<K: Hash + Eq, V: Default, S: BuildHasher> Entry<K, V, S> {
 }
 ```
 
-`d.freeze()`（`K`、`V` 和 `S` 皆為 `Send + Sync`）把字典移交給 `FrozenDict<K, V, S>`，讓多個執行緒不需鎖即可共用（[2.9.7b](#297b-frozenlistt--frozendictk-v-s--frozensett-s唯讀集合型別)）。
+`d.freeze()`（`K`、`V` 和 `S` 皆為 `Send + Sync`）把字典交接給 `FrozenDict<K, V, S>`，讓多個執行緒不需鎖即可共用（[2.9.7b](#297b-frozenlistt--frozendictk-v-s--frozensett-s唯讀集合型別)）。
 
 `Dict` 實作 `IntoIterator`、`Index<K>`、`IndexSet<K, V>`、`AddAssign<Dict<K, V, S>>`、`PartialEq` / `Eq` / `Hash`（依 `V`）、`Debug`（`K: Debug, V: Debug`）、`Clone`（`K: Clone, V: Clone`；複製鍵和值，使用相同的雜湊器）、`Default`、`FromIterator<(K, V)>` 和 `From<List<(K, V)>>`。`Default`、`FromIterator` 和 `From<List<(K, V)>>` 需要 `S: BuildHasher + Default`；其他實作接受任何 `S: BuildHasher`。
 
@@ -379,7 +379,7 @@ struct Set<T: Hash + Eq, S = RandomState> {
 }
 ```
 
-它和 `Dict` 一樣依插入順序迭代；平均效能為 O(1)。`S` 和 `Dict` 一樣負責建立雜湊器。`s.freeze()`（`T` 和 `S` 皆為 `Send + Sync`）把集合移交給 `FrozenSet<T, S>`（[2.9.7b](#297b-frozenlistt--frozendictk-v-s--frozensett-s唯讀集合型別)）。
+它和 `Dict` 一樣依插入順序迭代；平均效能為 O(1)。`S` 和 `Dict` 一樣負責建立雜湊器。`s.freeze()`（`T` 和 `S` 皆為 `Send + Sync`）把集合交接給 `FrozenSet<T, S>`（[2.9.7b](#297b-frozenlistt--frozendictk-v-s--frozensett-s唯讀集合型別)）。
 
 ```nabi
 impl<T: Hash + Eq> Set<T> {
@@ -769,14 +769,14 @@ impl<T: PartialEq> PartialEq for SliceMut<T> { ... }
 impl<T: Debug> Debug for SliceMut<T> { ... }
 ```
 
-`SliceMutIter<T>` 是 `Item = T` 的 `DoubleEndedIterator` 和 `ExactSizeIterator`；`ChunksMut<T>` 是 `Item = SliceMut<T>` 的 `ExactSizeIterator`。和 `List` 一樣，`SliceMut` 不是 `Sync`（[2.13.9](213-marker.md#2139-send--sync執行緒邊界標記)）；移交時會複製其串列，並讓檢視指向該副本。`chunks_mut` 和 `split_at_mut` 的檢視彼此不重疊，因此 `par::for_each` 可以把每一個交給各自的工作者，由它就地寫入串列中自己的部分（[2.19.1](219-par.md#2191-核心-api)）。負索引和串列一樣從尾端算起。
+`SliceMutIter<T>` 是 `Item = T` 的 `DoubleEndedIterator` 和 `ExactSizeIterator`；`ChunksMut<T>` 是 `Item = SliceMut<T>` 的 `ExactSizeIterator`。和 `List` 一樣，`SliceMut` 不是 `Sync`（[2.13.9](213-marker.md#2139-send--sync執行緒邊界標記)）；交接時會複製其串列，並讓檢視指向該副本。`chunks_mut` 和 `split_at_mut` 的檢視彼此不重疊，因此 `par::for_each` 可以把每一個交給各自的工作者，由它就地寫入串列中自己的部分（[2.19.1](219-par.md#2191-核心-api)）。負索引和串列一樣從尾端算起。
 
 ### 檢視存活期間調整串列大小
 
 調整大小可能把串列的元素搬到新的緩衝區，因此串列調整大小之後，不得再使用其檢視。調整大小是指任何改變長度或緩衝區的 `List` 方法：`push`、`pop`、`insert`、`remove`、`clear`、`truncate`、`drain`、`set_len`、`reserve`、`shrink_to_fit`、`extend`、`retain`、`dedup`、`freeze` 和 `+=`。元素的寫入（`xs[i] = x`、`fill`、`swap`、`sort`、`reverse`）不是調整大小。
 
 - 當同一個函式中同時出現兩者時，在串列調整大小後使用其檢視是編譯錯誤 `E0137`（[refs-lang 9.9.4](../../refs-lang/009-tools/909-debug-tools.md#994-診斷--錯誤訊息)）。檢視會透過串列的副本（`let ys = xs`）、檢視的檢視（`s[1:]`、`split_at`）、走訪它的 `for` 迴圈、分支以及迴圈的下一輪被追蹤。重新指派檢視（`s = xs[..]`）會使它再次可用，而位於離開路徑（`return`、`break`）上的調整大小不會影響其後的程式碼。
-- 其他所有情況都在執行時檢查：被呼叫函式內的調整大小、存放在結構中的檢視、在呼叫者調整大小時等待的 `async fn`。串列帶有一個版本號，每次調整大小都會遞增，而在遞增之前建立的檢視，其方法會觸發 panic（`SliceMut used after its list was resized (push, insert, clear, ...): make the view again after the resize`）；走訪它的 `for` 或 `for ref` 迴圈的每一步、它的移交，以及項目中含有它的 `par` 呼叫也是如此。元素的讀取和寫入（`s[i]`、`s[i] = x`、`get`、`first`、`last`）不做任何檢查，因此走訪檢視的迴圈成本與走訪串列相同：對於過時的檢視，它們觸及的是建立檢視時的儲存空間。若調整大小後保留了該儲存空間，它仍屬於串列，否則就不再屬於串列；其他執行緒不會觸及它（`freeze` 會複製曾有檢視的串列）。
+- 其他所有情況都在執行時檢查：被呼叫函式內的調整大小、存放在結構中的檢視、在呼叫者調整大小時等待的 `async fn`。串列帶有一個版本號，每次調整大小都會遞增，而在遞增之前建立的檢視，其方法會觸發 panic（`SliceMut used after its list was resized (push, insert, clear, ...): make the view again after the resize`）；走訪它的 `for` 或 `for ref` 迴圈的每一步、它的交接，以及項目中含有它的 `par` 呼叫也是如此。元素的讀取和寫入（`s[i]`、`s[i] = x`、`get`、`first`、`last`）不做任何檢查，因此走訪檢視的迴圈成本與走訪串列相同：對於過時的檢視，它們觸及的是建立檢視時的儲存空間。若調整大小後保留了該儲存空間，它仍屬於串列，否則就不再屬於串列；其他執行緒不會觸及它（`freeze` 會複製曾有檢視的串列）。
 
 ```nabi
 let xs: List<i32> = [1, 2, 3];
@@ -856,9 +856,9 @@ impl<T: Hash + Eq, S: BuildHasher> FrozenSet<T, S> {
 
 `fr[i]`（超出範圍時觸發 panic）和 `fr[a:b]`（唯讀的 `Slice<T>`，不複製）的用法與串列相同，`fd[k]` 的用法與字典相同；沒有 `IndexSet`，也沒有任何會改變內容的方法。三者都實作 `IntoIterator`（依凍結前集合型別的順序）、`Clone`（同一個集合：它無法改變，因此共用它與複製無異）、`PartialEq`、`Debug`（與未凍結的集合型別相同）和 `Default`（空）；`FrozenList` 另外實作 `Eq` 和 `Hash`。
 
-**凍結**。只有在元素（對字典而言是鍵、值和雜湊器）為 `Send + Sync` 時才有 `freeze`：執行緒讀取的內容也不得改變，而串列的凍結串列會讓每個執行緒拿到同一批可變的內層串列（`List<List<i32>>::freeze` 是錯誤 `E0069`，其說明會要求先凍結每個元素，或透過 `Mutex` 共用該集合）。`freeze` 會移交集合（[2.13.9](213-marker.md#2139-send--sync執行緒邊界標記)）：之後使用 `xs` 是編譯錯誤 `E0105`，並和任何移交一樣透過副本、欄位和呼叫追蹤；請改為讀取凍結後的值，或凍結 `clone()` 以保留 `xs`。在執行時，凍結後的集合以 O(1) 接管儲存空間並讓 `xs` 變為空，因此檢查器看不到的控制代碼（`unsafe` 中的程式碼）修改的是一個新的空集合，絕不是讀取者所讀的內容。曾有 `SliceMut` 的串列則改為提供其元素的副本（O(n)）：過時的檢視仍可能寫入舊的儲存空間。在常數求值期間建立的字典會在凍結時重新雜湊，因此查詢絕不會寫入。要修改凍結的集合，請建立可變的副本（`to_list()`、`to_dict()`、`to_set()`），修改後再次凍結。
+**凍結**。只有在元素（對字典而言是鍵、值和雜湊器）為 `Send + Sync` 時才有 `freeze`：執行緒讀取的內容也不得改變，而串列的凍結串列會讓每個執行緒拿到同一批可變的內層串列（`List<List<i32>>::freeze` 是錯誤 `E0069`，其說明會要求先凍結每個元素，或透過 `Mutex` 共用該集合）。`freeze` 會交接集合（[2.13.9](213-marker.md#2139-send--sync執行緒邊界標記)）：之後使用 `xs` 是編譯錯誤 `E0105`，並和任何交接一樣透過副本、欄位和呼叫追蹤；請改為讀取凍結後的值，或凍結 `clone()` 以保留 `xs`。在執行時，凍結後的集合以 O(1) 接管儲存空間並讓 `xs` 變為空，因此檢查器看不到的控制代碼（`unsafe` 中的程式碼）修改的是一個新的空集合，絕不是讀取者所讀的內容。曾有 `SliceMut` 的串列則改為提供其元素的副本（O(n)）：過時的檢視仍可能寫入舊的儲存空間。在常數求值期間建立的字典會在凍結時重新雜湊，因此查詢絕不會寫入。要修改凍結的集合，請建立可變的副本（`to_list()`、`to_dict()`、`to_set()`），修改後再次凍結。
 
-**共用**。凍結型別是 `Sync`，因此可以放到集合型別無法進入的地方：多個工作者執行的閉包（`par::map(0..n, |i| table[i])`）、執行緒的閉包、`static`（`static PRIMES: FrozenList<i64> = [2, 3, 5, 7].freeze();`）、多方讀取的 `RwLock`、使結構因而成為 `Sync` 的欄位。移交（`send`、`Mutex::new`、`[move x]`、任務的結果）不會複製凍結的集合。它們的元素本身是 `Sync`，因此 `FrozenList<Atomic<i64>>` 是一個可供多個執行緒累加的計數器陣列。
+**共用**。凍結型別是 `Sync`，因此可以放到集合型別無法進入的地方：多個工作者執行的閉包（`par::map(0..n, |i| table[i])`）、執行緒的閉包、`static`（`static PRIMES: FrozenList<i64> = [2, 3, 5, 7].freeze();`）、多方讀取的 `RwLock`、使結構因而成為 `Sync` 的欄位。交接（`send`、`Mutex::new`、`[move x]`、任務的結果）不會複製凍結的集合。它們的元素本身是 `Sync`，因此 `FrozenList<Atomic<i64>>` 是一個可供多個執行緒累加的計數器陣列。
 
 ```nabi
 let table = load_table().freeze();                  // FrozenList<Entry>
@@ -975,7 +975,7 @@ impl<T> GcBuf<T> {
 fn buf_same<T>(a: GcBuf<T>, b: GcBuf<T>) -> bool;   // whether they are the same buffer (identity, not contents). Pins nothing
 ```
 
-## 2.9.13. 預設值、運算子與建構函式
+## 2.9.13. 預設值、運算子與建構子
 
 **`d[k, default: v]`**。帶有具名部分 `default:` 的兩段式索引讀取 `d.get_or(k, v)`：`k` 不存在時為 `v`，字典不變。作為 `=` 或複合指派的目標、作為欄位 / 索引目標的基底（`d[k, default: v].f += 1`），以及作為方法呼叫的接收者（`d[k, default: []].push(x)`）時，它先執行 `d.get_or_insert(k, v)`，因此 `k` 不存在時會存入 `v`，然後再對 `d[k]` 進行操作。`d` 和 `k` 只求值一次；`v` 在運算式每次執行時都會求值（Swift 的 `subscript(_:default:)`；Python 的 `defaultdict` 每次讀取都會插入，Nabi 的讀取則不會）。
 

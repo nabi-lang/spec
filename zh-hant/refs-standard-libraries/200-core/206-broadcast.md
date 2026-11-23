@@ -77,7 +77,7 @@ m .* n      // element-wise (Hadamard product), always broadcast
 
 優先順序與結合性和一般的 trait 相同（[2.3 ops](203-ops.md)、[2.5 cmp](205-cmp.md)）。
 
-## 2.6.3. Trait 簽章：統一的形式
+## 2.6.3. trait 簽章：統一的形式
 
 每個點 trait 都依循相同的統一形式。
 
@@ -318,13 +318,13 @@ let t = s .* 2.0 .+ k;      // one loop; a Signal
 
 由哪個型別建構結果：
 
-- 若運算式樹中的容器全都是 `Array`，採用領頭運算元的型別（最高秩中的第一個）：`Array` 的 `materialize` 產生元素型別為迴圈所計算之 `U` 的 `Array<U, N>`（`a .< b` 是 `Array<bool, N>`）。
-- 若運算式樹涉及自訂型別，或有 `BroadcastScalar` 運算元，則先透過它的點 trait 逐個運算子定出型別，就如同沒有融合一樣。若該型別是此樹之秩的 `Broadcastable`，且有其元素型別的 `Materialize`，就由它建構結果；否則此樹不融合，改經由 trait 執行。因此 trait 的型別對融合後的迴圈同樣成立：若某個量的型別其 `DotDiv` 產生 `Quantity<Array<f64, R>, { L - L2 }, ..>`，則 `d ./ t .+ v0` 是一個迴圈，結果是速度；而 `d .+ t` 是與不融合時相同的編譯錯誤。
+- 若運算式樹中的容器全都是 `Array`，採用領頭運算元的型別（最高秩中的第一個）：`Array` 的 `materialize` 產生 `Array<U, N>`，其元素型別 `U` 是迴圈計算出的型別（`a .< b` 是 `Array<bool, N>`）。
+- 若運算式樹涉及自訂型別，或有 `BroadcastScalar` 運算元，則先透過它的點 trait 逐個運算子定出型別，就如同沒有融合一樣。若該型別是此樹之秩的 `Broadcastable`，且有其元素型別的 `Materialize`，就由它建構結果；否則此樹不融合，改經由 trait 執行。因此 trait 的型別對融合後的迴圈同樣成立：若某個量的型別，其 `DotDiv` 產生 `Quantity<Array<f64, R>, { L - L2 }, ..>`，則 `d ./ t .+ v0` 是一個迴圈，結果是速度；而 `d .+ t` 是與不融合時相同的編譯錯誤。
 - 若自訂型別沒有實作樹中任何點 trait，則它的運算子僅來自 `Broadcastable`：由領頭運算元的型別建構結果。
 
 領頭運算元沒有 `Materialize` 時是編譯錯誤，錯誤中會指出該 trait。這類型別上的原地形式（`v .= d ./ t`）也以同樣方式定出型別，若值的型別與目標型別不同，則是編譯錯誤（`` `.=` writes a `Q<Array<f64, 1>, 1>` into a `Q<Array<f64, 1>, -1>` ``）。
 
-## 2.6.7. Trait 實作矩陣
+## 2.6.7. trait 實作矩陣
 
 點 trait 的 impl 對應到各容器型別的方式如下。
 
@@ -360,4 +360,4 @@ core 的 n 維 `Array<T, N>`（[2.9.14](209-collections.md#2914-arrayt-const-n-u
 | 比較         | `==` 回傳陣列   | `.==`                      | `==`（易混淆） | `.==`                         |
 | 獨立的點 trait | **無**            | **無**（只有 `*` 多載） | **無**       | **DotAdd/DotMul/...**（20 個）    |
 
-Nabi 與其他語言最大的差異有兩點。第一，每個點運算子都有自己的 trait。Julia 把點語法疊加在多載的 `+` 之上，而在 Nabi 中 `Add` 與 `DotAdd` 是不同的 trait，`Matrix * Matrix` 與 `Matrix .* Matrix` 走的是完全不同的分派。第二，編譯器強制使用點運算。透過一般的 `*` 進行廣播是**不可能的**，這保證了一種不依賴使用者程式碼的確定性區分。
+Nabi 與其他語言最大的差異有兩點。第一，每個點運算子都有自己的 trait。Julia 把點語法疊加在多載的 `+` 之上，而在 Nabi 中 `Add` 與 `DotAdd` 是不同的 trait，`Matrix * Matrix` 與 `Matrix .* Matrix` 走的是完全不同的分派。第二，編譯器強制使用點運算。透過一般的 `*` 進行廣播是**不可能的**，這保證了一種不相依於使用者程式碼的確定性區分。

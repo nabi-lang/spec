@@ -92,7 +92,7 @@ target/<profile>/deps/
 
 [模組](../005-modules/504-modules.md)中的目錄模組把其所有 .nabi 檔案合併為一個模組的主體。
 
-套件根部的資訊清單 `nabi.nabion`（[9.10.3](910-nabi-frontend.md#9103-nabinabion--nabilock)）不是模組檔案。資訊清單被讀取為單一的 [NABION](../../refs-standard-libraries/300-std/308-nabion.md) 值（`Package { .. }`）；頂層陳述式的規則不適用於它，它也不會被編譯。
+套件根部的清單 `nabi.nabion`（[9.10.3](910-nabi-frontend.md#9103-nabinabion--nabilock)）不是模組檔案。清單被讀取為單一的 [NABION](../../refs-standard-libraries/300-std/308-nabion.md) 值（`Package { .. }`）；頂層陳述式的規則不適用於它，它也不會被編譯。
 
 ### 掃描器預先處理
 
@@ -135,7 +135,7 @@ HIR 是富含型別資訊的中間表示，反映上述步驟 4-5 的所有結�
 
 [特化](../000-meta/007-glossary.md#特化specialize)後的 HIR 被轉換成 nabi-mir（MIR）。
 
-MIR 是比 HIR 低一層的 IR。在這個步驟中，運算子去糖完成（見[運算子分派](../003-expressions/301-operator-dispatch.md)），模式比對的決策樹被決定（見 [`match` 運算式](../003-expressions/312-match-expression.md)），閉包與協程的框架配置也被固定。
+MIR 是比 HIR 低一層的 IR。在這個步驟中，運算子去語法糖完成（見[運算子分派](../003-expressions/301-operator-dispatch.md)），模式比對的決策樹被決定（見 [`match` 運算式](../003-expressions/312-match-expression.md)），閉包與協程的框架配置也被固定。
 
 ## 9.2.10. 最佳化等級
 
@@ -234,7 +234,7 @@ target/
 - 編譯器的身分（與 NABIHIR 產生者相同的值）、建置選項、診斷格式（`--message-format`、色彩）、輸入 / 輸出路徑、有設定時的 `NABI_CC`
 - 套件及其相依套件 `src/` 下的檔案、它們的 `nabi.nabion`，以及建置所讀取的其他每個檔案（`src/` 之外的 `#[path]` / `include_str!`）
 - 由 `include_str!` / `include_bytes!` 讀取的檔案（[6.11](../006-meta-system/611-include.md)），連同其內容
-- lint 等級（`-A` / `-W` / `-D`，以及經由它們的資訊清單 `lints`）
+- lint 等級（`-A` / `-W` / `-D`，以及經由它們的清單 `lints`）
 - 執行環境函式庫、工具鏈為目標隨附的 C 執行環境目的檔與 C 函式庫（[9.2.19](#9219-安裝配置)），以及預先建置相依套件的 `.a`，各自依其大小、修改時間與檔案身分（inode 與狀態變更時間；在 Windows 上是其建立時間），因此保留修改時間的複本也算是改變
 - 輸出的大小、修改時間與檔案身分
 
@@ -265,7 +265,7 @@ target/
 
 - 只有在單元的鍵自上次建置到同一個目標目錄以來改變時，才會編譯該單元。否則重複使用保存在 `target/<profile>/incremental/<name>/`（函式庫的：`lib<name>/`）下的結果；然後連結一切。標準函式庫的單元則改為保存在函式快取中（見上文），供每個套件的建置使用；單獨的檔案也會使用它，雖然它不保存自己的單元。預先建置的相依套件（9.2.3）編譯為一個目的檔，不分單元。
 - 匿名檔案的單元保存在沒有套件時使用的目標目錄中（`--target-dir`、`NABI_TARGET_DIR`，否則為單獨檔案快取），位於 `[<triple>/]<profile>/incremental/<stem>-<hash of its path>/` 下。單獨檔案快取在 Unix 上是 `<system temporary directory>/nabic-target-<uid>/`，`<uid>` 是有效使用者 ID，在 Windows 上是 `%TEMP%\nabic-target\`，其暫存目錄是使用者自己的。它是一個快取：nabic 每天最多一次移除其中一週內沒有任何建置寫入過的檔案。
-- 單獨檔案的執行檔保存在同一個目標目錄中，位於 `[<triple>/]<profile>/scripts/<key>/` 下，在其鍵相符期間會被重複使用；一天未使用的項目會在建置另一個項目時被移除（[9.10.7](910-nabi-frontend.md#9107-單檔指令碼的行內資訊清單)）。`nabi run` 執行它，`nabic build` 把它複製到檔案旁邊。對指令碼而言，`nabi` 以 `$NABI_HOME/cache/scripts/<hash>/` 下該指令碼自己的 `target/` 傳入 `--target-dir`；單獨檔案快取容納其餘的部分：由 `nabic` 本身建置的單獨檔案，以及位於其 `nabi.nabion` 使它成為單一檔案套件之目錄中的檔案（9.10.1）。
+- 單獨檔案的執行檔保存在同一個目標目錄中，位於 `[<triple>/]<profile>/scripts/<key>/` 下，在其鍵相符期間會被重複使用；一天未使用的項目會在建置另一個項目時被移除（[9.10.7](910-nabi-frontend.md#9107-單檔指令碼的行內清單)）。`nabi run` 執行它，`nabic build` 把它複製到檔案旁邊。對指令碼而言，`nabi` 以 `$NABI_HOME/cache/scripts/<hash>/` 下該指令碼自己的 `target/` 傳入 `--target-dir`；單獨檔案快取容納其餘的部分：由 `nabic` 本身建置的單獨檔案，以及位於其 `nabi.nabion` 使它成為單一檔案套件之目錄中的檔案（9.10.1）。
 - 單獨檔案快取容納會被執行的執行檔，因此在 Unix 上它是私有的：編譯器以模式 `0700` 建立它，並在使用前檢查它是一個目錄（不是符號連結）、由有效使用者擁有，而且沒有群組或其他人的權限位元。否則指令以結束碼 `1` 失敗，並印出 ``nabic: error: <dir> is not private to you (owner uid N, mode 0755); remove it or set NABI_TARGET_DIR``。`--target-dir` 與 `NABI_TARGET_DIR` 原樣使用。
 - 單元的鍵涵蓋其函式的程式碼、它從其他單元所使用之東西的簽章與程式碼產生資訊（函式的簽章改變會重新編譯其呼叫者的單元）、它所使用的 static 與 GC 型別、目標、最佳化等級、程式碼產生選項、編譯器的身分，以及在 `-g` 下其偵錯資訊所指名之原始碼檔案的路徑（新增檔案只會重新編譯參照它的單元）。
 - 符號與 GC 型別 id 不取決於其他單元包含什麼（單元從套件之共用單元所定義的符號讀取 GC 型別 id；[9.5.7](905-symbol-mangling.md#957-避免衝突typehash-的穩定性)），因此輸出與乾淨建置所產生的相同。

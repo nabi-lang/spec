@@ -32,7 +32,7 @@
 
 可移植的 SIMD 向量是 `core::simd`；张量、自动微分、GPU 等加速领域不属于 `core`；它们由外部库实现，并通过计划在后续版本中提供的后端接口接入编译器的后端。标准库只负责普通代码的表层语义，把加速领域留给库层面的决定。
 
-`core` 的常用项之所以可见，是因为编译器在每个 Nabi 源文件开头隐式应用了 `use core::prelude::*;`。也就是说，`core::collections::List` 可以写作 `List`，`core::task::sleep` 可以写作 `task::sleep`。prelude 的列表固定在 [stdlib 0.2.3](../../refs-standard-libraries/000-meta/002-import.md) 中。
+`core` 的常用项之所以可见，是因为编译器在每个 Nabi 源文件开头隐式应用了 `use core::prelude::*;`。也就是说，`core::collections::List` 可以写作 `List`，`core::task::sleep` 可以写作 `task::sleep`。prelude 的列表由[标准库 0.2.3](../../refs-standard-libraries/000-meta/002-import.md) 规定。
 
 只有 prelude 中的项不需要 `use` 就可见。`core` 的其他每个 `pub` 项都要通过其模块（`ops::Add`、`num::Zero`）或 `use` 访问；`core` 中没有 `pub` 的项是它私有的，与任何包一样（5.6）。
 

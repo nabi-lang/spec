@@ -74,7 +74,7 @@ let r = await f;
 
 主体是一个[块表达式](../003-expressions/309-block-expressions.md)。这种形式用于以匿名、内联方式编写简短的异步工作。
 
-与闭包一样，`async` 块**在创建时复制**外层值来捕获它们（[4.6](406-capture-semantics.md)）。块创建之后修改外层变量，不会改变 future 内部的值；future 内部的重新赋值在外部也不可见。
+与闭包一样，`async` 块捕获外层值的方式是**在创建时复制它们**（[4.6](406-capture-semantics.md)）。块创建之后修改外层变量，不会改变 future 内部的值；future 内部的重新赋值在外部也不可见。
 
 ```nabi
 let n = 1;
@@ -231,7 +231,7 @@ let f = r.read_one();               // ERROR: its future holds `r` until it comp
 
 ## 4.12.14. 错误处理
 
-[错误控制流](../003-expressions/314-error-control-flow.md)中的 `try`、`catch`、`throw` 和 `finally` 在 async 函数中照常工作。可抛出的 `async` 函数的错误在 `await` 处交付，因此 `await` 表达式要用 `try` 覆盖（`try await fetch()`）。与 `throws` 签名的交互在 [`throws` 签名](414-throws.md)中介绍。
+[错误控制流](../003-expressions/314-error-control-flow.md)中的 `try`、`catch`、`throw` 和 `finally` 在 async 函数中照常工作。可抛出的 `async` 函数的错误在 `await` 处交付，因此 `await` 表达式要用 `try` 标注（`try await fetch()`）。与 `throws` 签名的交互在 [`throws` 签名](414-throws.md)中介绍。
 
 ```nabi
 async fn safe_fetch() throws -> Data {

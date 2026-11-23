@@ -2,7 +2,7 @@
 
 本規格的表示法慣例完全沿用 [refs-lang 0.8 表示法](../../refs-lang/000-meta/008-notation.md)。本章定義只適用於標準函式庫規格的額外慣例。
 
-## 0.5.1. Trait 簽章表示法
+## 0.5.1. trait 簽章表示法
 
 每個 trait 的規格都以一個簽章區塊開頭，把所有方法、關聯型別與父 trait 集中在一處。
 
@@ -25,7 +25,7 @@ trait Add<Rhs = Self> {
 | `add`  | `fn(self, rhs: Rhs) -> Output` | 算術加法            |
 | `sub`  | `fn(self, rhs: Rhs) -> Output` | 算術減法            |
 
-## 0.5.3. Trait 實作矩陣
+## 0.5.3. trait 實作矩陣
 
 每個 trait 規格的結尾都有一張表，說明哪些標準函式庫型別實作了該 trait。欄位只有型別與繫結機制；實作檔案的路徑不在規格範圍內。
 
@@ -99,9 +99,9 @@ let z = x + y;        //→ 4.0 (f64)
 | 由輸入、環境或 I/O 引起，或有多種呼叫端可能需要區分的原因 | `throws (E)` | `FromStr::from_str`、`str::from_utf8`、`Int::parse_radix`、`FormatSpec::parse`、`ClientConfig::new`、`fs` 與 `net` 的操作 |
 | 呼叫端能事先低成本檢查的呼叫端錯誤 | panic，`#[track_caller]` | 運算子索引超出範圍、基數不在 2..=36 內、區塊大小為零 |
 
-1. **沒有對應版本。** 不會有兩個函式只在失敗管道上不同。`try? f()` 就是每個擲回呼叫的 `T | none` 形式（[refs-lang 3.14.3](../../refs-lang/003-expressions/314-error-control-flow.md)），因此函式庫中沒有擲回函式的 `_or_none` 對應版本，也沒有會 panic 的對應版本。
-2. **沒有哨兵值。** 結果絕不以其自身型別的值（`0`、`-1`、`""`）編碼失敗：要嘛是 `T | none`，要嘛函式擲回。
-3. **關閉會擲回。** 作業系統資源（檔案、通訊端、TLS 連線）的 `close()` 會擲回作業系統回報的錯誤。`Drop` 絕不擲回：由 `Drop` 釋放的值會捨棄錯誤。
+1. **沒有對應版本**。不會有兩個函式只在失敗管道上不同。`try? f()` 就是每個擲回呼叫的 `T | none` 形式（[refs-lang 3.14.3](../../refs-lang/003-expressions/314-error-control-flow.md)），因此函式庫中沒有擲回函式的 `_or_none` 對應版本，也沒有會 panic 的對應版本。
+2. **沒有哨兵值**。結果絕不以其自身型別的值（`0`、`-1`、`""`）編碼失敗：不是 `T | none`，就是函式擲回。
+3. **關閉會擲回**。作業系統資源（檔案、通訊端、TLS 連線）的 `close()` 會擲回作業系統回報的錯誤。`Drop` 絕不擲回：由 `Drop` 釋放的值會捨棄錯誤。
 4. 運算子與其具名方法可以不同：`xs[i]` 會 panic，而 `xs.get(i)` 回傳 `none`。
 5. 運算子不能擲回（[2.3](../200-core/203-ops.md)）：可能失敗的運算子回傳 `Result`（`Finite<F> + Finite<F>` 是 `Result<Finite<F>, OverflowError>`）。
 
@@ -110,12 +110,12 @@ let z = x + y;        //→ 4.0 (f64)
 
 標準函式庫中的每個錯誤型別都遵循下列規則：
 
-1. **私有欄位。** 錯誤由建構函式（`new(..)`，或具名的建構函式，例如 `IoError::from_os_code`）建立，絕不使用結構字面值；讀取時透過以事實命名的 getter（`kind()`、`position()`、`path()`、`os_code()`）。只由函式庫產生的錯誤（`LayoutError`、`NulError`）可以沒有公開的建構函式。由多種原因組成列舉的錯誤（`FromBytesWithNulError`、`VarError`）把資料放在變體欄位中，以模式讀取。每個錯誤型別都有 `message() -> str`：說明出了什麼錯，不含其 `Display` 可能附加的上下文。
-2. **Trait 組合。** 每個錯誤型別都實作 `Display`、`Debug`、`Error`、`PartialEq`、`Eq` 與 `Clone`。攜帶型別參數值的錯誤（`SendError<T>`、`TrySendError<T>`）實作前三個。
-3. **種類。** 種類 getter 回傳列舉（`IoErrorKind`、`TlsErrorKind`、`JoinErrorKind`），絕不回傳 `str` 或整數，而且該列舉是 `#[non_exhaustive]`（`DecodeErrorKind` 亦同）。作業系統錯誤碼是 `os_code() -> i32 | none`，錯誤不是來自作業系統時為 `none`。
-4. **單元結構。** 沒有欄位的錯誤是單元結構（`struct TimeoutError;`），寫成 `TimeoutError`，而不是 `TimeoutError {}`。
-5. **每個失敗空間一個錯誤。** core 保留共用的錯誤（`ValueError`、`ParseError`、`OverflowError`、`ConversionError`、`TypeError`、`Utf8Error`）以及其自身失敗空間的錯誤（`ZeroError`、`DecodeError`、`FmtError`、`CancellationError`、`TimeoutError`）；std 模組的每個失敗空間各有一個錯誤型別（`IoError`、`TlsError`、`NabionError`；`env` 有用於讀取變數的 `VarError` 與用於 `join_paths` 的 `JoinPathsError`；`process` 在 `IoError` 之外，另有用於安裝處理器的 `SignalError`）。兩個錯誤絕不涵蓋同一種失敗。每個失敗的 UTF-8 檢查都擲回 `Utf8Error`。
-6. **訊息。** 訊息以小寫開頭（專有名詞與型別名稱除外），結尾不加句點，也不加 `error:` 前綴。運算子的 panic 使用 Rust 的文字（`index 5 out of bounds for length 3`）。方法的 panic 以 `Type::method: ` 開頭（自由函式則為 `module::fn: `），接著是問題，若有替代寫法再加上 `; <what to write instead>`：`i32::isqrt: the number is negative; use `checked_isqrt` to get `none` instead`。對錯誤引數會 panic 的公開函式是 `#[track_caller]`。
+1. **私有欄位**。錯誤由建構子（`new(..)`，或具名的建構子，例如 `IoError::from_os_code`）建立，絕不使用結構字面值；讀取時透過以事實命名的 getter（`kind()`、`position()`、`path()`、`os_code()`）。只由函式庫產生的錯誤（`LayoutError`、`NulError`）可以沒有公開的建構子。由多種原因組成列舉的錯誤（`FromBytesWithNulError`、`VarError`）把資料放在變體欄位中，以模式讀取。每個錯誤型別都有 `message() -> str`：說明出了什麼錯，不含其 `Display` 可能附加的上下文。
+2. **Trait 組合**。每個錯誤型別都實作 `Display`、`Debug`、`Error`、`PartialEq`、`Eq` 與 `Clone`。攜帶型別參數值的錯誤（`SendError<T>`、`TrySendError<T>`）實作前三個。
+3. **種類**。種類 getter 回傳列舉（`IoErrorKind`、`TlsErrorKind`、`JoinErrorKind`），絕不回傳 `str` 或整數，而且該列舉是 `#[non_exhaustive]`（`DecodeErrorKind` 亦同）。作業系統錯誤碼是 `os_code() -> i32 | none`，錯誤不是來自作業系統時為 `none`。
+4. **單元結構**。沒有欄位的錯誤是單元結構（`struct TimeoutError;`），寫成 `TimeoutError`，而不是 `TimeoutError {}`。
+5. **每個失敗空間一個錯誤**。core 保留共用的錯誤（`ValueError`、`ParseError`、`OverflowError`、`ConversionError`、`TypeError`、`Utf8Error`）以及其自身失敗空間的錯誤（`ZeroError`、`DecodeError`、`FmtError`、`CancellationError`、`TimeoutError`）；std 模組的每個失敗空間各有一個錯誤型別（`IoError`、`TlsError`、`NabionError`；`env` 有用於讀取變數的 `VarError` 與用於 `join_paths` 的 `JoinPathsError`；`process` 在 `IoError` 之外，另有用於安裝處理器的 `SignalError`）。兩個錯誤絕不涵蓋同一種失敗。每個失敗的 UTF-8 檢查都擲回 `Utf8Error`。
+6. **訊息**。訊息以小寫開頭（專有名詞與型別名稱除外），結尾不加句點，也不加 `error:` 前綴。運算子的 panic 使用 Rust 的文字（`index 5 out of bounds for length 3`）。方法的 panic 以 `Type::method: ` 開頭（自由函式則為 `module::fn: `），接著是問題，若有替代寫法再加上 `; <what to write instead>`：`i32::isqrt: the number is negative; use `checked_isqrt` to get `none` instead`。對錯誤引數會 panic 的公開函式是 `#[track_caller]`。
 
 
 ## 0.5.11. 命名
@@ -124,10 +124,10 @@ let z = x + y;        //→ 4.0 (f64)
 
 | 種類 | 規則 |
 |---|---|
-| 建構函式 | `new`（必要引數）、`with_<x>`（額外的引數）、`from_<src>`（轉換，`Formatter::from_sink`）、特殊值用 `empty()` / `zeroed()`；以單位建構的函式以該單位命名（`Duration::secs(n)`、`ms`、`ns`）；`List::filled(n, x)`（n 個複本）與 `BinaryHeap::by_ordering(cmp)` 是具名的例外；絕不使用 `to_<x>` |
+| 建構子 | `new`（必要引數）、`with_<x>`（額外的引數）、`from_<src>`（轉換，`Formatter::from_sink`）、特殊值用 `empty()` / `zeroed()`；以單位建構的函式以該單位命名（`Duration::secs(n)`、`ms`、`ns`）；`List::filled(n, x)`（n 個複本）與 `BinaryHeap::by_ordering(cmp)` 是具名的例外；絕不使用 `to_<x>` |
 | 轉換 | `as_` 是不需成本的檢視，`to_` 是新的自有值（有成本），`into_` 會消耗原值；`str` 是字串型別，因此寫 `to_str`、`read_to_str`、`from_str`，絕不寫 `to_string` |
 | 數值轉換 | 無損與經檢查的轉換透過 `From` / `TryFrom` / `SaturatingFrom` / `WrappingFrom`；固有的 `to_<num>` 只用於有損的捨入（`to_f64`），而在 `Int` / `Float` 上，經檢查的 `to_<num>() -> T \| none` 與 `TryFrom` 並存（[2.1.2](../200-core/201-numbers.md)）；`Ipv4Addr::to_bits` / `from_bits` 與 `From<Ipv4Addr> for u32` 及 `From<u32> for Ipv4Addr` 並存，與 Rust 相同 |
-| getter | 不加 `get_` 前綴；`get` 只用於以鍵或索引查找，或取得包裝型別的值（`NonZero::get`）；唯一具名的例外是 guard 的 `get_clone()`，它是與限定作用域的 `get()` 並存的深層複製（[2.16](../200-core/216-sync.md)） |
+| getter | 不加 `get_` 前綴；`get` 只用於以鍵或索引查詢，或取得包裝型別的值（`NonZero::get`）；唯一具名的例外是 guard 的 `get_clone()`，它是與限定作用域的 `get()` 並存的深層複製（[2.16](../200-core/216-sync.md)） |
 | 述詞 | `is_` / `has_`，或 Rust 既有的用詞（`success`、`readonly`） |
 | setter | `set_<x>(ref self, ..)` 回傳 unit；控制代碼（檔案、通訊端、游標或讀取器）會改變作業系統或共用狀態，因此其 setter 接受 `self`（`File::set_len`、`TcpStream::set_nodelay`、`Cursor::set_position`）；建構器使用單純的欄位名稱並回傳 `Self` |
 | 大小 | `len` = 容器的元素數或位元組數；`<x>_len` = 某個長度屬性；`count` = 計數得到的數量（`count_ones`）；`size` = 記憶體大小 |
@@ -141,7 +141,7 @@ let z = x + y;        //→ 4.0 (f64)
 
 迭代器型別。`str`：`chars()` -> `Chars`、`bytes()` -> `Bytes`、`char_indices()` -> `CharIndices`、`lines()` -> `Lines`、`split()` -> `Split`、`splitn()` -> `SplitN`、`rsplit()` -> `RSplit`、`rsplitn()` -> `RSplitN`、`split_whitespace()` -> `SplitWhitespace`、`match_indices()` -> `MatchIndices`。`Dict`：`keys()` -> `Keys`、`values()` -> `Values`。`List` / `Slice`：`windows()` -> `slice::Windows`、`chunks()` -> `slice::Chunks`（與配接器 `iter::Windows` / `iter::Chunks` 並存）。`Receiver::iter()` -> `ReceiverIter`。兩個模組共用的葉名稱會連同其模組一起寫出（`slice::Windows`、`str::Bytes`）。
 
-## 0.5.12. Trait 涵蓋範圍、`#[non_exhaustive]` 與 `#[sealed]`
+## 0.5.12. trait 涵蓋範圍、`#[non_exhaustive]` 與 `#[sealed]`
 
 標準函式庫的每個公開型別都實作其類別的 trait：
 
@@ -220,7 +220,7 @@ let z = x + y;        //→ 4.0 (f64)
 
 ## 0.5.14. 文件與屬性
 
-標準函式庫的每個公開項目都有 `///` 文件註解：每個函式、型別、trait、trait 方法與固有方法，包括 `const fn` 與 `async fn`，以及位於 `cfg` 之後的項目。文件說明項目做什麼、回傳什麼；會擲回、回傳 `none` 或 panic 的函式要說明在什麼時候，`unsafe` 函式要說明呼叫端必須維持什麼。函式庫自身的檢查（`nabic check --check-library`）會拒絕 `missing_docs`（[refs-lang 6.2.9](../../refs-lang/006-meta-system/602-built-in-attributes.md)）。
+標準函式庫的每個公開項目都有 `///` 文件註解：每個函式、型別、trait、trait 方法與固有方法，包括 `const fn` 與 `async fn`，以及受 `cfg` 控制的項目。文件說明項目做什麼、回傳什麼；會擲回、回傳 `none` 或 panic 的函式要說明在什麼時候，`unsafe` 函式要說明呼叫端必須維持什麼。函式庫自身的檢查（`nabic check --check-library`）會拒絕 `missing_docs`（[refs-lang 6.2.9](../../refs-lang/006-meta-system/602-built-in-attributes.md)）。
 
 結果具有順序的函式會說明該順序：
 
@@ -245,4 +245,4 @@ let z = x + y;        //→ 4.0 (f64)
 | 建構器與結果 | `process::Command`、`thread::Builder`、`thread::JoinHandle`、`Result` |
 | 函式 | `str` 與 `Path` 的值方法；每個 `Duration` 函式，以及 `Instant`、`SystemTime` 與 `BootTime` 的算術（`duration_since`、`checked_add`、`checked_sub`）；`Iterator`、`DoubleEndedIterator` 與 `TryIterator` 的純終端方法（`find`、`rfind`、`min`、`max`、`min_by_key`、`max_by_key`、`reduce`、`last`、`position`）；`Set::union`、`intersection`、`difference`、`symmetric_difference`；整數與浮點數基本型別、`Int` 與 `Float` 的每個方法 |
 
-`Task`，也就是 `spawn` 與 `spawn_blocking` 回傳的值，不是 `#[must_use]`：無論是否 await，工作都會執行。guard 不需要標示：在陳述式中釋放 `MutexGuard` 是錯誤。`#[discardable]` 函式即 refs-lang 6.2.11 所列的那些。
+`Task`，也就是 `spawn` 與 `spawn_blocking` 回傳的值，不是 `#[must_use]`：無論是否 await，工作都會執行。guard 不需要標示：在陳述式中直接丟棄 `MutexGuard` 是錯誤。`#[discardable]` 函式即 refs-lang 6.2.11 所列的那些。

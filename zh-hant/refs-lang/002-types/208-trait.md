@@ -88,7 +88,7 @@ impl TryFrom<RawPath> for Path { type Error = Utf8Error; ... }   // overridden
 impl TryFrom<Celsius> for Kelvin { ... }                           // Error = ConversionError
 ```
 
-在 trait 及其所有 impl（trait impl 與固有 `impl`）內，單獨的名稱 `Item` 與 `Self::Item` 都表示關聯型別，在方法簽章與主體中皆可使用。在 impl 中，它是該 impl 所選的具體型別。若關聯型別遮蔽了外部同名的型別（模組的 `struct Item`、基本型別等），單獨的名稱在那裡就有歧義：在 trait 或 impl 內使用它是編譯錯誤，其說明會要求寫 `Self::Item` 或外部型別的路徑（`pkg::Item`、`std::process::Output`）。宣告這樣的關聯型別而不使用單獨的名稱會發出警告（`assoc_type_shadowing`，[6.2.9](../006-meta-system/602-built-in-attributes.md#629-allow--deny--warn-lint-控制)）。同名的 trait 不是型別，因此不會發出警告（`trait IntoFuture { type IntoFuture; }` 沒有問題）。
+在 trait 及其所有 impl（trait impl 與固有 impl）內，單獨的名稱 `Item` 與 `Self::Item` 都表示關聯型別，在方法簽章與主體中皆可使用。在 impl 中，它是該 impl 所選的具體型別。若關聯型別遮蔽了外部同名的型別（模組的 `struct Item`、基本型別等），單獨的名稱在那裡就有歧義：在 trait 或 impl 內使用它是編譯錯誤，其說明會要求寫 `Self::Item` 或外部型別的路徑（`pkg::Item`、`std::process::Output`）。宣告這樣的關聯型別而不使用單獨的名稱會發出警告（`assoc_type_shadowing`，[6.2.9](../006-meta-system/602-built-in-attributes.md#629-allow--deny--warn-lint-控制)）。同名的 trait 不是型別，因此不會發出警告（`trait IntoFuture { type IntoFuture; }` 沒有問題）。
 
 若一個型別實作了兩個擁有同名關聯型別的 trait，在該型別的 impl 主體中單獨的 `X` / `Self::X` 就有歧義，是錯誤。此時請以 `<Self as Tr>::X` 指明 trait。
 

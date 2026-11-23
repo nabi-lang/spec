@@ -39,7 +39,7 @@ JIT 和 AOT 都經過相同的編譯管線直到 nabi-mir（[0.2. 編譯管線](
 
 Jupyter 介面以 Jupyter / JupyterLab 的 Nabi 核心執行。求值以儲存格為單位，結果以視覺化、表格與文字的形式留在筆記本中。這支援標準的資料分析工作流程；重新執行儲存格會取代先前的定義。
 
-引擎是 JIT，輸入單位是一個儲存格。Jupyter 前端（JupyterLab、Notebook、VS Code 等）把 Nabi 核心當作獨立行程執行，並透過以 ZeroMQ 為基礎的 Jupyter wire protocol 與之通訊（[9.8](../009-tools/908-jupyter-integration.md)）。核心直接使用作業系統的檔案系統、網路和外部行程。
+引擎是 JIT，輸入單位是一個儲存格。Jupyter 前端（JupyterLab、Notebook、VS Code 等）把 Nabi 核心當作獨立行程執行，並透過以 ZeroMQ 為基礎的 Jupyter 線路協定（wire protocol）與之通訊（[9.8](../009-tools/908-jupyter-integration.md)）。核心直接使用作業系統的檔案系統、網路和外部行程。
 
 ### AOT 產出
 

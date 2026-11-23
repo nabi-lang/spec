@@ -41,11 +41,11 @@ use foo::**;             // recursive glob (foo + all submodules)
 
 下列名稱恰好就是 `core::prelude` 的名稱。與 Nabi 的其他地方一樣，模組、型別與 trait 共用一個命名空間，函式則使用另一個，因此 `channel`、`panic` 與 `print` 都同時是模組與函式。
 
-**模組（29 個）。** `core` 的頂層模組，但不含 `prelude` 本身與 `hash`（以 `use` 匯入，[2.5.11](../200-core/205-cmp.md)）：
+**模組（29 個）**。`core` 的頂層模組，但不含 `prelude` 本身與 `hash`（以 `use` 匯入，[2.5.11](../200-core/205-cmp.md)）：
 
 `array` `bench` `channel` `cmp` `collections` `convert` `crypto` `encoding` `error` `fmt` `future` `hint` `index` `io` `iter` `marker` `num` `ops` `panic` `par` `print` `range` `reflect` `str` `stream` `sync` `task` `time` `tuple`
 
-**型別（36 個）。**
+**型別（36 個）**。
 
 | 分組 | 名稱 |
 |---|---|
@@ -56,7 +56,7 @@ use foo::**;             // recursive glob (foo + all submodules)
 | 格式化 | `Formatter` `FmtError` |
 | 核心錯誤 | `ParseError` `ValueError` `OverflowError` `ConversionError` `TypeError` `StackOverflowError` `OutOfMemoryError` `InternalError` |
 
-**Trait（31 個）。**
+**Trait（31 個）**。
 
 | 分組 | 名稱 |
 |---|---|
@@ -70,13 +70,13 @@ use foo::**;             // recursive glob (foo + all submodules)
 
 運算子 trait 不在 prelude 中：要寫 `ops::Add`，或 `use core::ops::Add;`。運算子本身不需要名稱，在任何地方都能運作（[refs-lang 6.7.8](../../refs-lang/006-meta-system/607-operator-magic.md#678-對應的可見性)），每個 `core` trait 的方法也一樣（[refs-lang 3.5](../../refs-lang/003-expressions/305-member-access-and-method-call.md)）。
 
-**作業系統擴充 trait。** 在具備這些 trait 的目標上，prelude 也會指名 `PermissionsExt`、`CommandExt` 與 `ExitStatusExt`（unix），以及 `ChildExt` 與 `TcpStreamExt`（linux），因此在這些目標上使用其方法不需要 `use`（[3.10.1](../300-std/310-os.md#3101-prelude-中的-ext-trait)）。它們不計入上面的數量。
+**作業系統擴充 trait**。在具備這些 trait 的目標上，prelude 也會指名 `PermissionsExt`、`CommandExt` 與 `ExitStatusExt`（unix），以及 `ChildExt` 與 `TcpStreamExt`（linux），因此在這些目標上使用其方法不需要 `use`（[3.10.1](../300-std/310-os.md#3101-prelude-中的-ext-trait)）。它們不計入上面的數量。
 
-**函式（13 個）。**
+**函式（13 個）**。
 
 `print` `println` `eprint` `eprintln` `dbg` `display` `panic` `assert` `assert_eq` `assert_ne` `unreachable` `channel` `channel_bounded`
 
-**變體。** 無。請見 [refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-依預期型別使用不帶路徑的變體)。
+**變體**。無。請見 [refs-lang 2.4.8](../../refs-lang/002-types/204-enum.md#248-依預期型別使用不帶路徑的變體)。
 
 ```nabi
 // user code
@@ -107,7 +107,7 @@ let h = encoding::hex::encode("nabi");
 
 ## 0.2.4. 名稱衝突政策
 
-隱含匯入的優先順序最低：查找時會先取模組自身的項目及其 `use`（[refs-lang 5.7.1](../../refs-lang/005-modules/507-paths.md#571-路徑的起始識別字)）。與 prelude 名稱同名的使用者項目會在該模組中遮蔽它，而 core 的項目仍可透過路徑取得。
+隱含匯入的優先順序最低：解析名稱時會先取模組自身的項目及其 `use`（[refs-lang 5.7.1](../../refs-lang/005-modules/507-paths.md#571-路徑的起始識別字)）。與 prelude 名稱同名的使用者項目會在該模組中遮蔽它，而 core 的項目仍可透過路徑取得。
 
 ```nabi
 struct List<T> { ... }                  // OK: shadows the prelude's List here
@@ -118,7 +118,7 @@ let xs: core::collections::List<i32> = [1, 2];   // the core List, by path
 
 ## 0.2.5. **不**隱含套用的層級
 
-只有 prelude 是隱含的。unsafe 與 std **只能明確匯入**。
+只有 prelude 是隱含的。`bare` 與 `std` **只能明確匯入**。
 
 ```nabi
 use bare::ffi::{CStr, CString};      // unsafe: danger signal
@@ -133,7 +133,7 @@ use std::time::SystemTime;
 |-----------------|-------------------------|---------------------------------|
 | `core`     | ✓ prelude（0.2.3）      | 所有目標／安全                  |
 | `bare`     | ✗                       | 危險訊號，只能明確匯入          |
-| `std`      | ✗                       | 依賴目標，只能明確匯入          |
+| `std`      | ✗                       | 相依於目標，只能明確匯入          |
 
 如此一來，從檔案開頭就能立刻看出使用者踏入了哪些範圍。
 

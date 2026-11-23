@@ -29,7 +29,7 @@ obj.field = expr;
 arr[i] = expr;
 ```
 
-左側（lvalue）是可以重新指派的位置，右側（rvalue）是任何運算式，結果值的型別是 unit（`()`）。指派通常是陳述式；當它出現在運算式位置（3.4.5）時，其結果是 unit。結果是，像 C 的 `if (x = read())` 這種很少需要的模式，被 unit 結果擋住了。
+左側（lvalue）是可以重新指派的位置，右側（rvalue）是任何運算式，結果值的型別是 unit（`()`）。指派通常是陳述式；當它出現在運算式位置（3.4.5）時，其結果是 unit。因此，像 C 的 `if (x = read())` 這種很少需要的模式，會被 unit 結果擋下。
 
 ### lvalue 的種類
 
@@ -42,7 +42,7 @@ arr[i] = expr;
 | 元組位置         | `pair.0 = ...`    | 把值寫入元組 `struct` / 元組的某個位置           |
 | 索引             | `arr[i] = ...`    | 把值寫入索引所指的位置                           |
 
-索引指派去糖為[索引與切片](306-indexing-and-slicing.md)的寫入 trait。切片不是 lvalue：`arr[1:3] = other;` 會被拒絕（[3.6](306-indexing-and-slicing.md)）。
+索引指派去語法糖為[索引與切片](306-indexing-and-slicing.md)的寫入 trait。切片不是 lvalue：`arr[1:3] = other;` 會被拒絕（[3.6](306-indexing-and-slicing.md)）。
 
 ### 不能作為 lvalue 的東西
 
@@ -97,9 +97,9 @@ arr[i] += 1;
 
 [標點與運算子語彙單元](../001-lexical/110-punctuation-and-operator-tokens.md)的所有複合指派語彙單元（`+=`、`-=`、`*=`、`**=`、`/=`、`%=`、`%%=`、`&=`、`|=`、`^=`、`<<=`、`>>=`）都遵循相同的模式。複合指派是陳述式，以 `;` 結束（在 `}` 之前可以省略，[1.3.4](../001-lexical/103-statement-terminator.md#134-類區塊運算式陳述式)）；它沒有值，不能出現在運算式位置（`let y = (x += 1);` 無法剖析）。原地廣播形式 `.=` `.+=` `.-=` `.*=` `./=` `.%=` `.%%=` `.**=` `.&=` `.|=` `.^=` `.<<=` `.>>=` 是同類的陳述式，有其自身的意義（[3.3.7](303-broadcast-operators.md#337-原地廣播)）。
 
-### 去糖與 lvalue 的求值
+### 去語法糖與 lvalue 的求值
 
-複合指派去糖如下。若型別實作了 `OpAssign` trait，`a += b` 就呼叫它；否則就是 `a = a + b`（[stdlib 2.4.1](../../refs-standard-libraries/200-core/204-ops-assign.md)）。每個運算子都是如此。
+複合指派去語法糖如下。若型別實作了 `OpAssign` trait，`a += b` 就呼叫它；否則就是 `a = a + b`（[stdlib 2.4.1](../../refs-standard-libraries/200-core/204-ops-assign.md)）。每個運算子都是如此。
 
 ```
 lvalue OP= rhs       →   OpAssign::op_assign(ref lvalue, rhs)   // if implemented
@@ -151,7 +151,7 @@ trait AddAssign<Rhs = Self> {
 
 ## 3.4.4. 鏈式指派
 
-nabi 不允許 C 與 Python 風格的鏈式指派（`a = b = c = 1`）。
+Nabi 不允許 C 與 Python 風格的鏈式指派（`a = b = c = 1`）。
 
 ```
 a = b = c = 1;             // ERROR

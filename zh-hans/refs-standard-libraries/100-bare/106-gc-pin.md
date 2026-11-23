@@ -148,7 +148,7 @@ drop(Pinned):
   2. if count == 0, clear the pin bit
 ```
 
-这一结构实际上与 Go 1.21 的 `runtime.Pinner` 同构。详情见 [pkg.go.dev/runtime#Pinner](https://pkg.go.dev/runtime#Pinner)。
+这一结构实际上与 Go 1.21 的 `runtime.Pinner` 相同。详情见 [pkg.go.dev/runtime#Pinner](https://pkg.go.dev/runtime#Pinner)。
 
 ### 开销
 

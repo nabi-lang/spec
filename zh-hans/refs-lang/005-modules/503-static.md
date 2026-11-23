@@ -17,7 +17,7 @@ static APP_NAME: str = "nabi";
 
 基本形式是 `static`、名称、`:` 加类型，以及 `=` 加初始化式。类型必须写出。`const` 初始化式（[`const`](502-const.md)）在编译期求值；其他初始化式在首次访问时运行一次（[5.3.9](#539-初始化式编译期或首次使用时)）。
 
-`static` 可以从每个线程访问，所以它的类型必须是 `Sync`（[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)）；延迟初始化的 static 也是如此。`static XS: List<i32> = [];` 是编译错误（集合类型、`StrBuf` 和 `Cell<T>` 都是 `!Sync`）；应写作 `static XS: Mutex<List<i32>> = Mutex::new([]);`。每个线程各自的状态使用 `thread::local`（[stdlib 3.4.4](../../refs-standard-libraries/300-std/304-thread.md#344-线程局部存储)），其 `ThreadLocal<T>` 是 `Sync`。`extern` 块中的 static（[5.3.10](#5310-extern-staticffi)）不受此限制。
+`static` 可以从每个线程访问，所以它的类型必须是 `Sync`（[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)）；延迟初始化的 static 也是如此。`static XS: List<i32> = [];` 是编译错误（集合类型、`StrBuf` 和 `Cell<T>` 都是 `!Sync`）；应写作 `static XS: Mutex<List<i32>> = Mutex::new([]);`。每个线程各自的状态使用 `thread::local`（[标准库 3.4.4](../../refs-standard-libraries/300-std/304-thread.md#344-线程局部存储)），其 `ThreadLocal<T>` 是 `Sync`。`extern` 块中的 static（[5.3.10](#5310-extern-staticffi)）不受此限制。
 
 ## 5.3.2. 与 `const` 的区别
 
@@ -59,7 +59,7 @@ static CACHE: Mutex<Dict<str, Data>> = Mutex::new(Dict::new());
 
 - `Atomic<T>`：无锁原子操作（整数、`bool`、指针）。
 - `Mutex<T>`：基于锁的保护。
-- `RwLock<T>`：读写锁，用于本身是 `Sync` 的 `T`（[stdlib 2.16.4](../../refs-standard-libraries/200-core/216-sync.md#2164-rwlockt读写分离)）。
+- `RwLock<T>`：读写锁，用于本身是 `Sync` 的 `T`（[标准库 2.16.4](../../refs-standard-libraries/200-core/216-sync.md#2164-rwlockt读写分离)）。
 
 `Cell<T>` 是单线程的且为 `!Sync`，所以不能作为 `static`；每个线程各自的可变全局变量用 `thread::local(..)`。
 
@@ -77,7 +77,7 @@ extern "C" {
 ```
 
 - `static mut` 只允许出现在 `extern "C"` 块内。
-- 普通 Nabi 代码中的 `static mut` 是错误（ERROR）。
+- 在普通 Nabi 代码中使用 `static mut` 是错误。
 - 给不是 extern `static mut` 的 `static` 赋值是编译错误（`COUNTER = ...`），对其调用 `ref self` 方法也是（`S.set(3)`，[4.7](../004-functions/407-ref-keyword.md)）。内部修改通过上述包装器的方法进行。
 
 共享的可变状态是数据竞争的直接成因，因此有这一限制。普通代码通过包装器获得安全性；裸访问只允许在 FFI 领域中进行。
@@ -107,7 +107,7 @@ static LOCAL_ONLY: bool = false;
 
 ## 5.3.8. 与方法、trait 的组合
 
-`static` 是存放值的槽，不是定义项的东西。因此它不出现在 trait 或 `impl` 块的定义中；那里应使用 `const` 或关联函数。
+`static` 是存放值的槽，而不是用来定义项的构造。因此它不出现在 trait 或 `impl` 块的定义中；那里应使用 `const` 或关联函数。
 
 ```nabi
 impl Counter {
@@ -118,7 +118,7 @@ impl Counter {
 
 ## 5.3.9. 初始化式：编译期或首次使用时
 
-如果初始化式是常量表达式（[5.2.4](502-const.md#524-常量表达式与求值器)），它在编译期初始化。其他初始化式在首次使用时初始化一次（延迟初始化）。延迟初始化是线程安全的，并发访问的线程会等待初始化完成。初始化式中的函数不必是 `const fn`（如 `Mutex::new` 等）。
+如果初始化式是常量表达式（[5.2.4](502-const.md#524-常量表达式与求值器)），它在编译期初始化。其他初始化式在首次使用时初始化一次（延迟初始化）。延迟初始化是线程安全的，并发访问的线程会等待初始化完成。初始化式中的函数不必是 `const fn`（如 `Mutex::new`）。
 
 ```nabi
 static PI: f64 = 3.14159f64;             // const: compile time

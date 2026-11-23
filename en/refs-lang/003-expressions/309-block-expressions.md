@@ -1,6 +1,6 @@
 # 3.9. Block expressions
 
-A group of statements and expressions enclosed in `{ ... }` is the most basic expression unit in nabi. This document defines the lexical form of blocks and their value evaluation rules.
+A group of statements and expressions enclosed in `{ ... }` is the most basic expression unit in Nabi. This document defines the lexical form of blocks and their value evaluation rules.
 
 ## 3.9.1. Form
 
@@ -209,7 +209,7 @@ The exact rules for detecting divergence are defined in the function and control
 
 The statements and the last expression in a block are evaluated in the order written (top to bottom), and side effects follow that order.
 
-If a `return`, `break`, exception, or the like occurs during evaluation, evaluation of the block stops at that point.
+If a `return`, `break`, `continue`, thrown error or the like occurs during evaluation, evaluation of the block stops at that point.
 
 ## 3.9.10. Labeled blocks: `'label: { ... }`
 

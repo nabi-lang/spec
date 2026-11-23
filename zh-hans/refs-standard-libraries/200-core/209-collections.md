@@ -49,7 +49,7 @@ fn set_literal<T: Hash>(items: ...T) -> Set<T> { ... }
 
 没有期望类型时，`[1, 2, 3]` 是 `List<T>`。只有当期望类型写作 `[T; N]` 时才会创建定长数组 `[T; N]`，例如 `let a: [i32; 3] = [1, 2, 3];`。定长数组由编译器直接构造，不经过处理函数。
 
-没有期望的元素类型时，各元素像分支一样取得一致（[refs-lang 3](../../refs-lang/003-expressions/README.md)）：它们具有同一个类型，或者某个元素的和类型包含其他所有元素的类型，取先满足的那一种（`x: f64 | none` 时，`[none, x]` 和 `[x, none]` 都是 `List<f64 | none>`）。不会为不同类型的元素凭空构造一个和类型：`[0.5, none]` 是错误（E0040），其帮助信息要求写出列表的类型，即 `let xs: List<f64 | none> = [0.5, none];`。
+没有期望的元素类型时，各元素像分支一样统一类型（[refs-lang 3](../../refs-lang/003-expressions/README.md)）：它们具有同一个类型，或者某个元素的和类型包含其他所有元素的类型，取先满足的那一种（`x: f64 | none` 时，`[none, x]` 和 `[x, none]` 都是 `List<f64 | none>`）。不会为不同类型的元素凭空构造一个和类型：`[0.5, none]` 是错误（E0040），其帮助信息要求写出列表的类型，即 `let xs: List<f64 | none> = [0.5, none];`。
 
 重复字面量 `[v; N]` 总是定长数组。它只对 `v` 求值一次，并给每个元素各自的副本：元素为 `Copy` 或普通值时按位复制，元素持有集合类型时调用 `v.clone()`，因此 `[List::<i32>::new(); 3]` 是三个互相独立的列表（[refs-lang 2.11.6](../../refs-lang/002-types/211-const-generics.md#2116-参数推断)）。`[T; N]` 的 `Default` 同样对每个元素调用一次 `T::default()`。
 
@@ -554,7 +554,7 @@ let before = events.floor(1710);              //→ (1700, "boot")
 let latest = events.last();                   //→ (1720, "login")
 ```
 
-**实现。** 最小度为 16：一个节点保存 15 到 31 个键（根节点可以更少），节点按节点编号存放在扁平的列表中（键、值和子节点编号各占一个列表），因此一次查找在每一层只访问一个列表槽位。插入在向下的过程中分裂满节点；移除（CLRS）在下降之前，从兄弟节点为键少于 16 个的子节点补充键，或者合并两个子节点。腾空的槽位会被清零，因此被移除的条目不会让任何对象继续存活。
+**实现**。最小度为 16：一个节点保存 15 到 31 个键（根节点可以更少），节点按节点编号存放在扁平的列表中（键、值和子节点编号各占一个列表），因此一次查找在每一层只访问一个列表槽位。插入在向下的过程中分裂满节点；移除（CLRS）在下降之前，从兄弟节点为键少于 16 个的子节点补充键，或者合并两个子节点。腾空的槽位会被清零，因此被移除的条目不会让任何对象继续存活。
 
 ## 2.9.6. `Tuple<...>`：定长异构
 
@@ -856,9 +856,9 @@ impl<T: Hash + Eq, S: BuildHasher> FrozenSet<T, S> {
 
 `fr[i]`（越界时 panic）和 `fr[a:b]`（只读的 `Slice<T>`，不复制）与列表上的用法相同，`fd[k]` 与字典上的用法相同；没有 `IndexSet`，也没有任何修改内容的方法。三者都实现 `IntoIterator`（按冻结前集合的顺序）、`Clone`（同一个集合：它不会改变，所以共享它与复制它效果相同）、`PartialEq`、`Debug`（与未冻结的集合相同）和 `Default`（空集合）；`FrozenList` 还实现 `Eq` 和 `Hash`。
 
-**冻结。** 只有当元素（对于字典是键、值和哈希器）为 `Send + Sync` 时才有 `freeze`：线程读取的内容同样不能改变，而冻结的列表的列表会让每个线程拿到同一批可修改的内层列表（`List<List<i32>>::freeze` 是错误 `E0069`，其帮助信息建议先冻结每个元素，或者通过 `Mutex` 共享该集合）。`freeze` 会移交集合（[2.13.9](213-marker.md#2139-send--sync线程边界标记)）：之后使用 `xs` 是编译错误 `E0105`，与任何移交一样会通过副本、字段和调用进行跟踪；应改为读取冻结后的值，或者冻结一个 `clone()` 以保留 `xs`。在运行时，冻结后的集合以 O(1) 接管存储并使 `xs` 变为空，因此检查器看不到的句柄（`unsafe` 中的代码）修改的是一个新的空集合，而永远不是读取者读取的内容。曾经有过 `SliceMut` 的列表则改为给出其元素的副本（O(n)）：过期视图仍可能写入旧的存储。常量求值期间构造的字典在冻结时会重新哈希，因此查找永远不会写入。要修改冻结的集合，应创建一个可修改的副本（`to_list()`、`to_dict()`、`to_set()`），修改后再重新冻结。
+**冻结**。只有当元素（对于字典是键、值和哈希器）为 `Send + Sync` 时才有 `freeze`：线程读取的内容同样不能改变，而冻结的列表的列表会让每个线程拿到同一批可修改的内层列表（`List<List<i32>>::freeze` 是错误 `E0069`，其帮助信息建议先冻结每个元素，或者通过 `Mutex` 共享该集合）。`freeze` 会移交集合（[2.13.9](213-marker.md#2139-send--sync线程边界标记)）：之后使用 `xs` 是编译错误 `E0105`，与任何移交一样会通过副本、字段和调用进行跟踪；应改为读取冻结后的值，或者冻结一个 `clone()` 以保留 `xs`。在运行时，冻结后的集合以 O(1) 接管存储并使 `xs` 变为空，因此检查器看不到的句柄（`unsafe` 中的代码）修改的是一个新的空集合，而永远不是读取者读取的内容。曾经有过 `SliceMut` 的列表则改为给出其元素的副本（O(n)）：过期视图仍可能写入旧的存储。常量求值期间构造的字典在冻结时会重新哈希，因此查找永远不会写入。要修改冻结的集合，应创建一个可修改的副本（`to_list()`、`to_dict()`、`to_set()`），修改后再重新冻结。
 
-**共享。** 冻结类型是 `Sync`，因此它们可以放在集合类型不能去的地方：多个工作线程运行的闭包（`par::map(0..n, |i| table[i])`）、线程的闭包、`static`（`static PRIMES: FrozenList<i64> = [2, 3, 5, 7].freeze();`）、被多方读取的 `RwLock`、随之成为 `Sync` 的结构体的字段。移交（`send`、`Mutex::new`、`[move x]`、任务的结果）不会复制冻结的集合。它们的元素本身是 `Sync`，因此 `FrozenList<Atomic<i64>>` 是一个可供多个线程累加的计数器数组。
+**共享**。冻结类型是 `Sync`，因此它们可以放在集合类型不能去的地方：多个工作线程运行的闭包（`par::map(0..n, |i| table[i])`）、线程的闭包、`static`（`static PRIMES: FrozenList<i64> = [2, 3, 5, 7].freeze();`）、被多方读取的 `RwLock`、随之成为 `Sync` 的结构体的字段。移交（`send`、`Mutex::new`、`[move x]`、任务的结果）不会复制冻结的集合。它们的元素本身是 `Sync`，因此 `FrozenList<Atomic<i64>>` 是一个可供多个线程累加的计数器数组。
 
 ```nabi
 let table = load_table().freeze();                  // FrozenList<Entry>
@@ -977,7 +977,7 @@ fn buf_same<T>(a: GcBuf<T>, b: GcBuf<T>) -> bool;   // whether they are the same
 
 ## 2.9.13. 默认值、运算符与构造函数
 
-**`d[k, default: v]`。** 带具名部分 `default:` 的两部分索引读取 `d.get_or(k, v)`：`k` 不存在时得到 `v`，字典不变。当它作为 `=` 或复合赋值的目标、作为字段 / 索引目标的基础（`d[k, default: v].f += 1`）或作为方法调用的接收者（`d[k, default: []].push(x)`）时，会先执行 `d.get_or_insert(k, v)`，因此 `k` 不存在时会存入 `v`，然后再对 `d[k]` 操作。`d` 和 `k` 只求值一次；`v` 在表达式每次执行时求值（对应 Swift 的 `subscript(_:default:)`；Python 的 `defaultdict` 每次读取都会插入，Nabi 的读取不会）。
+**`d[k, default: v]`**。带具名部分 `default:` 的两部分索引读取 `d.get_or(k, v)`：`k` 不存在时得到 `v`，字典不变。当它作为 `=` 或复合赋值的目标、作为字段 / 索引目标的基础（`d[k, default: v].f += 1`）或作为方法调用的接收者（`d[k, default: []].push(x)`）时，会先执行 `d.get_or_insert(k, v)`，因此 `k` 不存在时会存入 `v`，然后再对 `d[k]` 操作。`d` 和 `k` 只求值一次；`v` 在表达式每次执行时求值（对应 Swift 的 `subscript(_:default:)`；Python 的 `defaultdict` 每次读取都会插入，Nabi 的读取不会）。
 
 ```nabi
 counts[w, default: 0] += 1;
@@ -986,11 +986,11 @@ by_len[w.len(), default: []].push(w);
 let n = counts["zz", default: 0];        // no entry made
 ```
 
-**`Dict<K, usize>::most_common(n: usize | none = none) -> List<(K, usize)>`。** 计数最大的 `n` 项（为 `none` 时返回全部），从大到小排列，计数相同时按首次出现的顺序（对应 Python 的 `Counter.most_common`）。
+**`Dict<K, usize>::most_common(n: usize | none = none) -> List<(K, usize)>`**。计数最大的 `n` 项（为 `none` 时返回全部），从大到小排列，计数相同时按首次出现的顺序（对应 Python 的 `Counter.most_common`）。
 
-**集合运算符。** `a | b` 是 `a.union(b)`，`a & b` 是 `a.intersection(b)`，`a - b` 是 `a.difference(b)`，`a ^ b` 是 `a.symmetric_difference(b)`；每个运算都创建新集合，两个操作数都保持不变（[2.3](203-ops.md)）。
+**集合运算符**。`a | b` 是 `a.union(b)`，`a & b` 是 `a.intersection(b)`，`a - b` 是 `a.difference(b)`，`a ^ b` 是 `a.symmetric_difference(b)`；每个运算都创建新集合，两个操作数都保持不变（[2.3](203-ops.md)）。
 
-**`List + List`。** `xs + ys` 是由 `xs` 的项再加上 `ys` 的项组成的新列表；两者都不改变（`xs += ys` 就地追加）。逐元素加法是广播运算 `.+`（[2.6](206-broadcast.md)）。
+**`List + List`**。`xs + ys` 是由 `xs` 的项再加上 `ys` 的项组成的新列表；两者都不改变（`xs += ys` 就地追加）。逐元素加法是广播运算 `.+`（[2.6](206-broadcast.md)）。
 
 **`List::from_fn(n: usize, f: fn(usize) -> T) -> List<T>`** 创建 `n` 个项，第 `i` 项为 `f(i)`；`List::filled(n, x)` 创建 `n` 个 `x` 的副本。
 
@@ -1004,9 +1004,9 @@ pub type Vector<T> = Array<T, 1>;
 pub type Matrix<T> = Array<T, 2>;
 ```
 
-**存储。** 缓冲区是 `GcBuf<T>`（2.9.12）：紧密排列，当 `T` 不含引用时回收器从不扫描它，从 8 KiB 起按 64 字节对齐且永不移动（[refs-lang 7.2.9](../../refs-lang/007-runtime/702-allocation.md#729-大对象的-los-分配)）。新创建的数组是行优先的（最后一个轴连续）。任何轴的长度都不超过 `isize::MAX`：形状中有更长的轴时 panic（`capacity overflow`），即使另一个轴的长度为 0 也是如此。`Array` 是 `!Sync`（它的副本共享一个不加锁的缓冲区）。
+**存储**。缓冲区是 `GcBuf<T>`（2.9.12）：紧密排列，当 `T` 不含引用时回收器从不扫描它，从 8 KiB 起按 64 字节对齐且永不移动（[refs-lang 7.2.9](../../refs-lang/007-runtime/702-allocation.md#729-大对象的-los-分配)）。新创建的数组是行优先的（最后一个轴连续）。任何轴的长度都不超过 `isize::MAX`：形状中有更长的轴时 panic（`capacity overflow`），即使另一个轴的长度为 0 也是如此。`Array` 是 `!Sync`（它的副本共享一个不加锁的缓冲区）。
 
-**字面量。** 在 `Array<T, N>` 槽中，嵌套的列表字面量会构造数组：嵌套深度即秩，形状来自嵌套结构，叶子是按行优先顺序排列的元素，每个元素的类型为 `T`。长度不同的行是编译错误（E0142），其帮助信息建议使它们等长，或者保留为 `List<List<T>>`；应为一行但不是 `[..]` 字面量的元素也是同一个错误。在没有 `List` 成员的和类型槽中，字面量构造其唯一的 `Array` 成员：传给 `x: Vector<f64> | none` 的 `[1.0, 2.0]` 是 `Vector<f64>`（如果有 `List` 成员，则优先取它）。在 `N` 未确定的泛型函数中，形参 `x: Array<f64, N>` 从字面量取得秩：对 `fn sum<const N: usize>(x: Array<f64, N>)` 调用 `sum([[1.0, 2.0]])` 时 `N = 2`。
+**字面量**。在 `Array<T, N>` 槽中，嵌套的列表字面量会构造数组：嵌套深度即秩，形状来自嵌套结构，叶子是按行优先顺序排列的元素，每个元素的类型为 `T`。长度不同的行是编译错误（E0142），其帮助信息建议使它们等长，或者保留为 `List<List<T>>`；应为一行但不是 `[..]` 字面量的元素也是同一个错误。在没有 `List` 成员的和类型槽中，字面量构造其唯一的 `Array` 成员：传给 `x: Vector<f64> | none` 的 `[1.0, 2.0]` 是 `Vector<f64>`（如果有 `List` 成员，则优先取它）。在 `N` 未确定的泛型函数中，形参 `x: Array<f64, N>` 从字面量取得秩：对 `fn sum<const N: usize>(x: Array<f64, N>)` 调用 `sum([[1.0, 2.0]])` 时 `N = 2`。
 
 ```nabi
 let m: Matrix<f64> = [[1, 2, 3],
@@ -1014,7 +1014,7 @@ let m: Matrix<f64> = [[1, 2, 3],
 let e: Array<f64, 2> = [[]];               // shape [1, 0]
 ```
 
-**构造。**
+**构造**。
 
 | 项 | 含义 |
 |------|---------|
@@ -1025,9 +1025,9 @@ let e: Array<f64, 2> = [[]];               // shape [1, 0]
 | `Array::view_list(xs, shape)` | 同上，但与列表共享缓冲区而不复制：只要列表保留该缓冲区，通过任何一方的写入在另一方都可见（推入超过容量会使列表移到新的缓冲区，与 `xs[a:b]` 的情况相同） |
 | `From<List<T>> for Array<T, 1>` | `Array::from(xs)` |
 
-**形状与视图。** `shape() -> [usize; N]`、`strides() -> [isize; N]`（以元素为单位）、`ndim()`、`len()`（元素数量）、`is_empty()`、`is_contiguous()`。下列操作返回相同元素的视图，不复制：`t()`（轴反转）、`permute(axes)`、`broadcast_to(shape)`（长度为 1 的轴以步长 0 重复）、`reshape(shape)`（连续时是视图，否则是连续副本的视图；数量不一致时 panic），以及每种基本索引（见下文）。`copy()` 创建一个拥有自己缓冲区的连续数组；`clone()` 还会克隆元素。
+**形状与视图**。`shape() -> [usize; N]`、`strides() -> [isize; N]`（以元素为单位）、`ndim()`、`len()`（元素数量）、`is_empty()`、`is_contiguous()`。下列操作返回相同元素的视图，不复制：`t()`（轴反转）、`permute(axes)`、`broadcast_to(shape)`（长度为 1 的轴以步长 0 重复）、`reshape(shape)`（连续时是视图，否则是连续副本的视图；数量不一致时 panic），以及每种基本索引（见下文）。`copy()` 创建一个拥有自己缓冲区的连续数组；`clone()` 还会克隆元素。
 
-**索引。** `Array` 是 `AxisIndexed`（[refs-lang 3.6.3](../../refs-lang/003-expressions/306-indexing-and-slicing.md#363-多轴索引)）：方括号的每个部分都是一个轴参数。位置（任意类型的整数，按 `isize` 处理（[refs-lang 3.6.3](../../refs-lang/003-expressions/306-indexing-and-slicing.md#363-多轴索引)）；负数从末尾计数，越界时 panic 并指明轴）会去掉其轴，切片（`SliceArg`，每个轴遵循 Python 的规则）保留其轴并带上步长，`..`（`Rest`）代表其他部分剩下的轴，`none`（`NewAxis`）添加一个长度为 1 的轴，没有任何部分指明的轴则整体取用。位置数量等于秩时得到元素 `T`（秩 1 到 4）；其他情况得到视图 `Array<T, M>`，`M = N - 位置数 + 新轴数`。形状相同的掩码 `Array<bool, N>` 选出其为 `true` 处的元素，结果是秩为 1 的副本。这些实现覆盖任意种类的至多两个部分，以及由位置、切片和一个 `..` 组成的三个部分；对一个数组使用更多部分属于缺少 `Index` 实现。
+**索引**。`Array` 是 `AxisIndexed`（[refs-lang 3.6.3](../../refs-lang/003-expressions/306-indexing-and-slicing.md#363-多轴索引)）：方括号的每个部分都是一个轴参数。位置（任意类型的整数，按 `isize` 处理（[refs-lang 3.6.3](../../refs-lang/003-expressions/306-indexing-and-slicing.md#363-多轴索引)）；负数从末尾计数，越界时 panic 并指明轴）会去掉其轴，切片（`SliceArg`，每个轴遵循 Python 的规则）保留其轴并带上步长，`..`（`Rest`）代表其他部分剩下的轴，`none`（`NewAxis`）添加一个长度为 1 的轴，没有任何部分指明的轴则整体取用。位置数量等于秩时得到元素 `T`（秩 1 到 4）；其他情况得到视图 `Array<T, M>`，`M = N - positions + new axes`。形状相同的掩码 `Array<bool, N>` 选出其为 `true` 处的元素，结果是秩为 1 的副本。这些实现覆盖任意种类的至多两个部分，以及由位置、切片和一个 `..` 组成的三个部分；对一个数组使用更多部分属于缺少 `Index` 实现。
 
 ```nabi
 m[1, 2]          // 6.0
@@ -1051,7 +1051,7 @@ m[m .< 0.0] = 0.0;
 | `as_list() -> List<T> \| none` | 当元素从数组起始处连续排列时（新创建的数组、`view_list` 创建的数组），把元素作为与本数组共享缓冲区的列表返回，不复制；否则为 `none`（`to_list()` 会复制）。该列表第一次推入时会移到自己的缓冲区 |
 | `unsafe fn as_ptr() -> ConstPtr<T>` | 第一个元素；从 8 KiB 起在可达期间保持稳定（较小的数组需要固定：`Array` 是 `Pinnable`，[stdlib 1.6](../100-bare/106-gc-pin.md)） |
 
-**归约。** 每种归约都有一个整个数组的形式，按行优先顺序遍历元素；还有一个 `_along(axis)` 形式，沿 `axis` 归约每条通道并去掉该轴：`[2, 3]` 矩阵的 `m.sum_along(0)` 是由各列之和组成的 `[3]` 向量（对应 NumPy 的 `m.sum(axis=0)`）。超出秩的轴会 panic（`sum_along: axis 2 is past the last axis of a rank-2 array; pass an axis in 0..2`）。视图（转置、带步长、反转）按其元素的读取顺序归约。
+**归约**。每种归约都有一个整个数组的形式，按行优先顺序遍历元素；还有一个 `_along(axis)` 形式，沿 `axis` 归约每条通道并去掉该轴：`[2, 3]` 矩阵的 `m.sum_along(0)` 是由各列之和组成的 `[3]` 向量（对应 NumPy 的 `m.sum(axis=0)`）。超出秩的轴会 panic（`sum_along: axis 2 is past the last axis of a rank-2 array; pass an axis in 0..2`）。视图（转置、带步长、反转）按其元素的读取顺序归约。
 
 | 方法 | 约束 | 整个数组 | 含义 |
 |--------|-------|-------------|---------|
@@ -1071,7 +1071,7 @@ m[m .< 0.0] = 0.0;
 
 NaN 是任何不等于自身的元素，因此 NaN 规则适用于每种 `PartialEq` 元素类型，对整数没有任何开销。配合点运算比较，布尔归约可以检验条件：`(a .> 0.0).any()`、`(a .< lo).count_along(1)`。
 
-**拼接、选择与排序。**
+**拼接、选择与排序**。
 
 ```nabi
 fn concat<T, const N: usize>(parts: List<Array<T, N>>, axis: usize = 0) -> Array<T, N>;
@@ -1085,7 +1085,7 @@ fn arange<T: FloatingPoint>(start: T, stop: T, step: T) -> Array<T, 1>;
 
 对于 `T: PartialEq + PartialOrd`，`sorted_along(k)` 返回一个副本，其中沿 `k` 的每条通道都按升序稳定排序，NaN 排在最后；`sort_along(k)` 就地排序（对视图也适用）；`sorted()` 和 `sort()` 针对最后一个轴（向量的元素）；`argsort_along(k) -> Array<usize, N>` 给出使每条通道有序的位置。
 
-**容差比较。** 对于 `T: FloatingPoint`，`a.is_close(b, rel = none, abs = 0.0, equal_nan = false) -> Array<bool, N>` 逐元素应用 `f64::is_close`（2.1.11），两者广播到同一形状；`all_close(b, ..) -> bool` 即 `is_close(..).all()`。`rel` 默认取元素类型的值（`f64`：1e-9，`f32`：2^-20）。该规则是对称的，默认为相对误差，与 NumPy 的 `allclose`（绝对误差 1e-8 加上第二个操作数的相对误差 1e-5）不同；需要接近零的值也匹配时，传入 `abs`。
+**容差比较**。对于 `T: FloatingPoint`，`a.is_close(b, rel = none, abs = 0.0, equal_nan = false) -> Array<bool, N>` 逐元素应用 `f64::is_close`（2.1.11），两者广播到同一形状；`all_close(b, ..) -> bool` 即 `is_close(..).all()`。`rel` 默认取元素类型的值（`f64`：1e-9，`f32`：2^-20）。该规则是对称的，默认为相对误差，与 NumPy 的 `allclose`（绝对误差 1e-8 加上第二个操作数的相对误差 1e-5）不同；需要接近零的值也匹配时，传入 `abs`。
 
 ```nabi
 use core::array::{Matrix, concat, where};
@@ -1101,4 +1101,4 @@ where(m .> 2.0, m, m .* 0.0); //→ [[0.0, 0.0, 3.0], [4.0, 5.0, 6.0]]
 (m .* 0.1 .* 10.0).all_close(m);   //→ true
 ```
 
-**逐元素运算符。** 每个点运算符（2.6）都接受秩相同的数组与数组、数组与标量以及标量与数组；算术运算得到 `Array<T, N>`，比较运算得到 `Array<bool, N>`，`.&&` / `.||` 组合 `Array<bool, N>`。两个数组通过 `broadcast_shape(a, b)` 拉伸到同一形状：在每个轴上，长度相等则保持不变，长度为 1 则拉伸到另一方的长度；其他任何组合都会 panic 并给出两个形状（`broadcast: shapes [2, 3] and [2, 2] differ on axis 1; ...`）。在点运算表达式中，秩较低的数组与最后几个轴对齐（2.6.8），整个表达式作为一个循环执行，没有中间数组：`Array` 是 `Broadcastable` 和 `Materialize`（2.6.6）。`.=` 和 `.+=` 等就地写入数组或数组的视图（`a[:, 0] .= 0.0`，[refs-lang 3.3.7](../../refs-lang/003-expressions/303-broadcast-operators.md#337-原地广播)）。`PartialEq` 比较形状和元素；`Debug` / `Display` 打印嵌套的方括号。
+**逐元素运算符**。每个点运算符（2.6）都接受秩相同的数组与数组、数组与标量以及标量与数组；算术运算得到 `Array<T, N>`，比较运算得到 `Array<bool, N>`，`.&&` / `.||` 组合 `Array<bool, N>`。两个数组通过 `broadcast_shape(a, b)` 拉伸到同一形状：在每个轴上，长度相等则保持不变，长度为 1 则拉伸到另一方的长度；其他任何组合都会 panic 并给出两个形状（`broadcast: shapes [2, 3] and [2, 2] differ on axis 1; ...`）。在点运算表达式中，秩较低的数组与最后几个轴对齐（2.6.8），整个表达式作为一个循环执行，没有中间数组：`Array` 是 `Broadcastable` 和 `Materialize`（2.6.6）。`.=` 和 `.+=` 等就地写入数组或数组的视图（`a[:, 0] .= 0.0`，[refs-lang 3.3.7](../../refs-lang/003-expressions/303-broadcast-operators.md#337-原地广播)）。`PartialEq` 比较形状和元素；`Debug` / `Display` 打印嵌套的方括号。

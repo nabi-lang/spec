@@ -160,7 +160,7 @@ fn load_config() throws (ConfigError) -> Config {
 | 模块                | linux/macos/windows | wasm32-wasip2   | wasm32-wasip1-threads | wasm32（浏览器） |
 |---------------------|---------------------|---------------|---------------------|------------------|
 | `std::fs`      | ✓                   | ✓（基于能力） | ✓（基于能力）       | ✗（每次调用都 `Unsupported`） |
-| `std::net`     | ✓（+ TLS 1.3）      | ✓（`wasi:sockets`） | 由主机传入监听器 | ✗（使用 `fetch`） |
+| `std::net`     | ✓（+ TLS 1.3）      | ✓（`wasi:sockets`） | 由宿主传入监听器 | ✗（使用 `fetch`） |
 | `std::time`    | ✓                   | ✓             | ✓                   | ✓（Date.now）    |
 | `std::thread`  | ✓                   | 单线程（`Builder::spawn` 为 `Unsupported`） | ✓（wasi-threads） | 单线程（`Builder::spawn` 为 `Unsupported`） |
 | `std::env`     | ✓                   | ✓             | ✓                   | ✗                |
@@ -172,4 +172,4 @@ fn load_config() throws (ConfigError) -> Config {
 | `std::os`      | 仅限各自的操作系统（3.10） | 不存在   | 不存在              | 不存在           |
 | `std::panic`   | ✓                   | ✓             | ✓                   | ✓                |
 
-✗ 表示该模块可以构建，但其操作在运行时以 `IoErrorKind::Unsupported` 失败；这并不是编译时不存在。`os::unix`、`os::linux` 和 `os::windows` 是例外：它们只存在于各自的目标上。`wit` 在所有目标上都存在，但只在 WASI 目标上有项（“空”）。在浏览器中，stdout / stderr 输出到主机控制台，stdin 处于 EOF。各模块规范的可用性一节会更详细地给出各平台上的行为。
+✗ 表示该模块可以构建，但其操作在运行时以 `IoErrorKind::Unsupported` 失败；这并不是编译时不存在。`os::unix`、`os::linux` 和 `os::windows` 是例外：它们只存在于各自的目标上。`wit` 在所有目标上都存在，但只在 WASI 目标上有项（“空”）。在浏览器中，stdout / stderr 输出到宿主控制台，stdin 处于 EOF。各模块规范的可用性一节会更详细地给出各平台上的行为。

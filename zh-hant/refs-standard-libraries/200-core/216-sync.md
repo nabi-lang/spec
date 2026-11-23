@@ -1,6 +1,6 @@
-# 2.16. sync：並行基本型別
+# 2.16. sync：並行原語
 
-`core::sync` 模組定義了安全存取共用狀態所需的基本 trait 與型別。它們用於在 Nabi 的 GC 與 M:N 排程器之下，於多個任務或執行緒之間共用資料。
+`core::sync` 模組定義了安全存取共用狀態所需的基礎 trait 與型別。它們用於在 Nabi 的 GC 與 M:N 排程器之下，於多個任務或執行緒之間共用資料。
 
 `Atomic`、`Mutex`、`RwLock` 和 `Cell` 位於 [prelude](../000-meta/002-import.md) 中，不需匯入即可使用；記憶體順序列舉（`LoadOrdering`、`StoreOrdering`、`UpdateOrdering`）則不在其中，但它們的變體可由參數型別解析（`x.load(SeqCst)`）。若希望並行程式碼一眼就能看出是並行程式碼，建議使用如下的窄範圍匯入。
 
@@ -8,9 +8,9 @@
 use core::sync::{Atomic, Mutex, RwLock, Once, Condvar, Cell};
 ```
 
-## 2.16.1. 基本型別概覽
+## 2.16.1. 原語概覽
 
-每個基本型別各自涵蓋不同的並行情境。下表整理了各型別的意義與適用場合。
+每個原語各自涵蓋不同的並行情境。下表整理了各型別的意義與適用場合。
 
 | 型別        | 意義                                    | 用途                     |
 |-------------|--------------------------------------------|--------------------------------|
@@ -25,7 +25,7 @@ use core::sync::{Atomic, Mutex, RwLock, Once, Condvar, Cell};
 
 ## 2.16.2. `Atomic<T>`：無鎖原子
 
-`Atomic<T>` 是最輕量的基本型別。其內部以各 T 專用的原子指令實作，形式如下。
+`Atomic<T>` 是最輕量的原語。其內部以各 T 專用的原子指令實作，形式如下。
 
 ```nabi
 struct Atomic<T> {
@@ -159,7 +159,7 @@ impl<T> MutexGuard<T> {
 
 守衛不會轉發其所保護之值的方法：在 `MutexGuard<List<i32>>` 上呼叫 `g.push(1)` 是錯誤。請透過 `get`、`set` 和 `update` 存取該值。
 
-`m.with(f)` 會上鎖、以受保護的值呼叫 `f`，並在 `f` 回傳時解鎖，回傳其結果：`log.with(|v| v.push(x))`、`let n = log.with(|v| v.len())`。該值如同 `get()` 的檢視一樣借給 `f`，遵循 `ThreadLocal::with` 的規則：它不得離開 `f`（被回傳、儲存、傳送、被被呼叫端或閉包保留），因此 `f` 不是 `async`（E0136）；請回傳複本（`.clone()`）或由它算出的結果。若要跨陳述式或跨 `await` 持有鎖，請保留守衛（`using g = m.lock()`）。`RwLock::read_with(f)` 和 `write_with(f)` 分別在讀取鎖與寫入鎖之下做同樣的事。
+`m.with(f)` 會上鎖、以受保護的值呼叫 `f`，並在 `f` 回傳時解鎖，回傳其結果：`log.with(|v| v.push(x))`、`let n = log.with(|v| v.len())`。該值如同 `get()` 的檢視一樣借給 `f`，遵循 `ThreadLocal::with` 的規則：它不得離開 `f`（被回傳、儲存、傳送、由被呼叫端或閉包保留），因此 `f` 不能是 `async`（E0136）；請回傳複本（`.clone()`）或由它算出的結果。若要跨陳述式或跨 `await` 持有鎖，請保留守衛（`using g = m.lock()`）。`RwLock::read_with(f)` 和 `write_with(f)` 分別在讀取鎖與寫入鎖之下做同樣的事。
 
 ### 範例
 
@@ -270,7 +270,7 @@ using w = CONFIG.write() {       // briefly blocks all readers
 
 ## 2.16.4a. `Once` / `Condvar`
 
-兩個與 Rust 形式相同的基本型別。沒有中毒。
+兩個與 Rust 形式相同的原語。沒有中毒。
 
 ```nabi
 struct Once { /* ... */ }

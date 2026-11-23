@@ -284,7 +284,7 @@ let total = evens(10).map(|x| x * x).sum();
 ```
 
 - 具體型別是主體值的型別，依 [4.1.3](#413-省略回傳型別) 推論，在 `pub` 函式上也是如此。呼叫是靜態的：沒有標籤，沒有裝箱，與[泛型](../002-types/210-generics.md)相同。
-- 每個函式只有一個具體型別：型別不同的回傳路徑是錯誤（`the return paths of `f` have different types ..`），說明 `` to return several types, write `-> any Tr` ``。
+- 每個函式只有一個具體型別：型別不同的回傳路徑是錯誤（`` the return paths of `f` have different types .. ``），說明 `` to return several types, write `-> any Tr` ``。
 - 具體型別必須具有每個約束：否則在約束處報錯 `` `f` returns `ListIter<i32>`, which is not `Iterator<Item = str>` ``。
 - 呼叫者只看得到約束：可以呼叫約束（及其父 trait）的方法、在約束是迭代器時迭代它、把它傳到預期帶有這些約束之泛型參數的位置，以及在約束是函式型別時呼叫它。指稱或使用具體型別是錯誤：`` no method `contains` on `some Iterator<Item = i32>`: callers see only its bounds ``；`` `let b` expects `Range<i32>`, found `some Iterator<Item = i32>` ``。
 - 同一個函式一律回傳相同的型別，因此兩次呼叫的結果是同一個型別。不同函式的結果是不同的型別。
@@ -343,7 +343,7 @@ let s = Shelf { evens: nums::evens(10), more: [nums::evens(4)] };
 println(total(s.evens));                  // 20
 ```
 
-- 定義函式是 X 所屬模組中回傳型別為 `X`（寫成 `X` 或 `self::X`）的自由函式。每個定義函式的具體型別是其主體值的型別，依 `-> some Tr` 的方式推論，並且必須具有每個約束。必須至少有一個，而且它們必須全都給出相同的型別：沒有任何一個是 `` `X` has no defining function ``（E0145），說明 ``a function in this module that returns `X` gives its type``；兩個不同是 `` `g` returns `B`, but `X` is `A` (from `f`) ``（E0145），說明會提示回傳相同的型別或呼叫 `f`。
+- 定義函式是 X 所屬模組中回傳型別為 `X`（寫成 `X` 或 `self::X`）的自由函式。每個定義函式的具體型別是其主體值的型別，依 `-> some Tr` 的方式推論，並且必須具有每個約束。必須至少有一個，而且它們必須全都給出相同的型別：一個都沒有時是 `` `X` has no defining function ``（E0145），說明 ``a function in this module that returns `X` gives its type``；有兩個不同時是 `` `g` returns `B`, but `X` is `A` (from `f`) ``（E0145），說明會提示回傳相同的型別或呼叫 `f`。
 - 定義函式沒有型別參數，`X` 也沒有：泛型的定義函式是錯誤（E0145），其說明會寫出 `fn f<T>(..) -> some Tr`，即每次呼叫各有一個隱藏型別（[4.1.13](#4113-不透明回傳型別some-trait)）。
 - 方法，以及回傳 `List<X>` 或 `X | none` 的函式，不定義 `X`；它們使用它。
 - 在 X 所屬模組內（不含其子模組），`X` 就是其具體型別：模組的函式可以呼叫它的方法、讀取它的欄位，並像建立該型別的任何值一樣建立它。
