@@ -11,9 +11,9 @@ token           ::= identifier
                   | fstring_tokens                // f"..." / f"""...""", see 1.2.1
                   | char_lit
                   | sentinel_lit                  // true | false | none
-                  | label                         // 'name
+                  | label_token                   // 'name
                   | punctuation
-label           ::= "'" identifier                // no closing quote
+label_token     ::= "'" identifier                // no closing quote
 whitespace      ::= space_char+
                   | line_comment
                   | block_comment

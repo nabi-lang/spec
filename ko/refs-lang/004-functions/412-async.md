@@ -10,7 +10,7 @@
 async_fn        ::= "async" fn_decl
 async_block     ::= "async" block
 async_closure   ::= "async" closure_expr
-await_expr      ::= "await" unary_expr
+await_expr      ::= "await" unary_expr          // operand at prefix unary precedence (3.2.3)
 ```
 
 ```nabi

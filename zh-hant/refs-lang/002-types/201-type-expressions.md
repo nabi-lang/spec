@@ -40,7 +40,7 @@ fn_bound    ::= "+" ("Send" | "Sync")
 tuple_type  ::= "(" ")"
               | "(" type_expr "," ")"
               | "(" type_expr ("," type_expr)+ ","? ")"
-array_type  ::= "[" type_expr ";" const_expr "]"
+array_type  ::= "[" type_expr ";" const_expr "]"   // const_expr: 5.2
 ```
 
 `extern "C" fn(A, B) -> R` 是 C 函式指標型別（[5.9.4](../005-modules/509-extern-block.md#c-函式指標型別)）。ABI 字串只能是 `"C"` 或 `"system"`（[5.9](../005-modules/509-extern-block.md)）；其他任何字串都是錯誤。

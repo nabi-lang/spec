@@ -8,13 +8,17 @@ The grammar of a block is:
 
 ```
 block       ::= label? "{" stmt* tail_expr? "}"
-label       ::= "'" identifier ":"
+label       ::= label_token ":"              // label_token: 1.2
 stmt        ::= expr ";"
               | block_like_expr ";"?
               | let_stmt
               | item_decl
-block_like_expr ::= block | if_expr | match_expr | loop_expr
-              | while_expr | for_expr | unsafe_block
+item_decl   ::= fn_decl | const_decl | use_stmt | struct_decl | enum_decl
+              | union_decl | trait_decl | impl_block | type_alias | static_decl
+type_alias  ::= "type" identifier generics? where_clause? "=" type_expr ";"
+block_like_expr ::= block | if_expr | match_expr
+              | loop_expr       // loop, while, for (3.13)
+              | unsafe_block    // 4.15
 tail_expr   ::= expr            // no trailing ";"
 ```
 

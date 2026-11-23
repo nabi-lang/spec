@@ -40,7 +40,7 @@ fn_bound    ::= "+" ("Send" | "Sync")
 tuple_type  ::= "(" ")"
               | "(" type_expr "," ")"
               | "(" type_expr ("," type_expr)+ ","? ")"
-array_type  ::= "[" type_expr ";" const_expr "]"
+array_type  ::= "[" type_expr ";" const_expr "]"   // const_expr: 5.2
 ```
 
 `extern "C" fn(A, B) -> R`은 C 함수 포인터 타입입니다([5.9.4](../005-modules/509-extern-block.md#c-함수-포인터-타입)). ABI 문자열에는 `"C"`나 `"system"`만 쓸 수 있고([5.9](../005-modules/509-extern-block.md)), 다른 값은 에러입니다.

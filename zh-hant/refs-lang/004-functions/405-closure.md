@@ -11,7 +11,7 @@ closure_params ::= "||"
 closure_param_list ::= closure_param ("," closure_param)* ","?
 closure_param ::= (identifier | param_pattern) (":" type_expr)?
 closure_body   ::= expr | block
-capture_list   ::= "[" capture_item ("," capture_item)* "]"
+capture_list   ::= "[" capture_item ("," capture_item)* ","? "]"   // capture_item: 4.6.1
 ```
 
 閉包參數可以和函式參數一樣是不可反駁的模式（[4.2](402-parameters.md)）：`|(k, v)| f"{k}={v}"` 接受一個元組引數並解構它，而 `|k, v|` 接受兩個引數。

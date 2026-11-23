@@ -11,7 +11,7 @@ closure_params ::= "||"
 closure_param_list ::= closure_param ("," closure_param)* ","?
 closure_param ::= (identifier | param_pattern) (":" type_expr)?
 closure_body   ::= expr | block
-capture_list   ::= "[" capture_item ("," capture_item)* "]"
+capture_list   ::= "[" capture_item ("," capture_item)* ","? "]"   // capture_item: 4.6.1
 ```
 
 与函数参数一样（[4.2](402-parameters.md)），闭包参数可以是不可反驳的模式：`|(k, v)| f"{k}={v}"` 接受一个元组实参并将其解构，而 `|k, v|` 接受两个实参。

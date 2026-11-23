@@ -7,9 +7,9 @@
 A `struct` declaration follows this grammar.
 
 ```
-struct_decl     ::= "struct" identifier generics? where_clause? "{" named_field_list? "}"
-                  | "struct" identifier generics? "(" tuple_field_list? ")" where_clause? ";"   // tuple struct: where comes after the field list
-                  | "struct" identifier generics? where_clause? ";"                              // unit struct
+struct_decl     ::= visibility? "struct" identifier generics? where_clause? "{" named_field_list? "}"
+                  | visibility? "struct" identifier generics? "(" tuple_field_list? ")" where_clause? ";"   // tuple struct: where comes after the field list
+                  | visibility? "struct" identifier generics? where_clause? ";"                              // unit struct
 named_field_list ::= named_field (";" named_field)* ";"?
 named_field     ::= identifier ":" type_expr
 tuple_field_list ::= type_expr ("," type_expr)* ","?

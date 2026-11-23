@@ -4,7 +4,7 @@
 
 ```
 unsafe_fn        ::= "unsafe" fn_decl
-unsafe_block     ::= "unsafe" block_expr
+unsafe_block     ::= "unsafe" block                // block: 3.9
 ```
 
 這個模型與 Rust 的 `unsafe` 同構；其目的是在程式碼中明確標出危險的區域。

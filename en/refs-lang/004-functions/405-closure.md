@@ -11,7 +11,7 @@ closure_params ::= "||"
 closure_param_list ::= closure_param ("," closure_param)* ","?
 closure_param ::= (identifier | param_pattern) (":" type_expr)?
 closure_body   ::= expr | block
-capture_list   ::= "[" capture_item ("," capture_item)* "]"
+capture_list   ::= "[" capture_item ("," capture_item)* ","? "]"   // capture_item: 4.6.1
 ```
 
 A closure parameter may be an irrefutable pattern, as a function parameter may ([4.2](402-parameters.md)): `|(k, v)| f"{k}={v}"` takes one tuple argument and destructures it, while `|k, v|` takes two arguments.

@@ -8,7 +8,7 @@ loop_expr   ::= label? "loop" block
               | label? "for" pattern "in" expr block
               | label? "for" "await" pattern "in" expr block
               | label? "for" "ref" identifier "in" expr block
-label       ::= "'" identifier ":"
+label       ::= label_token ":"              // label_token: 1.2
 break_stmt  ::= "break" label_target? expr? ";"
 continue_stmt ::= "continue" label_target? ";"
 label_target ::= "'" identifier

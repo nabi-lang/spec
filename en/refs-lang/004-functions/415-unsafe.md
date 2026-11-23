@@ -4,7 +4,7 @@ The `unsafe` keyword appears in two forms that visibly confine regions whose saf
 
 ```
 unsafe_fn        ::= "unsafe" fn_decl
-unsafe_block     ::= "unsafe" block_expr
+unsafe_block     ::= "unsafe" block                // block: 3.9
 ```
 
 This model is isomorphic to Rust's `unsafe`; its purpose is to make dangerous regions explicit in the code.

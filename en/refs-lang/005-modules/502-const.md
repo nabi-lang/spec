@@ -6,6 +6,7 @@ The `const` keyword (a contextual keyword that is a keyword only at the start of
 const_decl      ::= "const" identifier ":" type_expr "=" const_expr ";"
 const_fn        ::= "const" fn_decl
 const_block     ::= "const" block
+const_expr      ::= expr                        // evaluable at compile time (5.2.4)
 ```
 
 ## 5.2.1. Basic form

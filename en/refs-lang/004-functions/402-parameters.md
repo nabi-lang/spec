@@ -5,7 +5,7 @@ This section defines the form of function parameters and the rules for matching 
 ```
 param           ::= self_param | regular_param
 self_param      ::= "ref"? "self"
-regular_param   ::= "ref"? identifier (":" type_expr)? ("=" const_expr)?
+regular_param   ::= "ref"? identifier (":" type_expr)? ("=" const_expr)?   // const_expr: 5.2
                   | param_pattern (":" type_expr)?
 param_pattern   ::= tuple_pattern | struct_pattern
 ```

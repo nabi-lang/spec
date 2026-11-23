@@ -40,7 +40,7 @@ fn_bound    ::= "+" ("Send" | "Sync")
 tuple_type  ::= "(" ")"
               | "(" type_expr "," ")"
               | "(" type_expr ("," type_expr)+ ","? ")"
-array_type  ::= "[" type_expr ";" const_expr "]"
+array_type  ::= "[" type_expr ";" const_expr "]"   // const_expr: 5.2
 ```
 
 `extern "C" fn(A, B) -> R` is a C function pointer type ([5.9.4](../005-modules/509-extern-block.md#c-function-pointer-types)). The ABI string may only be `"C"` or `"system"` ([5.9](../005-modules/509-extern-block.md)); anything else is an error.

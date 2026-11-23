@@ -18,7 +18,7 @@ trait_item  ::= method_sig
 method_sig  ::= fn_modifiers "fn" identifier "(" param_list? ")" throws_clause? return_type? ";"
 method_default ::= fn_modifiers "fn" identifier "(" param_list? ")" throws_clause? return_type? block
 assoc_type_decl ::= "type" identifier (":" type_expr ("+" type_expr)*)? where_clause? ("=" type_expr)? ";"
-assoc_const_decl ::= "const" identifier ":" type_expr ("=" const_expr)? ";"
+assoc_const_decl ::= "const" identifier ":" type_expr ("=" const_expr)? ";"   // const_expr: 5.2
 ```
 
 트레잇 선언의 예는 다음과 같습니다.

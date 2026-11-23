@@ -4,7 +4,7 @@
 
 ```
 unsafe_fn        ::= "unsafe" fn_decl
-unsafe_block     ::= "unsafe" block_expr
+unsafe_block     ::= "unsafe" block                // block: 3.9
 ```
 
 이 모델은 Rust의 `unsafe`와 같은 구조입니다. 목적은 위험 영역을 코드에 명시적으로 드러내는 것입니다.

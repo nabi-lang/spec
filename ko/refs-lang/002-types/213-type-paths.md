@@ -4,7 +4,7 @@
 
 ```
 type_path       ::= path_root ("::" path_segment)*
-path_root       ::= identifier | "pkg" | "sup"
+path_root       ::= "pkg" | "sup" | "::" identifier | identifier
 path_segment    ::= identifier type_args?
                   | identifier "::" "<" type_expr ">" "::" identifier  // assoc item
 ```

@@ -48,7 +48,9 @@ bool | none              // 1 byte
 niche_attr ::= "#" "[" "niche" "(" niche_arg ("," niche_arg)* ","? ")" "]"
 niche_arg  ::= int_lit | "-" int_lit | const_path | range
 range      ::= niche_val "..=" niche_val | ".." niche_val | niche_val ".."
-const_path ::= "MIN" | "MAX" | "NAN" | "INFINITY" | "NEG_INFINITY" | type "::" const_name
+niche_val  ::= int_lit | "-" int_lit | const_path
+const_path ::= "MIN" | "MAX" | "NAN" | "INFINITY" | "NEG_INFINITY" | path_type "::" const_name
+const_name ::= identifier                       // an associated const of that type
 ```
 
 ```nabi

@@ -6,7 +6,7 @@
 generics        ::= "<" generic_param ("," generic_param)* ","? ">"
 generic_param   ::= type_param | const_param
 type_param      ::= identifier (":" type_bounds)? ("=" type_expr)?
-const_param     ::= "const" identifier ":" type_expr ("=" const_expr)?
+const_param     ::= "const" identifier ":" type_expr ("=" const_expr)?   // const_expr: 5.2
 type_bounds     ::= type_expr ("+" type_expr)*
 where_clause    ::= "where" where_pred ("," where_pred)* ","?
 where_pred      ::= type_expr ":" type_bounds

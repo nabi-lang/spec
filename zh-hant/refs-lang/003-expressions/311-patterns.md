@@ -8,7 +8,9 @@ or_pattern      ::= unary_pattern ("|" unary_pattern)*
 unary_pattern   ::= literal_pattern
                   | identifier_pattern
                   | "_"                                  // wildcard
+                  | "_" ":" type_expr                    // typed wildcard
                   | type_check_pattern
+                  | type_pattern
                   | tuple_pattern
                   | slice_pattern
                   | struct_pattern
@@ -16,15 +18,21 @@ unary_pattern   ::= literal_pattern
                   | range_pattern
                   | binding_pattern
                   | "(" pattern ")"                      // grouping
+literal_pattern ::= "-"? numeric_lit | string_lit | char_lit | sentinel_lit
+identifier_pattern  ::= identifier                       // a binding
+type_pattern    ::= identifier                           // a type name, on a sum or `any` scrutinee
 binding_pattern ::= identifier "@" unary_pattern
 type_check_pattern  ::= identifier ":" type_expr
-tuple_pattern   ::= "(" (pattern ("," pattern)* ","?)? ")"
-slice_pattern   ::= "[" (slice_item ("," slice_item)* ","?)? "]"
-slice_item      ::= pattern | ".." identifier?                  // ".." at most once
-struct_pattern  ::= path "{" (field_pattern ("," field_pattern)* ","?)? "}"
+tuple_pattern   ::= "(" (rest_item ("," rest_item)* ","?)? ")"
+slice_pattern   ::= "[" (rest_item ("," rest_item)* ","?)? "]"
+rest_item       ::= pattern | ".." identifier?           // ".." at most once
+struct_pattern  ::= path "{" struct_fields? "}"
+struct_fields   ::= field_pattern ("," field_pattern)* ("," ".." | ",")?
+                  | ".."
 field_pattern   ::= identifier (":" pattern)?
 enum_variant_pattern ::= path ("(" (pattern | "..") ("," (pattern | ".."))* ","? ")")?   // ".." at most once
 range_pattern   ::= literal_pattern (".." | "..=") literal_pattern
+irrefutable_pattern ::= pattern                          // one that always matches (3.11.6)
 ```
 
 ## 3.11.1. 模式的種類

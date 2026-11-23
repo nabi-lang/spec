@@ -12,7 +12,7 @@ variant_list ::= variant ("," variant)* ","?
 variant     ::= identifier                                  // unit
               | identifier "(" type_expr ("," type_expr)* ","? ")"  // tuple
               | identifier "{" named_field_list? "}"        // struct
-              | identifier "=" const_expr                   // discriminant
+              | identifier "=" const_expr                   // discriminant; const_expr: 5.2
 ```
 
 最簡單的形式如下：
