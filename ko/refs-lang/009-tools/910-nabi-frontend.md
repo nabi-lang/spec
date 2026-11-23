@@ -817,7 +817,7 @@ nabi dev [path] [-p <member>] [--bin <name>] [build options] [-- args...]
 
 - `NABI_RUNNER=<program> [args]`(공백으로 나눔)는 호스트가 아닌 모든 타깃의 러너입니다.
 - 이 변수가 없으면 `wasm32-wasip2`와 `wasm32-wasip1-threads` 모듈은 `PATH`의 `wasmtime`으로 실행합니다. `wasmtime run`에 호스트의 환경(`wasm32-wasip2`에서는 네트워크와 이름 조회도), 네이티브 주 스레드만큼 깊은 8 MiB 엔진 스택, `/`에 둔 호스트 파일 시스템을 줍니다. WASI에는 작업 디렉터리가 없으므로 상대 경로는 `/`에서 찾습니다.
-- `wasm32-unknown-unknown` 모듈은 `PATH`의 `node`와 툴체인의 JS 호스트(`lib/nabi/targets/wasm32-unknown-unknown/`의 `nabi.mjs`)로 실행합니다.
+- `wasm32-unknown-unknown` 모듈은 `PATH`의 `node`와 toolchain의 JS 호스트(`lib/nabi/targets/wasm32-unknown-unknown/`의 `nabi.mjs`)로 실행합니다.
 - Linux에서 CPU가 다른 Linux 타깃은 `PATH`에 있는 qemu-user의 `qemu-<cpu>`(`qemu-aarch64`, `qemu-arm`, `qemu-riscv64`, `qemu-ppc64le`, `qemu-s390x`, `qemu-i386`, ...)로 실행합니다. `/usr/<triple>`(`/usr/aarch64-linux-gnu`) 디렉터리가 있고 `QEMU_LD_PREFIX`가 없으면 `-L /usr/<triple>`을 더합니다. `qemu-<cpu>`가 없어도 binfmt_misc에 `qemu-<cpu>` 처리기가 등록되어 있으면 직접 실행합니다.
 - 호스트와 운영체제가 같고 호스트가 실행할 수 있는 다른 CPU의 타깃은 qemu-user를 찾기 전에 직접 실행합니다. x86_64에서 32비트 x86, 그리고 CPU가 EL0에서 AArch32 코드를 실행하는 arm64 Linux(Neoverse N1, Cortex-A72. Neoverse N2와 Apple silicon은 아님)에서 32비트 ARM이 그렇습니다. 프로그램에 그것을 알려 주는 레지스터가 없으므로, `nabi`는 작은 정적 32비트 ARM 실행 파일을 한 번 실행해 알아냅니다.
 
@@ -930,7 +930,7 @@ nabi fmt [path..] [--check] [--diff]
 
 6번을 빼면 포매터는 줄을 옮기지 않고, 줄을 나누거나 합치지 않으며, 줄 안의 간격을 바꾸지 않습니다. 따라서 주석은 적힌 그대로 남고, 토큰 순서는 6번이 정렬하는 항목의 순서 말고는 바뀌지 않습니다. 여러 줄에 걸친 문자열과 블록 주석의 안쪽도 그대로 둡니다.
 
-1.0 전까지는 이 배치 규칙이 표준 포맷입니다. 그때까지 코드를 다시 짜는 pretty-printer(토큰을 옮기거나 줄을 나누고 합치는 포매터)로 바꾸지 않습니다. 따라서 `nabi fmt --check`를 통과한 파일은 이후 0.x 툴체인에서도 계속 통과합니다.
+1.0 전까지는 이 배치 규칙이 표준 포맷입니다. 그때까지 코드를 다시 짜는 pretty-printer(토큰을 옮기거나 줄을 나누고 합치는 포매터)로 바꾸지 않습니다. 따라서 `nabi fmt --check`를 통과한 파일은 이후 0.x toolchain에서도 계속 통과합니다.
 
 ### `nabi doc`: 문서 생성
 
@@ -951,7 +951,7 @@ target/doc/
 └── fonts/, favicon.svg
 ```
 
-`<pkg>`는 패키지 이름(매니페스트의 `name`)이고, 표준 라이브러리 계층은 자기 이름(`core`, `std`, `bare`)입니다. 경로 위의 모든 모듈이 `pub`이고 `#[doc(hidden)]`이 아니면 그 모듈은 공개 모듈이고, 공개 모듈마다 한 쪽이 있습니다. 루트는 `<pkg>/index.html`, `a::b`는 `<pkg>/a/b.html`입니다(루트의 자식 중 이름이 `index`인 모듈은 `<pkg>/index/index.html`). 패키지 루트 쪽 위에 따로 쪽은 없습니다. 각 쪽 머리말에는 그 쪽 패키지의 이름(패키지 루트로 링크)과 버전이 나오고, 사이드바에는 패키지의 의존성이 각 루트 쪽 링크와 함께 나옵니다. 사이드바와 경로 표시는 그 쪽 패키지의 루트로 이어집니다. 검색은 어느 쪽에서든 문서화된 패키지 전체를 찾습니다. 이전 툴체인이 남긴 `target/doc/index.html`은 지우고, `target/doc/`의 다른 파일은 지우지 않습니다. 스타일 시트, 스크립트, 글꼴이 출력에 들어 있으므로 네트워크 없이 볼 수 있습니다.
+`<pkg>`는 패키지 이름(매니페스트의 `name`)이고, 표준 라이브러리 계층은 자기 이름(`core`, `std`, `bare`)입니다. 경로 위의 모든 모듈이 `pub`이고 `#[doc(hidden)]`이 아니면 그 모듈은 공개 모듈이고, 공개 모듈마다 한 쪽이 있습니다. 루트는 `<pkg>/index.html`, `a::b`는 `<pkg>/a/b.html`입니다(루트의 자식 중 이름이 `index`인 모듈은 `<pkg>/index/index.html`). 패키지 루트 쪽 위에 따로 쪽은 없습니다. 각 쪽 머리말에는 그 쪽 패키지의 이름(패키지 루트로 링크)과 버전이 나오고, 사이드바에는 패키지의 의존성이 각 루트 쪽 링크와 함께 나옵니다. 사이드바와 경로 표시는 그 쪽 패키지의 루트로 이어집니다. 검색은 어느 쪽에서든 문서화된 패키지 전체를 찾습니다. 이전 toolchain이 남긴 `target/doc/index.html`은 지우고, `target/doc/`의 다른 파일은 지우지 않습니다. 스타일 시트, 스크립트, 글꼴이 출력에 들어 있으므로 네트워크 없이 볼 수 있습니다.
 
 모듈의 쪽에는 모듈의 문서(그 `//!` 줄. `mod` 항목에 `///`가 있으면 그 뒤에 붙습니다. 평범한 `//` 주석은 문서 주석이 아니며, 라이브러리나 공개 모듈의 파일을 그런 주석으로 시작하면 `nabi lint`가 경고합니다, [6.2.9](../006-meta-system/602-built-in-attributes.md#629-allow--deny--warn-린트-제어)), 공개 자식 모듈, 그리고 종류별 항목이 이 순서로 나옵니다. 재내보내기, 구조체(공용체 포함), 열거형, 트레잇, 타입 별칭, 함수, 상수, 정적 변수, 마지막으로 다른 곳에서 선언한 타입의 구현(`impl str { .. }`)입니다. 항목은 `#[doc(hidden)]`도 `#[internal]`도 아닌 `pub` 항목이고, 각 항목에는 작성한 그대로의 시그니처, 문서, 멤버(공개 필드, 변형, 트레잇 항목, 고유 impl의 공개 메서드와 상수), 트레잇 구현이 함께 나옵니다. 쪽에 무엇을 보일지는 다음 규칙으로 정합니다.
 

@@ -286,7 +286,7 @@ fn strict_zone() { ... }
 | `warnings`          | 수준이 warn인 모든 린트. 이후 릴리스가 추가하는 린트도 포함                                  |
 | `all`               | 이후 릴리스가 추가하는 린트까지 포함한 모든 린트                                             |
 
-`warnings`는 rustc와 같은 뜻입니다. 이 그룹을 deny하면(`lints`의 `"warnings": "deny"`, `-D warnings`, `#![deny(warnings)]`) 모든 경고가 에러가 되고, 이후 릴리스가 추가하는 린트와 사용 자제도 마찬가지입니다. 릴리스가 바뀌어도 계속 빌드되어야 하는 프로젝트는 툴체인을 고정합니다(`nabi.nabion`의 `toolchain`, [9.10.6](../009-tools/910-nabi-frontend.md)). 린트마다 적힌 릴리스 열은 참고용입니다.
+`warnings`는 rustc와 같은 뜻입니다. 이 그룹을 deny하면(`lints`의 `"warnings": "deny"`, `-D warnings`, `#![deny(warnings)]`) 모든 경고가 에러가 되고, 이후 릴리스가 추가하는 린트와 사용 자제도 마찬가지입니다. 릴리스가 바뀌어도 계속 빌드되어야 하는 프로젝트는 toolchain을 고정합니다(`nabi.nabion`의 `toolchain`, [9.10.6](../009-tools/910-nabi-frontend.md)). 린트마다 적힌 릴리스 열은 참고용입니다.
 
 어떤 경고는 린트 단계가 아니라 컴파일러가 직접 내지만, 그래도 린트에 속합니다. 닮은 식별자는 `confusable_idents`, 문자열이나 주석 안의 보이지 않는 문자는 `hidden_chars`, 잘못 놓인 문서 주석은 `unused_doc_comments`입니다. 이 경고의 수준도 다른 린트처럼 린트 이름으로 정합니다.
 

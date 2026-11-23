@@ -33,7 +33,7 @@ Package {
 - 플러그인 패키지에는 `src/lib.nabi`가 있고 `src/main.nabi`는 없습니다(`` a plugin is loaded by a program, so move main.nabi to a package of its own that loads this one with `std::plugin::load` ``). 플러그인에 `nabi run`을 하면 오류입니다.
 - 의존성은 기본으로 호스트에서 가져옵니다. 플러그인은 그것에 대해 컴파일되고, 그 static은 호스트의 것이며, 디스크립터는 그것을 `needs`에 적습니다. `bundle: true`이면 의존성을 플러그인에 링크합니다. 그러면 그 static은 플러그인 자신의 것이고 `provides`에 적힙니다. 플러그인이 아닌 패키지의 의존성에 `bundle`을 쓰면 오류입니다.
 - 프로그램의 의존성 `Dep::path("../physics", plugin: true)`는 프로그램의 target 디렉터리에(그래서 프로그램 옆에, 프로그램과 같은 프로필과 타깃으로) 플러그인으로 빌드되고 링크되지 않습니다. 프로그램은 `plugin::load(plugin::beside("physics"))`로 그것을 로드합니다. 한 의존성에 `plugin: true`와 `bundle: true`를 함께 쓰면 오류입니다.
-- 플러그인이 닿는 표준 라이브러리 코드는 플러그인 안에 컴파일되고(프로그램처럼 닿는 것만, [9.3.6](903-package-archive.md#936-표준-라이브러리)), 그 static은 호스트의 것입니다. 한 프로세스의 모든 모듈은 같은 툴체인으로 빌드되므로(9.12.6) 코드가 겹쳐도 문제가 없습니다.
+- 플러그인이 닿는 표준 라이브러리 코드는 플러그인 안에 컴파일되고(프로그램처럼 닿는 것만, [9.3.6](903-package-archive.md#936-표준-라이브러리)), 그 static은 호스트의 것입니다. 한 프로세스의 모든 모듈은 같은 toolchain으로 빌드되므로(9.12.6) 코드가 겹쳐도 문제가 없습니다.
 - 제네릭 인스턴스는 그것이 필요한 모듈에 컴파일됩니다. `List<Orc>`는 `Orc`를 정의하는 플러그인에 있습니다. 제네릭 코드에는 자기 static이 없으므로 그 사본들은 서로 바꿔 써도 됩니다.
 - 플러그인과 호스트에서는 코드젠 유닛([9.2.16](902-aot-pipeline.md#9216-증분-빌드))을 쓰지 않습니다. 그 디스크립터에 실제 패키지 해시가 들어가기 때문입니다.
 
@@ -48,7 +48,7 @@ Package {
 
 ## 9.12.4. 로드와 호출
 
-`plugin::load(path)`는 파일을 매핑하고, 모든 스레드를 잠깐 멈춘 상태에서 디스크립터를 등록합니다. 툴체인과 타깃을 확인하고, `needs`의 패키지가 모두 제공되는지 확인하며(빠진 것은 모두 한 오류로 알립니다), 임포트를 묶고, GC 타입 id와 `any` 태그를 주고, 루트, 타입 디스크립터, `any Tr` 메서드 본문을 등록한 뒤 플러그인을 공개합니다. 플러그인에는 초기화 함수가 없습니다. 그 static은 어디서나처럼 처음 쓸 때 초기화됩니다.
+`plugin::load(path)`는 파일을 매핑하고, 모든 스레드를 잠깐 멈춘 상태에서 디스크립터를 등록합니다. toolchain과 타깃을 확인하고, `needs`의 패키지가 모두 제공되는지 확인하며(빠진 것은 모두 한 오류로 알립니다), 임포트를 묶고, GC 타입 id와 `any` 태그를 주고, 루트, 타입 디스크립터, `any Tr` 메서드 본문을 등록한 뒤 플러그인을 공개합니다. 플러그인에는 초기화 함수가 없습니다. 그 static은 어디서나처럼 처음 쓸 때 초기화됩니다.
 
 `p.get::<F>("enemies::spawn")`은 경로로 제네릭이 아닌 `pub` 함수를 찾고 시그니처가 정확히 `F`인지 확인합니다. 양쪽 모두 타입 키로 쓴 시그니처 텍스트(`fn({engine::World},i32)->List<..>`)를 해시하므로, 맞지 않으면 크래시가 아니라 `WrongType`입니다. 결과는 평범한 함수 값입니다. 제네릭 함수를 `get`하면 찾지 못하며(`NoSuchItem`, 메시지가 구체적인 `pub fn`을 내보내라고 알려 줍니다), `p.get_static::<T>(path)`는 static을 읽습니다.
 
@@ -71,7 +71,7 @@ Package {
 
 ## 9.12.6. 안정성과 오류
 
-툴체인 빌드를 넘어 안정적인 플러그인 ABI는 없습니다. 한 프로세스의 모든 모듈은 같은 툴체인 빌드에서 나와야 합니다. 디스크립터의 `toolchain`은 컴파일러 id이며 정확히 비교합니다(`` the plugin was built by nabic 0.1.3 (a1b2c3), this program by nabic 0.1.4 (d4e5f6); rebuild the plugin with this program's toolchain ``).
+toolchain 빌드를 넘어 안정적인 플러그인 ABI는 없습니다. 한 프로세스의 모든 모듈은 같은 toolchain 빌드에서 나와야 합니다. 디스크립터의 `toolchain`은 컴파일러 id이며 정확히 비교합니다(`` the plugin was built by nabic 0.1.3 (a1b2c3), this program by nabic 0.1.4 (d4e5f6); rebuild the plugin with this program's toolchain ``).
 
 | `PluginError` | 언제 | 메시지가 알려 주는 할 일 |
 |---|---|---|

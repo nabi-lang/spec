@@ -177,7 +177,7 @@ unwind 테이블은 프로그램이 아니라 디버거, 프로파일러, 운영
 | wasm | WebAssembly tool conventions를 따르는 재배치 가능 모듈(`linking` 섹션 버전 2, `reloc.CODE` / `reloc.DATA`). `env`에서 `__linear_memory`, `__stack_pointer`, `__indirect_function_table`을, 스레드가 있으면 `__tls_base`도 import합니다. 각 함수의 타입은 그 규약이 정하는 것이고, `nabi_tls` 주소는 마지막 `i32` 매개변수입니다 |
 
 - 함수와 데이터 객체는 각자 자기 섹션(ELF), COMDAT(COFF), subsection(Mach-O), 자기 segment(wasm)에 두는 것이 좋습니다. 링커는 참조되지 않는 것을 버리고, `release` 빌드에서는 같은 함수를 하나로 합칩니다([9.2.15](../009-tools/902-aot-pipeline.md#9215-산출물)). 섹션을 함께 쓰는 것들은 함께 남거나 함께 버려지고, 합쳐지지 않습니다.
-- 링커가 처리하는 재배치 종류만 쓸 수 있습니다. `nabic`의 코드 생성기가 쓰는 것, 그리고 툴체인이 함께 배포하는 런타임 라이브러리와 C 라이브러리에 있는 것입니다. 그 밖의 것은 그 이름을 대는 링크 에러입니다(`unsupported relocation ..`).
+- 링커가 처리하는 재배치 종류만 쓸 수 있습니다. `nabic`의 코드 생성기가 쓰는 것, 그리고 toolchain이 함께 배포하는 런타임 라이브러리와 C 라이브러리에 있는 것입니다. 그 밖의 것은 그 이름을 대는 링크 에러입니다(`unsupported relocation ..`).
 - 명령어 집합에 없는 연산은 런타임 라이브러리가 제공하는 플랫폼 지원 루틴의 호출입니다. armv7에서는 `__aeabi_idiv`, `__aeabi_ldivmod`, `__aeabi_l2d`, `__mulodi4`, .., riscv32에서는 soft-float 루틴과 `__divdi3`, ..입니다([8.7.4](807-code-generation.md#874-연산)).
 - `sqrt` 밖의 부동소수 메서드는 입력에 이미 있는 `nabi_f64_*` / `nabi_f32_*` 호출입니다. 코드 생성기는 이것을 컴파일 시간에 계산하지 않습니다.
 - 출력은 결정적입니다. 같은 입력은 같은 바이트를 냅니다.
@@ -189,13 +189,13 @@ unwind 테이블은 프로그램이 아니라 디버거, 프로파일러, 운영
 > [!NOTE]
 > 0.2를 위한 초안입니다. 이 절의 어떤 것도 구현되지 않았습니다.
 
-`nabic` 자신의 것이 아닌 코드 생성기는 별도 실행 파일이고, `nabi component add <component>`로 설치하는 툴체인 컴포넌트입니다. `codegen-llvm`은 `nabic-codegen-llvm`을 설치하고, 이 실행 파일은 버전이 고정된 LLVM을 정적으로 링크해 자기 안에 둡니다. `nabic` 자신은 다른 코드 생성기를 담지 않고 외부 코드 생성기를 링크하지 않습니다([9.2.17](../009-tools/902-aot-pipeline.md#9217-컴파일러와-런타임의-분리)).
+`nabic` 자신의 것이 아닌 코드 생성기는 별도 실행 파일이고, `nabi component add <component>`로 설치하는 toolchain 컴포넌트입니다. `codegen-llvm`은 `nabic-codegen-llvm`을 설치하고, 이 실행 파일은 버전이 고정된 LLVM을 정적으로 링크해 자기 안에 둡니다. `nabic` 자신은 다른 코드 생성기를 담지 않고 외부 코드 생성기를 링크하지 않습니다([9.2.17](../009-tools/902-aot-pipeline.md#9217-컴파일러와-런타임의-분리)).
 
 **선택.** `-C codegen-backend=<name>`(기본값 `native`, 또는 `llvm` 같은 컴포넌트 이름), 또는 `nabi.nabion` profile의 `codegen_backend: "<name>"`([9.10.3](../009-tools/910-nabi-frontend.md#9103-nabinabion--nabilock))입니다. 옵션이 profile보다 우선합니다. 선택은 빌드가 컴파일하는 모든 unit에 적용됩니다. prebuilt 라이브러리는 이미 가진 오브젝트를 그대로 쓰고, 공유 unit과 REPL 셀, Jupyter 셀은 언제나 `native`입니다. 컴포넌트가 설치되지 않은 이름은 설치 명령을 알려 주는 에러입니다: ``codegen backend `llvm` is not installed; run `nabi component add codegen-llvm` ``. 컴포넌트는 `nabic`가 지원하는 모든 타깃을 컴파일하거나, 지원하지 않는 타깃을 알립니다(`E0129`).
 
 **커널 컴포넌트.** 컴포넌트는 일부 함수만 컴파일할 수도 있습니다. `codegen-mlir`은 라이브러리가 자기에게 표시한 함수를 컴파일하고, unit의 나머지는 선택된 코드 생성기가 맡습니다. `nabic`는 이런 함수를 따로 unit에 둡니다. 함수를 표시하는 방법은 아직 정하지 않았습니다.
 
-**찾기.** `nabic`는 자기 `bin/` 디렉터리(툴체인의 것, [9.2.19](../009-tools/902-aot-pipeline.md#9219-설치-레이아웃))에서 `nabic-codegen-<name>`을 실행합니다. `PATH`는 찾지 않습니다. 컴포넌트는 툴체인마다 설치하고, 버전은 툴체인의 버전과 같습니다.
+**찾기.** `nabic`는 자기 `bin/` 디렉터리(toolchain의 것, [9.2.19](../009-tools/902-aot-pipeline.md#9219-설치-레이아웃))에서 `nabic-codegen-<name>`을 실행합니다. `PATH`는 찾지 않습니다. 컴포넌트는 toolchain마다 설치하고, 버전은 toolchain의 버전과 같습니다.
 
 **실행.** 프로세스 하나가 unit 하나를 컴파일합니다.
 
@@ -219,7 +219,7 @@ nabic-codegen-<name> <unit>.nabimir -o <unit>.o
 | `2` | 사용법 에러, 또는 컴포넌트가 읽지 못하는 입력 형식 버전(두 버전을 모두 알립니다) |
 | `70` | 컴포넌트의 내부 에러 |
 
-**버전.** `nabic-codegen-<name> --version`은 첫 줄에 `nabic-codegen-<name> <version>`을, 그리고 읽는 입력 형식 버전을 알리는 `mir: <major>.<minor>` 줄을 출력합니다. `nabic`는 다른 툴체인 버전의 컴포넌트를 거부하고, 다시 설치하는 명령을 알려 주는 에러를 냅니다. 컴포넌트의 정체(버전 줄과 파일의 stamp, [9.4.4](../009-tools/904-nabihir-bytecode.md#944-헤더와-producer)의 `nabic`와 같은 방식)는 모든 unit의 키에 들어갑니다([9.2.16](../009-tools/902-aot-pipeline.md#코드-생성-단위)). 그래서 컴포넌트가 바뀌면 그것이 컴파일한 unit을 다시 컴파일합니다.
+**버전.** `nabic-codegen-<name> --version`은 첫 줄에 `nabic-codegen-<name> <version>`을, 그리고 읽는 입력 형식 버전을 알리는 `mir: <major>.<minor>` 줄을 출력합니다. `nabic`는 다른 toolchain 버전의 컴포넌트를 거부하고, 다시 설치하는 명령을 알려 주는 에러를 냅니다. 컴포넌트의 정체(버전 줄과 파일의 stamp, [9.4.4](../009-tools/904-nabihir-bytecode.md#944-헤더와-producer)의 `nabic`와 같은 방식)는 모든 unit의 키에 들어갑니다([9.2.16](../009-tools/902-aot-pipeline.md#코드-생성-단위)). 그래서 컴포넌트가 바뀌면 그것이 컴파일한 unit을 다시 컴파일합니다.
 
 ## 8.11.14. 검증
 
