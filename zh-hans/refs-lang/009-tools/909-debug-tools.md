@@ -348,6 +348,7 @@ nabic build --message-format=json
 | `E0146` | `type` | named `some` type used as its concrete type |
 | `E0147` | `lexical` | invisible character in code |
 | `E0148` | `lexical` | character that only looks like a token |
+| `E0149` | `type` | change a running program cannot take |
 
 `kind` 的取值有 `lexical`、`parse`、`resolve`、`visibility`、`module`、`type`、`pattern`、`handoff`（值的所有权和生存期：移交之后的使用，见[标准库 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync线程边界标记)；资源在被移动或关闭之后使用，或没有关闭，见[标准库 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop释放时的清理)；线程局部值保留到 `with` 之后；流视图在其流之外使用，见[标准库 2.23.1](../../refs-standard-libraries/200-core/223-io.md#2231-read)；`SliceMut` 在其列表调整大小之后使用，见[标准库 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可写视图)）、`meta`、`linkage`、`unsupported`、`internal`、`other` 和 `lint`。
 

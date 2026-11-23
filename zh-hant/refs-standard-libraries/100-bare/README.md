@@ -20,7 +20,7 @@ let p: CPtr<u8> = unsafe { alloc(layout) };    // null on failure
 
 ## 模組內容
 
-### 指標家族（5 種）
+### 指標家族（4 種）
 
 - [1.1. `Ptr<T>` / `ConstPtr<T>` / `ManyPtr<T>` / `CPtr<T>`：Zig 風格、以型別編碼數量](101-ptr.md)
 - [1.2. 強制轉型操作：`ptr_cast`、`align_cast`、`const_cast`、`reinterpret`](102-cast.md)
@@ -40,6 +40,8 @@ let p: CPtr<u8> = unsafe { alloc(layout) };    // null on failure
 - [1.7. extern "C" / `CStr` / `CString` / `CPtr`：C ABI 相容；C 型別、`Handle`、errno、寬字串、`Library`](107-ffi.md)
 - [1.8. WASM Component Model 介面（`ffi::wit`）](108-wit.md)
 - [1.10. Objective-C（`extern "objc"`、`ffi::objc`）](110-objc.md)
+
+沒有 1.9 節。這個編號從缺，Objective-C 保留 1.10，以免指向它的連結失效。
 
 ## 核心設計原則
 

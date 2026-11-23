@@ -2,7 +2,7 @@
 
 This is the formal specification of the Nabi programming language. It defines the language's **syntax** and **semantics** and provides the normative baseline that compilers and runtimes must follow.
 
-The reference date is 2026-10-23. The actual implementations of the compiler and the standard libraries live in separate repositories.
+The actual implementations of the compiler and the standard libraries live in separate repositories.
 
 ---
 

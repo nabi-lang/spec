@@ -361,7 +361,7 @@ trait Sync { }      // 공유 참조로 여러 스레드에서 읽어도 안전
   이 규칙 밖에 남는 것은 세 가지입니다. `unsafe` 안의 코드, 위의 인자 검사를 건너뛰는 함수 값이나 클로저로 하는 호출, 그리고 한 객체를 두 번 이상 내보내는 제너레이터를 모은 컬렉션의 원소를 하나씩 넘기는 경우입니다. 그런 컬렉션은 그 객체를 두 번 담는다고 보지 않습니다.
 
   넘김은 실행 중에도 복사합니다. 그래서 위 규칙이 놓치는 경로(와 `unsafe` 안의 코드)에서도, 넘긴 값이 값으로 닿는 컬렉션은 보낸 쪽과 새 소유자 사이에 공유되지 않습니다(예외는 아래에 적습니다). `Mutex::new`, `RwLock::new`, 가드의 `set`과 `update`, `send` / `try_send` / `send_async`, `task::spawn_blocking_with_arg`의 값, (클로저를 만들 때의) `[move x]` 캡처, 그리고 task, 스레드, `par` 스코프 작업의 결과(와 `try_scope`의 에러)는 값이 닿는 모든 컬렉션의 복사본을 새 소유자에게 줍니다. 복사는 struct, 튜플, 배열, enum, 합 타입의 구성 요소와 컬렉션의 원소를 깊이에 상관없이 따라갑니다. 단계마다 스택을 쓰지 않고 작업 목록으로 따라갑니다. 여러 번 닿는 컬렉션은 한 번만 복사하므로, 복사본에도 값의 공유 관계와 순환이 그대로 남습니다. 복사 대상은 `List`, `Dict`, `Deque`, `StrBuf`, `Slice`와 그 위에 만든 컬렉션, 그리고 `GcPtr`([1.6.3](../100-bare/106-gc-pin.md))입니다. 코루틴 future(`AsyncFuture`, `TryAsyncFuture`)는 자기 프레임을 따로 받습니다. 그 프레임에는 같은 복사로 만든, 캡처한 것의 복사본이 들어 있습니다. 이미 시작했거나 끝난 future는 넘길 수 없습니다. 프레임(이나 캡처한 future의 프레임)에 `[ref x]` 캡처가 있는 future도 넘길 수 없습니다. 넘기면 panic이 일어납니다([2.18.1](218-task.md#2181-핵심-api)). `Task`는 복사하지 않습니다. 대신 한 번 넘긴 뒤에는 그것을 `await`로 기다릴 때마다 결과의 복사본을 따로 받습니다([2.18.2](218-task.md#2182-taskt-타입)). 리스트와 그 버퍼를 보는 모든 뷰는 복사한 버퍼 하나를 계속 공유합니다. `str`의 바이트를 보는 뷰는 그 바이트만 복사합니다(바이트는 바뀔 수 없습니다). `update`는 가드가 이미 쥔 것을 그대로 두고, 클로저가 들여오는 것만 복사합니다. 보낸 쪽의 핸들은 그대로 둡니다. 그래서 위 규칙이 놓친 핸들은 다른 스레드가 쓰지 않는 객체를 가리킵니다. 에러를 던지는 send는 같은 값(호출자의 값이나 그 복사본)을 돌려줍니다. 복사에는 복사하는 양에 비례하는 시간과 메모리가 듭니다. GC 참조가 없는 일반 값이 연속해 있으면 메모리 복사 한 번으로 끝납니다. toolchain 내부용인 `core::marker::hand_over(x)`는 같은 복사본을 돌려줍니다. `xs.freeze()`는 복사하지 않습니다. 얼린 컬렉션이 저장 공간을 넘겨받고 `xs`는 비워 두며, 뷰가 있었던 리스트는 사본을 줍니다([2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s-읽기-전용-컬렉션)). 공유한 채로 두는 것은 `Sync`인 구성 요소(얼린 컬렉션 포함), `unsafe impl Send`가 있는 타입의 값(task, 파일, 소켓처럼 스스로 공유를 다룹니다), 제너레이터와 스트림(`Send`가 아니어서 넘기지 않습니다)입니다. `Mutex::new_unshared`(2.16.3)는 복사하지 않습니다. 가드에서 꺼낸 핸들(`get`, `update` 클로저의 인자)은 실행 중에 복사하지 않습니다. 대신 위 규칙이 그 핸들과 가드 자체를 `using` 블록 밖까지 따라갑니다. 모든 복사본, `return`, `yield`, 블록의 값, 블록 안에서 만든 코루틴의 프레임이 그 경로입니다.
-- 다음은 제외됩니다. `Cell<T>`, 원시 포인터(`Ptr<T>`, `ConstPtr<T>`, `CPtr<T>`), 맨 `any`와 바운드에 `Send` / `Sync`가 없는 `any Tr`, 바운드 없는 함수 타입, `[ref]` 캡처가 있는 클로저([refs-lang 4.6.9](../../refs-lang/004-functions/406-capture-semantics.md#469-병렬과-동시성-문맥의-추가-제약))입니다. `any Tr`은 바운드에 `Send`와 `Sync`가 모두 있을 때만 `Send`입니다. 클로저의 일반 캡처처럼 `any`의 사본은 그 박스를 공유하므로, 스레드를 건너는 `any` 안에는 컬렉션이 있을 수 없습니다. 이 밖의 예외는 각 타입의 장에서 정합니다.
+- 다음은 제외됩니다. `Cell<T>`, 원시 포인터(`Ptr<T>`, `ConstPtr<T>`, `ManyPtr<T>`, `CPtr<T>`), 맨 `any`와 바운드에 `Send` / `Sync`가 없는 `any Tr`, 바운드 없는 함수 타입, `[ref]` 캡처가 있는 클로저([refs-lang 4.6.9](../../refs-lang/004-functions/406-capture-semantics.md#469-병렬과-동시성-문맥의-추가-제약))입니다. `any Tr`은 바운드에 `Send`와 `Sync`가 모두 있을 때만 `Send`입니다. 클로저의 일반 캡처처럼 `any`의 사본은 그 박스를 공유하므로, 스레드를 건너는 `any` 안에는 컬렉션이 있을 수 없습니다. 이 밖의 예외는 각 타입의 장에서 정합니다.
 - 함수 타입은 `fn(..) -> R + Send`처럼 바운드를 적었을 때만 그 트레잇을 구현합니다([refs-lang 4.4](../../refs-lang/004-functions/404-function-type.md#send--sync-바운드)). `+ Send`만으로는 `Sync`가 되지 않습니다. 그 뒤의 클로저가 `Sync`가 아닌 `[move x]` 캡처를 가질 수 있기 때문입니다. 여러 스레드가 부르는 함수 값(`static`, `par::*`의 클로저)은 `+ Send + Sync`입니다.
 
 자동 구현이 맞지 않는 타입은 직접 선언합니다. 내부에 원시 포인터를 두지만 스레드 안전하게 감싼 타입은 `unsafe impl`로 직접 구현합니다(opt-in, 안전성은 작성자 책임). 구조상 자동 구현되지만 스레드 안전하지 않은 타입은 `impl !Send`로 구현을 끕니다(opt-out). `Cell<T>`의 제외도 이 방식으로 선언합니다.
@@ -375,6 +375,10 @@ impl<T> !Send for Cell<T> { }
 impl<T> !Sync for Cell<T> { }
 impl<T> !Send for Ptr<T> { }
 impl<T> !Sync for Ptr<T> { }
+impl<T> !Send for ConstPtr<T> { }
+impl<T> !Sync for ConstPtr<T> { }
+impl<T> !Send for ManyPtr<T> { }
+impl<T> !Sync for ManyPtr<T> { }
 impl<T> !Send for CPtr<T> { }
 impl<T> !Sync for CPtr<T> { }
 ```
@@ -450,7 +454,7 @@ trait Default {
 | `PartialOrd`  | 필드 선언 순서의 사전식 비교                | 모든 필드 `PartialOrd`, `PartialEq` |
 | `Ord`         | 필드 선언 순서의 사전식 비교                | `Eq`, `PartialOrd`도 derive/구현   |
 | `Hash`        | 선언 순서대로 각 필드의 `hash`. 열거형은 variant 번호를 먼저 씀 (쓰기는 정하지 않음) | 모든 필드 `Hash`                   |
-| `Error`       | 기본 `source()`로 구현한 `Error` ([2.14](214-error.md#deriveerror)) | `Display`와 `Debug`를 구현했거나 derive함 |
+| `Error`       | 기본 `source()`로 구현한 `Error` ([2.14.3](214-error.md#deriveerror)) | `Display`와 `Debug`를 구현했거나 derive함 |
 
 - `Display`는 derive로 구현할 수 없습니다. `#[display("..")]`가 f-string으로 구현합니다([2.10.14](210-fmt.md#21014-derive-정책-요약)).
 - `Eq` / `Ord`를 상위 트레잇 없이 derive로 구현하면 컴파일 에러입니다.

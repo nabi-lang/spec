@@ -19,9 +19,9 @@ The target of the ban is **hidden** dynamic dispatch. Writing a trait name direc
 
 So that core numeric loops in scientific and data code do not take on this cost unknowingly, Nabi does not allow a bare trait name as a type. Runtime polymorphism exists only where `any` is written. `any Trait` is allowed because its dynamic dispatch cost is visible in the syntax through the `any` keyword.
 
-## 2.12.3. When polymorphism is needed: three alternatives
+## 2.12.3. When polymorphism is needed: four alternatives
 
-Nabi provides three alternatives when polymorphism is needed.
+Nabi provides four alternatives when polymorphism is needed.
 
 ### 1. Sum types for a closed set of candidates
 
@@ -78,7 +78,7 @@ Use the following criteria to choose among the alternatives.
 | Candidates are decided only at runtime (e.g. plugins, heterogeneous collections) | `any Trait` |
 | Anything must be held, with no constraint                     | `any`       |
 
-In the third case, where polymorphism with types decided at runtime is needed, use `any Trait`. It incurs dynamic dispatch cost, but that cost is explicitly concentrated where `any` is written.
+When candidates are decided only at runtime, use `any Trait`. It incurs dynamic dispatch cost, but that cost is explicitly concentrated where `any` is written.
 
 ## 2.12.5. Supertraits and bound expressions are allowed
 
@@ -102,4 +102,4 @@ error[E0071]: trait `core::fmt::Display` cannot be used as a type directly
   = help: use `any Display` for a value of any type implementing it, or a generic parameter `<T: Display>`
 ```
 
-The help names two of the alternatives above; a sum type of the concrete types (`SomeType | OtherType`) is the third.
+The help names two of the alternatives above. The other two are a sum type of the concrete types (`SomeType | OtherType`) and, for a return type, `some Trait`.

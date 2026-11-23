@@ -20,7 +20,7 @@ The implicitly applied prelude does not include unsafe items. `bare::*` therefor
 
 ## Module contents
 
-### Pointer family (5 kinds)
+### Pointer family (4 kinds)
 
 - [1.1. `Ptr<T>` / `ConstPtr<T>` / `ManyPtr<T>` / `CPtr<T>` - Zig-style arity-encoded](101-ptr.md)
 - [1.2. cast operations - `ptr_cast`, `align_cast`, `const_cast`, `reinterpret`](102-cast.md)
@@ -40,6 +40,8 @@ The implicitly applied prelude does not include unsafe items. `bare::*` therefor
 - [1.7. extern "C" / `CStr` / `CString` / `CPtr` - C ABI compatibility; C types, `Handle`, errno, wide strings, `Library`](107-ffi.md)
 - [1.8. WASM Component Model interface (`ffi::wit`)](108-wit.md)
 - [1.10. Objective-C (`extern "objc"`, `ffi::objc`)](110-objc.md)
+
+There is no section 1.9. The number is unused, and Objective-C keeps 1.10 so that links to it stay valid.
 
 ## Core design principles
 

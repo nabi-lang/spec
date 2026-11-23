@@ -19,9 +19,9 @@ struct Holder { item: Iterator; }                // ERROR
 
 为了让科学计算和数据代码中的核心数值循环不会在不知情的情况下承担这种开销，Nabi 不允许把裸 trait 名用作类型。运行时多态只存在于写了 `any` 的地方。`any Trait` 之所以被允许，是因为它的动态分派开销通过 `any` 关键字在语法中可见。
 
-## 2.12.3. 需要多态时：三种替代方案
+## 2.12.3. 需要多态时：四种替代方案
 
-需要多态时，Nabi 提供三种替代方案。
+需要多态时，Nabi 提供四种替代方案。
 
 ### 1. 用和类型表示封闭的候选集合
 
@@ -78,7 +78,7 @@ pub fn evens(n: i32) -> some Iterator<Item = i32> { (0..n).filter(|x| x % 2 == 0
 | 候选只在运行时确定（例如插件、异构集合）                      | `any Trait` |
 | 必须持有任何东西，没有约束                                    | `any`       |
 
-在第三种情况下，即需要类型在运行时确定的多态时，使用 `any Trait`。它会产生动态分派开销，但这种开销被显式地集中在写了 `any` 的地方。
+当候选类型只能在运行时确定时，使用 `any Trait`。它会产生动态分派开销，但这种开销被显式地集中在写了 `any` 的地方。
 
 ## 2.12.5. 允许父 trait 和约束表达式
 
@@ -102,4 +102,4 @@ error[E0071]: trait `core::fmt::Display` cannot be used as a type directly
   = help: use `any Display` for a value of any type implementing it, or a generic parameter `<T: Display>`
 ```
 
-帮助信息给出了上述替代方案中的两种；由具体类型组成的和类型（`SomeType | OtherType`）是第三种。
+帮助信息给出了上述替代方案中的两种。另外两种是由具体类型组成的和类型（`SomeType | OtherType`），以及用于返回类型的 `some Trait`。

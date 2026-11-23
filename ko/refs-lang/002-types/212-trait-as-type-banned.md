@@ -19,9 +19,9 @@ struct Holder { item: Iterator; }                // ERROR
 
 과학 코드와 데이터 코드의 중심 수치 루프가 모르는 사이에 이 비용을 떠안으면 곤란합니다. 그래서 Nabi는 맨 트레잇 이름을 타입으로 쓰지 못하게 합니다. 런타임 다형성은 `any`라고 적은 자리에만 있습니다. `any Trait`은 동적 디스패치 비용이 `any` 키워드로 문법에 드러나므로 쓸 수 있습니다.
 
-## 2.12.3. 다형성이 필요할 때: 세 대안
+## 2.12.3. 다형성이 필요할 때: 네 대안
 
-다형성이 필요할 때 쓸 수 있는 대안은 세 가지입니다.
+다형성이 필요할 때 쓸 수 있는 대안은 네 가지입니다.
 
 ### 1. 닫힌 후보가 있으면 합 타입
 
@@ -78,7 +78,7 @@ pub fn evens(n: i32) -> some Iterator<Item = i32> { (0..n).filter(|x| x % 2 == 0
 | 후보가 런타임에만 정해짐 (예: 플러그인, 이종 컬렉션) | `any Trait` |
 | 어떤 제약도 없이 무엇이든 담아야 함                | `any`       |
 
-세 번째 경우처럼 런타임에 타입이 정해지는 다형성이 필요하면 `any Trait`을 씁니다. 동적 디스패치 비용이 들지만, 그 비용은 `any`라고 적은 자리에만 모여 드러납니다.
+후보가 런타임에야 정해지면 `any Trait`을 씁니다. 동적 디스패치 비용이 들지만, 그 비용은 `any`라고 적은 자리에만 모여 드러납니다.
 
 ## 2.12.5. 슈퍼트레잇과 바운드 표현은 허용
 
@@ -102,4 +102,4 @@ error[E0071]: trait `core::fmt::Display` cannot be used as a type directly
   = help: use `any Display` for a value of any type implementing it, or a generic parameter `<T: Display>`
 ```
 
-help는 앞에서 소개한 대안 중 둘을 알려 줍니다. 셋째 대안은 구체 타입들의 합 타입(`SomeType | OtherType`)입니다.
+help는 앞에서 소개한 대안 중 둘을 알려 줍니다. 나머지 둘은 구체 타입들의 합 타입(`SomeType | OtherType`)과, 반환 타입이라면 `some Trait`입니다.

@@ -361,7 +361,7 @@ trait Sync { }      // safe to read from multiple threads through shared referen
   这些规则之外的情况：`unsafe` 内部的代码；通过函数值或闭包的调用，它会跳过上面的实参检查；以及多次 yield 同一个对象的生成器，其结果被收集进一个集合，然后集合的元素被逐个交出。这样的集合不会被视为两次持有该对象。
 
   在运行时，每次交接还会复制，所以在上述规则遗漏的途径上（以及 `unsafe` 内部的代码中），交出的值按值触及的任何集合都不会在发送方和新所有者之间共享（例外列在下文）。`Mutex::new`、`RwLock::new`、守卫的 `set` 和 `update`、`send` / `try_send` / `send_async`、`task::spawn_blocking_with_arg` 的值、`[move x]` 捕获（在闭包创建时），以及任务、线程或 `par` 作用域作业的结果（和 `try_scope` 的错误），都会给新所有者一份该值触及的每个集合的副本：经由结构体、元组、数组、枚举和和类型的各部分，以及集合的元素，深度不限，使用工作列表而不是每层一个栈帧。被多次触及的集合只复制一次，所以副本保留了值的共享关系和环。被复制的有 `List`、`Dict`、`Deque`、`StrBuf`、`Slice` 以及建立在它们之上的集合，还有 `GcPtr`（[1.6.3](../100-bare/106-gc-pin.md)）。协程 future（`AsyncFuture`、`TryAsyncFuture`）得到自己的帧，其中持有在同一次复制中生成的、其捕获内容的副本；已经开始或已经完成的 future，或者其帧（或所捕获 future 的帧）带有 `[ref x]` 捕获的 future，不能被交出，交接会 panic（[2.18.1](218-task.md#2181-核心-api)）。`Task` 不会被复制，但一旦被交出，对它的每次 `await` 都会得到结果的一份独立副本（[2.18.2](218-task.md#2182-taskt-类型)）。列表及其缓冲区的每个视图继续共享同一个复制后的缓冲区；`str` 字节的视图只复制这些字节（它们不会改变）。`update` 保留守卫已持有的内容：只复制闭包带进来的内容。发送方的句柄保持原样：上述规则遗漏的句柄所指的对象不会被其他线程使用。抛出错误的发送会带回一个相等的值（调用者的值或其副本）。复制所花的时间和内存与复制的内容成正比；一段普通值（没有 GC 引用）只需一次内存复制。工具链内部的 `core::marker::hand_over(x)` 返回同样的副本。`xs.freeze()` 不复制：冻结后的集合接管存储并让 `xs` 变空，有视图的列表则给出一份副本（[2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s只读集合类型)）。保持共享的有：`Sync` 部分（包括冻结后的集合）、具有 `unsafe impl Send` 的类型的值（它们自己管理共享：任务、文件、套接字），以及生成器和流（不是 `Send`：它们永远不会被交出）。`Mutex::new_unshared`（2.16.3）不复制。从守卫中取出的句柄（`get`、`update` 闭包的实参）在运行时不复制：上述规则会追踪它以及守卫本身，追踪它们经由每一次复制、`return`、`yield`、块的值以及块内创建的协程帧离开 `using` 块的情况。
-- 以下类型被排除：`Cell<T>`、裸指针（`Ptr<T>`、`ConstPtr<T>`、`CPtr<T>`）、裸 `any` 以及约束中缺少 `Send` / `Sync` 的 `any Tr`（只有当约束同时含有 `Send` 和 `Sync` 时，`any Tr` 才是 `Send`：`any` 的各副本共享它的盒子，就像闭包的普通捕获被共享一样，所以跨线程的 `any` 中不能放集合）、不带约束的函数类型，以及带 `[ref]` 捕获的闭包（[refs-lang 4.6.9](../../refs-lang/004-functions/406-capture-semantics.md#469-并行与并发上下文中的附加约束)）。其他例外在各类型的章节中规定。
+- 以下类型被排除：`Cell<T>`、裸指针（`Ptr<T>`、`ConstPtr<T>`、`ManyPtr<T>`、`CPtr<T>`）、裸 `any` 以及约束中缺少 `Send` / `Sync` 的 `any Tr`（只有当约束同时含有 `Send` 和 `Sync` 时，`any Tr` 才是 `Send`：`any` 的各副本共享它的盒子，就像闭包的普通捕获被共享一样，所以跨线程的 `any` 中不能放集合）、不带约束的函数类型，以及带 `[ref]` 捕获的闭包（[refs-lang 4.6.9](../../refs-lang/004-functions/406-capture-semantics.md#469-并行与并发上下文中的附加约束)）。其他例外在各类型的章节中规定。
 - 只有写出约束时，函数类型才具有这些 trait，例如 `fn(..) -> R + Send`（[refs-lang 4.4](../../refs-lang/004-functions/404-function-type.md#send--sync-约束)）。只有 `+ Send` 并不会使它成为 `Sync`：它背后的闭包可能拥有一个非 `Sync` 的 `[move x]` 捕获。被多个线程调用的函数值（`static`、`par::*` 闭包）是 `+ Send + Sync`。
 
 自动实现不正确的类型直接声明。内部持有裸指针但以线程安全方式包装它的类型，用 `unsafe impl` 显式加入（安全性由作者负责）；按结构会自动实现但并非线程安全的类型，用 `impl !Send` 显式退出。`Cell<T>` 的排除就是这样声明的。
@@ -375,6 +375,10 @@ impl<T> !Send for Cell<T> { }
 impl<T> !Sync for Cell<T> { }
 impl<T> !Send for Ptr<T> { }
 impl<T> !Sync for Ptr<T> { }
+impl<T> !Send for ConstPtr<T> { }
+impl<T> !Sync for ConstPtr<T> { }
+impl<T> !Send for ManyPtr<T> { }
+impl<T> !Sync for ManyPtr<T> { }
 impl<T> !Send for CPtr<T> { }
 impl<T> !Sync for CPtr<T> { }
 ```
@@ -450,7 +454,7 @@ trait Default {
 | `PartialOrd`  | 按字段声明顺序的字典序比较                    | 每个字段都是 `PartialOrd`、`PartialEq` |
 | `Ord`         | 按字段声明顺序的字典序比较                    | 同时派生/实现了 `Eq`、`PartialOrd`     |
 | `Hash`        | 按声明顺序对每个字段 `hash`；枚举先写入其变体索引（写入内容未规定） | 每个字段都是 `Hash` |
-| `Error`       | 带默认 `source()` 的 `Error`（[2.14](214-error.md#deriveerror)） | 已实现或派生 `Display` 和 `Debug` |
+| `Error`       | 带默认 `source()` 的 `Error`（[2.14.3](214-error.md#deriveerror)） | 已实现或派生 `Display` 和 `Debug` |
 
 - `Display` 不能派生；`#[display("..")]` 根据 f-string 编写它（[2.10.14](210-fmt.md#21014-派生策略小结)）。
 - 派生 `Eq` / `Ord` 而不派生其超 trait 是编译错误。

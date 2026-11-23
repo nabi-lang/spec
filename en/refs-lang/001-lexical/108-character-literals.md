@@ -48,9 +48,9 @@ b'\xFF'       // 255u8
 
 This form consists of the `b` prefix and a pair of single quotes, with the contents and escapes of `c'x'`: one ASCII character written directly, or an escape whose value is at most `\xFF`. A non-ASCII character such as `b'é'` is a lexical error whose message says to write `\xHH`. The literal is an integer literal of type `u8` with the byte's value, so it works wherever a `u8` does, patterns and pattern ranges included (`b'0'..=b'9' => ..`). It is the byte counterpart of the `b"..."` byte string ([1.7](107-string-literals.md)).
 
-## 1.8.2. Why the two kinds are separate
+## 1.8.2. Why the kinds are separate
 
-Rather than assigning two meanings to the same token form (`'X'`), the two are separated explicitly by a prefix. A character in the Unicode sense and a single byte of the C [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) have different semantics; lumping them under one notation would leave no way to state intent when calling compatible functions. The `c` prefix also leaves a visible signal that the code "touches FFI".
+Rather than assigning several meanings to the same token form (`'X'`), the kinds are separated explicitly by a prefix. A character in the Unicode sense and a single byte (`c'A'` for the C [ABI](../000-meta/007-glossary.md#abi-application-binary-interface) or `b'A'` for raw data) have different semantics; lumping them under one notation would leave no way to state intent when calling compatible functions. The `c` prefix also leaves a visible signal that the code "touches FFI".
 
 ## 1.8.3. Mandatory length check
 

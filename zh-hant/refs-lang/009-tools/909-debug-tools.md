@@ -348,6 +348,7 @@ nabic build --message-format=json
 | `E0146` | `type` | named `some` type used as its concrete type |
 | `E0147` | `lexical` | invisible character in code |
 | `E0148` | `lexical` | character that only looks like a token |
+| `E0149` | `type` | change a running program cannot take |
 
 `kind` 的值有 `lexical`、`parse`、`resolve`、`visibility`、`module`、`type`、`pattern`、`handoff`（值的所有權與生命週期：交出之後的使用，[stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync執行緒邊界標記)；被移動或關閉之後使用的資源，或未關閉的資源，[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop釋放時的清理)；保留超過 `with` 的執行緒區域值；超過其串流使用的串流視圖，[stdlib 2.23.1](../../refs-standard-libraries/200-core/223-io.md#2231-read)；在其串列調整大小之後使用的 `SliceMut`，[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可寫入檢視)）、`meta`、`linkage`、`unsupported`、`internal`、`other` 與 `lint`。
 

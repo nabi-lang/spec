@@ -19,9 +19,9 @@ struct Holder { item: Iterator; }                // ERROR
 
 為了讓科學與資料程式碼中的核心數值迴圈不會在不知情的情況下承擔這種成本，Nabi 不允許把單獨的 trait 名稱當作型別。執行時多型只存在於寫了 `any` 之處。`any Trait` 之所以被允許，是因為它的動態分派成本透過 `any` 關鍵字在語法中可見。
 
-## 2.12.3. 需要多型時：三種替代方案
+## 2.12.3. 需要多型時：四種替代方案
 
-需要多型時，Nabi 提供三種替代方案。
+需要多型時，Nabi 提供四種替代方案。
 
 ### 1. 封閉的候選集合使用和型別
 
@@ -78,7 +78,7 @@ pub fn evens(n: i32) -> some Iterator<Item = i32> { (0..n).filter(|x| x % 2 == 0
 | 候選只在執行時決定（例如外掛、異質集合）                      | `any Trait` |
 | 必須容納任何東西，沒有約束                                    | `any`       |
 
-在需要以執行時決定之型別實現多型的第三種情況下，請使用 `any Trait`。它會產生動態分派成本，但該成本明確地集中在寫了 `any` 之處。
+當候選型別只能在執行時決定時，請使用 `any Trait`。它會產生動態分派成本，但該成本明確地集中在寫了 `any` 之處。
 
 ## 2.12.5. 父 trait 與約束運算式是允許的
 
@@ -102,4 +102,4 @@ error[E0071]: trait `core::fmt::Display` cannot be used as a type directly
   = help: use `any Display` for a value of any type implementing it, or a generic parameter `<T: Display>`
 ```
 
-說明列出上述替代方案中的兩個；由具體型別組成的和型別（`SomeType | OtherType`）是第三個。
+說明列出上述替代方案中的兩個。另外兩個是由具體型別組成的和型別（`SomeType | OtherType`），以及用於回傳型別的 `some Trait`。

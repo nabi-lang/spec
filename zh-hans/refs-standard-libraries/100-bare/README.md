@@ -20,7 +20,7 @@ let p: CPtr<u8> = unsafe { alloc(layout) };    // null on failure
 
 ## 模块目录
 
-### 指针家族（5 种）
+### 指针家族（4 种）
 
 - [1.1. `Ptr<T>` / `ConstPtr<T>` / `ManyPtr<T>` / `CPtr<T>`：Zig 式数量编码](101-ptr.md)
 - [1.2. 强制转换操作：`ptr_cast`、`align_cast`、`const_cast`、`reinterpret`](102-cast.md)
@@ -40,6 +40,8 @@ let p: CPtr<u8> = unsafe { alloc(layout) };    // null on failure
 - [1.7. extern "C" / `CStr` / `CString` / `CPtr`：C ABI 兼容；C 类型、`Handle`、errno、宽字符串、`Library`](107-ffi.md)
 - [1.8. WASM 组件模型接口（`ffi::wit`）](108-wit.md)
 - [1.10. Objective-C（`extern "objc"`、`ffi::objc`）](110-objc.md)
+
+没有 1.9 节。这个编号空缺，Objective-C 保留 1.10，以免指向它的链接失效。
 
 ## 核心设计原则
 

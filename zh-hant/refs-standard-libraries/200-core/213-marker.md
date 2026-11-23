@@ -361,7 +361,7 @@ trait Sync { }      // safe to read from multiple threads through shared referen
   不在這些規則範圍內的有：`unsafe` 內的程式碼；透過函式值或閉包的呼叫，它會跳過上述的引數檢查；以及多次 yield 同一個物件、被收集到集合中、之後再把該集合的元素逐一交出的產生器。這種集合不會被視為持有該物件兩次。
 
   在執行時，每次交接也都會複製，因此在上述規則漏掉的途徑上（以及 `unsafe` 內的程式碼中），被交出的值以值方式到達的任何集合，都不會最終由傳送端與新擁有者共用（例外列於下文）。`Mutex::new`、`RwLock::new`、guard 的 `set` 和 `update`、`send` / `try_send` / `send_async`、`task::spawn_blocking_with_arg` 的值、`[move x]` 擷取（在建立閉包時），以及任務、執行緒或 `par` 作用域工作的結果（還有 `try_scope` 的錯誤），會給新擁有者一份該值所到達之每個集合的副本：經由結構、元組、陣列、列舉和和型別的各部分，以及集合的元素，深度不限，使用工作清單而非每層一個堆疊框架。被到達多次的集合只複製一次，因此副本保留了值的共用關係與環狀參考。被複製的有 `List`、`Dict`、`Deque`、`StrBuf`、`Slice` 以及建立在它們之上的集合型別，還有 `GcPtr`（[1.6.3](../100-bare/106-gc-pin.md)）。協程 future（`AsyncFuture`、`TryAsyncFuture`）會得到自己的框架，其中持有在同一次複製中做出的、它所擷取之物的副本；已經開始或已經完成的 future，或其框架（或所擷取之 future 的框架）含有 `[ref x]` 擷取的 future，不能交出，交接時會觸發 panic（[2.18.1](218-task.md#2181-核心-api)）。`Task` 不會被複製，但一旦交出，它的每次 `await` 都會得到結果的獨立副本（[2.18.2](218-task.md#2182-taskt-型別)）。串列與其緩衝區的每個檢視繼續共用同一個被複製的緩衝區；`str` 位元組的檢視只複製那些位元組（它們不會改變）。`update` 保留 guard 已經持有的東西：只複製閉包帶進來的部分。傳送端的控制代碼維持原樣：上述規則遺漏的控制代碼，指向的是沒有其他執行緒使用的物件。擲回錯誤的送出會帶回一個相等的值（呼叫端的值或其副本）。複製所花的時間與記憶體與複製的量成正比；一段連續的單純值（沒有 GC 參考）只是一次記憶體複製。工具鏈內部的 `core::marker::hand_over(x)` 回傳相同的副本。`xs.freeze()` 不會複製：凍結後的集合接管儲存空間並讓 `xs` 變空，而帶有檢視的串列會給出副本（[2.9.7b](209-collections.md#297b-frozenlistt--frozendictk-v-s--frozensett-s唯讀集合型別)）。保持共用的有：`Sync` 部分（包括凍結的集合型別）、具有 `unsafe impl Send` 之型別的值（它們自行管理共用：任務、檔案、通訊端），以及產生器和串流（不是 `Send`：它們永遠不會被交出）。`Mutex::new_unshared`（2.16.3）不會複製。從 guard 取出的控制代碼（`get`、`update` 的閉包引數）在執行時不會被複製：上述規則會追蹤它以及 guard 本身，經過每個副本、`return`、`yield`、區塊的值以及在區塊內建立之協程的框架，一直追到 `using` 區塊之外。
-- 以下排除在外：`Cell<T>`、原始指標（`Ptr<T>`、`ConstPtr<T>`、`CPtr<T>`）、單獨的 `any` 以及約束缺少 `Send` / `Sync` 的 `any Tr`（只有當約束同時具有 `Send` 和 `Sync` 時，`any Tr` 才是 `Send`：`any` 的副本共用其 box，就像閉包的一般擷取被共用一樣，因此跨執行緒的 `any` 之中不得有任何集合）、沒有約束的函式型別，以及帶有 `[ref]` 擷取的閉包（[refs-lang 4.6.9](../../refs-lang/004-functions/406-capture-semantics.md#469-平行與並行上下文中的額外限制)）。其他例外規定在各型別的章節中。
+- 以下排除在外：`Cell<T>`、原始指標（`Ptr<T>`、`ConstPtr<T>`、`ManyPtr<T>`、`CPtr<T>`）、單獨的 `any` 以及約束缺少 `Send` / `Sync` 的 `any Tr`（只有當約束同時具有 `Send` 和 `Sync` 時，`any Tr` 才是 `Send`：`any` 的副本共用其 box，就像閉包的一般擷取被共用一樣，因此跨執行緒的 `any` 之中不得有任何集合）、沒有約束的函式型別，以及帶有 `[ref]` 擷取的閉包（[refs-lang 4.6.9](../../refs-lang/004-functions/406-capture-semantics.md#469-平行與並行上下文中的額外限制)）。其他例外規定在各型別的章節中。
 - 函式型別只有在寫出約束時才具有這些 trait，例如 `fn(..) -> R + Send`（[refs-lang 4.4](../../refs-lang/004-functions/404-function-type.md#send--sync-約束)）。單獨的 `+ Send` 不會讓它成為 `Sync`：其背後的閉包可能擁有非 `Sync` 的 `[move x]` 擷取。由多個執行緒呼叫的函式值（`static`、`par::*` 閉包）是 `+ Send + Sync`。
 
 自動實作不正確的型別會直接宣告。內部持有原始指標、但以執行緒安全方式包裝它的型別，以 `unsafe impl` 選擇性加入（安全性由作者負責）；在結構上會被自動實作、但並非執行緒安全的型別，以 `impl !Send` 選擇退出。`Cell<T>` 的排除就是以這種方式宣告的。
@@ -375,6 +375,10 @@ impl<T> !Send for Cell<T> { }
 impl<T> !Sync for Cell<T> { }
 impl<T> !Send for Ptr<T> { }
 impl<T> !Sync for Ptr<T> { }
+impl<T> !Send for ConstPtr<T> { }
+impl<T> !Sync for ConstPtr<T> { }
+impl<T> !Send for ManyPtr<T> { }
+impl<T> !Sync for ManyPtr<T> { }
 impl<T> !Send for CPtr<T> { }
 impl<T> !Sync for CPtr<T> { }
 ```
@@ -450,7 +454,7 @@ trait Default {
 | `PartialOrd`  | 依欄位宣告順序的字典序比較 | 每個欄位都是 `PartialOrd`、`PartialEq` |
 | `Ord`         | 依欄位宣告順序的字典序比較 | 同時衍生 / 實作 `Eq`、`PartialOrd` |
 | `Hash`        | 依宣告順序對每個欄位 `hash`；列舉先寫入其變體索引（寫入內容未規定） | 每個欄位都是 `Hash` |
-| `Error`       | 帶有預設 `source()` 的 `Error`（[2.14](214-error.md#deriveerror)） | 已實作或衍生 `Display` 和 `Debug` |
+| `Error`       | 帶有預設 `source()` 的 `Error`（[2.14.3](214-error.md#deriveerror)） | 已實作或衍生 `Display` 和 `Debug` |
 
 - `Display` 不能衍生；`#[display("..")]` 以 f-string 寫出它（[2.10.14](210-fmt.md#21014-衍生政策摘要)）。
 - 衍生 `Eq` / `Ord` 而沒有其父 trait 是編譯錯誤。

@@ -20,7 +20,7 @@ let p: CPtr<u8> = unsafe { alloc(layout) };    // 실패 시 null
 
 ## 모듈 목차
 
-### 포인터 계열(5종)
+### 포인터 계열(4종)
 
 - [1.1. `Ptr<T>` / `ConstPtr<T>` / `ManyPtr<T>` / `CPtr<T>` - Zig 식 arity-encoded](101-ptr.md)
 - [1.2. cast 연산 - `ptr_cast`, `align_cast`, `const_cast`, `reinterpret`](102-cast.md)
@@ -40,6 +40,8 @@ let p: CPtr<u8> = unsafe { alloc(layout) };    // 실패 시 null
 - [1.7. extern "C" / `CStr` / `CString` / `CPtr` - C ABI 호환; C 타입, `Handle`, errno, wide 문자열, `Library`](107-ffi.md)
 - [1.8. WASM Component Model 인터페이스 (`ffi::wit`)](108-wit.md)
 - [1.10. Objective-C (`extern "objc"`, `ffi::objc`)](110-objc.md)
+
+1.9절은 없습니다. 이 번호는 비어 있고, Objective-C는 기존 링크가 깨지지 않도록 1.10을 유지합니다.
 
 ## 핵심 설계 원칙
 

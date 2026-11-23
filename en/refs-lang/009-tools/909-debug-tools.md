@@ -348,6 +348,7 @@ The titles are written exactly as `nabic --explain` prints them.
 | `E0146` | `type` | named `some` type used as its concrete type |
 | `E0147` | `lexical` | invisible character in code |
 | `E0148` | `lexical` | character that only looks like a token |
+| `E0149` | `type` | change a running program cannot take |
 
 The `kind` values are `lexical`, `parse`, `resolve`, `visibility`, `module`, `type`, `pattern`, `handoff` (ownership and lifetime of values: use after a hand-off, [stdlib 2.13.9](../../refs-standard-libraries/200-core/213-marker.md#2139-send--sync---thread-boundary-markers); a resource used after it was moved or closed, or not closed, [stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release); a thread-local value kept past `with`; a stream view used past its stream, [stdlib 2.23.1](../../refs-standard-libraries/200-core/223-io.md#2231-read); a `SliceMut` used after its list was resized, [stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt---writable-view)), `meta`, `linkage`, `unsupported`, `internal`, `other` and `lint`.
 
