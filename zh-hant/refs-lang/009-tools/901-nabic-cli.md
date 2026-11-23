@@ -66,7 +66,7 @@ nabic build [path]
 
 `[path]` 遵循上述的套件選擇規則。輸出放在 [9.2.15](902-aot-pipeline.md#9215-輸出) 中依設定檔區分的 `target/` 內。`src/main.nabi` 產生 `target/<profile>/<name>`；`src/lib.nabi` 產生 `target/<profile>/lib<name>.a` 以及介面 `target/<profile>/<name>.nabihir`（[9.4](904-nabihir-bytecode.md)）；兩者都有的套件兩者都產生。`-O2` / `-O3` / `-Os`（包括 `--release`）的設定檔是 `release`，其他是 `debug`；有 `--target=<target>` 時目錄是 `target/<target>/<profile>/`。若設定了 `--target-dir=<dir>` 或 `NABI_TARGET_DIR`，則改用該目錄而非 `target/`。
 
-單獨的檔案（[4.16.8](../004-functions/416-entry-point.md#4168-單一檔案執行)）會在暫存目錄中以匿名套件建置，因此不會在檔案旁邊建立 `target/`，而其執行檔會以其主檔名加上目標的執行檔後綴複製到檔案旁邊（`hello.nabi` 產生 `hello`，在 Windows 上是 `hello.exe`），除非 `-o` 指定了另一個檔案。若該路徑上已有一個不是該腳本先前之建置所寫出的檔案，就不會動它：建置失敗，並提示 `-o <file>`。
+單獨的檔案（[4.16.8](../004-functions/416-entry-point.md#4168-單一檔案執行)）會在暫存目錄中以匿名套件建置，因此不會在檔案旁邊建立 `target/`，而其執行檔會以其主檔名加上目標的執行檔後綴複製到檔案旁邊（`hello.nabi` 產生 `hello`，在 Windows 上是 `hello.exe`），除非 `-o` 指定了另一個檔案。若該路徑上已有一個不是該指令碼先前之建置所寫出的檔案，就不會動它：建置失敗，並提示 `-o <file>`。
 
 選項：
 
@@ -338,7 +338,7 @@ sysroot 不來自 `NABI_HOME`：它相對於執行檔。`nabic` 讀取 `NABI_HOM
 | `NABI_CC`          | 選用的 C 編譯器驅動程式，取代 `nabic` 的連結器進行最終連結（[9.2.14](902-aot-pipeline.md#9214-連結執行檔)） |
 | `NABI_VERBOSE`     | 等同於 `--verbose`                                                                       |
 | `NABI_TIME_PASSES` | 為 `1` 時，在 stderr 上印出各階段的實際耗時（[9.9.5](909-debug-tools.md#nabi_time_passes)） |
-| `__NABI_ENV`、`__NABI_ENV_LIBS` | 當 `nabi` 從某個環境執行腳本時由它設定（內部用）：環境的名稱，以及安裝在那裡、以逗號分隔的函式庫。使用其中之一卻未宣告它的腳本會得到指出它的提示 |
+| `__NABI_ENV`、`__NABI_ENV_LIBS` | 當 `nabi` 從某個環境執行指令碼時由它設定（內部用）：環境的名稱，以及安裝在那裡、以逗號分隔的函式庫。使用其中之一卻未宣告它的指令碼會得到指出它的提示 |
 | `__NABI_CLI`       | 當 `nabi` 執行 `nabic` 時由 `nabi` 設為 `nabi`（內部用）：用法錯誤（9.1.6）、`--help` 以及錯誤與警告行的 `nabic:` 前綴會寫 `nabi`，而不是 `nabic` |
 | `NABI_TARGET_DIR`  | `target/` 的位置（預設：在套件內）                                                       |
 | `NABI_INCREMENTAL` | 前端保存套件之剖析結果與降階後主體的位置（預設 `target/<profile>/incremental/`；`0`：不保存）；函式庫所收集的項目保存在 `lib/nabi-cache/library/`（[9.2.16](902-aot-pipeline.md#9216-增量建置)） |
@@ -437,7 +437,7 @@ nabic build --message-format=json
 
 ## 9.1.9. 標準輸入
 
-在引數位置寫 `-`，如 `nabic check -`，表示標準輸入，供管道或腳本使用。來自標準輸入的原始碼會被當作匿名可執行套件的 `main.nabi` 檢查。
+在引數位置寫 `-`，如 `nabic check -`，表示標準輸入，供管道或指令碼使用。來自標準輸入的原始碼會被當作匿名可執行套件的 `main.nabi` 檢查。
 
 ## 9.1.10. 與外部工具的相容性
 
