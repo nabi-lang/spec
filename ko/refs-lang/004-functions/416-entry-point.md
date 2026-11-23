@@ -12,10 +12,10 @@
 | top-level 문      | top-level 문들을 본체로 하는 **암묵 `main`**   | 스크립트, 예제, 짧은 프로그램  |
 
 ```ebnf
-main_file   ::= item* fn_main item*            // 형태 1: 명시 main
-              | (item | top_stmt)*             // 형태 2: top-level 문 (fn main 없음)
+main_file   ::= item* fn_main item*            // form 1: explicit main
+              | (item | top_stmt)*             // form 2: top-level statements (no fn main)
 top_stmt    ::= let_stmt | let_else_stmt | expr ";" | block_like_expr ";"?   // 3.9.1
-module_file ::= item*                          // lib.nabi 및 main.nabi 가 아닌 모든 모듈 파일
+module_file ::= item*                          // lib.nabi and every module file other than main.nabi
 ```
 
 `item`은 [모듈 안의 항목](../005-modules/504-modules.md#547-모듈-안의-항목)입니다(`fn`, `struct`, `enum`, `trait`, `impl`, `const`, `static`, `mod`, `use` 등). `let_stmt` / `let_else_stmt` / `expr ";"`은 [블록 표현식](../003-expressions/309-block-expressions.md)의 문장과 같습니다. 제어 흐름(`if`, `match`, `for`, `while`, `loop`, `try`)은 모두 식이므로 `expr ";"`에 들어갑니다. 함수 본체와 달리 종결자 없는 마지막 식(`tail_expr`)은 두지 않습니다. 암묵 `main`은 값을 반환하지 않기 때문입니다. 항목만 있고 문장도 `fn main`도 없는 `main.nabi`의 암묵 `main`은 비어 있습니다. 다만 WIT를 내보내는 패키지는 예외입니다. 그 패키지는 진입점 없는 reactor입니다([stdlib 1.8.2](../../refs-standard-libraries/100-bare/108-wit.md#export)).

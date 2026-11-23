@@ -121,7 +121,7 @@ poll을 더 두는 것은 괜찮습니다. 벡터화한 루프 안에는 poll이
 ## 8.11.8. C로 가는 호출과 C에서 오는 호출
 
 - **C로.** 심볼이 `nabi_`로 시작하지 않는 `extern "C"` 함수 호출마다 앞뒤를 감쌉니다. 앞에서는 `mutator_state`(`nabi_tls + 10p+9`)에 `2`(PARKED)를 sequentially consistent하게 저장하고, `yield_flag`를 읽어 0이 아니면 `nabi_enter_native()`를 부릅니다. 뒤에서는 `0`(RUNNING)을 저장하고, 같은 읽기를 하고, 0이 아니면 `nabi_leave_native()`를 부릅니다([8.4.10](804-safepoint.md#8410-네이티브-호출)). 호출자의 루트는 호출 내내 등록된 채로 있습니다.
-- **C에서.** `extern "C"` 정의에는 C 진입점(`<symbol>.c` 또는 export 이름)이 있습니다. C 인자를 받고, `nabi_native_reenter()`를 부르고(런타임이 모르는 스레드면 붙이는 일도 합니다, [8.3.8](803-tls-slots.md#838-컴파일러-출력-형식)), 이 스레드의 `nabi_tls` 주소와 함께 본문을 부르고, `nabi_native_resume(<reenter가 돌려준 값>)`을 부르고, C 방식으로 돌아갑니다. wasm32에서는 export한 함수이면 먼저 `nabi_init_once()`를 부릅니다.
+- **C에서.** `extern "C"` 정의에는 C 진입점(`<symbol>.c` 또는 export 이름)이 있습니다. C 인자를 받고, `nabi_native_reenter()`를 부르고(런타임이 모르는 스레드면 붙이는 일도 합니다, [8.3.8](803-tls-slots.md#838-컴파일러-출력-형식)), 이 스레드의 `nabi_tls` 주소와 함께 본문을 부르고, `nabi_native_resume(<what reenter returned>)`을 부르고, C 방식으로 돌아갑니다. wasm32에서는 export한 함수이면 먼저 `nabi_init_once()`를 부릅니다.
 - `#[no_safepoint]` 런타임 함수와 `nabi_*` 심볼의 호출은 감싸지 않습니다.
 
 ## 8.11.9. 스레드 로컬 접근

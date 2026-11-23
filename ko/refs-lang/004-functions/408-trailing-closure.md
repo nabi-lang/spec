@@ -13,8 +13,8 @@ trailing_closure ::= ("|" closure_params? "|" ("->" type)?)? block
 ```
 
 ```nabi
-함수(인자들) |매개변수| { 본체 }
-함수(인자들) { 본체 }            // 0-매개변수 단축
+function(args) |params| { body }
+function(args) { body }            // 0-매개변수 단축
 ```
 
 클로저는 호출 괄호 바로 뒤에 옵니다. 본체는 [블록 표현식](../003-expressions/309-block-expressions.md)의 블록입니다.
@@ -55,7 +55,7 @@ pairs.for_each |k, v| { print(f"{k} {v}") };
 `xs.iter().map |x| { .. }`처럼 호출 괄호 없이 클로저를 붙이는 형태는 다음 조건에서만 트레일링 클로저입니다.
 
 - 바로 앞이 경로(`thread::spawn`, `f`)이거나 멤버 이름(`.map`)입니다.
-- 뒤에 `|매개변수|`, 선택적 `-> R`, `{`가 이어집니다. 이 모양이 아니면 `|`는 비트 OR입니다.
+- 뒤에 `|params|`, 선택적 `-> R`, `{`가 이어집니다. 이 모양이 아니면 `|`는 비트 OR입니다.
 - `||`는 언제나 논리 OR입니다. 매개변수 없는 클로저는 `{ body }` 단축으로 씁니다.
 - `if` / `while` / `match` / `for` / `using`의 머리(조건, scrutinee, 순회할 식, `using` 초기화 식) 안에서는 괄호 없는 트레일링 클로저와 `{ body }` 단축이 꺼집니다. 그 자리의 `{`는 본체 블록을 엽니다. 머리에서 클로저가 필요하면 괄호 안에 씁니다(`if xs.iter().any(|x| { x > 0 }) { .. }`).
 

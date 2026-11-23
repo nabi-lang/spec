@@ -49,11 +49,11 @@ template_token  ::= "@" identifier
 | `@Self.has_derive_key(k)`                                | 타입의 `#[attr(..)]`에 키 `k`가 있는지 (부울) | 6.9.6 |
 | `@item`, `@item.name` / `.params` / `.return_type` / `.body` | 부착 대상 항목과 그 부분 (속성 정의 전용) | 6.9.7 |
 | `@attribute`                                             | 사용처의 속성 인자 (속성 정의 전용)         | 6.9.7 |
-| `<이름 토큰>.as_str()`                                   | 이름의 문자열 리터럴                        | 6.9.3 |
+| `<name token>.as_str()`                                   | 이름의 문자열 리터럴                        | 6.9.3 |
 | `@use_site(path)`                                        | 메타 블록을 쓴 곳에서 찾는 `path`           | 6.9.9 |
 | `@concat(a, @Self.name, ..)`                             | 이름, 인덱스 토큰, 문자열을 이은 식별자 하나 | 6.9.8 |
 
-목록에 없는 `@이름`은 에러입니다. `@where_for_fields`는 예약된 이름이고, 이것도 쓰면 에러입니다.
+목록에 없는 `@name`은 에러입니다. `@where_for_fields`는 예약된 이름이고, 이것도 쓰면 에러입니다.
 
 ## 6.9.2. 타입 컨텍스트
 
@@ -195,7 +195,7 @@ match self {
 
 ### `@variant.index`, `@field.index`, `@field.binding`, `@Self.pattern`
 
-`@variant.index`와 `@field.index`는 현재 변형과 필드의 선언 순서상 위치이고, 정수 리터럴입니다. `c.@field.index.push(self.@field)`는 필드의 튜플 열에 닿습니다. `@for_fields` / `@for_variant_fields` 밖의 `@field` 토큰은 에러이며, `@for_fields { .. }` 안에 넣으라고 알려 줍니다. `@field.binding`은 현재 필드의 값을 담을 지역 이름입니다. struct에서는 `@Self.pattern`이 그 지역 변수들로 struct를 만듭니다(`Name { a: <a의 이름>, .. }`, `Name(..)`, `Name`). variant 안에서는 `@variant.pattern`이 묶는 이름입니다.
+`@variant.index`와 `@field.index`는 현재 변형과 필드의 선언 순서상 위치이고, 정수 리터럴입니다. `c.@field.index.push(self.@field)`는 필드의 튜플 열에 닿습니다. `@for_fields` / `@for_variant_fields` 밖의 `@field` 토큰은 에러이며, `@for_fields { .. }` 안에 넣으라고 알려 줍니다. `@field.binding`은 현재 필드의 값을 담을 지역 이름입니다. struct에서는 `@Self.pattern`이 그 지역 변수들로 struct를 만듭니다(`Name { a: <a's binding>, .. }`, `Name(..)`, `Name`). variant 안에서는 `@variant.pattern`이 묶는 이름입니다.
 
 ```nabi
 @for_fields {
@@ -404,7 +404,7 @@ fn run() { ... }
 
 ### `@rep` / `@for` 반복
 
-`@rep[sep = ",", trailing] { <하위 패턴> }`은 하위 패턴을 0회 이상 매칭합니다. 그 안에서 캡처한 메타변수는 시퀀스를 바인딩합니다. `@for @name { <본체> }`는 `@for_fields`([6.9.3](#693-필드-반복))와 같은 반복자이고, 여기서는 그 시퀀스를 돕니다. 한 `@rep`의 메타변수는 보조를 맞춰 함께 돌고, 길이가 같아야 합니다. `@rep`과 `@for`는 중첩할 수 있습니다.
+`@rep[sep = ",", trailing] { <하위 패턴> }`은 하위 패턴을 0회 이상 매칭합니다. 그 안에서 캡처한 메타변수는 시퀀스를 바인딩합니다. `@for @name { <body> }`는 `@for_fields`([6.9.3](#693-필드-반복))와 같은 반복자이고, 여기서는 그 시퀀스를 돕니다. 한 `@rep`의 메타변수는 보조를 맞춰 함께 돌고, 길이가 같아야 합니다. `@rep`과 `@for`는 중첩할 수 있습니다.
 
 ### `@concat(..)` 이름 합성
 

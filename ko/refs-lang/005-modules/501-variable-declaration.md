@@ -7,7 +7,7 @@
 ```
 let_stmt    ::= "let" let_lhs (":" type_expr)? "=" expr ";"
 let_lhs     ::= identifier
-              | irrefutable_pattern    // tuple / struct destructure (5.1.11 참조)
+              | irrefutable_pattern    // tuple / struct destructure (see 5.1.11)
 ```
 
 가장 흔한 형태는 단일 식별자입니다(`let x = ...`). 좌변에 반증 불가능 패턴(5.1.11)을 두면 [분해 대입(destructuring)](../003-expressions/315-destructuring.md)이 됩니다. `let-else` 형태([let-else](../003-expressions/316-let-else.md))는 별도 문법입니다.
@@ -19,7 +19,7 @@ let z;                            // ERROR: 초기값 없음
 let z: i32;                        // ERROR: 초기값 없음
 ```
 
-기본 형태는 `let`, 이름, 선택적인 `: 타입`, 그리고 `=`와 초기값 순서입니다. 초기값은 꼭 있어야 합니다. 초기화되지 않은 변수는 없습니다. 타입을 명시하면 그 타입의 정적 슬롯이 되고, 명시하지 않으면 초기값에서 추론한 타입의 정적 슬롯이 됩니다(5.1.7). [`any` 슬롯](../002-types/202-any-slot.md)은 `: any`를 명시할 때만 생깁니다.
+기본 형태는 `let`, 이름, 선택적인 `: type`, 그리고 `=`와 초기값 순서입니다. 초기값은 꼭 있어야 합니다. 초기화되지 않은 변수는 없습니다. 타입을 명시하면 그 타입의 정적 슬롯이 되고, 명시하지 않으면 초기값에서 추론한 타입의 정적 슬롯이 됩니다(5.1.7). [`any` 슬롯](../002-types/202-any-slot.md)은 `: any`를 명시할 때만 생깁니다.
 
 따라서 값이 채워지지 않은 슬롯을 읽는 문제(Rust의 borrow checker가 막는 종류의 문제)가 생기지 않습니다. 초기값을 미리 정할 수 없다면 [합 타입](../002-types/206-sum-types.md) `T | none`으로 값이 없는 상태를 명시하세요.
 

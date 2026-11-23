@@ -180,7 +180,7 @@ impl<T: Send + Sync> List<T> {
 
 위치로 읽는 연산에는 `T | none` 형태가 있습니다(`get`, `first`, `last`, `pop`). 그 밖의 위치 연산은 범위를 벗어나면 panic이 일어납니다(`xs[i]`, `xs[i] = v`, `insert`, `remove`, `swap`, `drain`, `split_at`). `set`은 없습니다. 쓰기는 `xs[i] = v`이고, 범위 밖 인덱스를 건너뛰려면 먼저 검사합니다(`if i < xs.len() { xs[i] = v }`).
 
-`set_len(n)`은 원소를 쓰지 않고 길이만 정합니다. 제자리에서 채우는 버퍼(뷰의 `raw_parts`, 런타임 호출)를 위한 것입니다. 옛 길이 너머의 원소는 저장소에 있던 값(쓴 적 없거나 비워진 칸은 0)을 그대로 가지며, 이 값이 올바른 `T`라는 보장은 없으므로 `unsafe`입니다. 호출자는 읽기 전에 그 원소를 써야 합니다. 이 방식으로 줄이면 잘린 원소는 버퍼에 그대로 남습니다. `n`이 용량을 넘으면 패닉하므로 먼저 `reserve`를 부릅니다.
+`set_len(n)`은 원소를 쓰지 않고 길이만 정합니다. 제자리에서 채우는 버퍼(뷰의 `raw_parts`, 런타임 호출)를 위한 것입니다. 옛 길이 너머의 원소는 저장소에 있던 값(쓴 적 없거나 비워진 칸은 0)을 그대로 가지며, 이 값이 올바른 `T`라는 보장은 없으므로 `unsafe`입니다. 호출자는 읽기 전에 그 원소를 써야 합니다. 이 방식으로 줄이면 잘린 원소는 버퍼에 그대로 남습니다. `n`이 용량을 넘으면 panic하므로 먼저 `reserve`를 부릅니다.
 
 `partition_point(pred)`는 원소가 `pred`를 처음으로 만족하지 않는 인덱스입니다. `pred`는 리스트의 앞부분에서 참이고 나머지에서 거짓이어야 하며, O(log n)입니다. 오름차순 리스트에서 `x`가 들어갈 자리는 `xs.partition_point(|e| e < x)`이고, 키 기준이면 `xs.partition_point(|e| key(e) < k)`입니다. `binary_search(x)`는 `x`와 같은 원소 가운데 첫 인덱스(하한)를 돌려주고, 없으면 `none`입니다.
 
@@ -536,9 +536,9 @@ pub trait KeyRange<K> {                            // a..b, a..=b, a.., ..b, ..=
 
 `range`는 모든 범위 형태를 받습니다([refs-lang 3.7](../../refs-lang/003-expressions/307-range-expressions.md)). `..`로 시작하는 형태는 인수로 쓸 때 괄호로 감쌉니다(`d.range((..10))`). 첫 항목을 찾는 데 O(log n), 그다음 항목마다 평균 O(1)입니다. 비었거나 거꾸로 된 범위는 아무것도 주지 않습니다.
 
-둘 다 `IntoIterator`(키 순서), `FromIterator`, `From<List<..>>`(나중 쌍의 값이 이김), `Default`, `Clone`(`K: Clone, V: Clone`, 항목을 복제), `PartialEq` / `Eq`(같은 항목. 순서는 키 순서), `Hash`(길이, 이어서 차례대로 각 항목), `Debug`(차례대로 `{k: v, ..}` / `{a, b, ..}`)를 구현합니다. `SortedDict`는 `d[k]`(없으면 패닉: `key 7 not found; use `d.get(k)` to get `V | none``)와 `d[k] = v`를, `SortedSet`은 `s += x`를 구현합니다. 복사본은 컬렉션을 공유하고, 둘 다 `Dict`처럼 `!Sync`입니다.
+둘 다 `IntoIterator`(키 순서), `FromIterator`, `From<List<..>>`(나중 쌍의 값이 이김), `Default`, `Clone`(`K: Clone, V: Clone`, 항목을 복제), `PartialEq` / `Eq`(같은 항목. 순서는 키 순서), `Hash`(길이, 이어서 차례대로 각 항목), `Debug`(차례대로 `{k: v, ..}` / `{a, b, ..}`)를 구현합니다. `SortedDict`는 `d[k]`(없으면 panic: `key 7 not found; use `d.get(k)` to get `V | none``)와 `d[k] = v`를, `SortedSet`은 `s += x`를 구현합니다. 복사본은 컬렉션을 공유하고, 둘 다 `Dict`처럼 `!Sync`입니다.
 
-반복자가 도는 동안 정렬 사전이나 집합을 바꾸면 반복자의 다음 걸음에서 키를 먼저 모으라고 알리며 패닉합니다(`SortedDict changed while it was walked; ..`). 이미 있는 키의 값을 바꾸는 것은 변경이 아닙니다(`for (k, v) in d { d[k] = v + 1; }`는 괜찮음).
+반복자가 도는 동안 정렬 사전이나 집합을 바꾸면 반복자의 다음 걸음에서 키를 먼저 모으라고 알리며 panic합니다(`SortedDict changed while it was walked; ..`). 이미 있는 키의 값을 바꾸는 것은 변경이 아닙니다(`for (k, v) in d { d[k] = v + 1; }`는 괜찮음).
 
 ```nabi
 use core::collections::SortedDict;
@@ -1027,7 +1027,7 @@ let e: Array<f64, 2> = [[]];               // 모양 [1, 0]
 
 **모양과 뷰.** `shape() -> [usize; N]`, `strides() -> [isize; N]`(원소 단위), `ndim()`, `len()`(원소 수), `is_empty()`, `is_contiguous()`. 다음은 복사 없이 같은 원소의 뷰를 돌려줍니다. `t()`(축 순서 뒤집기), `permute(axes)`, `broadcast_to(shape)`(길이 1인 축이 보폭 0으로 반복), `reshape(shape)`(연속이면 뷰, 아니면 연속 사본의 뷰. 개수가 맞지 않으면 panic), 그리고 모든 기본 인덱스(아래). `copy()`는 자기 버퍼를 가진 연속 배열을 만들고, `clone()`은 원소도 clone합니다.
 
-**인덱싱.** `Array`는 `AxisIndexed`입니다([refs-lang 3.6.3](../../refs-lang/003-expressions/306-indexing-and-slicing.md#363-다축-인덱싱)). 괄호의 각 부분이 축 인자입니다. 위치(어떤 정수 타입이든 `isize`로 받음([refs-lang 3.6.3](../../refs-lang/003-expressions/306-indexing-and-slicing.md#363-다축-인덱싱)). 음수는 끝에서, 범위를 벗어나면 축을 밝혀 panic)는 그 축을 없애고, 슬라이스(`SliceArg`, 축마다 Python 규칙)는 보폭을 두고 축을 남기며, `..`(`Rest`)는 다른 부분이 남긴 축들을, `none`(`NewAxis`)은 길이 1인 축을 더하고, 어느 부분도 가리키지 않은 축은 통째로 씁니다. 랭크만큼의 위치는 원소 `T`를 줍니다(랭크 1부터 4). 그 밖에는 뷰 `Array<T, M>`을 줍니다(`M = N - 위치 수 + 새 축 수`). 같은 모양의 마스크 `Array<bool, N>`은 `true`인 원소를 골라 랭크 1 사본으로 줍니다. impl은 종류에 상관없는 두 부분까지와, 위치·슬라이스·`..` 하나로 된 세 부분까지를 덮습니다. 한 배열에 그보다 많은 부분을 쓰면 `Index` impl이 없다는 에러입니다.
+**인덱싱.** `Array`는 `AxisIndexed`입니다([refs-lang 3.6.3](../../refs-lang/003-expressions/306-indexing-and-slicing.md#363-다축-인덱싱)). 괄호의 각 부분이 축 인자입니다. 위치(어떤 정수 타입이든 `isize`로 받음([refs-lang 3.6.3](../../refs-lang/003-expressions/306-indexing-and-slicing.md#363-다축-인덱싱)). 음수는 끝에서, 범위를 벗어나면 축을 밝혀 panic)는 그 축을 없애고, 슬라이스(`SliceArg`, 축마다 Python 규칙)는 보폭을 두고 축을 남기며, `..`(`Rest`)는 다른 부분이 남긴 축들을, `none`(`NewAxis`)은 길이 1인 축을 더하고, 어느 부분도 가리키지 않은 축은 통째로 씁니다. 랭크만큼의 위치는 원소 `T`를 줍니다(랭크 1부터 4). 그 밖에는 뷰 `Array<T, M>`을 줍니다(`M = N - positions + new axes`). 같은 모양의 마스크 `Array<bool, N>`은 `true`인 원소를 골라 랭크 1 사본으로 줍니다. impl은 종류에 상관없는 두 부분까지와, 위치·슬라이스·`..` 하나로 된 세 부분까지를 덮습니다. 한 배열에 그보다 많은 부분을 쓰면 `Index` impl이 없다는 에러입니다.
 
 ```nabi
 m[1, 2]          // 6.0
@@ -1051,7 +1051,7 @@ m[m .< 0.0] = 0.0;
 | `as_list() -> List<T> \| none` | 원소가 버퍼 처음부터 연속이면(새 배열, `view_list`로 만든 배열) 복사 없이 이 배열의 버퍼를 공유하는 리스트, 아니면 `none`(`to_list()`는 복사). 리스트의 첫 push는 리스트를 자기 버퍼로 옮김 |
 | `unsafe fn as_ptr() -> ConstPtr<T>` | 첫 원소. 8 KiB 이상이면 도달할 수 있는 동안 고정(작은 배열은 pin. `Array`는 `Pinnable`, [stdlib 1.6](../100-bare/106-gc-pin.md)) |
 
-**축약.** 축약마다 배열 전체 형태(원소를 행 우선 순서로)와, `axis`를 따라 각 레인을 줄이고 그 축을 없애는 `_along(axis)` 형태가 있습니다. `[2, 3]` 행렬의 `m.sum_along(0)`은 열 합의 `[3]` 벡터입니다(NumPy의 `m.sum(axis=0)`). 랭크를 넘는 축은 패닉합니다(`sum_along: axis 2 is past the last axis of a rank-2 array; pass an axis in 0..2`). 뷰(전치, 걸음, 뒤집기)는 원소를 읽는 그대로 줄어듭니다.
+**축약.** 축약마다 배열 전체 형태(원소를 행 우선 순서로)와, `axis`를 따라 각 레인을 줄이고 그 축을 없애는 `_along(axis)` 형태가 있습니다. `[2, 3]` 행렬의 `m.sum_along(0)`은 열 합의 `[3]` 벡터입니다(NumPy의 `m.sum(axis=0)`). 랭크를 넘는 축은 panic합니다(`sum_along: axis 2 is past the last axis of a rank-2 array; pass an axis in 0..2`). 뷰(전치, 걸음, 뒤집기)는 원소를 읽는 그대로 줄어듭니다.
 
 | 메서드 | 바운드 | 배열 전체 | 뜻 |
 |--------|-------|-------------|---------|
@@ -1062,7 +1062,7 @@ m[m .< 0.0] = 0.0;
 | `min()`, `max()` | `T: PartialEq + PartialOrd` | `T \| none`(비면 `none`) | 어디든 NaN이 있으면 NaN |
 | `argmin()`, `argmax()` | | `usize \| none` | 첫 최솟값 / 최댓값, 또는 첫 NaN의 행 우선 위치. `unravel(i)`가 축마다의 인덱스를 줌 |
 | `nanmin()`, `nanmax()`, `nanargmin()`, `nanargmax()` | | `T \| none` / `usize \| none` | NaN이 아닌 원소에서 같은 것 |
-| `min_along(k)`, `max_along(k)`, `nanmin_along(k)`, `nanmax_along(k)` | | `Array<T, N - 1>` | 레인마다. 길이 0인 축은 패닉 |
+| `min_along(k)`, `max_along(k)`, `nanmin_along(k)`, `nanmax_along(k)` | | `Array<T, N - 1>` | 레인마다. 길이 0인 축은 panic |
 | `argmin_along(k)`, `argmax_along(k)` | | `Array<usize, N - 1>` | 축을 따른 위치 |
 | `mean()`, `mean_along(k)` | `T: FloatingPoint` | `T`(비면 NaN) | 쌍별 합을 개수로 나누고, 평균 잔차를 더하는 한 번의 보정 |
 | `var(ddof = 0)`, `std(ddof = 0)`, `var_along(k, ddof)`, `std_along(k, ddof)` | | `T` | 보정된 두 번 훑기(Chan, Golub, LeVeque)를 `n - ddof`로 나눔. `n <= ddof`이면 NaN |
@@ -1081,7 +1081,7 @@ fn linspace<T: FloatingPoint>(start: T, stop: T, n: usize) -> Array<T, 1>;
 fn arange<T: FloatingPoint>(start: T, stop: T, step: T) -> Array<T, 1>;
 ```
 
-`concat`은 이미 있는 축을 따라 배열을 잇습니다(나머지 축은 모두 맞아야 하며, 아니면 두 모양을 밝혀 패닉). `stack`은 모양이 하나인 배열들을 `axis` 자리의 새 축으로 잇습니다. 둘 다 빈 리스트면 패닉합니다. `where(mask, a, b)`는 `mask`가 `true`인 곳에서 `a`의 원소를, 나머지에서 `b`의 원소를 가져오며, 셋을 한 모양으로 늘립니다(NumPy의 `np.where`). 한쪽이 스칼라면 복사본에 `fill_masked`를 씁니다. `linspace`와 `arange`는 `num::linspace` / `num::arange`(2.1.11)의 벡터 판입니다. 모두 `core::array`에 있습니다.
+`concat`은 이미 있는 축을 따라 배열을 잇습니다(나머지 축은 모두 맞아야 하며, 아니면 두 모양을 밝혀 panic). `stack`은 모양이 하나인 배열들을 `axis` 자리의 새 축으로 잇습니다. 둘 다 빈 리스트면 panic합니다. `where(mask, a, b)`는 `mask`가 `true`인 곳에서 `a`의 원소를, 나머지에서 `b`의 원소를 가져오며, 셋을 한 모양으로 늘립니다(NumPy의 `np.where`). 한쪽이 스칼라면 복사본에 `fill_masked`를 씁니다. `linspace`와 `arange`는 `num::linspace` / `num::arange`(2.1.11)의 벡터 판입니다. 모두 `core::array`에 있습니다.
 
 `T: PartialEq + PartialOrd`이면 `sorted_along(k)`는 `k`를 따른 각 레인을 오름차순으로(안정, NaN은 마지막) 정렬한 복사본을 돌려주고, `sort_along(k)`는 제자리에서 정렬합니다(뷰를 통해서도). `sorted()`와 `sort()`는 마지막 축(벡터면 그 원소)을 정렬하고, `argsort_along(k) -> Array<usize, N>`은 각 레인을 정렬하는 위치를 줍니다.
 

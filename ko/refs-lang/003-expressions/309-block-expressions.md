@@ -54,10 +54,10 @@ fn g(n: i32) {
 
 ```nabi
 {
-    문장1;
-    문장2;
+    statement1;
+    statement2;
     ...
-    마지막식      // 종결자 없음, 블록의 값이 됨
+    last_expr     // 종결자 없음, 블록의 값이 됨
 }
 ```
 
@@ -185,7 +185,7 @@ fn early(x: i32) -> i32 {
 
 ## 3.9.8. divergent 블록
 
-`return`, `break`, `continue`, `throw`, `loop { /* break 없음 */ }` 등 때문에 값을 만들지 않는 블록이 있습니다.
+`return`, `break`, `continue`, `throw`, `loop { /* no break */ }` 등 때문에 값을 만들지 않는 블록이 있습니다.
 
 ```nabi
 let x = {

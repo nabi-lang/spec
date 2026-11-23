@@ -195,14 +195,14 @@ let s5 = s[-1:];               //→ "!"
 
 `str` / `StrBuf`의 경계는 바이트 오프셋입니다. 경계는 먼저 Python처럼 범위 안으로 잘라 맞춥니다(음수는 끝에서부터, [refs-lang 3.6.2](../../refs-lang/003-expressions/306-indexing-and-slicing.md#362-슬라이싱-arrstartend)). 그 위치가 UTF-8 시퀀스 중간이면 panic이 일어납니다. 결과는 원래 바이트를 공유하는 `str`입니다(아래 참고). `str` 슬라이스에는 step이 없으며 `s[::2]`는 타입 에러입니다.
 
-### 문자 경계와 패닉하지 않는 슬라이싱
+### 문자 경계와 panic하지 않는 슬라이싱
 
 ```nabi
 impl str {
     fn is_char_boundary(self, i: usize) -> bool;       // i가 문자의 시작이거나 i == len()
     fn floor_char_boundary(self, i: usize) -> usize;   // i 이하의 경계
     fn ceil_char_boundary(self, i: usize) -> usize;    // i 이상의 경계
-    fn get(self, r: Range<usize>) -> str | none;       // 패닉이나 잘라 맞추기 대신 none
+    fn get(self, r: Range<usize>) -> str | none;       // panic이나 잘라 맞추기 대신 none
     fn char_slice(self, a: usize, b: usize) -> str;    // chars()처럼 센 문자 a..b
 }
 ```
@@ -221,7 +221,7 @@ s.char_slice(0, 5);            //→ "hello" (앞의 5문자)
 
 `get`은 `r.start > r.end`이거나, 두 경계 중 하나가 `len()`을 넘거나 문자 경계가 아니면 `none`을 돌려주고, 그 밖에는 `s[r.start:r.end]`입니다. `floor_char_boundary`와 `ceil_char_boundary`는 `i >= len()`이면 `len()`을 돌려줍니다. `char_slice`는 `chars()`가 내놓는 순서대로 0부터 문자를 셉니다. 두 경계는 `char_count()`로 잘라 맞추고, `a >= b`이면 `""`입니다. 문자열을 따라가므로 O(b)입니다. 사용자가 보는 문자 단위로는 `grapheme_slice`를 씁니다([2.15.10](#21510-unicode-텍스트-정규화-대소문자-접기-분할)).
 
-문자 경계가 아닌 곳에서 자르면 이 메서드들을 알려 주는 메시지로 패닉합니다:
+문자 경계가 아닌 곳에서 자르면 이 메서드들을 알려 주는 메시지로 panic합니다:
 
 ```text
 string slice is not on a char boundary: byte 8 is inside `세` (bytes 7..10)

@@ -11,7 +11,7 @@ let_else_stmt   ::= "let" pattern (":" type_expr)? "=" expr "else" block ";"
 ```
 
 ```nabi
-let 패턴 = 식 else { 발산 };
+let pattern = expr else { diverge };
 ```
 
 `let` 다음에 패턴, `=`와 식, 그리고 `else`와 블록이 옵니다. 반증 가능한 패턴이면 무엇이든 됩니다. `else` 본체는 [블록 표현식](309-block-expressions.md)의 divergent 블록이어야 합니다. 그래서 `return`, `break`, `continue`, `throw` 등으로 빠져나가야 합니다.
@@ -62,7 +62,7 @@ let Ok(data) = parse(input) else {
 이 패턴은 `match`보다 수직 흐름이 간결해서 주 흐름과 예외 경우를 명시적으로 나눌 때 유용합니다.
 
 > [!NOTE]
-> `let 식별자 : 타입 = expr else { ... };` 형태의 `: 타입`은 **반증 가능한 타입 검사 패턴**([패턴](311-patterns.md)의 `type_check_pattern`)으로 해석합니다. 일반 `let`의 슬롯 타입 명시와 달리 매칭에 실패할 수 있으므로 `else` 분기에 의미가 생깁니다. `let n: i32 = x else { ... };`는 `match x { v: i32 => v, _ => { ... } }`와 같습니다. `: i32`는 `n`의 슬롯 타입이 아니라 `x`가 통과해야 하는 검사입니다.
+> `let identifier : Type = expr else { ... };` 형태의 `: Type`은 **반증 가능한 타입 검사 패턴**([패턴](311-patterns.md)의 `type_check_pattern`)으로 해석합니다. 일반 `let`의 슬롯 타입 명시와 달리 매칭에 실패할 수 있으므로 `else` 분기에 의미가 생깁니다. `let n: i32 = x else { ... };`는 `match x { v: i32 => v, _ => { ... } }`와 같습니다. `: i32`는 `n`의 슬롯 타입이 아니라 `x`가 통과해야 하는 검사입니다.
 
 ## 3.16.5. 가시 범위
 
@@ -85,7 +85,7 @@ let Ok(data) = parse(input) else {
 let v: T = expr if v > 0 else { ... };       // 채택 안 함
 ```
 
-`let-else`에 가드(`if 조건`)를 두는 형태는 채택하지 않습니다. 가드가 필요하면 뒤에서 따로 검사하세요.
+`let-else`에 가드(`if condition`)를 두는 형태는 채택하지 않습니다. 가드가 필요하면 뒤에서 따로 검사하세요.
 
 ```nabi
 let v: T = compute() else { return; };

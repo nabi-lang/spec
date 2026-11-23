@@ -45,7 +45,7 @@
 nabic build --extern util=../util --extern parser=target/debug/deps/libparser.a
 ```
 
-`--extern name=<경로>`는 의존 패키지 하나를 최상위 경로 `name`에 마운트합니다. `name`은 `nabi.nabion`의 `deps` 키에서 `-`를 `_`로 바꾼 식별자입니다. 경로는 두 형태입니다.
+`--extern name=<path>`는 의존 패키지 하나를 최상위 경로 `name`에 마운트합니다. `name`은 `nabi.nabion`의 `deps` 키에서 `-`를 `_`로 바꾼 식별자입니다. 경로는 두 형태입니다.
 
 | 경로                              | 의존 패키지                                                                  |
 |-----------------------------------|------------------------------------------------------------------------------|
@@ -264,7 +264,7 @@ native 빌드든 교차 빌드든 모든 빌드는 프로그램이 닿는 표준
 `Fresh`가 아닌 빌드는 컴파일한 코드를 codegen unit 단위로 재사용합니다. nabic는 패키지의 코드(실행 파일이든 라이브러리든)를 unit으로 나눕니다. 패키지의 모듈마다 하나, 그 함수나 인스턴스를 컴파일하는 표준 라이브러리와 의존 패키지의 모듈마다 하나(인스턴스는 타입 인자에 따라 여러 unit에 나뉠 수 있음), 그리고 프로그램에 한 번만 있는 것(static, C `main`, GC 타입 등록)을 위한 unit이 하나입니다.
 
 - unit은 같은 타깃 디렉터리에 출력한 지난 빌드 이후 키가 바뀌었을 때만 컴파일합니다. 키가 그대로면 `target/<profile>/incremental/<name>/`(라이브러리는 `lib<name>/`)에 둔 결과를 재사용합니다. 그 뒤 모두 링크합니다. 표준 라이브러리의 unit은 그 대신 모든 패키지의 빌드가 쓰는 함수 캐시(위)에 둡니다. 자기 unit을 보관하지 않는 단독 파일도 함수 캐시는 씁니다. 미리 빌드하는 의존 패키지(9.2.3)는 unit 없이 오브젝트 하나로 컴파일합니다.
-- 익명 파일의 unit은 패키지 없이 쓰는 타깃 디렉터리(`--target-dir`, `NABI_TARGET_DIR`, 없으면 단일 파일 캐시)의 `[<triple>/]<profile>/incremental/<stem>-<경로의 hash>/`에 둡니다. 단일 파일 캐시는 Unix에서 `<시스템 임시 디렉토리>/nabic-target-<uid>/`(`<uid>`는 유효 사용자 ID)이고, Windows에서는 `%TEMP%\nabic-target\`입니다. Windows의 임시 디렉터리는 이미 사용자마다 따로 있습니다. 이 디렉터리는 캐시입니다. nabic는 하루에 많아야 한 번, 일주일 동안 어떤 빌드도 쓰지 않은 파일을 지웁니다.
+- 익명 파일의 unit은 패키지 없이 쓰는 타깃 디렉터리(`--target-dir`, `NABI_TARGET_DIR`, 없으면 단일 파일 캐시)의 `[<triple>/]<profile>/incremental/<stem>-<hash of its path>/`에 둡니다. 단일 파일 캐시는 Unix에서 `<system temporary directory>/nabic-target-<uid>/`(`<uid>`는 유효 사용자 ID)이고, Windows에서는 `%TEMP%\nabic-target\`입니다. Windows의 임시 디렉터리는 이미 사용자마다 따로 있습니다. 이 디렉터리는 캐시입니다. nabic는 하루에 많아야 한 번, 일주일 동안 어떤 빌드도 쓰지 않은 파일을 지웁니다.
 - 단일 파일의 실행 파일도 같은 타깃 디렉터리의 `[<triple>/]<profile>/scripts/<key>/`에 두고, 키가 맞는 동안 재사용합니다. 하루 동안 쓰지 않은 항목은 다른 항목을 빌드할 때 지웁니다([9.10.7](910-nabi-frontend.md#9107-단일-파일-스크립트의-인라인-매니페스트)). `nabi run`은 그것을 실행하고, `nabic build`는 파일 옆에 복사합니다. 스크립트에는 `nabi`가 `$NABI_HOME/cache/scripts/<hash>/` 아래의 스크립트 전용 `target/`을 `--target-dir`로 넘깁니다. 나머지는 단일 파일 캐시에 둡니다. `nabic`가 직접 빌드한 단일 파일과, 디렉터리의 `nabi.nabion` 때문에 단일 파일 패키지가 된 파일입니다(9.10.1).
 - 단일 파일 캐시에는 실행하는 실행 파일이 들어 있으므로, Unix에서는 이 디렉터리를 사용자 혼자만 쓰게 둡니다. 컴파일러는 모드 `0700`으로 만들고, 쓰기 전에 심볼릭 링크가 아닌 디렉터리인지, 유효 사용자의 것인지, 그룹과 다른 사용자의 권한 비트가 없는지 확인합니다. 아니면 명령은 종료 코드 `1`과 ``nabic: error: <dir> is not private to you (owner uid N, mode 0755); remove it or set NABI_TARGET_DIR``로 실패합니다. `--target-dir`와 `NABI_TARGET_DIR`는 주어진 그대로 씁니다.
 - unit의 키에는 그 함수들의 코드, 다른 unit에서 가져다 쓰는 것의 시그니처와 코드 생성 정보, 쓰는 static과 GC 타입, 타깃, 최적화 수준, 코드 생성 옵션, 컴파일러의 정체가 들어갑니다. `-g`이면 디버그 정보가 가리키는 소스 파일의 경로도 들어갑니다. 그래서 함수의 시그니처가 바뀌면 호출자의 unit을 다시 컴파일하고, 파일을 더하면 그 파일을 가리키는 unit만 다시 컴파일합니다.
@@ -325,6 +325,6 @@ $NABI_HOME/
 └── config.nabion                 # Config { toolchain }
 ```
 
-`nabic`는 표준 라이브러리와 런타임을 자기 실행 파일 기준으로 찾습니다(sysroot = 실행 파일의 `..`). `NABI_HOME`은 보지 않습니다. 표준 라이브러리의 각 계층은 라이브러리 패키지처럼 놓입니다. 루트 모듈은 `lib/nabi/<tier>/src/lib.nabi`고 모듈은 `lib/nabi/<tier>/src/` 아래에 있습니다. 구현 저장소에서 빌드한 `nabic`는 같은 레이아웃을 저장소의 `library/<tier>/src/`에서 읽습니다. 자기 캐시는 toolchain의 `lib/nabi-cache/`입니다(저장소 빌드는 `target/<profile>/nabi-cache/`). 읽기 전용으로 설치한 toolchain(시스템 패키지)은 대신 사용자 캐시 디렉터리의 `nabi/nabic-<sysroot의 해시>/`를 씁니다. `fn/`에는 함수 캐시, 곧 빌드가 컴파일한 표준 라이브러리 함수가 있고(9.2.16), `library/`에는 라이브러리에서 모은 항목과 사전 패스 파싱 결과가 있습니다(9.2.16). `nabi cache`로 이 캐시를 보고, 줄이고, 비웁니다(9.10.6). 활성 toolchain은 [9.10.6](910-nabi-frontend.md#9106-toolchain)이 정한 대로 고릅니다.
+`nabic`는 표준 라이브러리와 런타임을 자기 실행 파일 기준으로 찾습니다(sysroot = 실행 파일의 `..`). `NABI_HOME`은 보지 않습니다. 표준 라이브러리의 각 계층은 라이브러리 패키지처럼 놓입니다. 루트 모듈은 `lib/nabi/<tier>/src/lib.nabi`고 모듈은 `lib/nabi/<tier>/src/` 아래에 있습니다. 구현 저장소에서 빌드한 `nabic`는 같은 레이아웃을 저장소의 `library/<tier>/src/`에서 읽습니다. 자기 캐시는 toolchain의 `lib/nabi-cache/`입니다(저장소 빌드는 `target/<profile>/nabi-cache/`). 읽기 전용으로 설치한 toolchain(시스템 패키지)은 대신 사용자 캐시 디렉터리의 `nabi/nabic-<hash of the sysroot>/`를 씁니다. `fn/`에는 함수 캐시, 곧 빌드가 컴파일한 표준 라이브러리 함수가 있고(9.2.16), `library/`에는 라이브러리에서 모은 항목과 사전 패스 파싱 결과가 있습니다(9.2.16). `nabi cache`로 이 캐시를 보고, 줄이고, 비웁니다(9.10.6). 활성 toolchain은 [9.10.6](910-nabi-frontend.md#9106-toolchain)이 정한 대로 고릅니다.
 
 Linux(glibc) toolchain은 자신이 만드는 실행 파일과 마찬가지로 glibc 2.34 이상이 필요합니다(9.2.14).

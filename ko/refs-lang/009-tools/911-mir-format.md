@@ -127,7 +127,7 @@ sections         at their offsets, in any order
 | 6 | 배열 | `ty` 원소, `u` 길이 |
 | 7 | 함수 포인터 | `list<ty>` 매개변수, `ty` 결과 |
 | 8 | GC 참조 | |
-| 9 | union | `list<(u32 tag를 u로, ty)>` variant, `u` word 수, `u8` 종류: `0` 합의 payload, `1` 평범한 것 |
+| 9 | union | `list<(u32 tag as u, ty)>` variant, `u` word 수, `u8` 종류: `0` 합의 payload, `1` 평범한 것 |
 
 원시 타입: `0` `i8`, `1` `i16`, `2` `i32`, `3` `i64`, `4` `isize`, `5` `u8`, `6` `u16`, `7` `u32`, `8` `u64`, `9` `usize`, `10` `f32`, `11` `f64`, `12` `bool`, `13` `c_char`, `14` `char`, `15` `str`.
 
@@ -201,10 +201,10 @@ sections         at their offsets, in any order
 | position | `pos` | 선언 위치 |
 | 매개변수 | `list<local>` | |
 | 매개변수 타입, 결과 | `list<ty>`, `ty` | |
-| 지역 변수 | `list<(local, str 이름, ty)>` | 매개변수를 포함한 모든 지역 변수. 디버그 정보가 빼는 것은 빈 이름 |
+| 지역 변수 | `list<(local, str name, ty)>` | 매개변수를 포함한 모든 지역 변수. 디버그 정보가 빼는 것은 빈 이름 |
 | pins | `list<local>` | `StorageDead`까지 등록된 채로 있는 지역 변수 |
-| 블록 | `list<블록 레코드>` | 첫 블록이 진입점 |
-| debug | `opt<디버그 레코드>` | 9.11.11. `-g`일 때 있습니다 |
+| 블록 | `list<block record>` | 첫 블록이 진입점 |
+| debug | `opt<debug record>` | 9.11.11. `-g`일 때 있습니다 |
 
 함수 flags:
 
@@ -221,7 +221,7 @@ sections         at their offsets, in any order
 | 8 | 사용자의 `main`(공유 unit의 C `main`이 부릅니다) |
 | 9 | `any` 디스패처 |
 
-C 분류 `cabi`: `u8` 결과(`0` 직접, `1` 변환 뒤 `ctype`, `2` `sret`), 인자의 `list`(`0` 직접, `1` 변환 뒤 `ctype`, `2` 참조로 뒤에 `b` byval), `b` 가변 인자, `b` `str`을 `(ptr, len)` 쌍으로, `b` stdcall. `ctype`은 `u8` `0` 뒤에 `cscalar`(스칼라), `1` 뒤에 `u` 개수와 `cscalar`(연속 레지스터), `2` 뒤에 `list<cscalar>`(자연 정렬 필드의 구조체), `3` 뒤에 `list<(u 오프셋, cscalar)>`입니다. `cscalar`는 `u8` `0` 뒤에 `u` 비트 수(정수), `1` `f32`, `2` `f64`, `3` 레지스터 하나에 든 `f32` 둘, `4` 포인터입니다.
+C 분류 `cabi`: `u8` 결과(`0` 직접, `1` 변환 뒤 `ctype`, `2` `sret`), 인자의 `list`(`0` 직접, `1` 변환 뒤 `ctype`, `2` 참조로 뒤에 `b` byval), `b` 가변 인자, `b` `str`을 `(ptr, len)` 쌍으로, `b` stdcall. `ctype`은 `u8` `0` 뒤에 `cscalar`(스칼라), `1` 뒤에 `u` 개수와 `cscalar`(연속 레지스터), `2` 뒤에 `list<cscalar>`(자연 정렬 필드의 구조체), `3` 뒤에 `list<(u offset, cscalar)>`입니다. `cscalar`는 `u8` `0` 뒤에 `u` 비트 수(정수), `1` `f32`, `2` `f64`, `3` 레지스터 하나에 든 `f32` 둘, `4` 포인터입니다.
 
 **블록 레코드**: `block` 번호, `list<local>` 매개변수, `u` flags(bit 0: poll하는 back edge가 이 블록에서 나갑니다. terminator 앞에서 poll을 실행합니다), `list<statement>`, terminator.
 
@@ -247,13 +247,13 @@ C 분류 `cabi`: `u8` 결과(`0` 직접, `1` 변환 뒤 `ctype`, `2` `sret`), �
 | 0 | use | 피연산자 |
 | 1 | 이항 | `u8` 연산자, `ty` 피연산자 타입, 피연산자, 피연산자 |
 | 2 | 단항 | `u8` 연산자, `ty` 피연산자 타입, 피연산자 |
-| 3 | 호출 | `fn`, `list<피연산자>`, `ty` 결과 |
-| 4 | 구조체 값 | `ty`, `list<피연산자>` 필드 |
+| 3 | 호출 | `fn`, `list<operand>`, `ty` 결과 |
+| 4 | 구조체 값 | `ty`, `list<operand>` 필드 |
 | 5 | 필드 읽기 | 피연산자, `u` 필드, `ty` 필드 타입 |
 | 6 | cast | 피연산자, `ty` from, `ty` to |
 | 7 | bitcast | 피연산자, `ty` from, `ty` to |
 | 8 | 필드 바꾼 값 | 피연산자, `ty` 구조체, `u` 필드, 피연산자 값 |
-| 9 | 배열 값 | `ty` 원소, `list<피연산자>` |
+| 9 | 배열 값 | `ty` 원소, `list<operand>` |
 | 10 | 배열 원소 읽기 | `local` 배열, `u` 바이트 오프셋, 피연산자 인덱스, `ty` 원소, `u` 길이 |
 | 11 | 함수 주소 | `fn`, `ty` |
 | 12 | static 읽기 | `static`, `ty` |
@@ -264,17 +264,17 @@ C 분류 `cabi`: `u8` 결과(`0` 직접, `1` 변환 뒤 `ctype`, `2` `sret`), �
 | 17 | static 주소 | `static` |
 | 18 | 크기 또는 정렬 | `ty`, `b` 정렬 |
 | 19 | 버퍼 원소 읽기 | 피연산자 버퍼, 피연산자 인덱스, `ty` 원소 |
-| 20 | 버퍼 atomic | `u8` 연산, 피연산자 버퍼, 피연산자 인덱스, `list<피연산자>`, `ty` 원소, `u8` 순서, `u8` 실패 순서 |
+| 20 | 버퍼 atomic | `u8` 연산, 피연산자 버퍼, 피연산자 인덱스, `list<operand>`, `ty` 원소, `u8` 순서, `u8` 실패 순서 |
 | 21 | box 읽기 | 피연산자, `ty` |
 | 22 | 힙 할당 | `ty` payload, `u` GC 타입 |
 | 23 | 힙 필드 읽기 | 피연산자 객체, `ty` payload, `u` 필드 |
-| 24 | 간접 호출 | 피연산자 callee, `list<피연산자>`, `list<ty>` 매개변수, `ty` 결과, 함수 레코드와 같은 ABI, `opt<cabi>` |
+| 24 | 간접 호출 | 피연산자 callee, `list<operand>`, `list<ty>` 매개변수, `ty` 결과, 함수 레코드와 같은 ABI, `opt<cabi>` |
 
 연산자(`u8`): `0` `+`, `1` `-`, `2` `*`, `3` `/`, `4` `%`, `6` 부정, `7` `!`, `8` `&`, `9` `|`, `10` `^`, `11` `<<`, `12` `>>`, `13` `==`, `14` `!=`, `15` `<`, `16` `<=`, `17` `>`, `18` `>=`, `19` `&&`, `20` `||`, `21` 논리 not, `22` 제곱근, `23` wrapping `+`, `24` wrapping `-`, `25` wrapping `*`, `26` 1인 비트 수, `27` 앞쪽 0 비트 수, `28` 뒤쪽 0 비트 수, `29` 바이트 순서 뒤집기. `5`는 예약입니다(내림 나머지 `%%`. 코드 생성기에는 오지 않습니다). 비교의 결과 타입은 대상의 타입입니다.
 
 atomic 연산: `0` load, `1` store, `2` compare-exchange(인자: 기대값, 새 값), `3` exchange, `4` add, `5` sub, `6` and, `7` or, `8` xor. 순서: `0` relaxed, `1` acquire, `2` release, `3` acq_rel, `4` seq_cst.
 
-**terminator**, 태그 `u8`별: `0` 점프(`block`, 그 매개변수에 넘길 `list<피연산자>`), `1` 분기(피연산자 조건, 참일 때 `block`과 `list<피연산자>`, 거짓일 때 `block`과 `list<피연산자>`), `2` return(`opt<피연산자>`), `3` unreachable.
+**terminator**, 태그 `u8`별: `0` 점프(`block`, 그 매개변수에 넘길 `list<operand>`), `1` 분기(피연산자 조건, 참일 때 `block`과 `list<operand>`, 거짓일 때 `block`과 `list<operand>`), `2` return(`opt<operand>`), `3` unreachable.
 
 ## 9.11.10. 의미
 
@@ -287,11 +287,11 @@ atomic 연산: `0` load, `1` store, `2` compare-exchange(인자: 기대값, 새 
 | 필드 | 인코딩 | 뜻 |
 |------|--------|-----|
 | 지역 변수 타입 | `list<(local, dty)>` | 타입만으로는 디버거가 알 수 없는, 이름 있는 지역 변수를 보이는 방법 |
-| bindings | `list` | 최적화기가 대입을 없앤 이름 있는 지역 변수: `local`, 보이는 곳 어디서나 담고 있는 값 `opt<피연산자>`, 제자리에서 만든 구조체의 필드 `list<opt<피연산자>>`, `u` 줄, `u` scope, `u` 부모 scope |
+| bindings | `list` | 최적화기가 대입을 없앤 이름 있는 지역 변수: `local`, 보이는 곳 어디서나 담고 있는 값 `opt<operand>`, 제자리에서 만든 구조체의 필드 `list<opt<operand>>`, `u` 줄, `u` scope, `u` 부모 scope |
 | inlined | `list` | 인라인한 본문: `u` scope, `u` 부모 scope, `str` 피호출자 경로, `pos` 선언, `pos` 호출, `list<local>` 매개변수의 사본 |
 | results | `list` | 인라인한 본문의 결과를 대입받는 지역 변수: `local`, `u` 줄, `u` scope, `u` 부모 scope |
 
-debug 섹션에는 구조체별 필드의 디버그 타입 `list<(u 구조체, list<dty>)>`와, 태그별로 `any` 값에 저장되는 타입 `list<(u 태그, str 이름, dty)>`가 있습니다. `dty`는 `u8` `0` 뒤에 `ty`(타입이 말하는 그대로), `1` 합: `str` 이름, `ty`, `list<(u 태그, str 이름, dty)>`, `2` GC 버퍼: `str` 이름, `dty` 원소, `3` `any`, `4` box한 값: `str` 이름, `dty`, `5` 캡처한 변수의 cell: `dty`, `6` 함수 값: `str` 이름, `ty`, `dty` 환경입니다.
+debug 섹션에는 구조체별 필드의 디버그 타입 `list<(u struct, list<dty>)>`와, 태그별로 `any` 값에 저장되는 타입 `list<(u tag, str name, dty)>`가 있습니다. `dty`는 `u8` `0` 뒤에 `ty`(타입이 말하는 그대로), `1` 합: `str` 이름, `ty`, `list<(u tag, str name, dty)>`, `2` GC 버퍼: `str` 이름, `dty` 원소, `3` `any`, `4` box한 값: `str` 이름, `dty`, `5` 캡처한 변수의 cell: `dty`, `6` 함수 값: `str` 이름, `ty`, `dty` 환경입니다.
 
 ## 9.11.12. 버전과 호환성
 

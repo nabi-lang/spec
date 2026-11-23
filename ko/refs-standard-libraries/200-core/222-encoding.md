@@ -34,7 +34,7 @@ encoding::base64::decode("Zm9vYg");            //→ [102, 111, 111, 98]
 
 `hex::encode`는 각 바이트를 상위 4비트부터 두 자리로 씁니다(`[0x00, 0xff]` → `"00ff"`). `a`부터 `f`까지는 소문자로 쓰고, `Case::Upper`이면 대문자로 씁니다. `hex::decode`는 바이트마다 두 자리를 읽고 대소문자를 모두 받습니다(`"DeadBeef"`). 텍스트의 길이는 짝수여야 합니다. 그 밖의 것은 받지 않습니다. `0x` 접두, 공백, 구분자 모두 받지 않습니다.
 
-`hex::encode_into`에는 `out`이 `2 * data.len()`바이트, `hex::decode_into`에는 `text.len() / 2`바이트 필요합니다. `out`이 이보다 짧으면 호출자의 버그이므로 줄 크기를 알려 주며 패닉합니다(``hex::encode_into: `out` holds 3 bytes but the text needs 4, two per byte; size `out` as `2 * data.len()` ``, `decode_into`는 ``size `out` as `text.len() / 2` ``).
+`hex::encode_into`에는 `out`이 `2 * data.len()`바이트, `hex::decode_into`에는 `text.len() / 2`바이트 필요합니다. `out`이 이보다 짧으면 호출자의 버그이므로 줄 크기를 알려 주며 panic합니다(``hex::encode_into: `out` holds 3 bytes but the text needs 4, two per byte; size `out` as `2 * data.len()` ``, `decode_into`는 ``size `out` as `text.len() / 2` ``).
 
 ## 2.22.2. Base64
 
@@ -85,7 +85,7 @@ base64::encode(raw, base64::STANDARD_NO_PAD);  //→ "+/+/"
 base64::decode("-_-_", base64::URL_SAFE);      //→ [251, 255, 191]
 ```
 
-`encoded_len(n, codec)`은 `n`바이트를 `encode`한 길이이고, `encode_into`에는 `out`이 그만큼 필요합니다. `decoded_len_max(n)`은 `n`글자가 디코딩될 수 있는 최대 바이트 수입니다. `out`이 이 길이이면 `decode_into`에 언제나 충분합니다. `decode_into`는 `out`이 패딩을 뺀 텍스트에 필요할 수 있는 길이보다 짧을 때만 패닉합니다. `out`이 짧은 것은 디코딩 에러가 아니라 호출자의 버그입니다.
+`encoded_len(n, codec)`은 `n`바이트를 `encode`한 길이이고, `encode_into`에는 `out`이 그만큼 필요합니다. `decoded_len_max(n)`은 `n`글자가 디코딩될 수 있는 최대 바이트 수입니다. `out`이 이 길이이면 `decode_into`에 언제나 충분합니다. `decode_into`는 `out`이 패딩을 뺀 텍스트에 필요할 수 있는 길이보다 짧을 때만 panic합니다. `out`이 짧은 것은 디코딩 에러가 아니라 호출자의 버그입니다.
 
 ```nabi
 // 32바이트 키를 base64로 frame의 4번 바이트부터 씀.

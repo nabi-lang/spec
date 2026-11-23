@@ -18,8 +18,8 @@ param_list    ::= param ("," param)* ","?
 형식을 따지지 않고 전체 모양을 적으면 다음과 같습니다.
 
 ```nabi
-fn 이름(매개변수들) -> 반환타입 {
-    본체
+fn name(parameters) -> ReturnType {
+    body
 }
 ```
 

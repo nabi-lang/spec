@@ -65,7 +65,7 @@ poll(frame, cx) -> Poll<Data>:
 
 ## 8.10.4. 스트림(`async yield fn`)
 
-[스트림](../004-functions/413-stream.md)은 둘을 합칩니다. 한 프레임의 state 번호가 `yield` 지점과 `await` 지점을 함께 셉니다. `poll_next`는 `yield`에서 `Ready(값)`을, `await`가 Pending이면 `Pending`을, 끝에서 `Ready(none)`을 돌려줍니다.
+[스트림](../004-functions/413-stream.md)은 둘을 합칩니다. 한 프레임의 state 번호가 `yield` 지점과 `await` 지점을 함께 셉니다. `poll_next`는 `yield`에서 `Ready(value)`을, `await`가 Pending이면 `Pending`을, 끝에서 `Ready(none)`을 돌려줍니다.
 
 ## 8.10.5. 프레임 할당
 

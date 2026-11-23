@@ -516,7 +516,7 @@ extern "nabi" {
 }
 ```
 
-`nabi_io_poll`은 사건을 `GcBuf<i64>`인 `out`에 `fd * 2 + 방향`(읽기 0, 쓰기 1) 형태로 최대 `max`개 씁니다.
+`nabi_io_poll`은 사건을 `GcBuf<i64>`인 `out`에 `fd * 2 + direction`(읽기 0, 쓰기 1) 형태로 최대 `max`개 씁니다.
 
 ### `nabi_net_*`: 소켓 헬퍼(내부, 변경 가능)
 

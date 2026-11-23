@@ -260,7 +260,7 @@ fn strict_zone() { ... }
 | `bool_comparison`        | 0.1.0   | `bool`을 `true` / `false`와 비교                                 |
 | `self_assignment`        | 0.1.0   | `x = x;` (deny)                                                    |
 | `while_true`             | 0.1.0   | `loop` 대신 `while true`                                           |
-| `closed_type_switch`     | 0.1.0   | 대체 경로가 패닉하는 `if T is ..` 사슬: 닫힌 타입 집합에는 트레잇이 맞음 |
+| `closed_type_switch`     | 0.1.0   | 대체 경로가 panic하는 `if T is ..` 사슬: 닫힌 타입 집합에는 트레잇이 맞음 |
 | `deprecated`             | 0.1.0   | `#[deprecated]` 함수, 메서드, 필드, 타입, 상수, static 사용 ([6.2.7](#627-deprecated-사용-자제-표시)) |
 | `deprecated_safe`        | 0.1.0   | `unsafe` 밖에서 `#[deprecated_safe]` 함수를 호출하거나 그런 static을 씀 ([6.2.13](#6213-deprecated_safe-지금은-안전-나중에-unsafe)) |
 | `redundant_cast`         | 0.1.0   | `x`가 이미 `T`인 `x as T`                                         |
@@ -346,7 +346,7 @@ pub struct JoinHandle<T> { ... }
 
 `#[must_use]`는 함수나 메서드, `struct`, `enum`에 붙일 수 있고, 메시지를 붙일 수 있습니다(`#[must_use("..")]`). 함수에 붙이면 메시지를 더합니다. 그 결과를 버리면 `unused_result` 대신 `unused_must_use` 경고가 납니다. 타입에 붙이면 더 강합니다. 그 타입의 값을 내는 식 문장과, 그 타입이면서 한 번도 읽지 않는 지역 변수에 `unused_must_use` 경고가 납니다. `#[discardable]` 함수가 돌려준 값이어도 마찬가지입니다. 경고에는 속성의 메시지가 함께 나옵니다. `async fn` 호출이나 `async` 블록의 값과 `thread::JoinHandle`([stdlib 3.4.2](../../refs-standard-libraries/300-std/304-thread.md#342-api))은 `#[must_use]`입니다. 기다리지 않은 future는 실행되지 않습니다. 합류하지 않은 스레드는 프로그램이 끝나기 전에 끝나지 않을 수 있습니다. `detach`는 스레드를 따로 실행한다는 뜻을 밝힙니다. 나머지는 [stdlib 0.5.14](../../refs-standard-libraries/000-meta/005-notation.md#0514-문서와-속성)에 있습니다. `#[must_use]` 타입은 속성이 붙은 바로 그 타입입니다. 이름이 같은 다른 패키지의 타입은 해당하지 않습니다.
 
-타입의 메시지는 "this" 뒤에 이어지도록 씁니다. 경고는 `this <메시지>`로 나옵니다. 처음 나오는 `": "` 뒤의 글은 `help:` 줄이 되고, 그 안의 `{}`는 버려진 식의 소스(지역 변수면 그 이름)로 바뀝니다. `#[must_use("future is never awaited, so its body never runs: write `await {}`")]`는 ``this future is never awaited, so its body never runs`` 경고와 ``help: write `await fetch()` ``를 냅니다. 메시지가 없으면 경고가 타입을 밝힙니다. ``this value of type `T` is never used``.
+타입의 메시지는 "this" 뒤에 이어지도록 씁니다. 경고는 `this <message>`로 나옵니다. 처음 나오는 `": "` 뒤의 글은 `help:` 줄이 되고, 그 안의 `{}`는 버려진 식의 소스(지역 변수면 그 이름)로 바뀝니다. `#[must_use("future is never awaited, so its body never runs: write `await {}`")]`는 ``this future is never awaited, so its body never runs`` 경고와 ``help: write `await fetch()` ``를 냅니다. 메시지가 없으면 경고가 타입을 밝힙니다. ``this value of type `T` is never used``.
 
 ## 6.2.12. `#[track_caller]` 호출 위치 전달
 

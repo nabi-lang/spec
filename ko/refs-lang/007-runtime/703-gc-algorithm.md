@@ -46,7 +46,7 @@ nursery 공간은 따로 없습니다. 세대는 헤더의 `STICKY` 비트([8.1.
 
 - young line은 객체 조회가 닿은 block에서만 파싱합니다.
 - minor 수집의 장부 작업은 힙이 아니라 바뀐 것만큼 듭니다. 빈 line이 있는 block의 목록은 수집에서 다음 수집으로 이어지고, 그 사이에 나눠 준 block만 다시 sweep하고 목록에 올립니다. dirty card는 word(card 8개) 단위로 훑습니다.
-- full 수집은 두 경우에 일어납니다. old 객체의 바이트 수가 `max(4 MiB, 직전 full 수집 뒤 live × 2)`에 이를 때와 `nabi_gc_collect`를 호출할 때입니다.
+- full 수집은 두 경우에 일어납니다. old 객체의 바이트 수가 `max(4 MiB, live after the previous full collection × 2)`에 이를 때와 `nabi_gc_collect`를 호출할 때입니다.
 
 ## 7.3.3. mark의 절차
 

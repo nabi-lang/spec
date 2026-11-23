@@ -223,7 +223,7 @@ for line in lines("a.txt") { ... }          // ERROR (E0062): `next`가 던질 �
 | 형태 | 단계에서 에러가 나면 |
 |---|---|
 | `try for` | 가장 가까운 `catch`로, 없으면 함수 밖으로 전파 |
-| `try! for` | 패닉([3.14.3](../003-expressions/314-error-control-flow.md#3143-try와-try)) |
+| `try! for` | panic([3.14.3](../003-expressions/314-error-control-flow.md#3143-try와-try)) |
 | `try? for` | 루프를 끝냄. `for` 식의 값은 `none`(아니면 `()`) |
 | `try for .. catch e: E { .. }` | `catch`는 `try for` 식 전체에 붙음 |
 

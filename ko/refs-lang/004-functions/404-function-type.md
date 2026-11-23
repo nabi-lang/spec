@@ -7,7 +7,7 @@
 함수 타입의 모양은 다음과 같습니다.
 
 ```nabi
-fn(매개변수타입들) -> 반환타입
+fn(ParamTypes) -> ReturnType
 fn(i32, i32) -> i32
 fn(str) -> bool
 fn() -> ()

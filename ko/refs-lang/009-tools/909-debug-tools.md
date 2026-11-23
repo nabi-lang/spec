@@ -86,7 +86,7 @@ target/debug/build/foo.expanded.nabi
 nabi inspect --dump path/to/foo.nabihir   # 또는 libfoo.a. 옆의 foo.nabihir 를 읽음
 ```
 
-이 명령은 미리 빌드한 라이브러리의 [NABIHIR](904-nabihir-bytecode.md)을 사람이 읽을 수 있는 형식으로 출력합니다. 버전, producer, 메타 다음에 인터페이스 파일마다 `--- <경로>`와 그 텍스트가 이어집니다. 텍스트는 구체 함수 본문을 `;`로 잘라 낸 소스입니다. 그 뒤에 넘김 요약이 `--- summaries` 아래에, 호출 요약이 `--- calls` 아래에 함수마다 한 줄로 성립하는 사실과 함께 이어집니다([9.4.7](904-nabihir-bytecode.md#947-body)).
+이 명령은 미리 빌드한 라이브러리의 [NABIHIR](904-nabihir-bytecode.md)을 사람이 읽을 수 있는 형식으로 출력합니다. 버전, producer, 메타 다음에 인터페이스 파일마다 `--- <path>`와 그 텍스트가 이어집니다. 텍스트는 구체 함수 본문을 `;`로 잘라 낸 소스입니다. 그 뒤에 넘김 요약이 `--- summaries` 아래에, 호출 요약이 `--- calls` 아래에 함수마다 한 줄로 성립하는 사실과 함께 이어집니다([9.4.7](904-nabihir-bytecode.md#947-body)).
 
 ```
 nabihir 1
@@ -523,11 +523,11 @@ perf report --stdio | nabi demangle
 
 | 수단                 | 효과                                                                 |
 |----------------------|----------------------------------------------------------------------|
-| `<식>?`              | 식을 평가하고 `Debug` 형태로 출력([9.7.7](907-jit-cells.md#977-시각화--출력)) |
+| `<expr>?`              | 식을 평가하고 `Debug` 형태로 출력([9.7.7](907-jit-cells.md#977-시각화--출력)) |
 | `it`                 | 식 셀이 마지막으로 보여 준 값. 사용자의 `it`이 우선([9.7.7](907-jit-cells.md#977-시각화--출력)) |
-| `:type <식>`, `:t`   | 식의 정적 타입을 출력(실행하지 않음)                                 |
-| `:doc <이름>`        | 이름의 시그니처와 문서 주석을 출력. Jupyter `inspect_request`와 같은 텍스트([9.8.6](908-jupyter-integration.md#986-inspect_request-도움말)). 메서드는 `:doc xs.len` |
-| `:time <식>`         | 식을 셀로 평가하고 단계별 시간(`NABI_REPL_TIME=1`처럼)과 합계를 stderr에 출력 |
+| `:type <expr>`, `:t`   | 식의 정적 타입을 출력(실행하지 않음)                                 |
+| `:doc <name>`        | 이름의 시그니처와 문서 주석을 출력. Jupyter `inspect_request`와 같은 텍스트([9.8.6](908-jupyter-integration.md#986-inspect_request-도움말)). 메서드는 `:doc xs.len` |
+| `:time <expr>`         | 식을 셀로 평가하고 단계별 시간(`NABI_REPL_TIME=1`처럼)과 합계를 stderr에 출력 |
 | `:vars`              | 바인딩을 `name: type`으로, 이어서 항목의 시그니처를 나열              |
 | `:load <file>`       | 실행 중인 세션에 프로그램을 로드([9.7.10](907-jit-cells.md#9710-프로그램-로드repl-path)). 그 항목이 같은 이름 항목을 대신함. `:save`로 쓴 스크립트는 그 셀을 하나씩 다시 실행 |
 | `:reload`            | 마지막으로 로드한 프로그램을 다시 로드                               |

@@ -61,7 +61,7 @@ Frame {
 
 | 키워드         | lowering                                                                  |
 |----------------|---------------------------------------------------------------------------|
-| `yield expr;`  | state 저장 + 값 반환 (Iterator) / `Ready(값)` 반환 (Stream)               |
+| `yield expr;`  | state 저장 + 값 반환 (Iterator) / `Ready(value)` 반환 (Stream)               |
 | `await expr;`  | 대상 future poll. Pending이면 state 저장 + `Pending` 반환                  |
 | `return expr;` | 상태 기계 종료 + 결과 반환                                                 |
 

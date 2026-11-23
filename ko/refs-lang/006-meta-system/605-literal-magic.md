@@ -17,7 +17,7 @@ Nabi에는 [숫자 리터럴](../001-lexical/106-numeric-literals.md)부터 [진
 2i                         → Complex<f64>
 ```
 
-`(컴파일러)` 표시가 붙은 것은 핸들러 없이 컴파일러가 직접 만드는 리터럴입니다. 고정 배열, 튜플, 인덱스 안의 슬라이스 `a[i:j]`는 언어 고유의 문법이므로 등록할 수 없습니다(6.5.7, 6.5.9).
+`(compiler)` 표시가 붙은 것은 핸들러 없이 컴파일러가 직접 만드는 리터럴입니다. 고정 배열, 튜플, 인덱스 안의 슬라이스 `a[i:j]`는 언어 고유의 문법이므로 등록할 수 없습니다(6.5.7, 6.5.9).
 
 이 리터럴의 문법은 [구두점과 연산자 토큰](../001-lexical/110-punctuation-and-operator-tokens.md)의 토큰과 [타입 표현식](../002-types/201-type-expressions.md) 등의 형태로 이루어집니다. 하지만 어떤 라이브러리 타입을 만들지는 라이브러리가 정합니다.
 
@@ -33,9 +33,9 @@ Nabi에는 [숫자 리터럴](../001-lexical/106-numeric-literals.md)부터 [진
 literal_attr    ::= "#" "[" "literal" "(" pattern ("," "priority" "=" "-"? int_lit)? ")" "]"
 pattern         ::= pat_elem+
 pat_elem        ::= pat_atom pat_rep?
-pat_atom        ::= string_lit                          // 리터럴 토큰 하나
-                  | "expr" | "number" | "string" | "ident"  // 캡처
-                  | "{" pattern "}" | "(" pattern ")"     // 그룹
+pat_atom        ::= string_lit                          // a single literal token
+                  | "expr" | "number" | "string" | "ident"  // captures
+                  | "{" pattern "}" | "(" pattern ")"     // groups
 pat_rep         ::= ("%" string_lit)? ("*" | "+")
                   | "?"
 ```
@@ -65,7 +65,7 @@ fn matrix_literal<const C: usize>(rows: ...[f64; C]) -> Matrix { ... }   // 행�
 
 앞의 여섯은 표준 라이브러리의 등록입니다. 마지막 것은 자기 `Matrix` 타입이 있는 패키지가 등록할 수 있는 예입니다(표준 라이브러리에는 없음).
 
-기본 형태는 `#[literal(패턴)]`입니다. 뒤에 `, priority = N`을 붙일 수 있습니다(6.5.5). N은 음수일 수 있고 기본값은 0입니다. 핸들러는 함수입니다. 패턴에 매칭되는 리터럴은 그 함수의 호출이 됩니다.
+기본 형태는 `#[literal(pattern)]`입니다. 뒤에 `, priority = N`을 붙일 수 있습니다(6.5.5). N은 음수일 수 있고 기본값은 0입니다. 핸들러는 함수입니다. 패턴에 매칭되는 리터럴은 그 함수의 호출이 됩니다.
 
 표준 라이브러리의 등록은 모든 패키지에서 보입니다. 다른 패키지의 등록은 그 패키지 자신의 소스에 적용되고, 핸들러가 `pub`이면 그 패키지에 직접 의존하는 모든 패키지의 소스에도 적용됩니다. 트레잇이 보이는 곳이면 어디서든 효력이 있는 연산자 매핑([6.7.8](607-operator-magic.md#678-매핑의-가시성))과 같습니다. `#[literal(number "m")] pub fn meters(..)`를 내보내는 `units` 패키지에 의존하면 `use` 없이 `9.81m`이 `units::meters(9.81)`이 됩니다. `pub`이 아닌 핸들러는 자기 패키지에 머물고, 등록은 의존성의 의존성을 거쳐 전해지지 않습니다. 패키지 사이의 충돌은 6.5.5를 따릅니다(의존성의 `i`가 표준 라이브러리의 우선순위 -1 `i`보다 앞서고, 두 의존성이 같은 접미사를 같은 우선순위로 등록하면 그 사용이 모호합니다). 컴파일러는 파싱 전에 등록을 모으므로 등록한 위치와 상관없이 적용됩니다. 핸들러는 자기 모듈에서 부르는 것처럼 호출되므로([6.9.9](609-template-tokens.md#확장-안의-이름)) 가시성은 무엇이든 됩니다. 표준 라이브러리의 핸들러(`list_literal`, `set_literal`, `dict_literal`, 여섯 `range_*_literal`)는 `pub(pkg)`이며, `core` 밖에서 이름으로 쓰면 에러입니다.
 
@@ -118,7 +118,7 @@ fn matrix_literal<const C: usize>(rows: ...[f64; C]) -> Matrix { ... }   // 행�
    ↓
 list_literal(1, 2, 3)          // items: Slice<i64>
    ↓
-List<i64> 인스턴스
+List<i64> instance
 ```
 
 리터럴은 어떤 핸들러를 부르든 기본 식입니다. 그래서 `"ab".len()`처럼 14단계의 후위 형태(멤버 접근, 메서드 호출, 인덱싱, `?`, 후위 연산자)가 뒤에 붙습니다. `date"2024-01-01".days()`는 핸들러가 만든 값의 `days`를 부르고, `m[1, 2; 3, 4][0]`은 행렬을 인덱싱합니다.

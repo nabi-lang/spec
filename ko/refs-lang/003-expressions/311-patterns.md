@@ -92,7 +92,7 @@ match v {
 }
 ```
 
-### 타입 검사 패턴: ` 이름: 타입`
+### 타입 검사 패턴: ` name: Type`
 
 ```nabi
 n: i32
@@ -228,7 +228,7 @@ match age {
 ## 3.11.2. 가드
 
 ```nabi
-패턴 if 조건
+pattern if condition
 ```
 
 가드는 패턴이 매칭된 뒤에 추가로 검사하는 `bool` 조건입니다. 조건이 `false`이면 그 가지는 매칭에 실패한 것으로 봅니다.
@@ -264,11 +264,11 @@ or 패턴 안의 모든 부분 패턴은 같은 이름의 변수를 같은 타�
 
 | 위치            | 형태                                    |
 |-----------------|-----------------------------------------|
-| `match` 가지    | `match v { 패턴 => 식, ... }`           |
-| `if let`        | `if let 패턴 = 식 { ... } else { ... }` |
-| `let-else`      | `let 패턴 = 식 else { ... };`           |
-| `let` 분해 대입 | `let 패턴 = 식;`                        |
-| `for` 루프      | `for 패턴 in 반복 { ... }`              |
+| `match` 가지    | `match v { pattern => expr, ... }`           |
+| `if let`        | `if let pattern = expr { ... } else { ... }` |
+| `let-else`      | `let pattern = expr else { ... };`           |
+| `let` 분해 대입 | `let pattern = expr;`                        |
+| `for` 루프      | `for pattern in iter { ... }`              |
 
 위치마다 어떤 패턴을 허용하는지는 해당 위치의 사양에서 정의합니다. 반증 가능(refutable) 패턴을 허용하는 위치도 있고, 반증 불가능(irrefutable) 패턴만 허용하는 위치도 있습니다.
 

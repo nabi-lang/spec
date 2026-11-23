@@ -14,7 +14,7 @@ try_into    ::= expr "." "try_into" ("::" "<" type_expr ">")? "(" ")"
 
 | 구문               | 형태                   | 실행                        |
 |--------------------|------------------------|-----------------------------|
-| `as` 캐스트        | `expr as 타입`         | 내장 캐스트 (트레잇 없음)   |
+| `as` 캐스트        | `expr as Type`         | 내장 캐스트 (트레잇 없음)   |
 | `.into()` 호출     | `expr.into()`          | `Target::from` (`Into::into`) |
 | `.try_into()` 호출 | `expr.try_into::<T>()` | `Target::try_from` (`TryInto::try_into`) |
 
@@ -25,7 +25,7 @@ try_into    ::= expr "." "try_into" ("::" "<" type_expr ">")? "(" ")"
 첫째 구문은 `as` 캐스트입니다.
 
 ```nabi
-expr as 타입
+expr as Type
 ```
 
 `as`는 [키워드](../001-lexical/105-keywords.md)입니다. 왼쪽에는 아무 표현식이나, 오른쪽에는 [타입 표현식](201-type-expressions.md)이 옵니다. 컴파일러가 캐스트를 직접 낮추고, 트레잇 메서드는 호출하지 않습니다. 비트 자르기, 부호 확장, 표현 변환처럼 값이 보존되지 않을 수 있는 변환에 씁니다. 결과는 `.wrapping_into::<T>()`와 같습니다([stdlib 2.11.5](../../refs-standard-libraries/200-core/211-conversion.md)).
@@ -77,7 +77,7 @@ let y = x.into::<int>();
 셋째 구문은 `.try_into()` 호출입니다.
 
 ```nabi
-expr.try_into::<타입>()
+expr.try_into::<Type>()
 ```
 
 이 구문은 `Target::try_from(expr)`로 풀립니다(`Target: TryFrom<typeof(expr)>`). `try_into`는 [`throws`](../004-functions/414-throws.md) 메서드입니다. 성공하면 대상 타입의 값을 돌려주고, 실패하면 에러를 던집니다. 에러는 대상의 `TryFrom::Error`이고, 숫자 변환이면 `OverflowError`입니다([stdlib 2.11.4](../../refs-standard-libraries/200-core/211-conversion.md#2114-tryfromu-트레잇-실패할-수-있는-변환)). 그래서 호출에 `try`를 표시해야 합니다. 큰 정수를 작은 정수로, 부동소수를 정수로 옮기는 경우처럼 변환이 실패할 수 있을 때 씁니다.

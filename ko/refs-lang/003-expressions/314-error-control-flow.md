@@ -7,7 +7,7 @@ throw_stmt     ::= "throw" expr ";"
 try_expr       ::= ("try" | "try?" | "try!") expr
 catch_expr     ::= expr catch_clause+ finally_clause?
                  | expr finally_clause
-catch_clause   ::= "catch" pattern? block            // struct 패턴도 됨: catch E { f, .. } { .. }
+catch_clause   ::= "catch" pattern? block            // struct patterns also allowed: catch E { f, .. } { .. }
 finally_clause ::= "finally" block
 question_expr  ::= expr "?"
 ```

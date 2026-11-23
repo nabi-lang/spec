@@ -136,7 +136,7 @@ const A: i32 = id(42i32);                        // T = i32 단형화 후 평가
 ## 5.2.6. `const`와 다른 메커니즘의 직교성
 
 ```
-generic <T>     = 타입 파라미터화 (call-site specialize)
+generic <T>     = 타입 매개변수화 (call-site specialize)
 meta block      = 코드 생성 (impl, struct 등 AST 레벨)
 const fn        = 값 계산 (compile-time pure 함수)
 ```
@@ -168,6 +168,6 @@ fn chunk<const N: usize>(xs: [i32; N]) -> usize {
 
 - 함수 본체 `const`가 읽는 것을 읽습니다. 상수, `const fn` 호출, 둘러싼 코드의 const 매개변수, 타입 매개변수의 연관 const와 `T::size()` / `T::align()`입니다. `let` 변수는 에러이고, 도움말은 `const`를 빼라고 알려 줍니다.
 - 제네릭 함수 안에서는 인스턴스의 인자가 정해진 뒤 인스턴스마다 한 번 평가합니다. 정의 시점의 제네릭 본체 검사([2.10.9](../002-types/210-generics.md#2109-본체-검사))는 블록의 타입만 검사하고 평가하지 않습니다.
-- 평가 중의 패닉이나 실패한 `assert`는 그 인스턴스를 만든 호출에서 나는 컴파일 에러입니다. 에러는 인스턴스 이름을 대고(`` const block failed in `chunk::<0>`: chunk needs at least one element ``), `assert`를 보조 위치로 보여 줍니다. `nabi check`도 이를 보고합니다. `nabi build`처럼 프로그램이 닿는 것을 인스턴스화하기 때문입니다.
+- 평가 중의 panic이나 실패한 `assert`는 그 인스턴스를 만든 호출에서 나는 컴파일 에러입니다. 에러는 인스턴스 이름을 대고(`` const block failed in `chunk::<0>`: chunk needs at least one element ``), `assert`를 보조 위치로 보여 줍니다. `nabi check`도 이를 보고합니다. `nabi build`처럼 프로그램이 닿는 것을 인스턴스화하기 때문입니다.
 - 통과한 블록은 런타임 비용이 없습니다. 값은 다른 `const`처럼 바이너리에 들어갑니다.
 - 평가기는 단순 타입(숫자, `bool`, `char`, `str`, `()`, 이들의 배열)의 `T::size()`를 압니다. 다른 타입에서는 const 매개변수나 `List`를 쓰라는 에러입니다.

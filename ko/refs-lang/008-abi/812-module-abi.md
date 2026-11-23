@@ -88,7 +88,7 @@
 | `tags` | 코드가 쓰는 태그마다 키. `tags`는 처음에 `u32::MAX` | 키와 컴파일 시점 태그 |
 | `roots` | 정의하는 모든 static의 모든 참조 워드(`any`는 0) | 비어 있음. 여느 프로그램처럼 등록합니다 |
 | `types` | 자기 타입 디스크립터([8.13](813-type-descriptor.md)). `tag_index`는 자기 `tags`의 인덱스 | 비어 있음. 여느 프로그램처럼 `nabi_types_register`로 디스크립터를 등록합니다 |
-| `dispatch` | `any Tr` 디스패처마다, 그 갈래가 받는 태그마다: `<트레이트 경로>.<메서드>`의 FNV-1a 64 해시, 디스패처의 값 코드 | 호스트의 디스패처에 대해 같음 |
+| `dispatch` | `any Tr` 디스패처마다, 그 갈래가 받는 태그마다: `<trait path>.<method>`의 FNV-1a 64 해시, 디스패처의 값 코드 | 호스트의 디스패처에 대해 같음 |
 
 호스트의 `nabi.register_types`([8.5](805-extern-symbols.md))는 마지막에 `nabi_module_register(&nabi_host_module)`을 부릅니다. 그래서 호스트의 태그, 디스패치 항목, 내보내기 테이블은 `main`보다, 그리고 어느 플러그인보다 먼저 프로세스에 들어갑니다.
 

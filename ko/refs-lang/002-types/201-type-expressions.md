@@ -11,7 +11,7 @@
 ```
 type_expr   ::= sum_type
 sum_type    ::= unary_type ("|" unary_type)*
-unary_type  ::= base_type "?"*                  // T?: optional (2.1.5a), `??` 는 `?` 두 개
+unary_type  ::= base_type "?"*                  // T?: optional (2.1.5a), `??` is two `?`
 base_type   ::= path_type
               | fn_type
               | tuple_type
@@ -20,9 +20,9 @@ base_type   ::= path_type
               | self_type
               | qualified_type
               | macro_type
-              | "none"                          // none 타입 (2.6)
+              | "none"                          // the none type (2.6)
               | "!"                             // never (4.3.7)
-              | "(" type_expr ")"               // 그룹
+              | "(" type_expr ")"               // grouping
 self_type   ::= "Self" ("::" identifier ("::" identifier)* type_args?)?   // Self, Self::Item
 qualified_type ::= "<" type_expr "as" trait_ref ">" "::" identifier       // 2.13.4
 macro_type  ::= identifier "!" ( "(" token* ")" | "[" token* "]" | "{" token* "}" )   // 6.8.12
@@ -32,7 +32,7 @@ trait_args  ::= "<" trait_arg ("," trait_arg)* ","? ">"
 trait_arg   ::= type_expr | identifier "=" type_expr | const_arg
 path_type   ::= identifier ("::" identifier)* type_args?
 type_args   ::= "<" trait_arg ("," trait_arg)* ","? ">"
-const_arg   ::= literal                         // 정수, 문자, true / false
+const_arg   ::= literal                         // int, char, true / false
               | "-" literal
               | "{" expr "}"                    // 2.11.4
 fn_type     ::= "unsafe"? ("extern" string_lit)? "fn" "( (type_expr ("," type_expr)*)? ")" ("throws" ("(" type_expr ")")?)? ("->" unary_type)? fn_bound*

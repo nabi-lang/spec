@@ -11,10 +11,10 @@ match_arm   ::= pattern ("if" expr)? "=>" expr
 
 ```nabi
 match expr {
-    패턴1 => 식1,
-    패턴2 => 식2,
+    pattern1 => expr1,
+    pattern2 => expr2,
     ...
-    패턴N => 식N,
+    patternN => exprN,
 }
 ```
 
@@ -118,7 +118,7 @@ match v {
 
 ## 3.12.8. 가드
 
-가지에 [패턴](311-patterns.md)의 가드(`if 조건`)를 붙일 수 있습니다.
+가지에 [패턴](311-patterns.md)의 가드(`if condition`)를 붙일 수 있습니다.
 
 ```nabi
 match (x, y) {

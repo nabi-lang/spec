@@ -25,7 +25,7 @@
 
 위임하는 서브명령은 같은 이름의 `nabic` 서브명령을 실행합니다. 도구는 컴파일러를 링크해 담은 `nabi`의 프로세스 안에서 실행합니다(9.10.8). 어느 쪽이든 `nabi`는 자기 전역 옵션(`--env` / `--offline` / `--locked` / `--frozen` / `--cwd` / `--color`, `--` 앞 어디든)만 소비합니다. 나머지 인자는 그대로 컴파일러에 넘기고 다음을 더합니다. `test`와 `bench`에서 `nabi`는 `nabic`로 하네스를 빌드하게만 하고(`--emit-harness`) 실행은 직접 합니다([9.1](901-nabic-cli.md)). 그래서 러너는 컴파일러에 속하지 않고, 러너의 옵션(아래)도 `nabi`의 것입니다.
 
-- 의존 패키지마다 `--extern name=<소스 디렉토리>`. `nabi.lock`을 따라 준비하고, 의존되는 쪽이 의존하는 쪽보다 앞에 옵니다(`nabi deps`가 출력하는 순서). 미리 빌드는 `nabic`가 합니다([9.2.3](902-aot-pipeline.md#미리-빌드한-의존-패키지)).
+- 의존 패키지마다 `--extern name=<source directory>`. `nabi.lock`을 따라 준비하고, 의존되는 쪽이 의존하는 쪽보다 앞에 옵니다(`nabi deps`가 출력하는 순서). 미리 빌드는 `nabic`가 합니다([9.2.3](902-aot-pipeline.md#미리-빌드한-의존-패키지)).
 - 패키지마다 그 의존성마다 `--extern-dep <package>=<name>`(빌드 중인 패키지는 `pkg`). 그래서 각 패키지는 자기 의존성만 봅니다([5.7.14](../005-modules/507-paths.md#5714-패키지-사이-경로)).
 - 패키지 자신의 feature는 `--cfg feature=<f>`로, 각 의존 패키지의 feature는 `--extern-feature <name>=<f>`로 넘깁니다(9.10.4c). build / run / test / bench / check / lint / fix / doc / emit / repl / lsp / jupyter / deps의 feature 옵션은 `nabi`가 소비합니다(`--` 앞). 이런 옵션에는 `--features <f,..>`(여러 번 가능, `<dep>/<f>`도), `--all-features`, `--no-default-features`가 있습니다.
 - 매니페스트의 `lints`를 `-A` / `-W` / `-D`로 넘깁니다(인자 앞에). 매니페스트는 경로가 고르는 프로젝트의 것입니다. `.nabi` 파일이면 그 파일 위치나 그 위에서 `src/main.nabi`, `src/lib.nabi`, `nabi.nabion` 중 하나가 있는 가장 가까운 디렉터리입니다. 패키지 `src/` 안의 파일은 그 패키지를 고릅니다([9.1.1](901-nabic-cli.md#911-일반-형태)). `nabi.nabion`이 있는 디렉터리의 그 밖의 단독 파일이 있습니다. 패키지 `src/` 옆의 스크립트나 `nabi.nabion`만 있는 디렉터리의 파일이 그렇습니다. 이런 파일은 그 매니페스트의 `lints`(와 `lints_from`)와 의존성을 쓰는 단일 파일 패키지로 컴파일합니다.
@@ -65,7 +65,7 @@
 
 모르는 서브명령이나 옵션은 사용법 에러(종료 코드 2)입니다. 가장 가까운 서브명령이나 옵션이 있으면 메시지가 그 이름을 댑니다. 흔히 쓰는 다른 이름도 알아듣습니다(`build` 대신 `compile`, `remove` 대신 `rm`). 이어서 ``run `nabi help <subcommand>` for usage``를 출력합니다. index에 없는 패키지나 native 패키지는 그 index에서 가장 가까운 이름과 실행할 `nabi search`를 알려 줍니다. `nabi`는 자신이 실행하는 `nabic`에 `__NABI_CLI=nabi`을 설정합니다. 그래서 `nabic`의 사용법 에러, 도움말, 에러와 경고 줄의 접두사도 `nabi`로 나옵니다([9.1.7](901-nabic-cli.md#917-환경-변수)).
 
-서브명령 없이 `nabi [옵션]`만 실행하면 `nabi repl`과 같이 REPL을 시작합니다.
+서브명령 없이 `nabi [options]`만 실행하면 `nabi repl`과 같이 REPL을 시작합니다.
 
 ```
 nabi                 # = nabi repl
@@ -193,7 +193,7 @@ Package {
 - `Dep::path("..", version: "req")`는 path 의존성에 버전 요구사항을 더합니다. 빌드는 그 경로를 쓰고, 그 경로의 패키지 버전은 요구사항을 만족해야 합니다(`` dependency `linalg` (path ..) is version 0.2.0, which its `version: "^0.1"` does not accept; .. ``). `nabi publish`는 경로 대신 요구사항을 씁니다(9.10.4a). 나란히 개발하는 패키지는 이렇게 게시합니다.
 - `Dep::path` / `Dep::git` / `Dep::version`은 `optional: true`, `features: ["<f>", ..]`, `default_features: false`도 받습니다(9.10.4c). optional인 dev 의존은 에러입니다.
 - `package: "<name>"`은 의존성의 이름을 바꿉니다. `<name>`이 패키지이고, 키는 이 패키지의 코드가 그 패키지를 부르는 이름입니다(`"j": Dep::version("^1", package: "json5")`는 `json5`이고 `use j::..`로 씁니다). 이름은 의존하는 패키지마다 따로 정하고 그 패키지의 코드만 보므로, 두 패키지가 한 패키지를 서로 다른 이름으로 부를 수 있습니다. 그래도 한 패키지이고 한 번만 빌드하며, 어느 이름으로 불러도 타입은 같습니다. 한 패키지에 키 둘로 의존하면 에러입니다(`` the root package depends on package `json5` twice, as `j` and `json5`; depend on it once ``).
-- `target: "<target>"`은 의존을 맞는 target의 빌드로 한정합니다. target 이름(`x86_64-unknown-linux-gnu`)이나, [6.3.2](../006-meta-system/603-cfg.md#632-predicate-종류)의 target 키(`target_os`, `target_arch`, `target_family`, `target_env`, `target_endian`, `target_pointer_width`)에 대한 `cfg(<조건>)`이고, `all(..)`, `any(..)`, `not(..)`을 씁니다. 그 밖의 값은 매니페스트를 읽을 때 에러입니다. 해소와 lock은 모든 target에 대해 그 의존을 다룹니다. 다른 target의 빌드는 그 의존과, 그 의존이 켤 feature를 뺍니다.
+- `target: "<target>"`은 의존을 맞는 target의 빌드로 한정합니다. target 이름(`x86_64-unknown-linux-gnu`)이나, [6.3.2](../006-meta-system/603-cfg.md#632-predicate-종류)의 target 키(`target_os`, `target_arch`, `target_family`, `target_env`, `target_endian`, `target_pointer_width`)에 대한 `cfg(<predicate>)`이고, `all(..)`, `any(..)`, `not(..)`을 씁니다. 그 밖의 값은 매니페스트를 읽을 때 에러입니다. 해소와 lock은 모든 target에 대해 그 의존을 다룹니다. 다른 target의 빌드는 그 의존과, 그 의존이 켤 feature를 뺍니다.
 - 의존성에 `plugin: true`를 쓰면 그 의존성을 링크하지 않고 프로그램 옆에 플러그인으로 빌드합니다([9.12.2](912-plugins.md#9122-빌드)). 플러그인의 의존성에 `bundle: true`를 쓰면 프로그램에서 가져오는 대신 플러그인에 링크합니다. 플러그인이 아닌 패키지의 `bundle`은 에러이며(`` `bundle: true` on `noise` belongs in a plugin's dependencies: give this package `lib: { kind: "plugin" }`, or remove `bundle: true` ``), 둘을 함께 쓴 의존성도 에러입니다.
 - `Dep::registry`는 `nabi.lock` 전용입니다. `nabi.nabion`에 쓰면 에러입니다.
 - 패키지 이름(`deps`의 키, `name`)은 `[a-z0-9_-]+`의 소문자 ASCII이고 글자로 시작해야 합니다. 숫자, `-`, `_`로 시작하면 에러입니다.
@@ -312,10 +312,10 @@ nabi deps [--dev] [--features <f,..>] [--all-features] [--no-default-features] [
 - `add` / `remove`는 패키지의 `nabi.nabion`을 고치고, 주석과 배치를 보존합니다. `--dev`는 `dev_deps`에 넣습니다.
 - 마지막 인자로 스크립트 파일을 주면 `add` / `remove`는 패키지의 `nabi.nabion` 대신 그 파일의 `//! nabion` 블록을 고칩니다(9.10.7). 블록이 없으면 shebang 줄과 맨 앞의 `//!` 줄 뒤에 만듭니다. 새 블록은 정규 형식으로 쓰고, 이미 있는 블록은 배치와 주석을 유지합니다. 비게 된 블록은 지웁니다. path는 스크립트 기준으로 쓰고, `--dev` / `--optional`은 에러입니다. 패키지 안의 스크립트는 에러입니다(패키지의 `nabi.nabion`을 씀).
 - `add` / `remove`를 스크립트 없이 패키지 밖에서 쓰거나 `--env`와 함께 쓰면 에러입니다. 에러는 `nabi add <name> <file.nabi>`과 `nabi install` / `nabi uninstall`을 알립니다([9.10.5a](#9105a-nabi-install--nabi-uninstall)).
-- 레지스트리 패키지를 요구 없이 더하면 `^<가장 새 버전>`을 적습니다. `--features`, `--no-default-features`, `--optional`은 `Dep::..`에 적습니다. 패키지에 같은 이름의 feature가 없으면 `--optional`은 feature `"<name>": ["dep:<name>"]`도 더합니다.
+- 레지스트리 패키지를 요구 없이 더하면 `^<newest version>`을 적습니다. `--features`, `--no-default-features`, `--optional`은 `Dep::..`에 적습니다. 패키지에 같은 이름의 feature가 없으면 `--optional`은 feature `"<name>": ["dep:<name>"]`도 더합니다.
 - 패키지에 `add`하면 `Added <name> v<version>`을 알립니다. 버전은 의존 패키지 `nabi.nabion`의 `version`입니다(아직 해석되지 않은 레지스트리 패키지는 고정한 버전). 버전이 없으면 `Added <name>`입니다. `--dev`는 ` (dev_deps)`를 덧붙입니다.
 - 빌드는 `nabi.lock`의 커밋과 버전을 씁니다. 새로 선언된 의존은 lock에 더하고 지운 의존은 정리합니다. 하지만 이미 고정된 것을 옮기는 것은 `update`뿐입니다. `update`는 이름을 주면 그 패키지만, 없으면 모든 git 의존과 레지스트리 의존을 다시 해소합니다.
-- `deps`는 해소한 의존 패키지를 `<코드 이름>=<그 src/lib.nabi 경로>` 줄로 출력합니다. 코드 이름은 `-`를 `_`로 바꾼 것이고, 의존되는 쪽이 먼저 옵니다(`--dev`면 dev 의존 포함). 의존하는 쪽이 다른 이름(`package`)으로 부르는 패키지는 이름마다 이런 줄이 하나씩 더 있습니다. 각 패키지의 줄 뒤에는 그 `--extern-feature=<코드 이름>=<f>` 줄이 옵니다. `deps`는 feature 옵션과 `--dev`를 받습니다. native 패키지마다(의존하는 쪽이 먼저, 호스트용) `# native <name> <version>`와 그 `nabic` 인자를 한 줄에 하나씩 출력합니다. 의존성이 없으면 아무것도 출력하지 않습니다.
+- `deps`는 해소한 의존 패키지를 `<code name>=<path of its src/lib.nabi>` 줄로 출력합니다. 코드 이름은 `-`를 `_`로 바꾼 것이고, 의존되는 쪽이 먼저 옵니다(`--dev`면 dev 의존 포함). 의존하는 쪽이 다른 이름(`package`)으로 부르는 패키지는 이름마다 이런 줄이 하나씩 더 있습니다. 각 패키지의 줄 뒤에는 그 `--extern-feature=<code name>=<f>` 줄이 옵니다. `deps`는 feature 옵션과 `--dev`를 받습니다. native 패키지마다(의존하는 쪽이 먼저, 호스트용) `# native <name> <version>`와 그 `nabic` 인자를 한 줄에 하나씩 출력합니다. 의존성이 없으면 아무것도 출력하지 않습니다.
 - `deps --format json`은 같은 순서로 JSON 객체를 한 줄에 하나씩 대신 출력합니다. 객체마다 `schema`(지금은 `1`)와 `type`이 있습니다. `package` 레코드에는 `name`, `version`(레지스트리 패키지면 해소한 버전, 아니면 그 의존성 `nabi.nabion`의 `version`, 그것도 없으면 `null`), `source`(`path+<dir>`, `git+<url>#<commit>`, `registry+<index url>`), `path`(그 `src/lib.nabi`), `features`가 있습니다. `native` 레코드에는 `name`, `version`, `args`(그 `nabic` 인자)가 있습니다. 마지막 `summary` 레코드는 `packages`와 `natives`의 수를 세므로, 의존성이 없는 패키지는 이것만 출력합니다. 레코드는 JSON 진단의 `schema` 규칙([9.9.4](909-debug-tools.md#994-진단--에러-메시지))을 따릅니다. 기본값은 `--format human`이고, 다른 값은 CLI 에러입니다.
 - `nabi.lock`은 버전 관리에 함께 넣습니다.
 - `update`는 lock에서 바뀐 것마다 `Updated <name> v0.1.0 -> v0.1.1` 줄을 출력합니다. git 의존성은 짧은 커밋으로 적고, 새로 고정된 것은 `Locked`, 빠진 것은 `Removed`입니다. 바뀐 것이 없으면 `note: all dependencies are up to date`를, 의존성이 없으면 `` note: no dependencies to update; add one: `nabi add <name>` ``를 출력합니다.
@@ -476,7 +476,7 @@ nabi yank [--native] <name>@<version> [--undo] [--message <why>] [--registry <ur
 - `yank --message <why>`는 철회 이유를 적습니다(많아야 512바이트). 레지스트리가 보관하고 보여 줍니다. 철회할 때만 씁니다. `--undo`나 `--index-dir`(checkout에는 둘 곳이 없음)와 함께 쓰면 에러입니다.
 - 레지스트리 API의 주소는 index의 `config.nabion`의 `api`에 있습니다. 요청은 `Authorization: Bearer <token>`을 싣고, 본문은 한 줄 NABION(`application/nabion; charset=utf-8`)입니다.
   - `GET <api>/api/v1/me` → `Me { login: "..", publish: <bool> }`
-  - `POST <api>/api/v1/publish`, 본문 `Publish { entry: <index 줄>, meta: { .. } }`(줄은 `Package { .. }` / `Native { .. }`) → `Published { name, version, file, warnings: ["..", ..] }`. `nabi`는 경고를 하나씩 출력합니다.
+  - `POST <api>/api/v1/publish`, 본문 `Publish { entry: <index line>, meta: { .. } }`(줄은 `Package { .. }` / `Native { .. }`) → `Published { name, version, file, warnings: ["..", ..] }`. `nabi`는 경고를 하나씩 출력합니다.
   - `POST <api>/api/v1/yank`, 본문 `Yank { name, version, undo: <bool>, native: <bool>, message: ".." }`(`message`는 있을 때만 적음) → `Yanked { name, version, yanked }`
   - `GET <api>/api/v1/packages/<name>`과 `/api/v1/native/<name>`, 토큰 없음 → `Package { name, native, owners, versions: [Version { version, yanked, meta, yank_message, has_readme, downloads, published_by, yanked_by, unyanked_by }, ..] }`. `GET <api>/api/v1/packages/<name>/<version>/readme` → markdown README.
 
@@ -629,7 +629,7 @@ nabi uninstall [--native] <name>..
 
 - 소스의 패키지는 먼저 캐시로 가져옵니다([9.10.4](#9104-의존성-nabi-add--remove--update--deps)).
 - `src/main.nabi`가 있는 패키지나 스크립트 파일은 실행 파일입니다. `cargo install`처럼 `--release`로 빌드해 그 실행 파일을 `$NABI_HOME/bin/<name>`에 둡니다. git 패키지와 레지스트리 패키지는 checkout의 임시 사본에서, path 패키지와 스크립트 파일은 제자리에서 빌드합니다. `$NABI_HOME/installs.nabion`(`Package { deps: { "<name>": <source> } }`)이 각 실행 파일과 그 정확한 출처를 기록합니다. 레지스트리 패키지는 `=<version>`으로, git 패키지는 그 `rev:`와 함께 기록합니다. 패키지에 `src/lib.nabi`도 있으면 `nabi install`에는 `--bin`이나 `--lib`가 있어야 합니다. 둘 다 없으면 에러이고 아무것도 설치하지 않습니다. 에러는 실행 파일을 원하면 `--bin`을, 라이브러리를 원하면 `--lib`를 쓰라고 알립니다. `src/main.nabi`가 없는 패키지에 `--bin`을 주거나 `--bin`과 `--lib`를 함께 주면 에러입니다.
-- `src/lib.nabi`만 있는 패키지, 또는 `--lib`를 준 `src/lib.nabi`가 있는 패키지는 라이브러리입니다. 라이브러리는 `pip install`처럼 `nabi repl`, `nabi jupyter`, `:add`를 위해 활성 환경([9.10.5](#9105-환경))에 들어갑니다. 환경의 `nabi.nabion`에 적고(요구 없는 레지스트리 패키지는 `^<가장 새 버전>`, path는 절대 경로), 그 `nabi.lock`으로 해소하고, 그 `target/`에 미리 빌드합니다. 스크립트는 이 라이브러리를 보지 않습니다. 스크립트는 `nabi add <name> <file.nabi>`으로 라이브러리를 얻고, 출력 줄이 이를 알립니다. 빌드되지 않으면 아무것도 설치하지 않습니다. `src/lib.nabi`가 없는 패키지나 스크립트에 `--lib`를 주면 에러입니다.
+- `src/lib.nabi`만 있는 패키지, 또는 `--lib`를 준 `src/lib.nabi`가 있는 패키지는 라이브러리입니다. 라이브러리는 `pip install`처럼 `nabi repl`, `nabi jupyter`, `:add`를 위해 활성 환경([9.10.5](#9105-환경))에 들어갑니다. 환경의 `nabi.nabion`에 적고(요구 없는 레지스트리 패키지는 `^<newest version>`, path는 절대 경로), 그 `nabi.lock`으로 해소하고, 그 `target/`에 미리 빌드합니다. 스크립트는 이 라이브러리를 보지 않습니다. 스크립트는 `nabi add <name> <file.nabi>`으로 라이브러리를 얻고, 출력 줄이 이를 알립니다. 빌드되지 않으면 아무것도 설치하지 않습니다. `src/lib.nabi`가 없는 패키지나 스크립트에 `--lib`를 주면 에러입니다.
 - `<name>`은 라이브러리의 최상위 이름, 또는 실행 파일의 파일 이름입니다. 생략하면 패키지의 `name`을 씁니다. 그것도 없으면 디렉터리 이름(path), `.git`을 뗀 저장소 이름(git), 파일 stem(스크립트)을 씁니다. [9.10.3](#9103-nabinabion--nabilock)의 이름 규칙을 따릅니다.
 - `--features` / `--no-default-features`는 라이브러리의 `Dep`에, 또는 실행 파일의 빌드에 들어갑니다. `--dev` / `--optional`은 에러입니다. `--native`는 환경의 `native`에 native 패키지를 더합니다([9.10.4b](#9104b-네이티브-패키지)).
 - 프록시 `nabi`, `nabic`, `nabicc`, `nabils`([9.10.6](#9106-toolchain))는 절대 교체하지 않습니다. `nabi install`이 두지 않은 `$NABI_HOME/bin`의 파일도 마찬가지입니다(에러). 실행 파일을 다시 설치할 때는 다음과 같습니다.
@@ -967,7 +967,7 @@ docs.nabi-lang.org의 표준 라이브러리 API도 이 규칙으로 만듭니�
 
 `nabi doc`은 패키지의 루트 쪽을 출력합니다(`Generated ./target/doc/<pkg>/index.html`). 경로 없이 `--std`를 주면 `std/index.html`입니다. `--open`은 문서를 만든 뒤 그 쪽을 엽니다. `$BROWSER`가 있으면 그것으로, 없으면 시스템의 opener(macOS는 `open`, Linux는 `xdg-open`, Windows는 `start`)로 엽니다. opener를 시작할 수 없으면 직접 열 파일을 경고로 알립니다. 종료 코드는 바뀌지 않습니다.
 
-문서 텍스트는 markdown의 부분집합(제목, fenced 코드 블록, 인라인 코드, 링크, `**굵게**`, 목록, 문단)으로 해석합니다. Nabi 코드 블록에서 `# `로 시작하는 줄(또는 `#`만 있는 줄)은 보이지 않습니다. `nabi test`가 실행하는 그 블록의 문서 테스트([9.1.2](901-nabic-cli.md#문서-테스트))를 위한 준비 코드입니다.
+문서 텍스트는 markdown의 부분집합(제목, fenced 코드 블록, 인라인 코드, 링크, `**bold**`, 목록, 문단)으로 해석합니다. Nabi 코드 블록에서 `# `로 시작하는 줄(또는 `#`만 있는 줄)은 보이지 않습니다. `nabi test`가 실행하는 그 블록의 문서 테스트([9.1.2](901-nabic-cli.md#문서-테스트))를 위한 준비 코드입니다.
 
 ### `nabi clean`: 빌드 산출물 제거
 

@@ -640,9 +640,9 @@ linspace(0.0, 1.0, 5)     //→ [0.0, 0.25, 0.5, 0.75, 1.0]: 값 n개, 양 끝 �
 arange(0.0, 1.0, 0.25)    //→ [0.0, 0.25, 0.5, 0.75]: stop 전까지 start + i*step
 ```
 
-`linspace(start, stop, n)`은 `step = (stop - start) / (n - 1)`로 `start + i * step`을 내고 마지막 값은 정확히 `stop`입니다(`n == 1`이면 `start` 하나, `0`이면 없음). `arange(start, stop, step)`은 `ceil((stop - start) / step)`개의 값 `start + i * step`을 내며 각 값을 `i`로 계산하므로 오차가 쌓이지 않습니다. step이 0이거나 NaN이면 패닉합니다. `Range<f64>`는 반복자가 아닙니다([2.7.3](207-iter.md#273-step-한-칸-진행-추상화)).
+`linspace(start, stop, n)`은 `step = (stop - start) / (n - 1)`로 `start + i * step`을 내고 마지막 값은 정확히 `stop`입니다(`n == 1`이면 `start` 하나, `0`이면 없음). `arange(start, stop, step)`은 `ceil((stop - start) / step)`개의 값 `start + i * step`을 내며 각 값을 `i`로 계산하므로 오차가 쌓이지 않습니다. step이 0이거나 NaN이면 panic합니다. `Range<f64>`는 반복자가 아닙니다([2.7.3](207-iter.md#273-step-한-칸-진행-추상화)).
 
-**`gcd` / `lcm`.** 모든 고정 폭 정수 타입에 `gcd(other)`(최대공약수, 음수가 되지 않음. 둘 다 0이면 `0`. `12i32.gcd(-18) == 6`)와 `lcm(other)`(최소공배수, 음수가 되지 않음. 어느 하나가 0이면 `0`)가 있습니다. 결과가 타입에 맞지 않으면 `int`로 계산하라고 알리며 패닉합니다(`i64::MIN.gcd(0)`, 넘치는 `lcm`). `int`에는 자체 `gcd` / `lcm`이 있습니다(2.1.2).
+**`gcd` / `lcm`.** 모든 고정 폭 정수 타입에 `gcd(other)`(최대공약수, 음수가 되지 않음. 둘 다 0이면 `0`. `12i32.gcd(-18) == 6`)와 `lcm(other)`(최소공배수, 음수가 되지 않음. 어느 하나가 0이면 `0`)가 있습니다. 결과가 타입에 맞지 않으면 `int`로 계산하라고 알리며 panic합니다(`i64::MIN.gcd(0)`, 넘치는 `lcm`). `int`에는 자체 `gcd` / `lcm`이 있습니다(2.1.2).
 
 **`is_close`.** `f64::is_close(self, other, rel: f64 = 1e-9, abs: f64 = 0.0, equal_nan: bool = false) -> bool`은 Python의 `math.isclose`입니다. 두 값이 같거나, 둘 다 유한하고 `|a - b| <= max(rel * max(|a|, |b|), abs)`이면 `true`입니다. 두 값에 대해 대칭입니다. 기본 `rel`은 대략 아홉 자리가 같기를 요구합니다. 0 근처에서는 `abs`만 도움이 됩니다(`1e-12.is_close(0.0)`은 `false`, `1e-12.is_close(0.0, abs: 1e-9)`는 `true`). 무한대는 자기 자신에만 가깝고, NaN은 `equal_nan`이면서 둘 다 NaN일 때 말고는 어디에도 가깝지 않습니다. `f32::is_close`도 같은 꼴이며 기본 `rel`은 2^-20입니다(마지막 자리 8단위. 1e-9는 `f32`의 정밀도보다 작음). 배열 형태는 `Array::is_close` / `all_close`입니다([2.9.14](209-collections.md#2914-arrayt-const-n-usize-n차원-배열)).
 

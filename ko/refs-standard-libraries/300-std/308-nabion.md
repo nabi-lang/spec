@@ -78,7 +78,7 @@ Config {
 - struct 대상은 `Struct`, `{}`, `A::B { .. }`를 받습니다. 그래서 모듈 경로를 붙인 struct 이름(`geom::Point { .. }`)도 받습니다.
 - 적은 이름은 대상과 같아야 합니다. struct는 경로의 마지막 마디, enum 변형은 마지막 두 마디를 비교합니다.
 - 타입에 없는 필드는 건너뜁니다. 그래서 형식에 필드를 더해도 예전 읽기가 깨지지 않습니다. 타입에 `#[nabion(deny_unknown_fields)]`를 붙이면 그 필드 이름 위치의 에러입니다. struct와 이름 있는 변형에 똑같이 적용됩니다.
-- 빠진 필드는 그 필드에 `= 기본값`이 있으면 기본값을 받습니다. 타입이 `T | none`이면 `none`을 받습니다. 그 밖에는 에러입니다(`FromNabion::from_missing`).
+- 빠진 필드는 그 필드에 `= default`이 있으면 기본값을 받습니다. 타입이 `T | none`이면 `none`을 받습니다. 그 밖에는 에러입니다(`FromNabion::from_missing`).
 - 정수 값이 대상 정수 타입의 범위를 넘으면 에러입니다.
 - 이름 있는 변형은 `E::V(a, k: b)`로도 읽습니다. 위치 인자가 필드를 순서대로 채우고, 이어서 이름 있는 인자가 채웁니다.
 
@@ -173,7 +173,7 @@ struct와 enum(제네릭 포함)에 `ToNabion`과 `FromNabion`을 함께 구현�
 | 튜플 변형            | `E::V(a)`              |
 | 이름 있는 변형       | `E::V { f: v }`        |
 
-필드의 `= 기본값`은 빠진 필드에 쓰입니다(3.8.3). 타입에 `#[nabion(deny_unknown_fields)]`를 붙이면 타입에 없는 필드가 에러입니다(3.8.3). `#[nabion(..)]`은 다른 키를 받지 않으며, 철자가 틀린 키는 유효한 키를 알려 주는 에러입니다. derive는 메타 토큰 `@Self.name`, `@Self.is_unit` / `is_tuple` / `is_named`, `@field.has_default` / `@field.default`, `@Self.has_derive_key`로 구현합니다([refs-lang 6.9](../../refs-lang/006-meta-system/609-template-tokens.md)).
+필드의 `= default`은 빠진 필드에 쓰입니다(3.8.3). 타입에 `#[nabion(deny_unknown_fields)]`를 붙이면 타입에 없는 필드가 에러입니다(3.8.3). `#[nabion(..)]`은 다른 키를 받지 않으며, 철자가 틀린 키는 유효한 키를 알려 주는 에러입니다. derive는 메타 토큰 `@Self.name`, `@Self.is_unit` / `is_tuple` / `is_named`, `@field.has_default` / `@field.default`, `@Self.has_derive_key`로 구현합니다([refs-lang 6.9](../../refs-lang/006-meta-system/609-template-tokens.md)).
 
 ```nabi
 #[derive(Nabion)]

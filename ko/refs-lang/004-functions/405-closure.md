@@ -19,7 +19,7 @@ capture_list   ::= "[" capture_item ("," capture_item)* ","? "]"   // capture_it
 매개변수가 없는 형태인 `||`는 토큰 하나입니다([구두점과 연산자 토큰](../001-lexical/110-punctuation-and-operator-tokens.md) 참고). `|` 두 개로 나뉘지 않습니다.
 
 ```nabi
-|매개변수들| 본체
+|params| body
 ```
 
 매개변수는 좌우의 `|` 토큰([구두점과 연산자 토큰](../001-lexical/110-punctuation-and-operator-tokens.md))으로 감쌉니다. 본체는 식이거나 블록입니다.
@@ -77,7 +77,7 @@ list.iter().map(|x| x * 2);                  // map 의 시그니처에서 추�
 |x: i32| -> i32 { x * 2 }          // 명시: 블록 본체일 때만
 ```
 
-반환 타입 명시(`-> 타입`)는 블록 본체에서만 씁니다. 단일 식 본체는 항상 추론합니다.
+반환 타입 명시(`-> type`)는 블록 본체에서만 씁니다. 단일 식 본체는 항상 추론합니다.
 
 ## 4.5.4. 캡처
 

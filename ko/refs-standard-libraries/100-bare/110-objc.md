@@ -74,7 +74,7 @@ println(f"{a.count()} {ns("héllo").length()}");      // 1 5
 | `Sel`, `Class` | `SEL`, `Class` |
 | 그 밖의 타입 | `extern "C"` 선언([1.7](107-ffi.md))과 같습니다. 정수, 부동소수점, 원시 포인터, 값으로 넘기는 `#[repr(C)]` 구조체, NUL로 끝나는 `char *`인 `str` |
 
-`Id<T>`로 선언한 결과가 nil로 돌아오면 패닉합니다: "`-[NSArray firstObject]` returned nil, but its declaration returns an object: declare the result `Id<T> | none`". `Id`는 늘 객체를 가지므로 nil 수신자는 생기지 않습니다.
+`Id<T>`로 선언한 결과가 nil로 돌아오면 panic합니다: "`-[NSArray firstObject]` returned nil, but its declaration returns an object: declare the result `Id<T> | none`". `Id`는 늘 객체를 가지므로 nil 수신자는 생기지 않습니다.
 
 메서드 호출은 안전합니다. 다만 원시 포인터 매개변수(`Ptr`, `ConstPtr`, `ManyPtr`, `CPtr`)가 있거나 `unsafe fn`으로 선언한 메서드는 C 함수처럼 `unsafe`로 불러야 합니다. 선언 자체는 클래스와 맞는지 검사하지 않습니다. 틀린 선언은 틀린 `extern "C"` 선언처럼 정의되지 않은 동작입니다.
 
@@ -95,7 +95,7 @@ println(f"{a.count()} {ns("héllo").length()}");      // 1 5
 |----------------|----|
 | `release_now()` | 지금 객체를 해제합니다. 그 뒤로 모든 사본이 해제된 것으로 읽히고, 두 번째 호출은 아무 일도 하지 않습니다 |
 | `is_released() -> bool` | `release_now()`가 실행되었는지 |
-| `as_raw() -> CPtr<u8>` | 객체 포인터. `release_now()` 뒤에는 패닉합니다: "an `Id<NSWindow>` was used after `release_now()`; release an object only once nothing uses it any more" |
+| `as_raw() -> CPtr<u8>` | 객체 포인터. `release_now()` 뒤에는 panic합니다: "an `Id<NSWindow>` was used after `release_now()`; release an object only once nothing uses it any more" |
 | `retained_raw() -> CPtr<u8>` | 그것을 넘겨받는 피호출자(`NS_CONSUMED`)를 위한 retain 하나 더 |
 | `unsafe cast<U: Object>() -> Id<U>` | 같은 객체와 retain을 클래스 `U`로, 검사 없이 |
 | `downcast<U: Object>() -> Id<U> \| none` | 객체가 `U`일 때(`isKindOfClass:`) 같은 것 |
@@ -110,7 +110,7 @@ println(f"{a.count()} {ns("héllo").length()}");      // 1 5
 
 - `Sel`: 셀렉터. `Sel::register(name)`(`sel_registerName`), `s.name()`.
 - `Class`: 클래스 객체. `Class::lookup(name) -> Class | none`(`objc_lookUpClass`), `c.name()`, `c.as_raw()`.
-- `trait Object { fn name() -> str; fn class() -> Class; fn main_thread() -> bool; }`: `extern "objc"` 블록이 선언하는 모든 타입과 `NSObject`, `NSString`, `NSError`가 구현합니다. 프로토콜 타입의 `class()`는 패닉합니다. 프로토콜에는 클래스 객체가 없습니다. `main_thread()`(기본값 `false`)는 `NSResponder`에서 `true`입니다(1.10.5).
+- `trait Object { fn name() -> str; fn class() -> Class; fn main_thread() -> bool; }`: `extern "objc"` 블록이 선언하는 모든 타입과 `NSObject`, `NSString`, `NSError`가 구현합니다. 프로토콜 타입의 `class()`는 panic합니다. 프로토콜에는 클래스 객체가 없습니다. `main_thread()`(기본값 `false`)는 `NSResponder`에서 `true`입니다(1.10.5).
 - `trait IsA<C> {}`: `T: IsA<C>`인 `T`는 `C`입니다. `C` 자신, 그 슈퍼클래스, 또는 그것이나 슈퍼클래스가 따르는 프로토콜(프로토콜의 부모 포함)입니다. 블록이 구현하며, `x.upcast::<C>() -> Id<C>`에 필요합니다.
 - `objc::new::<T>() -> Id<T>`: `+[T new]`. 클래스 객체에는 `c.new_object() -> Id<NSObject>`.
 - `ClassBuilder`: 실행 중에 만드는 클래스(`objc_allocateClassPair`)로, delegate나 API가 서브클래스를 원하는 클래스에 씁니다. `ClassBuilder::new(name, sup) -> ClassBuilder | none`, `unsafe b.method(sel, imp, types)`(`imp`는 `extern "C" fn(this: CPtr<u8>, cmd: Sel, ..)`의 주소, `types`는 그 타입 인코딩 `"v@:@"`), `b.protocol(name)`, 그리고 `b.register() -> Class`.
@@ -148,7 +148,7 @@ cmd.addCompletedHandler(|buf| { done.store(buf.status() as i64); });  // Metal �
 
 블록은 다른 스레드에서 실행될 수 있습니다(완료 핸들러). 그러면 클로저는 그 스레드에서, 다른 C 콜백처럼 런타임에 붙어([1.7](107-ffi.md)) 실행되고, 캡처한 것을 함께 씁니다. 스레드에 안전한 값(`Atomic`, `Mutex`, 채널)을 쓰십시오. 블록을 받는 블록 매개변수와 블록 결과는 지원하지 않습니다.
 
-`Block<F>`는 Nabi가 소유한 블록으로, 블록을 받는 C 함수(`dispatch_block_t`)에 씁니다. `Block::new(f: fn() + Send)`는 어느 스레드에서든 실행되고, `Block::new_main_thread(f: fn())`는 `Send`가 아니어도 되는 클로저를 받으며 메인 스레드 밖에서 실행되면 패닉합니다. `b.as_raw()`는 C 매개변수로 넘길 블록이고, `b.call()`은 그것을 부르며, 블록은 수집기가 해제합니다(`_Block_release`). `BlockRef<F>`는 Objective-C가 넘겨준 블록입니다. 그 호출이 도는 동안 유효하고, `r.call()`로 부르며, `r.copy() -> Block<F>`로 간직합니다(`_Block_copy`).
+`Block<F>`는 Nabi가 소유한 블록으로, 블록을 받는 C 함수(`dispatch_block_t`)에 씁니다. `Block::new(f: fn() + Send)`는 어느 스레드에서든 실행되고, `Block::new_main_thread(f: fn())`는 `Send`가 아니어도 되는 클로저를 받으며 메인 스레드 밖에서 실행되면 panic합니다. `b.as_raw()`는 C 매개변수로 넘길 블록이고, `b.call()`은 그것을 부르며, 블록은 수집기가 해제합니다(`_Block_release`). `BlockRef<F>`는 Objective-C가 넘겨준 블록입니다. 그 호출이 도는 동안 유효하고, `r.call()`로 부르며, `r.copy() -> Block<F>`로 간직합니다(`_Block_copy`).
 
 `Queue::main()`과 `Queue::global()`은 Grand Central Dispatch 큐이고, `dispatch_async(queue, block)`는 `Block<fn()>`을 나중에 그 큐에서 실행합니다. 메인 큐의 블록은 메인 런 루프(`NSApplication::run`, `dispatch_main`)에서 실행됩니다.
 
@@ -204,7 +204,7 @@ Nabi 형태가 없는 타입을 쓰는 메서드는 블록 안의 `// skipped -[
 
 ### 캐시
 
-바인딩은 toolchain 캐시의 `objc/<SDK 버전>/<key>.nabi`에 남습니다. 키는 SDK, 그 버전, 타깃, 배포 타깃, 지정한 헤더, 컴파일러입니다. 다음 빌드는 헤더 대신 그 파일을 읽습니다. 그 파일이 바인딩의 소스이므로 바인딩 안의 진단은 그 파일을 가리킵니다. `nabi bindgen -x objective-c <header>`는 헤더 하나의 같은 바인딩을 파일로 씁니다([9.10.8](../../refs-lang/009-tools/910-nabi-frontend.md#nabi-bindgen-c-헤더-바인딩)).
+바인딩은 toolchain 캐시의 `objc/<SDK version>/<key>.nabi`에 남습니다. 키는 SDK, 그 버전, 타깃, 배포 타깃, 지정한 헤더, 컴파일러입니다. 다음 빌드는 헤더 대신 그 파일을 읽습니다. 그 파일이 바인딩의 소스이므로 바인딩 안의 진단은 그 파일을 가리킵니다. `nabi bindgen -x objective-c <header>`는 헤더 하나의 같은 바인딩을 파일로 씁니다([9.10.8](../../refs-lang/009-tools/910-nabi-frontend.md#nabi-bindgen-c-헤더-바인딩)).
 
 ## 1.10.13. 가용성과 배포 타깃
 

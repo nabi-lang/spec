@@ -32,8 +32,8 @@ pub trait Rng {
     fn next_u64(ref self) -> u64;                        // 유일한 필수 메서드
     fn f64(ref self) -> f64;                             // [0, 1): (next_u64() >> 11) * 2^-53
     fn f32(ref self) -> f32;                             // [0, 1): (next_u64() >> 40) * 2^-24
-    fn below(ref self, n: u64) -> u64;                   // [0, n), 치우침 없음. n == 0이면 패닉
-    fn range<R: SampleRange>(ref self, r: R) -> R::Item; // 모든 정수 타입의 a..b / a..=b, 비면 패닉
+    fn below(ref self, n: u64) -> u64;                   // [0, n), 치우침 없음. n == 0이면 panic
+    fn range<R: SampleRange>(ref self, r: R) -> R::Item; // 모든 정수 타입의 a..b / a..=b, 비면 panic
     fn uniform(ref self, lo: f64, hi: f64) -> f64;       // lo + (hi - lo) * f64()
     fn bool(ref self, p: f64 = 0.5) -> bool;             // f64() < p
     fn normal(ref self, mean: f64 = 0.0, std: f64 = 1.0) -> f64;
@@ -56,7 +56,7 @@ pub trait Rng {
 
 pub trait SampleRange {                                  // 모든 정수 타입의 Range<T>, RangeInclusive<T>
     type Item;
-    fn outcomes(self) -> u64;                            // 범위의 값 수, 2^64개 전부면 0. 비면 패닉
+    fn outcomes(self) -> u64;                            // 범위의 값 수, 2^64개 전부면 0. 비면 panic
     fn outcome(self, k: u64) -> Item;                    // 시작에서 k만큼 지난 값
 }
 ```
@@ -64,15 +64,15 @@ pub trait SampleRange {                                  // 모든 정수 타입
 파생 메서드는 이 절이 정하므로, 시드를 준 생성기는 모든 타깃과 릴리스에서 같은 값을 냅니다.
 
 - `below(n)`은 `next_u64()`가 `(2^64 - n) mod n` 이상이 될 때까지 뽑고 그 값의 `mod n`을 돌려줍니다.
-- `range(r)`은 `r.outcome(below(r.outcomes()))`이고, 2^64개 값 전부인 범위면 `r.outcome(next_u64())`입니다. 곧 `a..b`는 `a + below(b - a)`, `a..=b`는 `a + below(b - a + 1)`이며 2의 보수 폭으로 계산합니다. `range(1..=6)`, `range(0u8..=255)`, `range(0usize..n)`이 모두 됩니다. 빈 범위는 그 범위를 밝히며 패닉합니다(`Rng::range: 5..5 is empty; the end must be above the start`). 실수 범위는 `uniform(lo, hi)`입니다.
+- `range(r)`은 `r.outcome(below(r.outcomes()))`이고, 2^64개 값 전부인 범위면 `r.outcome(next_u64())`입니다. 곧 `a..b`는 `a + below(b - a)`, `a..=b`는 `a + below(b - a + 1)`이며 2의 보수 폭으로 계산합니다. `range(1..=6)`, `range(0u8..=255)`, `range(0usize..n)`이 모두 됩니다. 빈 범위는 그 범위를 밝히며 panic합니다(`Rng::range: 5..5 is empty; the end must be above the start`). 실수 범위는 `uniform(lo, hi)`입니다.
 - `normal`은 Marsaglia와 Tsang의 ziggurat이며, 층 256개를 Doornik(2005)의 꼴로 둡니다. `next_u64()` 하나가 층(하위 8비트)과 부호 있는 균등값(상위 53비트)을 줍니다. 표는 `r = 3.654152885361009`의 것입니다. 거의 모든 편차가 한 번 뽑기로 끝납니다.
 - `exponential(rate)`는 `u = ((next_u64() >> 12) + 0.5) * 2^-52`((0, 1) 안)로 `-ln(u) / rate`입니다.
 - `gamma(shape, scale)`는 Marsaglia와 Tsang(2000)이고(`shape < 1`이면 `shape + 1`의 편차에 `u^(1 / shape)`를 곱함) 거기에 `scale`을 곱합니다. `beta(a, b)`는 감마 편차 두 개의 `x / (x + y)`입니다.
 - `poisson(lam)`은 `lam < 10`이면 0부터 누적분포를 찾고, 그 밖에는 NumPy처럼 PTRS(Hormann 1993)를 씁니다. `binomial(n, p)`는 `n min(p, 1 - p) >= 30`인 동안 베타 분포를 따르는 순서 통계량으로 나누고, 그 뒤 누적분포를 역으로 찾습니다(Devroye 1986).
-- `weighted(ws)`는 `t = f64() * 합`을 뽑고, 누적합이 `t`를 넘는 첫 인덱스를 돌려줍니다.
+- `weighted(ws)`는 `t = f64() * sum`을 뽑고, 누적합이 `t`를 넘는 첫 인덱스를 돌려줍니다.
 - `shuffle`은 뒤에서부터의 Fisher-Yates입니다(위치 `i`와 `below(i + 1)`을 바꿈). `choice`는 `xs[below(len)]`입니다. `sample`은 `0..k`의 `i`마다 위치 `i`와 `i + below(len - i)`를 바꾸고 그 순서로 항목을 가져옵니다.
 
-분포의 정의역 밖 인수는 메서드 이름과 허용되는 값을 밝히며 패닉합니다. 0보다 크지 않은 rate, shape, scale, 음수이거나 유한하지 않은 Poisson 평균, `binomial`의 `n < 0`이나 [0, 1] 밖의 `p`, 음수이거나 유한하지 않은 가중치, 합이 0인 가중치가 그렇습니다.
+분포의 정의역 밖 인수는 메서드 이름과 허용되는 값을 밝히며 panic합니다. 0보다 크지 않은 rate, shape, scale, 음수이거나 유한하지 않은 Poisson 평균, `binomial`의 `n < 0`이나 [0, 1] 밖의 `p`, 음수이거나 유한하지 않은 가중치, 합이 0인 가중치가 그렇습니다.
 
 일괄 형태는 한 번 호출로 값을 많이 채웁니다. `fill_f64`와 `fill_normal`은 쓰기 가능한 뷰에 쓰고(`List<f64>`는 전체의 뷰로 넘어감), `random_array`, `normal_array`, `uniform_array`는 그 모양의 새 행 우선 `Array`를 돌려줍니다. 값은 행 우선 순서이며, 원소마다 `f64()` / `normal()`을 한 번씩 부른 것과 같습니다.
 

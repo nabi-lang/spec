@@ -18,7 +18,7 @@ param_pattern   ::= tuple_pattern | struct_pattern
 fn f(x: i32, y: i32) -> i32 { x + y }
 ```
 
-각 매개변수는 ` 이름: 타입` 형태로 적고 콤마로 구분합니다. 매개변수 이름은 [식별자](../001-lexical/104-identifiers.md)의 형식을 따르고, 타입은 [타입 표현식](../002-types/201-type-expressions.md)의 규칙을 따릅니다.
+각 매개변수는 ` name: type` 형태로 적고 콤마로 구분합니다. 매개변수 이름은 [식별자](../001-lexical/104-identifiers.md)의 형식을 따르고, 타입은 [타입 표현식](../002-types/201-type-expressions.md)의 규칙을 따릅니다.
 
 ## 4.2.2. 타입 생략
 

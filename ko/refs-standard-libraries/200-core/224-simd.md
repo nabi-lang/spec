@@ -35,7 +35,7 @@ pub struct Mask<T, const N: usize> { /* 비공개: [T; N] */ }
 - `extern "C"` 시그니처에서 8바이트나 16바이트인 `Simd<T, N>`은 AAPCS64와 x86-64에서 같은 크기의 C 벡터(`float32x4_t`, `__m128`, `__attribute__((vector_size(16)))`)이고, C가 넘기는 대로 벡터 레지스터로 넘깁니다([refs-lang 8.6.3](../../refs-lang/008-abi/806-calling-convention.md#863-struct-인자--반환-작은-struct-규칙)). 다른 크기, 다른 타깃, 값으로 넘기는 struct 안의 `Simd`, `Mask`는 레인을 가리키는 포인터를 넘기라고 알려 주는 컴파일 에러입니다. 메모리에서 `Simd`는 C 벡터처럼 16바이트가 아니라 레인만큼 정렬됩니다.
 - 별칭은 흔한 모양에 이름을 붙입니다: `f32x2`, `f32x4`, `f32x8`, `f32x16`, `f64x2`, `f64x4`, `f64x8`, `i8x16`, `i8x32`, `i16x8`, `i16x16`, `i32x4`, `i32x8`, `i64x2`, `i64x4`, `u8x16`, `u8x32`, `u16x8`, `u16x16`, `u32x4`, `u32x8`, `u64x2`, `u64x4`(`f32x4`는 `Simd<f32, 4>`입니다).
 
-`Simd`와 `Mask`는 `PartialEq`(모든 레인이 같음, NaN 레인은 무엇과도 같지 않음)와 `Debug`(레인을 배열로: `[1.0, 2.0, 3.0, 4.0]`, 마스크는 `[true, false, ..]`)를 구현하고, `Simd`는 `Default`(모든 레인 0)와 `Index<usize>`(`v[i]`, 마지막 레인을 넘으면 패닉)를 구현합니다.
+`Simd`와 `Mask`는 `PartialEq`(모든 레인이 같음, NaN 레인은 무엇과도 같지 않음)와 `Debug`(레인을 배열로: `[1.0, 2.0, 3.0, 4.0]`, 마스크는 `[true, false, ..]`)를 구현하고, `Simd`는 `Default`(모든 레인 0)와 `Index<usize>`(`v[i]`, 마지막 레인을 넘으면 panic)를 구현합니다.
 
 ## 2.24.2. 만들기, 읽기, 쓰기
 
@@ -43,22 +43,22 @@ pub struct Mask<T, const N: usize> { /* 비공개: [T; N] */ }
 |---|---|
 | `Simd::splat(x)` | 모든 레인이 `x` |
 | `Simd::from_array(a)` / `v.to_array()` | `[T; N]`에서 레인을 만들거나 레인을 `[T; N]`으로 |
-| `Simd::from_slice(s)` | `Slice<T>`의 처음 `N`개 원소. 원소가 모자라면 패닉 |
-| `Simd::load(xs, at)` | `List<T>`의 `xs[at..at + N]`. 끝을 넘으면 패닉 |
-| `v.store(xs, at)` | `xs[at..at + N]`을 레인으로 설정. 끝을 넘으면 패닉 |
-| `v.copy_to(s)` | `SliceMut<T>`의 처음 `N`개 원소를 설정. 원소가 모자라면 패닉 |
+| `Simd::from_slice(s)` | `Slice<T>`의 처음 `N`개 원소. 원소가 모자라면 panic |
+| `Simd::load(xs, at)` | `List<T>`의 `xs[at..at + N]`. 끝을 넘으면 panic |
+| `v.store(xs, at)` | `xs[at..at + N]`을 레인으로 설정. 끝을 넘으면 panic |
+| `v.copy_to(s)` | `SliceMut<T>`의 처음 `N`개 원소를 설정. 원소가 모자라면 panic |
 | `v.get(i)` | 레인 `i`, 마지막 레인을 넘으면 `none` |
-| `v.with_lane(i, x)` | 레인 `i`를 `x`로 바꾼 복사본. 마지막 레인을 넘으면 패닉 |
+| `v.with_lane(i, x)` | 레인 `i`를 `x`로 바꾼 복사본. 마지막 레인을 넘으면 panic |
 | `Simd::<T, N>::LANES` | `N` |
 
-`from_slice`, `load`, `store`, `copy_to`의 패닉은 호출, 인덱스, 길이를 알려 줍니다(`Simd::load: 4 lanes from index 6 need 10 elements, but there are 8`).
+`from_slice`, `load`, `store`, `copy_to`의 panic은 호출, 인덱스, 길이를 알려 줍니다(`Simd::load: 4 lanes from index 6 need 10 elements, but there are 8`).
 
 ## 2.24.3. 레인별 연산자
 
 | 형태 | 레인 | 뜻 |
 |---|---|---|
 | `a + b`, `a - b`, `a * b` | 모두 | 정수는 감쌉니다(`wrapping_add`처럼). 부동소수는 스칼라 연산자처럼 반올림합니다 |
-| `a / b`, `a % b` | 모두 | 스칼라 연산자와 같습니다. 정수 레인은 나누는 수가 0이면 패닉 |
+| `a / b`, `a % b` | 모두 | 스칼라 연산자와 같습니다. 정수 레인은 나누는 수가 0이면 panic |
 | `-a` | 모두 | 정수는 감쌉니다(`0 - a`) |
 | `a & b`, `a \| b`, `a ^ b`, `!a` | 정수 | 비트 연산 |
 | `a << n`, `a >> n` | 정수 | 각 레인을 `u32` `n`만큼 스칼라 연산자처럼 자리 이동 |
@@ -74,7 +74,7 @@ pub struct Mask<T, const N: usize> { /* 비공개: [T; N] */ }
 | 함수 | 뜻 |
 |---|---|
 | `Mask::splat(on)`, `Mask::from_array(bools)`, `m.to_array()` | 마스크를 만들거나 레인을 `[bool; N]`으로 읽기 |
-| `m.test(i)` | 레인 `i`가 켜졌는지. 마지막 레인을 넘으면 패닉 |
+| `m.test(i)` | 레인 `i`가 켜졌는지. 마지막 레인을 넘으면 panic |
 | `m.any()`, `m.all()`, `m.count()` | 켜진 레인이 있는지 / 모두 켜졌는지 / 몇 개인지 |
 | `m.select(yes, no)` | `m`의 레인이 켜진 곳은 `yes`의 레인, 아니면 `no`의 레인 |
 | `m & n`, `m \| n`, `m ^ n`, `!m` | 레인별 논리 |
@@ -94,7 +94,7 @@ let relu = pos.select(x, f32x4::splat(0.0));    // [1.0, 0.0, 3.0, 0.0]
 | `a.sqrt()`, `a.mul_add(b, c)` | `f32` / `f64` 레인: 제곱근, 한 번만 반올림한 `a * b + c` |
 | `a.map(f)`, `a.zip_with(b, f)` | 각 레인(또는 쌍)에 `f`를 적용한 `Simd<U, N>`: `a.map(\|x: i32\| -> f32 { x as f32 })`로 변환합니다 |
 | `a.reduce_sum()`, `a.reduce_product()` | 레인을 처음부터 끝까지 합침(정수는 감쌈). 레인이 없으면 합은 0 |
-| `a.reduce_min()`, `a.reduce_max()` | 가장 작은 / 큰 레인. 모두 NaN이 아니면 NaN 레인은 건너뜁니다. 레인이 없으면 패닉 |
+| `a.reduce_min()`, `a.reduce_max()` | 가장 작은 / 큰 레인. 모두 NaN이 아니면 NaN 레인은 건너뜁니다. 레인이 없으면 panic |
 
 부동소수 리덕션은 레인 순서대로 더하므로 결과가 모든 타깃에서 같습니다. 다른 순서로 더한 합과는 다를 수 있습니다.
 
@@ -104,7 +104,7 @@ let relu = pos.select(x, f32x4::splat(0.0));    // [1.0, 0.0, 3.0, 0.0]
 |---|---|
 | `a.reverse()` | 레인을 거꾸로 |
 | `a.rotate_left(k)`, `a.rotate_right(k)` | `rotate_left(k)`의 레인 `i`는 레인 `(i + k) % N` |
-| `a.swizzle(idx)` | 레인 `i`는 `a`의 레인 `idx[i]`, `idx: [usize; N]`. 마지막 레인을 넘는 인덱스는 패닉 |
+| `a.swizzle(idx)` | 레인 `i`는 `a`의 레인 `idx[i]`, `idx: [usize; N]`. 마지막 레인을 넘는 인덱스는 panic |
 | `a.interleave(b)` | `(lo, hi)`: `a0 b0 a1 b1 ..`, 처음 `N`개 레인은 `lo`에 |
 | `a.deinterleave(b)` | 그 역: `a`와 `b`의 짝수 레인, 그리고 홀수 레인 |
 

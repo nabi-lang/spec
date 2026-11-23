@@ -18,7 +18,7 @@ meta_kind_attr  ::= "impl_derive" | "impl_attribute" | "impl_derive_attribute" |
 meta_kind       ::= "@derive" | "@attribute" | "@macro"
 meta_args       ::= identifier ("," identifier)*
 
-# @macro 블록은 평평한 템플릿 대신 규칙들을 담습니다:
+# the @macro block holds rules instead of a flat template:
 macro_body      ::= macro_rule+
 macro_rule      ::= "(" matcher ")" "=>" block
 ```
@@ -87,7 +87,7 @@ struct Point { x: f64; y: f64; }
 //   }
 ```
 
-이 형태는 `#[impl_derive(이름)]`와 본체(템플릿 블록)로 이루어집니다. 사용처에 `#[derive(이름)]`가 있으면 컴파일러가 템플릿을 그 타입에 맞게 확장해 코드를 생성합니다.
+이 형태는 `#[impl_derive(name)]`와 본체(템플릿 블록)로 이루어집니다. 사용처에 `#[derive(name)]`가 있으면 컴파일러가 템플릿을 그 타입에 맞게 확장해 코드를 생성합니다.
 
 ## 6.8.3. `#[impl_attribute(name)]` 사용자 정의 속성
 
@@ -344,7 +344,7 @@ macro는 `name!( .. )`, `name![ .. ]`, `name!{ .. }`로 호출하고, 다른 패
 let xs = list![a, b, c];        // acc.push(a); acc.push(b); acc.push(c);
 ```
 
-`@rep[sep = ","] { <하위 패턴> }`은 하위 패턴을 `sep` 토큰으로 구분해 반복 매칭합니다. `sep`은 선택입니다. `trailing`이면 끝에 구분자 하나를 허용합니다. `@rep` 안에서 캡처한 메타변수는 시퀀스를 바인딩합니다. `@for @x { <본체> }`는 원소마다 본체를 하나씩 냅니다. 한 `@rep`의 메타변수 여러 개는 보조를 맞춰 함께 돌고, 길이가 같아야 합니다. `@rep`과 `@for`는 중첩할 수 있습니다. `@rep` 두 겹 안의 메타변수는 시퀀스의 시퀀스를 바인딩하고, 안쪽 `@for @x`는 바깥 `@for`의 현재 원소를 돕니다(`(@rep[sep = ";"] { @rep[sep = ","] { @x: expr } }) => { [@for @x { [@for @x { @x, }], }] }`는 `1, 2; 3`을 `[[1, 2], [3]]`으로 바꿉니다). shape 토큰(`@Self`, `@field`, `@apply_if` 등)은 타입이 주도하는 형태의 토큰이고 macro의 토큰이 아닙니다. macro에는 검사할 shape가 없으므로 쓰면 에러입니다.
+`@rep[sep = ","] { <하위 패턴> }`은 하위 패턴을 `sep` 토큰으로 구분해 반복 매칭합니다. `sep`은 선택입니다. `trailing`이면 끝에 구분자 하나를 허용합니다. `@rep` 안에서 캡처한 메타변수는 시퀀스를 바인딩합니다. `@for @x { <body> }`는 원소마다 본체를 하나씩 냅니다. 한 `@rep`의 메타변수 여러 개는 보조를 맞춰 함께 돌고, 길이가 같아야 합니다. `@rep`과 `@for`는 중첩할 수 있습니다. `@rep` 두 겹 안의 메타변수는 시퀀스의 시퀀스를 바인딩하고, 안쪽 `@for @x`는 바깥 `@for`의 현재 원소를 돕니다(`(@rep[sep = ";"] { @rep[sep = ","] { @x: expr } }) => { [@for @x { [@for @x { @x, }], }] }`는 `1, 2; 3`을 `[[1, 2], [3]]`으로 바꿉니다). shape 토큰(`@Self`, `@field`, `@apply_if` 등)은 타입이 주도하는 형태의 토큰이고 macro의 토큰이 아닙니다. macro에는 검사할 shape가 없으므로 쓰면 에러입니다.
 
 ### 이름 합성
 

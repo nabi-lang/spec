@@ -4,8 +4,8 @@
 
 ```
 pipe_expr       ::= expr "|>" pipe_target
-pipe_target     ::= path                          // x |> f        는 f(x)
-                  | call_expr                     // x |> f(a, b)  는 f(x, a, b)
+pipe_target     ::= path                          // x |> f        is f(x)
+                  | call_expr                     // x |> f(a, b)  is f(x, a, b)
                   | "(" closure_expr ")"          // x |> (|v| v + 1)
 ```
 

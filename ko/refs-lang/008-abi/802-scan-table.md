@@ -137,7 +137,7 @@ enum Result {
 - entry의 `field_offset`은 tag(u32)의 오프셋입니다.
 - `field_kind`의 하위 바이트는 `4`이고, bit 8..31은 descriptor의 위치(table 시작부터 u32 word 단위)입니다.
 - descriptor는 `n` 뒤에, 참조가 있는 변형마다 `{tag, num_entries, entries_index}`를 둡니다.
-- 변형의 entry는 `{tag 로부터의 offset, field_kind}` 형태입니다. 중첩된 합 타입은 다시 `SUM_PAYLOAD`로 씁니다.
+- 변형의 entry는 `{offset from the tag, field_kind}` 형태입니다. 중첩된 합 타입은 다시 `SUM_PAYLOAD`로 씁니다.
 - descriptor에 tag가 없는 변형에는 참조가 없습니다.
 
 ```

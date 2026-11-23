@@ -5,7 +5,7 @@
 ```
 assign_stmt     ::= lvalue "=" expr ";"
 compound_stmt   ::= lvalue compound_op expr ";"
-assign_expr     ::= lvalue "=" expr                    // 괄호 안 또는 arm 본체 (3.4.5)
+assign_expr     ::= lvalue "=" expr                    // in parentheses or an arm body (3.4.5)
 compound_op     ::= "+=" | "-=" | "*=" | "**=" | "/=" | "%=" | "%%=" | "&=" | "|="
                   | "^=" | "<<=" | ">>="
 assign_target   ::= lvalue | tuple_target

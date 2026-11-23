@@ -119,7 +119,7 @@ fn print_all<T: Display>(items: List<T>) { ... }
 fn sort_all<T: Ord + Clone>(ref items: List<T>) { ... }
 ```
 
-바운드 하나는 `매개변수: 트레잇` 형태로 적고, 여럿이면 `+`로 잇습니다. 바운드가 없으면 매개변수에는 모든 타입에 있는 동작만 쓸 수 있습니다. 이동, `Reflect`, `any`에 저장하기, `none`과의 합, `is`(2.10.9)입니다.
+바운드 하나는 `Param: Trait` 형태로 적고, 여럿이면 `+`로 잇습니다. 바운드가 없으면 매개변수에는 모든 타입에 있는 동작만 쓸 수 있습니다. 이동, `Reflect`, `any`에 저장하기, `none`과의 합, `is`(2.10.9)입니다.
 
 바운드, `where` 절, `impl`, 슈퍼트레잇 목록, `any Tr`에 적은 트레잇은 다른 이름과 똑같이 해소합니다. 다른 모듈의 트레잇에는 `use`나 경로가 필요합니다([5.5](../005-modules/505-use.md)). 없으면 cannot-find 에러이고, 에러는 트레잇을 적은 자리를 알려 줍니다(``cannot find trait `Shape` (named in a bound)``, `(named in an impl)`, `(named as a supertrait)`). 추가할 `use`도 함께 알려 줍니다.
 
@@ -315,4 +315,4 @@ fn sum<T: num::Num + Clone>(xs: List<T>) -> T {
 - 타입은 `is`로 비교합니다. `T == f32`는 에러이며, 고치는 방법으로 `is` 형태를 알려 줍니다.
 - 값 검사와 타입 검사는 다릅니다. `T = i32 | str`일 때 `x is i32`는 이 값이 `i32`인지 묻고, `T is i32`는 `T`의 모든 값이 `i32`는 아니므로 거짓입니다.
 
-타입의 집합이 열려 있으면 트레잇을 씁니다. `if T is`는 제네릭 대체 경로를 남기는 빠른 경로에 씁니다. 대체 경로가 패닉하거나 `unreachable`인 사슬은 닫힌 타입 집합이므로, `closed_type_switch` 린트가 타입마다 impl을 두는 트레잇을 권합니다. 포괄 impl과 겹치는 구체 impl(E0075)은 포괄 impl 안의 `if Self is X` 분기로 씁니다.
+타입의 집합이 열려 있으면 트레잇을 씁니다. `if T is`는 제네릭 대체 경로를 남기는 빠른 경로에 씁니다. 대체 경로가 panic하거나 `unreachable`인 사슬은 닫힌 타입 집합이므로, `closed_type_switch` 린트가 타입마다 impl을 두는 트레잇을 권합니다. 포괄 impl과 겹치는 구체 impl(E0075)은 포괄 impl 안의 `if Self is X` 분기로 씁니다.

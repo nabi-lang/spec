@@ -128,13 +128,13 @@ impl Iterator {
 
 ### `min` / `max`와 부동소수점
 
-`min`과 `max`는 `PartialOrd`만 요구하므로 부동소수점 이터레이터에도 있습니다. 자기 자신과 순서가 없는 항목(NaN)이 결과가 됩니다(2.7.15). `min_by_key`와 `max_by_key`는 전순서인 `K: Ord`가 필요합니다. NaN은 순서가 없으므로 `f32`와 `f64`는 `Ord`가 아니며, 부동소수점 키는 에러(E0069)이고 그 도움말이 `reduce` 형태를 알려 줍니다. 부동소수점 리스트는 전순서로 정렬합니다: `xs.sort_by(f64::total_cmp)`.
+`min`과 `max`는 `PartialOrd`만 요구하므로 부동소수점 반복자에도 있습니다. 자기 자신과 순서가 없는 항목(NaN)이 결과가 됩니다(2.7.15). `min_by_key`와 `max_by_key`는 전순서인 `K: Ord`가 필요합니다. NaN은 순서가 없으므로 `f32`와 `f64`는 `Ord`가 아니며, 부동소수점 키는 에러(E0069)이고 그 도움말이 `reduce` 형태를 알려 줍니다. 부동소수점 리스트는 전순서로 정렬합니다: `xs.sort_by(f64::total_cmp)`.
 
 ### 멈춤, 누적 상태, 묶음
 
 - `take_while(pred)`는 `pred`가 처음 거부하는 원소 전까지 내놓습니다. 그 원소는 안쪽 반복자에서 꺼낸 뒤 버립니다. 그 뒤로는 아무것도 꺼내지 않으므로 멈춘 지점 뒤의 부수 효과는 실행되지 않습니다. `skip_while(pred)`는 `pred`가 처음 거부하는 원소 전까지 버리고, 그 원소부터 그 뒤 원소를 검사 없이 모두 내놓습니다.
 - `scan(init, f)`는 누적 상태를 내놓습니다. 먼저 `f(init, x0)`, 그다음 그 값과 `x1`로 계산한 `f`를 내놓는 식입니다. 단계마다 값을 내놓는 `fold`이므로 안쪽 반복자와 같은 개수를 내놓습니다.
-- `step_by(step)`은 첫 원소를 내놓고 그 뒤로 `step`번째 원소마다 내놓습니다. `step`이 0이면 패닉합니다.
+- `step_by(step)`은 첫 원소를 내놓고 그 뒤로 `step`번째 원소마다 내놓습니다. `step`이 0이면 panic합니다.
 - `peekable()`은 `Peekable<Self>`를 돌려줍니다. 그 `peek(ref self) -> Item | none`은 다음 원소를 돌려주되, 다음 `next`가 그 원소를 내놓도록 남겨 둡니다.
 - `inspect(f)`는 각 원소를 `f`에 넘긴 뒤 그대로 내놓습니다.
 - `cycle()`은 다 돌 때마다 `cycle`이 받은 반복자의 복사본에서 다시 시작합니다. 그래서 반복자가 비어 있지 않으면 끝이 없고, 비어 있으면 아무것도 내놓지 않습니다. 제너레이터의 복사본은 한 위치를 공유하므로(2.7.10a) 제너레이터를 순환 반복자로 감싸도 원소가 반복되지 않습니다.
@@ -580,14 +580,14 @@ trait TryIterator {
     fn chain<J: TryIterator<Item = Item, Error = Error>>(self, other: J) -> TryChain<Self, J>;
     fn take(self, n: usize) -> TryTake<Self>;
     fn skip(self, n: usize) -> TrySkip<Self>;
-    fn step_by(self, step: usize) -> TryStepBy<Self>;    // step 0이면 패닉
+    fn step_by(self, step: usize) -> TryStepBy<Self>;    // step 0이면 panic
     fn take_while(self, pred: fn(Item) throws (Error) -> bool) -> TryTakeWhile<Self>;
     fn skip_while(self, pred: fn(Item) throws (Error) -> bool) -> TrySkipWhile<Self>;
     fn flat_map<U: IntoIterator>(self, f: fn(Item) throws (Error) -> U) -> TryFlatMap<Self, U>;
     fn scan<S>(self, init: S, f: fn(S, Item) throws (Error) -> S) -> TryScan<Self, S>;
     fn inspect(self, f: fn(Item) throws (Error)) -> TryInspect<Self>;
     fn peekable(self) -> TryPeekable<Self>;      // peek(ref self) throws (Error) -> Item | none
-    fn chunks(self, size: usize) -> TryChunks<Self>;     // size 0이면 패닉
+    fn chunks(self, size: usize) -> TryChunks<Self>;     // size 0이면 panic
 
     // Result를 주는 일반 반복자로
     fn results(self) -> Results<Self>;           // Iterator<Item = Result<Item, Error>>
@@ -655,7 +655,7 @@ fn total(path: str) throws (IoError | ParseError) -> i64 {
 }
 ```
 
-## 2.7.14. 컬렉션이 이터레이터 메서드에 답함
+## 2.7.14. 컬렉션이 반복자 메서드에 답함
 
 수신자 타입에 메서드 `m`이 없고 인자 없는 메서드 `iter()`가 있으면, `iter()`가 돌려주는 타입에 `m`이 있을 때 메서드 호출 `x.m(args)`는 `x.iter().m(args)`입니다. 인자 없는 `x.min()` / `x.max()`도 넘깁니다. `Ord::min` / `max`는 인자를 하나 받기 때문입니다. 그 밖에는 수신자 자신의 메서드가 이깁니다(`List::contains`, `List::windows`, `Set::to_list`). 넘긴 호출은 `iter()` 형태 그대로이므로 지연 어댑터는 지연인 채로 남고 아무것도 복사하지 않습니다.
 
@@ -676,7 +676,7 @@ let d = counts.map(|p| p.1).sum();             // Dict는 (k, v) 쌍을 순회
 - `counts()`는 항목마다 나온 횟수를 처음 본 순서대로 담습니다(Python의 `Counter`). 결과의 순위는 `Dict<K, usize>::most_common(n)`이 매깁니다([2.9.3](209-collections.md#293-dictk-v-s-해시-맵)). `group_by(key)`는 키마다 그 항목의 리스트를 순서대로 담습니다. Python의 `itertools.groupby`와 달리 같은 키가 붙어 있지 않아도 됩니다.
 - `enumerate(start: 1)`은 `start`부터 셉니다.
 - `pairwise()`는 각 항목을 다음 항목과 짝지어 냅니다. `combinations(k)`는 항목 `k`개를 고르는 각 경우를 리스트로, `permutations(k)`는 서로 다른 위치의 항목 `k`개를 늘어놓는 각 경우를 냅니다(`k`가 `none`이면 모든 항목). 둘 다 항목을 먼저 모은 뒤 위치의 사전순으로 냅니다(Python의 `itertools`).
-- `min()` / `max()`는 `PartialOrd`만 요구하므로 부동소수 이터레이터에도 있습니다. 자기 자신과 순서가 없는 항목(NaN)이 결과가 됩니다(IEEE 754 `minimum` / `maximum`, NumPy와 같음). `min_by_key` / `max_by_key`는 그대로 `K: Ord`입니다.
+- `min()` / `max()`는 `PartialOrd`만 요구하므로 부동소수 반복자에도 있습니다. 자기 자신과 순서가 없는 항목(NaN)이 결과가 됩니다(IEEE 754 `minimum` / `maximum`, NumPy와 같음). `min_by_key` / `max_by_key`는 그대로 `K: Ord`입니다.
 - `f32` / `f64` 항목의 `sum()`은 쌍별 합입니다. 연속한 항목 128개씩을 왼쪽부터 더하고, 블록 합은 이진 카운터처럼 합칩니다(새 합은 블록 수가 같은 앞의 합과 `left + right`로 합침). 남은 부분합은 마지막부터 처음 쪽으로 더합니다(`p0 + (p1 + (.. + pn))`). 순서는 항목 수에만 달려 있으므로 결과는 타깃, 스레드 수, 최적화 수준과 상관없이 같습니다. 다른 항목 타입은 왼쪽부터 더합니다.
 
 ```nabi

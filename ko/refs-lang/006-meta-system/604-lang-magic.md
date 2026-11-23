@@ -69,10 +69,10 @@ trait Display { ... }              // 기본 f"{x}" 포맷
 `#[lang("add_trait")]`가 붙은 트레잇이 있으면 컴파일러는 그 트레잇을 덧셈 의미와 연결합니다. 그래서 `+` 연산자는 다음과 같이 풀립니다.
 
 ```
-a + b    →    <typeof(a) as 그_트레잇<typeof(b)>>::add(a, b)
+a + b    →    <typeof(a) as the_trait<typeof(b)>>::add(a, b)
 ```
 
-여기서 `그_트레잇`은 `#[lang("add_trait")]`가 붙은 트레잇입니다.
+여기서 `the_trait`은 `#[lang("add_trait")]`가 붙은 트레잇입니다.
 
 ## 6.4.5. 사용자 코드의 사용(거의 없음)
 

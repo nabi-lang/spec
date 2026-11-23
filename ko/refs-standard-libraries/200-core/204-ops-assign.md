@@ -171,7 +171,7 @@ trait ShrAssign<Rhs = Self> {
 ```nabi
 fn add_assign(ref self, rhs: Rhs);
        ^^^^^
-       caller 의 변수가 가리키는 객체를 직접 수정
+       directly modifies the object the caller's variable refers to
 ```
 
 제자리 갱신의 열쇠가 이 시그니처입니다. `self`(값)만 받는다면 복사본만 고치므로 호출한 쪽에서는 바뀐 결과를 볼 수 없습니다.

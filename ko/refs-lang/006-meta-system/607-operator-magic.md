@@ -66,7 +66,7 @@ trait Degrees {
 
 `#[infix("+")]`를 트레잇 메서드 `add`에 붙이면 컴파일러는 다음과 같이 동작합니다.
 
-먼저 `+` 토큰을 그 트레잇에 연결합니다. 그다음 식 `a + b`를 `<typeof(a) as 그_트레잇<typeof(b)>>::add(a, b)` 형태로 풉니다. 우선순위와 결합성은 [우선순위와 결합성](../003-expressions/302-precedence-and-associativity.md)의 표에서 `+`에 고정된 값(9, 좌결합)을 그대로 씁니다.
+먼저 `+` 토큰을 그 트레잇에 연결합니다. 그다음 식 `a + b`를 `<typeof(a) as the_trait<typeof(b)>>::add(a, b)` 형태로 풉니다. 우선순위와 결합성은 [우선순위와 결합성](../003-expressions/302-precedence-and-associativity.md)의 표에서 `+`에 고정된 값(9, 좌결합)을 그대로 씁니다.
 
 세 속성은 모두 같은 패턴을 따릅니다. 연결되는 것은 토큰, 위치, 트레잇 메서드뿐입니다.
 
