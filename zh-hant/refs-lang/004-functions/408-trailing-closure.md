@@ -43,7 +43,7 @@ let opened = with_file(path) |f| {
     let data = f.read();
     process(data)
 };
-pairs.for_each |k, v| { print(f"{k} {v}") };
+pairs.for_each |(k, v)| { print(f"{k} {v}") };
 ```
 
 管線符號（`|...|`）放在括號之外，緊接在主體之前。主體一律是區塊：一律是 `|x| { body }`，絕不是單行的 `|x| body`。

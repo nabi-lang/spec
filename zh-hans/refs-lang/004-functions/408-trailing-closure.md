@@ -43,7 +43,7 @@ let opened = with_file(path) |f| {
     let data = f.read();
     process(data)
 };
-pairs.for_each |k, v| { print(f"{k} {v}") };
+pairs.for_each |(k, v)| { print(f"{k} {v}") };
 ```
 
 竖线（`|...|`）放在括号外面，紧挨着函数体之前。函数体始终是块：始终写作 `|x| { body }`，绝不写成单行的 `|x| body`。
