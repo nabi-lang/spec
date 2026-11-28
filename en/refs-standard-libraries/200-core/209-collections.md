@@ -69,6 +69,12 @@ impl<T, const N: usize> [T; N] {
 impl<T: PartialEq, const N: usize> [T; N] {
     fn contains(self, x: T) -> bool;
 }
+
+impl<const N: usize> [str; N] {
+    fn join(self, sep: str) -> str;              // joins the elements with sep
+}
+
+impl<T, const N: usize> IntoIterator for [T; N] { ... }   // Item = T, over a copy
 ```
 
 `array::from_fn::<T, N>(f: fn(usize) -> T) -> [T; N]` makes a fixed array whose element `i` is `f(i)`, called in order; `N` comes from the expected type or the type arguments. Each element is its own value, so it builds an array of elements `[v; N]` cannot copy: a type that is not `Clone`, or a resource with one owner.
@@ -656,6 +662,10 @@ impl Slice<u8> {
     fn find<B: AsBytes>(self, needle: B) -> usize | none;   // offset of the first occurrence; an empty needle is at 0
 }
 
+impl Slice<str> {
+    fn join(self, sep: str) -> str;              // joins the elements with sep
+}
+
 impl<T> Index<usize> for Slice<T> { ... }               // s[i]: panics when out of range (`slice index 5 out of bounds for length 3`)
 impl<T> Sliceable<Range<usize>> for Slice<T> { ... }    // s[a:b]: a view of a view; the range is clamped to the length
 impl<T> IntoIterator for Slice<T> { ... }
@@ -678,6 +688,8 @@ trait AsBytes {
 It is implemented for `str` (its UTF-8 bytes), `List<u8>`, `Slice<u8>` and `[u8; N]`, so a byte string passes as the needle (its `Slice<u8>` rule, [refs-lang 1.7.5](../../refs-lang/001-lexical/107-string-literals.md#175-byte-strings)).
 
 `Slice` is read-only (no `IndexSet`); the view that writes a list is `SliceMut<T>` ([2.9.7a](#297a-slicemutt---writable-view)). Negative indices count from the end ([refs-lang 3.6.1](../../refs-lang/003-expressions/306-indexing-and-slicing.md#361-indexing-arri)).
+
+A `List<T>` where a `Slice<T>` is expected (an argument, an annotated `let`, a return value) is passed as `xs[:]`, a view of the whole list ([refs-lang 2.14.6](../../refs-lang/002-types/214-cast-and-conversion.md#2146-context-based-automatic-conversion)): `fn sum(s: Slice<u8>)` takes `sum(bytes)` for a `List<u8>`.
 
 ### Examples
 

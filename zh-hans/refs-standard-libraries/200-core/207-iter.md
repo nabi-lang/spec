@@ -64,6 +64,7 @@ impl Iterator {
     // transforming adapters (lazy)
     fn map<U>(self, f: fn(Item) -> U) -> Map<Self, U>;
     fn filter(self, pred: fn(Item) -> bool) -> Filter<Self>;
+    fn filter_map<U>(self, f: fn(Item) -> (U | none)) -> FilterMap<Self, U>;   // the f(item) that are not none
     fn enumerate(self, start: usize = 0) -> Enumerate<Self>;   // (index, item) pairs, from `start`
     fn zip<J: IntoIterator>(self, other: J) -> Zip<Self, J::IntoIter>;    // Item = (Item, J::Item)
     fn chain<J: IntoIterator<Item = Item>>(self, other: J) -> Chain<Self, J::IntoIter>;
@@ -496,7 +497,7 @@ trait DoubleEndedIterator: Iterator {
 `List<T>` 和 `Slice<T>` 的迭代器以及下列类型必须实现这个 trait。
 
 - `Range<T>`、`RangeInclusive<T>`
-- `Rev<I>`（`I` 为双向时）、`Map<I, U>`、`Filter<I>`、`Chain<A, B>`、`InspectIter<I>`（组成它们的迭代器为双向时）
+- `Rev<I>`（`I` 为双向时）、`Map<I, U>`、`Filter<I>`、`FilterMap<I, U>`、`Chain<A, B>`、`InspectIter<I>`（组成它们的迭代器为双向时）
 - `Enumerate<I>`、`Zip<A, B>`、`Take<I>`、`Skip<I>`、`StepBy<I>`：组成它们的迭代器是 `DoubleEndedIterator + ExactSizeIterator` 时，因为从后端计数需要知道长度。
 
 `Dict<K, V>` 和 `Set<T>` 不实现它。

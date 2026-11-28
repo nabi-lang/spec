@@ -69,6 +69,12 @@ impl<T, const N: usize> [T; N] {
 impl<T: PartialEq, const N: usize> [T; N] {
     fn contains(self, x: T) -> bool;
 }
+
+impl<const N: usize> [str; N] {
+    fn join(self, sep: str) -> str;              // joins the elements with sep
+}
+
+impl<T, const N: usize> IntoIterator for [T; N] { ... }   // Item = T, over a copy
 ```
 
 `array::from_fn::<T, N>(f: fn(usize) -> T) -> [T; N]` 创建一个定长数组，其元素 `i` 为 `f(i)`，按顺序调用；`N` 来自期望类型或类型实参。每个元素都是独立的值，因此它可以构造 `[v; N]` 无法复制的元素组成的数组：不是 `Clone` 的类型，或者只有一个所有者的资源。
@@ -656,6 +662,10 @@ impl Slice<u8> {
     fn find<B: AsBytes>(self, needle: B) -> usize | none;   // offset of the first occurrence; an empty needle is at 0
 }
 
+impl Slice<str> {
+    fn join(self, sep: str) -> str;              // joins the elements with sep
+}
+
 impl<T> Index<usize> for Slice<T> { ... }               // s[i]: panics when out of range (`slice index 5 out of bounds for length 3`)
 impl<T> Sliceable<Range<usize>> for Slice<T> { ... }    // s[a:b]: a view of a view; the range is clamped to the length
 impl<T> IntoIterator for Slice<T> { ... }
@@ -678,6 +688,8 @@ trait AsBytes {
 它为 `str`（其 UTF-8 字节）、`List<u8>`、`Slice<u8>` 和 `[u8; N]` 实现，因此字节串可以作为 needle 传入（依据其 `Slice<u8>` 规则，[refs-lang 1.7.5](../../refs-lang/001-lexical/107-string-literals.md#175-字节串)）。
 
 `Slice` 是只读的（没有 `IndexSet`）；写入列表的视图是 `SliceMut<T>`（[2.9.7a](#297a-slicemutt可写视图)）。负索引从末尾开始计数（[refs-lang 3.6.1](../../refs-lang/003-expressions/306-indexing-and-slicing.md#361-索引arri)）。
+
+在期望 `Slice<T>` 的地方（参数、带类型标注的 `let`、返回值），`List<T>` 以 `xs[:]`，即整个列表的视图传递（[refs-lang 2.14.6](../../refs-lang/002-types/214-cast-and-conversion.md#2146-基于上下文的自动转换)）：对 `List<u8>` 类型的 `bytes`，`fn sum(s: Slice<u8>)` 接受 `sum(bytes)`。
 
 ### 示例
 

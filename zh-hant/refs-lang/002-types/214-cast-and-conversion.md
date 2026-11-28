@@ -106,7 +106,7 @@ let m: i32 | none = try? big.try_into::<i32>();
 
 無後綴的數值字面值不會被轉換；其型別由預期型別決定。`let x: f64 = 1` 中的 `1` 從一開始就是 `f64`。確切規則定義於[數值字面值](../001-lexical/106-numeric-literals.md#163-無後綴的字面值)。
 
-相對地，執行時變數的自動轉換是不允許的。必須一律寫出上述三種形式之一。唯一的例外是檢視而非轉換：在預期 `SliceMut<T>` 之處的 `List<T>`，會以整個串列的可寫入檢視傳遞，而在那裡的 `xs[a:b]` 則以該範圍的檢視傳遞（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可寫入檢視)）。不會複製任何東西。
+相對地，執行時變數的自動轉換是不允許的。必須一律寫出上述三種形式之一。唯一的例外是檢視而非轉換：在預期 `SliceMut<T>` 之處的 `List<T>`，會以整個串列的可寫入檢視傳遞，而在那裡的 `xs[a:b]` 則以該範圍的檢視傳遞（[stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可寫入檢視)）。同樣地，在預期 `Slice<T>` 之處的 `List<T>`，會以 `xs[:]`，也就是整個串列的唯讀檢視傳遞（[stdlib 2.9.7](../../refs-standard-libraries/200-core/209-collections.md#297-slicet檢視)）。不會複製任何東西。
 
 ```nabi
 let a: i64 = 100i64;

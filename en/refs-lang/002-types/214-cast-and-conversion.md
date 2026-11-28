@@ -106,7 +106,7 @@ Choose by situation: use `as` to change bits or precision intentionally; use `.i
 
 An unsuffixed numeric literal is not converted; its type is determined by the expected type. The `1` in `let x: f64 = 1` is `f64` from the start. The exact rules are defined in [Numeric literals](../001-lexical/106-numeric-literals.md#163-unsuffixed-literals).
 
-Automatic conversion of runtime variables, by contrast, is not allowed. One of the three forms above must always be written. The one exception is a view, not a conversion: a `List<T>` where a `SliceMut<T>` is expected is passed as a writable view of the whole list, and `xs[a:b]` there as a view of that range ([stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt---writable-view)). Nothing is copied.
+Automatic conversion of runtime variables, by contrast, is not allowed. One of the three forms above must always be written. The one exception is a view, not a conversion: a `List<T>` where a `SliceMut<T>` is expected is passed as a writable view of the whole list, and `xs[a:b]` there as a view of that range ([stdlib 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt---writable-view)). Likewise a `List<T>` where a `Slice<T>` is expected is passed as `xs[:]`, a read-only view of the whole list ([stdlib 2.9.7](../../refs-standard-libraries/200-core/209-collections.md#297-slicet---view)). Nothing is copied.
 
 ```nabi
 let a: i64 = 100i64;

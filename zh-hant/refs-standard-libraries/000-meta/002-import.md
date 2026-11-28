@@ -45,7 +45,7 @@ use foo::**;             // recursive glob (foo + all submodules)
 
 `array` `bench` `channel` `cmp` `collections` `convert` `crypto` `encoding` `error` `fmt` `future` `hint` `index` `io` `iter` `marker` `num` `ops` `panic` `par` `print` `range` `reflect` `str` `stream` `sync` `task` `time` `tuple`
 
-**型別（36 個）**。
+**型別（37 個）**。
 
 | 分組 | 名稱 |
 |---|---|
@@ -54,7 +54,7 @@ use foo::**;             // recursive glob (foo + all submodules)
 | 一般 | `Result` `Ordering` `Duration` `Instant` |
 | 同步與通道 | `Mutex` `RwLock` `Atomic` `Cell` `Sender` `Receiver` `Task` |
 | 格式化 | `Formatter` `FmtError` |
-| 核心錯誤 | `ParseError` `ValueError` `OverflowError` `ConversionError` `TypeError` `StackOverflowError` `OutOfMemoryError` `InternalError` |
+| 核心錯誤 | `ParseError` `ValueError` `OverflowError` `ConversionError` `TypeError` `StackOverflowError` `OutOfMemoryError` `InternalError` `IoError` |
 
 **Trait（31 個）**。
 

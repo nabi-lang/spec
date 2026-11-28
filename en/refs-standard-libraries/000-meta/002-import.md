@@ -45,7 +45,7 @@ The names below are exactly the names of `core::prelude`. Modules, types and tra
 
 `array` `bench` `channel` `cmp` `collections` `convert` `crypto` `encoding` `error` `fmt` `future` `hint` `index` `io` `iter` `marker` `num` `ops` `panic` `par` `print` `range` `reflect` `str` `stream` `sync` `task` `time` `tuple`
 
-**Types (36).**
+**Types (37).**
 
 | Group | Names |
 |---|---|
@@ -54,7 +54,7 @@ The names below are exactly the names of `core::prelude`. Modules, types and tra
 | General | `Result` `Ordering` `Duration` `Instant` |
 | Synchronization and channels | `Mutex` `RwLock` `Atomic` `Cell` `Sender` `Receiver` `Task` |
 | Formatting | `Formatter` `FmtError` |
-| Core errors | `ParseError` `ValueError` `OverflowError` `ConversionError` `TypeError` `StackOverflowError` `OutOfMemoryError` `InternalError` |
+| Core errors | `ParseError` `ValueError` `OverflowError` `ConversionError` `TypeError` `StackOverflowError` `OutOfMemoryError` `InternalError` `IoError` |
 
 **Traits (31).**
 

@@ -69,6 +69,12 @@ impl<T, const N: usize> [T; N] {
 impl<T: PartialEq, const N: usize> [T; N] {
     fn contains(self, x: T) -> bool;
 }
+
+impl<const N: usize> [str; N] {
+    fn join(self, sep: str) -> str;              // joins the elements with sep
+}
+
+impl<T, const N: usize> IntoIterator for [T; N] { ... }   // Item = T, over a copy
 ```
 
 `array::from_fn::<T, N>(f: fn(usize) -> T) -> [T; N]` 建立一個固定長度陣列，其第 `i` 個元素是 `f(i)`，依序呼叫；`N` 取自預期型別或型別引數。每個元素都是獨立的值，因此它可以建立 `[v; N]` 無法複製的元素所組成的陣列：未實作 `Clone` 的型別，或只有一個擁有者的資源。
@@ -656,6 +662,10 @@ impl Slice<u8> {
     fn find<B: AsBytes>(self, needle: B) -> usize | none;   // offset of the first occurrence; an empty needle is at 0
 }
 
+impl Slice<str> {
+    fn join(self, sep: str) -> str;              // joins the elements with sep
+}
+
 impl<T> Index<usize> for Slice<T> { ... }               // s[i]: panics when out of range (`slice index 5 out of bounds for length 3`)
 impl<T> Sliceable<Range<usize>> for Slice<T> { ... }    // s[a:b]: a view of a view; the range is clamped to the length
 impl<T> IntoIterator for Slice<T> { ... }
@@ -678,6 +688,8 @@ trait AsBytes {
 它為 `str`（其 UTF-8 位元組）、`List<u8>`、`Slice<u8>` 和 `[u8; N]` 實作，因此位元組字串可以作為搜尋目標傳入（依其 `Slice<u8>` 規則，[refs-lang 1.7.5](../../refs-lang/001-lexical/107-string-literals.md#175-位元組字串)）。
 
 `Slice` 是唯讀的（沒有 `IndexSet`）；可寫入串列的檢視是 `SliceMut<T>`（[2.9.7a](#297a-slicemutt可寫入檢視)）。負索引從尾端算起（[refs-lang 3.6.1](../../refs-lang/003-expressions/306-indexing-and-slicing.md#361-索引arri)）。
+
+在預期 `Slice<T>` 之處（引數、標註型別的 `let`、回傳值），`List<T>` 以 `xs[:]`，也就是整個串列的檢視傳遞（[refs-lang 2.14.6](../../refs-lang/002-types/214-cast-and-conversion.md#2146-依上下文的自動轉換)）：對 `List<u8>` 型別的 `bytes`，`fn sum(s: Slice<u8>)` 接受 `sum(bytes)`。
 
 ### 範例
 

@@ -69,6 +69,12 @@ impl<T, const N: usize> [T; N] {
 impl<T: PartialEq, const N: usize> [T; N] {
     fn contains(self, x: T) -> bool;
 }
+
+impl<const N: usize> [str; N] {
+    fn join(self, sep: str) -> str;              // 원소를 sep 로 이어 붙임
+}
+
+impl<T, const N: usize> IntoIterator for [T; N] { ... }   // Item = T, 복사본 위에서
 ```
 
 `array::from_fn::<T, N>(f: fn(usize) -> T) -> [T; N]`은 원소 `i`가 `f(i)`인 고정 배열을 만들며, `f`는 순서대로 부릅니다. `N`은 기대 타입이나 타입 인자에서 옵니다. 원소마다 따로 만든 값이므로 `[v; N]`이 복사할 수 없는 원소, 곧 `Clone`이 아닌 타입이나 소유자가 하나인 자원으로도 배열을 만들 수 있습니다.
@@ -656,6 +662,10 @@ impl Slice<u8> {
     fn find<B: AsBytes>(self, needle: B) -> usize | none;   // 처음 나타나는 offset; 빈 needle 은 0
 }
 
+impl Slice<str> {
+    fn join(self, sep: str) -> str;              // 원소를 sep 로 이어 붙임
+}
+
 impl<T> Index<usize> for Slice<T> { ... }               // s[i]: 범위 밖이면 panic (`slice index 5 out of bounds for length 3`)
 impl<T> Sliceable<Range<usize>> for Slice<T> { ... }    // s[a:b]: view 의 view, 범위는 길이에 맞춰 잘라 맞춤
 impl<T> IntoIterator for Slice<T> { ... }
@@ -678,6 +688,8 @@ trait AsBytes {
 `str`(UTF-8 바이트), `List<u8>`, `Slice<u8>`, `[u8; N]`이 이 트레잇을 구현합니다. 그래서 바이트 문자열도 needle로 넘길 수 있습니다(바이트 문자열의 `Slice<u8>` 규칙은 [refs-lang 1.7.5](../../refs-lang/001-lexical/107-string-literals.md#175-바이트-문자열)).
 
 `Slice`는 읽기 전용입니다(`IndexSet` 없음). 리스트에 쓰는 뷰는 `SliceMut<T>`입니다([2.9.7a](#297a-slicemutt-쓰기-가능한-뷰)). 음수 인덱스는 끝에서부터 셉니다([refs-lang 3.6.1](../../refs-lang/003-expressions/306-indexing-and-slicing.md#361-인덱싱-arri)).
+
+`Slice<T>`를 기대하는 자리(인자, 타입을 적은 `let`, 반환값)의 `List<T>`는 리스트 전체의 뷰인 `xs[:]`로 넘어갑니다([refs-lang 2.14.6](../../refs-lang/002-types/214-cast-and-conversion.md#2146-문맥-기반-자동-변환)). `fn sum(s: Slice<u8>)`은 `List<u8>`인 `bytes`를 `sum(bytes)`로 받습니다.
 
 ### 사용 예
 

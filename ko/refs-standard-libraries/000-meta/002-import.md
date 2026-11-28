@@ -45,7 +45,7 @@ use foo::**;             // recursive glob (foo + 하위 모듈 모두)
 
 `array` `bench` `channel` `cmp` `collections` `convert` `crypto` `encoding` `error` `fmt` `future` `hint` `index` `io` `iter` `marker` `num` `ops` `panic` `par` `print` `range` `reflect` `str` `stream` `sync` `task` `time` `tuple`
 
-**타입 (36).**
+**타입 (37).**
 
 | 분류 | 이름 |
 |---|---|
@@ -54,7 +54,7 @@ use foo::**;             // recursive glob (foo + 하위 모듈 모두)
 | 일반 | `Result` `Ordering` `Duration` `Instant` |
 | 동기화와 채널 | `Mutex` `RwLock` `Atomic` `Cell` `Sender` `Receiver` `Task` |
 | 포매팅 | `Formatter` `FmtError` |
-| core 에러 | `ParseError` `ValueError` `OverflowError` `ConversionError` `TypeError` `StackOverflowError` `OutOfMemoryError` `InternalError` |
+| core 에러 | `ParseError` `ValueError` `OverflowError` `ConversionError` `TypeError` `StackOverflowError` `OutOfMemoryError` `InternalError` `IoError` |
 
 **트레잇 (31).**
 
