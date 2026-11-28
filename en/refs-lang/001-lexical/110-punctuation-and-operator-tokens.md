@@ -138,7 +138,7 @@ Lexical analysis decides by looking at the two bytes after `'`. If an identifier
 |       ||      |>      ->      =>
 ```
 
-`|>` is the pipe: `x |> f(a)` is `f(x, a)` ([3.18](../003-expressions/318-pipe-expression.md)). `|` is used, depending on context, as bitwise OR, the sum type separator, and the lambda parameter delimiter. `||` is used for logical OR or to start a parameterless lambda. `->` is the function return type arrow, and `=>` is the `match` arm arrow.
+`|>` is the pipe: `x |> f(a)` is `f(x, a)` ([3.18](../003-expressions/318-pipe-expression.md)). `|` is used, depending on context, as bitwise OR, the sum type separator, and the lambda parameter delimiter. `||` is used for logical OR or to start a parameterless lambda. `->` is the function return type arrow, and between two values an operator where a trait binds it ([6.7.4](../006-meta-system/607-operator-magic.md)), and `=>` is the `match` arm arrow.
 
 ### Punctuation
 
