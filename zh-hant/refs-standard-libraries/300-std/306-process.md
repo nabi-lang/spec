@@ -229,7 +229,7 @@ impl SignalError {
 // + Display, Debug, Error, PartialEq, Eq, Clone
 ```
 
-`on_signal` 的處理常式不在訊號情境（訊號處理常式內部）中執行。執行環境接收訊號後，把它交給專用的分派執行緒 `nabi-signal`，處理常式在那裡像一般函式一樣執行。因此處理常式必須是 `Send`；它會被保存並在每次訊號時呼叫一次，所以也是 `Sync`。它可以配置記憶體或取得鎖。對同一個訊號再次呼叫 `on_signal` 會取代處理常式。`Signal` 在每個作業系統上都能指稱訊號。`process_group(pgid)`（`CommandExt`，unix）把子行程放入該行程群組（`0` 表示以子行程的 pid 建立新群組）。
+`on_signal` 的處理常式不在訊號情境（訊號處理常式內部）中執行。執行環境接收訊號後，把它交給專用的分派執行緒 `nabi-signal`，處理常式在那裡像一般函式一樣執行。因此處理常式必須是 `Send`；它會被保存並在每次訊號時呼叫一次，所以也是 `Sync`。它可以配置記憶體或取得鎖。對同一個訊號再次呼叫 `on_signal` 會取代處理常式。沒有處理常式的 `SIGTERM`、`SIGINT` 或 `SIGHUP` 在行程因其結束之前仍會寫出 stdout 緩衝區（[2.23.8](../200-core/223-io.md#2238-標準串流)）；有處理常式時，是否結束行程由處理常式決定，`exit` 會排清緩衝區。`Signal` 在每個作業系統上都能指稱訊號。`process_group(pgid)`（`CommandExt`，unix）把子行程放入該行程群組（`0` 表示以子行程的 pid 建立新群組）。
 
 在 Windows 上，主控台事件對應到訊號：Ctrl-C → `Interrupt`（2），主控台關閉 / 登出 / 關機 → `Hangup`（1）。Ctrl-Break 沒有對應的 `Signal`；由 `os::windows::process::on_ctrl_break` 轉送（[3.10.7](310-os.md#3107-oswindowsprocessctrl-break)）。`send_signal` 只傳送 `Signal::Kill`（即 `TerminateProcess`），`raise` 只引發 `Interrupt` 與 `Hangup`；其他任何 `Signal` 都是 `IoError`（`Unsupported`），而對 `Interrupt` 或 `Hangup` 以外的訊號呼叫 `on_signal` 會得到 `SignalError`。
 
