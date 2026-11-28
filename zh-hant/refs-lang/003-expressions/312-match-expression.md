@@ -6,7 +6,7 @@
 
 ```
 match_expr  ::= "match" expr "{" match_arm ("," match_arm)* ","? "}"
-match_arm   ::= pattern ("if" expr)? "=>" expr
+match_arm   ::= pattern (":" type_expr)? ("if" expr)? "=>" expr
 ```
 
 ```nabi
@@ -43,6 +43,17 @@ match v {                        // v: i32 | none
 ```
 
 區塊分支中最後一個運算式的值就是該分支的結果。
+
+類區塊的主體（區塊、`if`、`match`、迴圈、`unsafe { .. }`）在其 `}` 處結束分支，如同類區塊陳述式結束其陳述式（[3.9](309-block-expressions.md)）：其後的逗號可以省略，後面的內容開始下一個分支。因此 `0 => {}` 之後的 `-1 => ..` 或 `("b", 1) => ..` 是兩個分支，而不是減法或呼叫。後置連結（`.m()`、`?`）仍會延續主體。
+
+與 `if let`（[3.10.5](310-if-expression.md#3105-if-let與模式比對結合)）相同，`pattern: T =>` 先將值收窄為 `T`，再依 `pattern` 解構；`pattern` 對 `T` 必須是不可反駁的。其名稱在守衛與主體中可見。
+
+```nabi
+match x {                        // x: (str, str) | i32
+    (k, v): (str, str) => println(f"{k}{v}"),
+    n: i32 => println(f"{n}"),
+}
+```
 
 ## 3.12.3. 比對順序
 
