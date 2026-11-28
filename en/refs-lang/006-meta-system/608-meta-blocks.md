@@ -165,7 +165,7 @@ struct User {
 
 This form takes two arguments: the Trait being derived and the attribute that marks per-field information. It branches inside the derive body by reading the fields' attribute information.
 
-The attribute may declare the keys it takes, as `attr(k, ..)`: `#[impl_derive_attribute(Nabion, nabion(deny_unknown_fields))]`. Every `#[attr(..)]` on the type, its variants and its fields must then list only declared keys; anything else is an error that names the valid keys. `@Self.has_derive_key(k)` reads a key off the type ([6.9.6](609-template-tokens.md#696-derive_attribute-tokens)).
+The attribute may declare the keys it takes, as `attr(k, ..)`: `#[impl_derive_attribute(Nabion, nabion(deny_unknown_fields))]`. Every `#[attr(..)]` on the type, its variants and its fields must then list only declared keys, bare (`#[attr(k)]`) or with a literal value (`#[attr(k = "v")]`); anything else is an error at the attribute that names the valid keys. `@Self.has_derive_key(k)` reads a key off the type, and `@has_derive_attr(attr, k)` / `@derive_attr(attr, k)` a field's key and its value ([6.9.6](609-template-tokens.md#696-derive_attribute-tokens)).
 
 ## 6.8.5. Body (template block)
 

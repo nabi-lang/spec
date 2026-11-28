@@ -46,6 +46,7 @@ Every template token starts with the `@` token ([punctuation and operator tokens
 | `@accept(kind, ..)`                                      | Restricts the target kind (attribute only)             | 6.9.5 |
 | `@where_all(Trait)`                                      | `T: Trait` for each type parameter                     | 6.9.5 |
 | `@has_derive_attr(a)`, `@derive_attr(a)`                 | The field's derive attribute (boolean / argument)      | 6.9.6 |
+| `@has_derive_attr(a, k)`, `@derive_attr(a, k)`           | Key `k` of the field's `#[a(..)]` (boolean / value)    | 6.9.6 |
 | `@Self.has_derive_key(k)`                                | The type's `#[attr(..)]` lists key `k` (boolean)       | 6.9.6 |
 | `@item`, `@item.name` / `.params` / `.return_type` / `.body` | The item attached to and its parts (attribute only) | 6.9.7 |
 | `@attribute`                                             | The attribute arguments at the use site (attribute only) | 6.9.7 |
@@ -313,6 +314,37 @@ Indicates whether the `derive_attribute`'s target attr is attached to the field.
 
 `@derive_attr(name)` denotes the argument of the attached attr.
 
+### `@has_derive_attr(name, k)` / `@derive_attr(name, k)`: one key
+
+The arguments of the field's `#[name(..)]` may be keys with a literal value (`k = "v"`) and bare keys (`k`). With a key as the second argument, `@has_derive_attr(name, k)` is whether the field's attribute lists `k`, and `@derive_attr(name, k)` is the value written after `k =`, as a use token (`true` for a bare `k`). When the attribute declares its keys (`attr(k, ..)`, [6.8.4](608-meta-blocks.md#684-impl_derive_attributetrait-attr-per-field-derive-attribute)), `k` must be one of them; another is an error at the template. `@derive_attr(name, k)` on a field whose attribute lacks `k` is an error that says to guard it with `@apply_if(@has_derive_attr(name, k))`.
+
+```nabi
+#[impl_derive_attribute(Args, arg(short, help))] pub @derive {
+    impl Args for @Self {
+        fn specs() -> List<Spec> {
+            [@for_fields {
+                Spec {
+                    name: @field.name.as_str(),
+                    @apply_if(@has_derive_attr(arg, short)) { short: @derive_attr(arg, short), }
+                    @apply_if(@has_derive_attr(arg, help)) { help: @derive_attr(arg, help), }
+                },
+            }]
+        }
+    }
+}
+
+// use site
+#[derive(Args)]
+struct Opts {
+    #[arg(short = "v", help = "print more")]
+    verbose: bool;
+    #[arg(help = "files to read")]
+    files: List<str>;
+}
+// → `Spec { name: "verbose", short: "v", help: "print more" }`,
+//   `Spec { name: "files", help: "files to read" }`
+```
+
 ### `@Self.has_derive_key(k)`
 
 Whether the type's own `#[attr(..)]` lists key `k`. `k` must be declared with `#[impl_derive_attribute(Trait, attr(k, ..))]` ([6.8.4](608-meta-blocks.md#684-impl_derive_attributetrait-attr-per-field-derive-attribute)); an undeclared key is an error. `#[derive(Nabion)]` reads `#[nabion(deny_unknown_fields)]` this way.
@@ -500,11 +532,11 @@ A name from the definition that the defining module does not have is an error at
 
 ### Diagnostic locations
 
-Errors during expansion and parse errors of the expansion result point to the template's location and append the use site (`#[derive(X)]` / `#[x]`) as a note. Tokens that come from the item through template tokens point to the item's location.
+Errors during expansion, parse errors of the expansion result and type errors in the generated code point to the template's location and append the use site (`#[derive(X)]` / `#[x]`) as a note. An error that comes from one field (its type, a value of its attribute) also points at that field (``for field `x` ``). Tokens that come from the item through template tokens point to the item's location.
 
 ## 6.9.10. Debugging
 
-`nabic build --emit=expansions` ([9.9.10](../009-tools/909-debug-tools.md#9910-meta-block-debugging)) writes the expansion results of the user package as source text to `target/<profile>/build/<name>.expanded.nabi` (or the `-o` path). Each expansion is a ``// expanded from this `#[derive(X)]` (file:line:col)`` comment followed by the generated source; if the output is expanded again, it follows the outer expansion.
+`nabic build --emit=expansions` ([9.9.10](../009-tools/909-debug-tools.md#9910-meta-block-debugging)) writes the expansion results of the user package as source text to `target/<profile>/build/<name>.expanded.nabi` (or the `-o` path). Each expansion is a ``// expanded from this `#[derive(X)]` (file:line:col)`` comment followed by the generated source; if the output is expanded again, it follows the outer expansion. A macro call inside an expansion is shown expanded in place.
 
 ## 6.9.11. Summary
 

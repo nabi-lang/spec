@@ -251,6 +251,7 @@ fn strict_zone() { ... }
 | `unused_variables`       | 0.1.0   | 읽지 않는 지역 변수나 매개변수. 대입하거나 `ref`로 캡처한 (`[ref n]`) `ref` 매개변수는 사용한 것으로 봄. 그 쓰기가 호출한 쪽에 닿기 때문 |
 | `unused_imports`         | 0.1.0   | 모듈이 이름을 쓰지 않는 `use`                                      |
 | `dead_code`              | 0.1.0   | 아무도 부르지 않는 비 `pub` 함수                                   |
+| `unused_fields`          | 0.1.9   | 아무 코드도 읽지 않는 이름 있는 구조체의 비공개 필드(필드 접근이나 구조체 패턴이 읽기이고, 쓰기와 구조체 리터럴은 읽기가 아님). `pub` 필드, `_`로 시작하는 필드, derive나 `repr` 같이 필드를 읽을 수 있는 속성이 붙은 구조체, 리플렉션이 기술하는 구조체는 보지 않음 |
 | `unreachable_code`       | 0.1.0   | `return` / `break` / `continue` / `throw` / `panic` 뒤의 문장      |
 | `unused_must_use`        | 0.1.0   | `#[must_use]` 함수의 결과, 또는 `#[must_use]` 타입의 값을 버림 ([6.2.11](#6211-쓰지-않은-결과-unused_result-discardable-must_use)) |
 | `unused_result`          | 0.1.0   | 값이 `()`, `none`, `Never`가 아닌 식 문장. `#[discardable]` 함수를 부르는 문장은 제외. 값을 일부러 버리려면 `_ = expr;`로 씀 ([6.2.11](#6211-쓰지-않은-결과-unused_result-discardable-must_use)) |
@@ -277,11 +278,12 @@ fn strict_zone() { ... }
 | `assoc_type_shadowing`   | 0.1.0   | 연관 타입이 바깥 타입과 이름이 같아 트레잇이나 `impl` 안에서 그 타입을 가림 (2.8.3) |
 | `plain_module_doc`       | 0.1.0   | 라이브러리의 루트 파일이나 공개 모듈(경로 위 모듈이 모두 `pub`)의 파일이 `//!` 문서 없이 `//` 줄로 시작함. 모듈의 문서처럼 보이지만 문서가 아님([9.10.8](../009-tools/910-nabi-frontend.md#nabi-doc-문서-생성)). 도움말이 써야 할 `//!` 줄을 보여 줌 |
 | `missing_docs`           | 0.1.0   | `///` 문서 주석이 없는 `pub` 항목, 고유 impl의 `pub` 메서드, `pub` 트레잇의 메서드, 인라인 `pub mod`. `#[doc(hidden)]`은 문서가 있는 것으로 보고, 트레잇 impl의 메서드는 검사하지 않음 (allow) |
+| `borrowed_ref_call`      | 0.1.9   | 함수가 빌리기만 하는 `Drop` 매개변수(일반 데이터, 간직하지 않고 본문의 다른 곳에서 읽지 않음)에 `ref self` 메서드를 부름. 바뀐 내용은 호출된 쪽의 복사본과 함께 사라짐. `ref x`로 받기 ([stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop-해제-시-정리)) |
 | `resize_while_iterating` | 0.1.0   | `List`를 도는 `for x in xs`의 본문이 `xs`의 길이를 바꾸고(`push`, `remove` 등), 같은 블록에서 그 뒤에 `break`, `return`, `throw`가 없음. 루프가 바뀐 길이를 봄 ([3.13.3](../003-expressions/313-loop-expressions.md#3133-for-반복자-기반-반복)) |
 
 | 그룹                | 포함                                                                                         |
 |---------------------|----------------------------------------------------------------------------------------------|
-| `unused`            | `unused_variables`, `unused_imports`, `dead_code`, `unreachable_code`, `unused_must_use`, `unused_result`, `unused_doc_comments` |
+| `unused`            | `unused_variables`, `unused_imports`, `dead_code`, `unused_fields`, `unreachable_code`, `unused_must_use`, `unused_result`, `unused_doc_comments` |
 | `nonstandard_style` | `non_snake_case`, `non_camel_case_types`, `non_upper_case_globals`, `sup_path`, `local_use` |
 | `warnings`          | 수준이 warn인 모든 린트. 이후 릴리스가 추가하는 린트도 포함                                  |
 | `all`               | 이후 릴리스가 추가하는 린트까지 포함한 모든 린트                                             |

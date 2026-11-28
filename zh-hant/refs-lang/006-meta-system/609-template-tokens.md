@@ -46,6 +46,7 @@ template_token  ::= "@" identifier
 | `@accept(kind, ..)`                                      | 限制目標種類（僅限屬性）                               | 6.9.5 |
 | `@where_all(Trait)`                                      | 每個型別參數加上 `T: Trait`                            | 6.9.5 |
 | `@has_derive_attr(a)`、`@derive_attr(a)`                 | 欄位的 derive 屬性（布林值 / 引數）                    | 6.9.6 |
+| `@has_derive_attr(a, k)`、`@derive_attr(a, k)`           | 欄位 `#[a(..)]` 的鍵 `k`（布林值 / 值）                | 6.9.6 |
 | `@Self.has_derive_key(k)`                                | 型別的 `#[attr(..)]` 列出了鍵 `k`（布林值）            | 6.9.6 |
 | `@item`、`@item.name` / `.params` / `.return_type` / `.body` | 所附加的項目及其各部分（僅限屬性）                 | 6.9.7 |
 | `@attribute`                                             | 使用處的屬性引數（僅限屬性）                           | 6.9.7 |
@@ -313,6 +314,37 @@ let made: @Self = @Self.pattern;
 
 `@derive_attr(name)` 表示所附加之 attr 的引數。
 
+### `@has_derive_attr(name, k)` / `@derive_attr(name, k)`：單一鍵
+
+欄位的 `#[name(..)]` 的引數可以是帶字面值的鍵（`k = "v"`）與不帶值的鍵（`k`）。第二個引數給出鍵時，`@has_derive_attr(name, k)` 表示欄位的屬性是否列出 `k`，`@derive_attr(name, k)` 是寫在 `k =` 之後的值，作為來自使用處的記號（不帶值的 `k` 為 `true`）。屬性宣告了它接受的鍵時（`attr(k, ..)`，[6.8.4](608-meta-blocks.md#684-impl_derive_attributetrait-attr-逐欄位的-derive-屬性)），`k` 必須是其中之一，否則在樣板處報錯。對屬性中沒有 `k` 的欄位使用 `@derive_attr(name, k)` 是錯誤，錯誤訊息會提示以 `@apply_if(@has_derive_attr(name, k))` 包起來。
+
+```nabi
+#[impl_derive_attribute(Args, arg(short, help))] pub @derive {
+    impl Args for @Self {
+        fn specs() -> List<Spec> {
+            [@for_fields {
+                Spec {
+                    name: @field.name.as_str(),
+                    @apply_if(@has_derive_attr(arg, short)) { short: @derive_attr(arg, short), }
+                    @apply_if(@has_derive_attr(arg, help)) { help: @derive_attr(arg, help), }
+                },
+            }]
+        }
+    }
+}
+
+// use site
+#[derive(Args)]
+struct Opts {
+    #[arg(short = "v", help = "print more")]
+    verbose: bool;
+    #[arg(help = "files to read")]
+    files: List<str>;
+}
+// → `Spec { name: "verbose", short: "v", help: "print more" }`,
+//   `Spec { name: "files", help: "files to read" }`
+```
+
 ### `@Self.has_derive_key(k)`
 
 型別自己的 `#[attr(..)]` 是否列出了鍵 `k`。`k` 必須以 `#[impl_derive_attribute(Trait, attr(k, ..))]` 宣告（[6.8.4](608-meta-blocks.md#684-impl_derive_attributetrait-attr-逐欄位的-derive-屬性)）；未宣告的鍵是錯誤。`#[derive(Nabion)]` 就是以這種方式讀取 `#[nabion(deny_unknown_fields)]`。
@@ -500,11 +532,11 @@ pub(pkg) fn combine(h: u64, x: u64) -> u64 { .. }
 
 ### 診斷位置
 
-展開期間的錯誤以及展開結果的剖析錯誤，會指向樣板的位置，並附上使用處（`#[derive(X)]` / `#[x]`）作為附註。透過樣板記號來自項目的語彙單元，則指向該項目的位置。
+展開期間的錯誤、展開結果的剖析錯誤以及產生之程式碼中的型別錯誤，會指向樣板的位置，並附上使用處（`#[derive(X)]` / `#[x]`）作為附註。來自某個欄位的錯誤（欄位的型別、屬性中寫的值）也會指向該欄位（``for field `x` ``）。透過樣板記號來自項目的語彙單元，則指向該項目的位置。
 
 ## 6.9.10. 偵錯
 
-`nabic build --emit=expansions`（[9.9.10](../009-tools/909-debug-tools.md#9910-meta-區塊偵錯)）把使用者套件的展開結果以原始碼文字寫到 `target/<profile>/build/<name>.expanded.nabi`（或 `-o` 路徑）。每個展開是一行 ``// expanded from this `#[derive(X)]` (file:line:col)`` 註解，後接產生的原始碼；若輸出又被展開，它接在外層展開之後。
+`nabic build --emit=expansions`（[9.9.10](../009-tools/909-debug-tools.md#9910-meta-區塊偵錯)）把使用者套件的展開結果以原始碼文字寫到 `target/<profile>/build/<name>.expanded.nabi`（或 `-o` 路徑）。每個展開是一行 ``// expanded from this `#[derive(X)]` (file:line:col)`` 註解，後接產生的原始碼；若輸出又被展開，它接在外層展開之後。展開中的巨集呼叫會在原處以展開後的樣子顯示。
 
 ## 6.9.11. 總結
 

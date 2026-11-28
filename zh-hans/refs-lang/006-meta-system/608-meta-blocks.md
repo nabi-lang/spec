@@ -165,7 +165,7 @@ struct User {
 
 这种形式接受两个参数：被 derive 的 Trait，以及标记逐字段信息的属性。它在 derive 主体中读取字段的属性信息并据此分支。
 
-该属性可以用 `attr(k, ..)` 的形式声明它接受的键：`#[impl_derive_attribute(Nabion, nabion(deny_unknown_fields))]`。此时，类型、其变体和其字段上的每个 `#[attr(..)]` 都只能列出已声明的键；其他任何键都是错误，报错会列出有效的键。`@Self.has_derive_key(k)` 从类型上读取某个键（[6.9.6](609-template-tokens.md#696-derive_attribute-记号)）。
+该属性可以用 `attr(k, ..)` 的形式声明它接受的键：`#[impl_derive_attribute(Nabion, nabion(deny_unknown_fields))]`。此时，类型、其变体和其字段上的每个 `#[attr(..)]` 都只能列出已声明的键，可以不带值（`#[attr(k)]`）或带字面量值（`#[attr(k = "v")]`）；其他任何写法都是在该属性处的错误，报错会列出有效的键。`@Self.has_derive_key(k)` 从类型上读取某个键，`@has_derive_attr(attr, k)` / `@derive_attr(attr, k)` 读取字段的键及其值（[6.9.6](609-template-tokens.md#696-derive_attribute-记号)）。
 
 ## 6.8.5. 主体（模板块）
 

@@ -251,6 +251,7 @@ fn strict_zone() { ... }
 | `unused_variables`       | 0.1.0   | 从未被读取的局部变量或参数。被赋值的 `ref` 参数，或以 `ref` 捕获（`[ref n]`）的变量，算作已使用：写入会传到调用者 |
 | `unused_imports`         | 0.1.0   | 模块从未使用其名称的 `use`                                          |
 | `dead_code`              | 0.1.0   | 没有人调用的非 `pub` 函数                                           |
+| `unused_fields`          | 0.1.9   | 没有任何代码读取的具名结构体私有字段（字段访问或结构体模式算读取；写入和结构体字面量不算）。不检查：`pub` 字段、以 `_` 开头的字段、带有 derive、`repr` 等可能读取字段的属性的结构体，以及反射描述的结构体 |
 | `unreachable_code`       | 0.1.0   | `return` / `break` / `continue` / `throw` / `panic` 之后的语句      |
 | `unused_must_use`        | 0.1.0   | 丢弃 `#[must_use]` 函数的结果，或丢弃 `#[must_use]` 类型的值（[6.2.11](#6211-未使用的结果unused_resultdiscardablemust_use)） |
 | `unused_result`          | 0.1.0   | 值不是 `()`、`none` 或 `Never` 的表达式语句，调用 `#[discardable]` 函数的除外；要有意丢弃值，写 `_ = expr;`（[6.2.11](#6211-未使用的结果unused_resultdiscardablemust_use)） |
@@ -277,11 +278,12 @@ fn strict_zone() { ... }
 | `assoc_type_shadowing`   | 0.1.0   | 关联类型与外层类型同名，在其 trait 或 `impl` 内遮蔽了外层类型（2.8.3） |
 | `plain_module_doc`       | 0.1.0   | 库的根文件或公开模块（路径上的每个模块都是 `pub`）的文件，没有 `//!` 文档却以 `//` 行开头：这些行看似模块文档，实际并不是（[9.10.8](../009-tools/910-nabi-frontend.md#nabi-doc文档生成)）；帮助信息会给出应写的 `//!` 行 |
 | `missing_docs`           | 0.1.0   | 没有 `///` 文档注释的 `pub` 项、固有 impl 的 `pub` 方法、`pub` trait 的方法或内联 `pub mod`；`#[doc(hidden)]` 视为已有文档，trait impl 的方法不检查（allow） |
+| `borrowed_ref_call`      | 0.1.9   | 在函数只借用的 `Drop` 形参（普通数据、未被保留、主体中别处未被读取）上调用 `ref self` 方法：改动随被调用者的副本一起丢失；改用 `ref x`（[stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop释放时的清理)） |
 | `resize_while_iterating` | 0.1.0   | 对 `List` 的 `for x in xs`，其循环体改变了 `xs` 的长度（`push`、`remove` 等），且同一块中其后没有 `break`、`return` 或 `throw`：循环会看到新的长度（[3.13.3](../003-expressions/313-loop-expressions.md#3133-for基于迭代器的重复)） |
 
 | 组                  | 包含                                                                                         |
 |---------------------|----------------------------------------------------------------------------------------------|
-| `unused`            | `unused_variables`、`unused_imports`、`dead_code`、`unreachable_code`、`unused_must_use`、`unused_result`、`unused_doc_comments` |
+| `unused`            | `unused_variables`、`unused_imports`、`dead_code`、`unused_fields`、`unreachable_code`、`unused_must_use`、`unused_result`、`unused_doc_comments` |
 | `nonstandard_style` | `non_snake_case`、`non_camel_case_types`、`non_upper_case_globals`、`sup_path`、`local_use` |
 | `warnings`          | 级别为 warn 的所有 lint，包括后续版本加入的                                                  |
 | `all`               | 所有 lint，包括后续版本加入的                                                                |

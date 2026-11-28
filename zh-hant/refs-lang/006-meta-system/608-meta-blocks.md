@@ -165,7 +165,7 @@ struct User {
 
 這種形式接受兩個引數：被衍生的 Trait，以及標示逐欄位資訊的屬性。它在 derive 主體內讀取欄位的屬性資訊來分支。
 
-該屬性可以以 `attr(k, ..)` 的形式宣告它接受的鍵：`#[impl_derive_attribute(Nabion, nabion(deny_unknown_fields))]`。此時型別、其變體與其欄位上的每個 `#[attr(..)]` 都只能列出已宣告的鍵；其他任何東西都是錯誤，錯誤訊息會指出有效的鍵。`@Self.has_derive_key(k)` 從型別讀取某個鍵（[6.9.6](609-template-tokens.md#696-derive_attribute-記號)）。
+該屬性可以以 `attr(k, ..)` 的形式宣告它接受的鍵：`#[impl_derive_attribute(Nabion, nabion(deny_unknown_fields))]`。此時型別、其變體與其欄位上的每個 `#[attr(..)]` 都只能列出已宣告的鍵，可以不帶值（`#[attr(k)]`）或帶字面值（`#[attr(k = "v")]`）；其他任何寫法都是在該屬性處的錯誤，錯誤訊息會指出有效的鍵。`@Self.has_derive_key(k)` 從型別讀取某個鍵，`@has_derive_attr(attr, k)` / `@derive_attr(attr, k)` 讀取欄位的鍵及其值（[6.9.6](609-template-tokens.md#696-derive_attribute-記號)）。
 
 ## 6.8.5. 主體（樣板區塊）
 
