@@ -293,7 +293,7 @@ Lock {
 ```
 nabi add <name> --path <dir> [--dev]
 nabi add <name> --git <url> [--rev <rev> | --tag <tag> | --branch <branch>] [--dev]
-nabi add <name>[@<req>] [--registry <url>] [--dev]      # from the index
+nabi add <name>[@<req>]... [--registry <url>] [--dev]   # from the index
 nabi add <name> .. [--features <f,..>] [--no-default-features] [--optional]   # with any of the above
 nabi remove <name>
 nabi add .. <file.nabi>                    # into a script's //! nabion block
@@ -304,6 +304,7 @@ nabi deps [--dev] [--features <f,..>] [--all-features] [--no-default-features] [
 
 - `add` / `remove` 編輯套件的 `nabi.nabion`，並保留註解與版面。`--dev` 新增到 `dev_deps`。以指令碼檔案作為最後一個引數時，`add` / `remove` 改為編輯該檔案的 `//! nabion` 區塊（9.10.7）：缺少的區塊會建立在 shebang 行與開頭的 `//!` 行之後（以標準形式寫出；既有的區塊保留其版面與註解），變成空的區塊會被移除，路徑寫成相對於指令碼，而 `--dev` / `--optional` 是錯誤。位於套件內的指令碼是錯誤（它使用套件的 `nabi.nabion`）。在套件之外又沒有指令碼時，或搭配 `--env` 時，它們是錯誤，錯誤訊息會提示 `nabi add <name> <file.nabi>` 以及 `nabi install` / `nabi uninstall`（[9.10.5a](#9105a-nabi-install--nabi-uninstall)）。新增不帶需求的套件會寫入 `^<newest version>`。`--features`、`--no-default-features` 與 `--optional` 會寫進 `Dep::..`；`--optional` 還會新增 feature `"<name>": ["dep:<name>"]`，除非套件已有同名的 feature。
 - 對套件執行 `add` 會回報 `Added <name> v<version>`，即相依套件之 `nabi.nabion` 中的 `version`（對尚未解析的登錄庫套件，是被釘選的版本），沒有版本時則回報 `Added <name>`；`--dev` 會加上 ` (dev_deps)`。
+- `add` 一次可以接受多個索引套件（`nabi add ode units plot`），每個都使用相同的選項：索引只更新一次，`nabi.nabion` 也只寫入並解析一次，因此其中一個失敗時什麼都不會加入。`--path` 與 `--git` 給的是一個套件的來源；名稱多於一個時是錯誤：`` `--path <dir>` is one package's source, and 2 packages are named: give it one, as `nabi add a --path <dir>`, and the others in a command of their own ``。
 - 建置使用 `nabi.lock` 中的提交與版本。新宣告的相依套件會加入鎖定檔，被移除的會被清理，但只有 `update` 會移動已經釘選的東西。給出名稱時，`update` 只重新解析那些套件；否則它重新解析所有 git 與登錄庫相依套件。
 - `deps` 以 `<code name>=<path of its src/lib.nabi>` 行印出已解析的相依套件（程式碼名稱中的 `-` 換成 `_`），相依套件在前（`--dev` 包括開發用相依套件）。相依者以其他名稱（`package`）稱呼的套件，每個名稱多一行這樣的內容。每個套件的行之後接著其 `--extern-feature=<code name>=<f>` 行；`deps` 接受 feature 選項與 `--dev`。對每個原生套件（相依者在前，針對主機），它還會印出 `# native <name> <version>`，其後依每行一個列出其 `nabic` 引數。沒有相依套件時，它不印出任何東西。
 - `deps --format json` 則依相同順序每行印出一個 JSON 物件，每個都帶有 `schema`（目前是 `1`）與 `type`。`package` 紀錄有 `name`、`version`（登錄庫套件解析出的版本，否則是相依套件之 `nabi.nabion` 的 `version`，否則為 `null`）、`source`（`path+<dir>`、`git+<url>#<commit>` 或 `registry+<index url>`）、`path`（其 `src/lib.nabi`）以及 `features`。`native` 紀錄有 `name`、`version` 與 `args`（其 `nabic` 引數）。最後一筆 `summary` 紀錄計算 `packages` 與 `natives` 的數量，因此沒有相依套件的套件只會印出它。紀錄遵循 JSON 診斷的 `schema` 規則（[9.9.4](909-debug-tools.md#994-診斷--錯誤訊息)）。`--format human` 是預設值；其他值是 CLI 錯誤。
@@ -880,11 +881,11 @@ nabi fmt [path..] [--check] [--diff]
 `nabi fmt` 的標準格式是一種**保留語彙單元的版面規則**。它不會改變一行內的語彙單元或註解；它設定各行的縮排與空行，並排列模組頂部的 `mod` / `use` 項目。`nabi fmt` 刻意沒有任何設定：所有 Nabi 程式碼只有一種標準格式。
 
 1. 縮排是每個括號（`(` `[` `{` `#[`）深度 4 個空白。以關閉括號開頭的行取得開啟它之那一行的深度。Tab 變成空白。
-2. 延續行，即其前一個語彙單元不是 `;` `,` 或括號的行（例如拆分長運算式的行），保留它在原始檔案中超出區塊縮排的縮排量。
+2. 延續行，即其前一個語彙單元不是 `;` `,` 或括號的行（例如拆分長運算式的行），保留它在原始檔案中超出區塊縮排的縮排量。以 `catch` 或 `finally` 開頭的行也是延續行；在同一鏈中緊接前一子句之 `}` 的這種行取用該子句的縮排，因此一條鏈的各子句會對齊。
 3. 移除結尾的空白。
 4. 連續的空行壓縮為一行，並移除檔案開頭的空行。
 5. 檔案恰好以一個換行結尾。
-6. 檔案頂部以及行內 `mod name { }` 頂部（在其第一個其他項目之前）的 `mod name;` 與 `use` 項目，依 `pub mod`、`mod`、`pub use`、`use` 的順序分組，其中任何 `pub(..)` 都算作 `pub`。每組都會排序（`mod` 依名稱，`use` 依路徑逐段排序，`self`、`sup` 與 `pkg` 在前），各組之間以一個空行分隔，組內沒有空行。緊接在項目上方的註解、文件註解與屬性會隨它移動；第一個項目上方的註解留在原處。與另一個項目共用一行的項目會結束頂部區域。
+6. 檔案頂部以及行內 `mod name { }` 頂部（在其第一個其他項目之前）的 `mod name;` 與 `use` 項目，依 `pub mod`、`mod`、`pub use`、`use` 的順序分組，其中任何 `pub(..)` 都算作 `pub`。每組都會排序（`mod` 依名稱，`use` 依路徑逐段排序，`self`、`sup` 與 `pkg` 在前），各組之間以一個空行分隔，組內沒有空行。緊接在項目上方的註解、文件註解與屬性會隨它移動；第一個項目上方的註解留在原處。與另一個項目共用一行的項目會結束頂部區域。檔案中任何位置之 `use a::{..}` 群組內的名稱也以同樣方式排序；群組內有註解時保持原樣。
 
 除了規則 6 之外，格式化工具不會移動行、不會拆分或合併行，也不會改變一行內的間距。因此註解會完全保持寫出的樣子，而除了規則 6 所排序之項目的順序之外，語彙單元序列也不會改變。多行字串與區塊註解的內部也保持原樣。
 
