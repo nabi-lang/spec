@@ -64,6 +64,7 @@ impl Iterator {
     // 변환 어댑터 (lazy)
     fn map<U>(self, f: fn(Item) -> U) -> Map<Self, U>;
     fn filter(self, pred: fn(Item) -> bool) -> Filter<Self>;
+    fn filter_map<U>(self, f: fn(Item) -> (U | none)) -> FilterMap<Self, U>;   // none이 아닌 f(item)
     fn enumerate(self, start: usize = 0) -> Enumerate<Self>;   // (index, item) 쌍, `start`부터
     fn zip<J: IntoIterator>(self, other: J) -> Zip<Self, J::IntoIter>;    // Item = (Item, J::Item)
     fn chain<J: IntoIterator<Item = Item>>(self, other: J) -> Chain<Self, J::IntoIter>;
@@ -496,7 +497,7 @@ trait DoubleEndedIterator: Iterator {
 `List<T>`, `Slice<T>`의 반복자와 다음 타입은 이 트레잇을 구현해야 합니다.
 
 - `Range<T>`, `RangeInclusive<T>`
-- `Rev<I>` (`I`가 양방향일 때), `Map<I, U>`, `Filter<I>`, `Chain<A, B>`, `InspectIter<I>` (구성 반복자가 양방향일 때)
+- `Rev<I>` (`I`가 양방향일 때), `Map<I, U>`, `Filter<I>`, `FilterMap<I, U>`, `Chain<A, B>`, `InspectIter<I>` (구성 반복자가 양방향일 때)
 - `Enumerate<I>`, `Zip<A, B>`, `Take<I>`, `Skip<I>`, `StepBy<I>`: 구성 반복자가 `DoubleEndedIterator + ExactSizeIterator`일 때. 뒤에서 세려면 길이가 필요하기 때문입니다.
 
 `Dict<K, V>`와 `Set<T>`의 반복자는 이 트레잇을 구현하지 않습니다.

@@ -33,7 +33,7 @@ trait Reflect {
 - 手写 `impl Reflect for T` 是错误。约束 `T: Reflect` 总是成立。
 - 如果类型自己有同名方法，例如 `size()` / `type_name()`，该方法会遮蔽反射方法。
 - 名称（`type_name`）不带模块路径（`List<i64>`、`Config`），也不带末尾等于默认值的类型实参（`Dict<str, i32>`，[refs-lang 2.10.5](../../refs-lang/002-types/210-generics.md#2105-默认值)）。和类型的静态名称按规范顺序写出（[2.6.4](../../refs-lang/002-types/206-sum-types.md#264-集合语义)）（`f64 | i32`，`none` 在最后）。`type_name_of_val(self)` 等实例形式报告运行时实际存在的成员（对于和类型）或 `any` 的内容。
-- `core::reflect::cast<T>(value: any) -> T | none` 按与 `set_field` 相同的规则从 `any` 中取出 `T`。没有获取类型方法或字段的自由函数：它们是 `T::methods()` / `T::fields()`，并且需要 `#[derive(Inspect)]`，即类型的许可。
+- `core::reflect::cast<T>(value: any) -> T | none` 按与 `set_field` 相同的规则从 `any` 中取出 `T`。整体作为和类型存放的值（例如通过 `get_field` 或 `Field::get` 读出的 `T | none` 字段）给出它持有的成员：持有 `"x"` 的字段 `a: str | none` 的 `cast::<str>` 是 `"x"`。和类型 `T` 也接受它的某个成员，因此 `T | none` 字段的 `set_field` 接受 `T`。没有获取类型方法或字段的自由函数：它们是 `T::methods()` / `T::fields()`，并且需要 `#[derive(Inspect)]`，即类型的许可。
 
 ### 静态与实例
 

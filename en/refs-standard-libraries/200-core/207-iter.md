@@ -64,6 +64,7 @@ impl Iterator {
     // transforming adapters (lazy)
     fn map<U>(self, f: fn(Item) -> U) -> Map<Self, U>;
     fn filter(self, pred: fn(Item) -> bool) -> Filter<Self>;
+    fn filter_map<U>(self, f: fn(Item) -> (U | none)) -> FilterMap<Self, U>;   // the f(item) that are not none
     fn enumerate(self, start: usize = 0) -> Enumerate<Self>;   // (index, item) pairs, from `start`
     fn zip<J: IntoIterator>(self, other: J) -> Zip<Self, J::IntoIter>;    // Item = (Item, J::Item)
     fn chain<J: IntoIterator<Item = Item>>(self, other: J) -> Chain<Self, J::IntoIter>;
@@ -496,7 +497,7 @@ This trait represents iterators that can step from the back; the `rev()` adapter
 The iterators of `List<T>` and `Slice<T>`, and the following types, must implement this trait.
 
 - `Range<T>`, `RangeInclusive<T>`
-- `Rev<I>` (when `I` is bidirectional), `Map<I, U>`, `Filter<I>`, `Chain<A, B>`, `InspectIter<I>` (when the component iterators are bidirectional)
+- `Rev<I>` (when `I` is bidirectional), `Map<I, U>`, `Filter<I>`, `FilterMap<I, U>`, `Chain<A, B>`, `InspectIter<I>` (when the component iterators are bidirectional)
 - `Enumerate<I>`, `Zip<A, B>`, `Take<I>`, `Skip<I>`, `StepBy<I>`: when the component iterators are `DoubleEndedIterator + ExactSizeIterator`, because counting from the back needs the length.
 
 `Dict<K, V>` and `Set<T>` do not implement it.

@@ -64,6 +64,7 @@ impl Iterator {
     // transforming adapters (lazy)
     fn map<U>(self, f: fn(Item) -> U) -> Map<Self, U>;
     fn filter(self, pred: fn(Item) -> bool) -> Filter<Self>;
+    fn filter_map<U>(self, f: fn(Item) -> (U | none)) -> FilterMap<Self, U>;   // the f(item) that are not none
     fn enumerate(self, start: usize = 0) -> Enumerate<Self>;   // (index, item) pairs, from `start`
     fn zip<J: IntoIterator>(self, other: J) -> Zip<Self, J::IntoIter>;    // Item = (Item, J::Item)
     fn chain<J: IntoIterator<Item = Item>>(self, other: J) -> Chain<Self, J::IntoIter>;
@@ -496,7 +497,7 @@ trait DoubleEndedIterator: Iterator {
 `List<T>` 與 `Slice<T>` 的迭代器，以及下列型別，必須實作這個 trait。
 
 - `Range<T>`、`RangeInclusive<T>`
-- `Rev<I>`（當 `I` 為雙向時）、`Map<I, U>`、`Filter<I>`、`Chain<A, B>`、`InspectIter<I>`（當組成的迭代器為雙向時）
+- `Rev<I>`（當 `I` 為雙向時）、`Map<I, U>`、`Filter<I>`、`FilterMap<I, U>`、`Chain<A, B>`、`InspectIter<I>`（當組成的迭代器為雙向時）
 - `Enumerate<I>`、`Zip<A, B>`、`Take<I>`、`Skip<I>`、`StepBy<I>`：當組成的迭代器為 `DoubleEndedIterator + ExactSizeIterator` 時，因為從後端計數需要知道長度。
 
 `Dict<K, V>` 與 `Set<T>` 不實作它。

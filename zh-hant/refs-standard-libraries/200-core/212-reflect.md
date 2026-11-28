@@ -33,7 +33,7 @@ trait Reflect {
 - 手寫 `impl Reflect for T` 是錯誤。約束 `T: Reflect` 永遠成立。
 - 如果型別有同名的自有方法，例如 `size()` / `type_name()`，該方法會遮蔽反射方法。
 - 名稱（`type_name`）不帶模組路徑（`List<i64>`、`Config`），也不帶等於其預設值的尾端型別引數（`Dict<str, i32>`，[refs-lang 2.10.5](../../refs-lang/002-types/210-generics.md#2105-預設值)）。和型別的靜態名稱依正規順序（[2.6.4](../../refs-lang/002-types/206-sum-types.md#264-集合語意)）寫出（`f64 | i32`，`none` 放在最後）。`type_name_of_val(self)` 等實例形式回報執行時實際存在的成員（對和型別而言），或 `any` 的內容。
-- `core::reflect::cast<T>(value: any) -> T | none` 依照與 `set_field` 相同的規則，從 `any` 取出 `T`。型別的方法或欄位沒有對應的自由函式：它們是 `T::methods()` / `T::fields()`，並且需要 `#[derive(Inspect)]`，也就是型別的同意。
+- `core::reflect::cast<T>(value: any) -> T | none` 依照與 `set_field` 相同的規則，從 `any` 取出 `T`。整體以和型別存放的值（例如透過 `get_field` 或 `Field::get` 讀出的 `T | none` 欄位）會給出它持有的成員：持有 `"x"` 的欄位 `a: str | none` 的 `cast::<str>` 是 `"x"`。和型別 `T` 也接受它的某個成員，因此 `T | none` 欄位的 `set_field` 接受 `T`。型別的方法或欄位沒有對應的自由函式：它們是 `T::methods()` / `T::fields()`，並且需要 `#[derive(Inspect)]`，也就是型別的同意。
 
 ### 靜態與實例
 

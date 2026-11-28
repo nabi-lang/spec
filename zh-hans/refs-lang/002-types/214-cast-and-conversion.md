@@ -106,7 +106,7 @@ let m: i32 | none = try? big.try_into::<i32>();
 
 无后缀的数值字面量不会被转换；其类型由期望类型确定。`let x: f64 = 1` 中的 `1` 从一开始就是 `f64`。确切规则在[数值字面量](../001-lexical/106-numeric-literals.md#163-无后缀字面量)中定义。
 
-与此相对，不允许对运行时变量进行自动转换。必须始终写出上述三种形式之一。唯一的例外是视图而非转换：在期望 `SliceMut<T>` 的地方，`List<T>` 作为整个列表的可写视图传递，`xs[a:b]` 则作为该区间的视图传递（[标准库 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可写视图)）。不复制任何东西。
+与此相对，不允许对运行时变量进行自动转换。必须始终写出上述三种形式之一。唯一的例外是视图而非转换：在期望 `SliceMut<T>` 的地方，`List<T>` 作为整个列表的可写视图传递，`xs[a:b]` 则作为该区间的视图传递（[标准库 2.9.7a](../../refs-standard-libraries/200-core/209-collections.md#297a-slicemutt可写视图)）。同样，在期望 `Slice<T>` 的地方，`List<T>` 以 `xs[:]`，即整个列表的只读视图传递（[标准库 2.9.7](../../refs-standard-libraries/200-core/209-collections.md#297-slicet视图)）。不复制任何东西。
 
 ```nabi
 let a: i64 = 100i64;
