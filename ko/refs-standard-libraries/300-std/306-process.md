@@ -229,7 +229,7 @@ impl SignalError {
 // + Display, Debug, Error, PartialEq, Eq, Clone
 ```
 
-`on_signal`의 핸들러는 신호 문맥(signal handler) 안에서 돌지 않습니다. 런타임이 신호를 받아 전용 디스패처 스레드 `nabi-signal`로 넘깁니다. 핸들러는 그 스레드에서 일반 함수처럼 실행됩니다. 그래서 핸들러는 `Send`여야 하고, 보관해 두었다가 신호마다 부르므로 `Sync`이기도 해야 합니다. 할당하거나 락을 잡아도 됩니다. 같은 신호에 `on_signal`을 다시 호출하면 핸들러가 바뀝니다. `Signal`은 어느 OS에서나 신호를 이름으로 가리킵니다. `process_group(pgid)`(`CommandExt`, unix)는 자식을 그 프로세스 그룹에 넣습니다(`0`이면 자식의 pid로 새 그룹을 만듭니다).
+`on_signal`의 핸들러는 신호 문맥(signal handler) 안에서 돌지 않습니다. 런타임이 신호를 받아 전용 디스패처 스레드 `nabi-signal`로 넘깁니다. 핸들러는 그 스레드에서 일반 함수처럼 실행됩니다. 그래서 핸들러는 `Send`여야 하고, 보관해 두었다가 신호마다 부르므로 `Sync`이기도 해야 합니다. 할당하거나 락을 잡아도 됩니다. 같은 신호에 `on_signal`을 다시 호출하면 핸들러가 바뀝니다. 핸들러가 없는 `SIGTERM`, `SIGINT`, `SIGHUP`도 프로세스가 그 신호로 종료되기 전에 stdout 버퍼를 써 내보냅니다([2.23.8](../200-core/223-io.md#2238-표준-스트림)). 핸들러가 있으면 프로세스를 끝낼지는 핸들러가 정하고, `exit`이 버퍼를 비웁니다. `Signal`은 어느 OS에서나 신호를 이름으로 가리킵니다. `process_group(pgid)`(`CommandExt`, unix)는 자식을 그 프로세스 그룹에 넣습니다(`0`이면 자식의 pid로 새 그룹을 만듭니다).
 
 Windows에서는 콘솔 이벤트를 신호에 대응합니다. Ctrl-C → `Interrupt`(2), 콘솔 닫기 / 로그오프 / 종료 → `Hangup`(1)입니다. Ctrl-Break에는 `Signal`이 없고, `os::windows::process::on_ctrl_break`가 받습니다([3.10.7](310-os.md#3107-oswindowsprocess-ctrl-break)). `send_signal`은 `Signal::Kill`만 `TerminateProcess`로 보내고, `raise`는 `Interrupt`와 `Hangup`만 올립니다. 다른 `Signal`은 `IoError`(`Unsupported`)이고, `Interrupt`나 `Hangup`이 아닌 신호에 대한 `on_signal`은 `SignalError`입니다.
 

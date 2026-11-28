@@ -229,7 +229,7 @@ impl SignalError {
 // + Display, Debug, Error, PartialEq, Eq, Clone
 ```
 
-`on_signal` 处理函数不在信号上下文（信号处理函数内部）中运行。运行时接收信号，并把它交给专用的分发线程 `nabi-signal`，处理函数在那里像普通函数一样运行。因此处理函数必须是 `Send`；它会被保存下来，每个信号调用一次，所以它也是 `Sync`。处理函数可以分配内存或获取锁。对同一个信号再次调用 `on_signal` 会替换处理函数。`Signal` 在每个操作系统上为信号命名。`process_group(pgid)`（`CommandExt`，unix）把子进程放入该进程组（`0` 表示以子进程的 pid 新建一个组）。
+`on_signal` 处理函数不在信号上下文（信号处理函数内部）中运行。运行时接收信号，并把它交给专用的分发线程 `nabi-signal`，处理函数在那里像普通函数一样运行。因此处理函数必须是 `Send`；它会被保存下来，每个信号调用一次，所以它也是 `Sync`。处理函数可以分配内存或获取锁。对同一个信号再次调用 `on_signal` 会替换处理函数。没有处理函数的 `SIGTERM`、`SIGINT` 或 `SIGHUP` 在进程因其终止之前仍会写出 stdout 缓冲区（[2.23.8](../200-core/223-io.md#2238-标准流)）；有处理函数时，是否结束进程由处理函数决定，`exit` 会刷新缓冲区。`Signal` 在每个操作系统上为信号命名。`process_group(pgid)`（`CommandExt`，unix）把子进程放入该进程组（`0` 表示以子进程的 pid 新建一个组）。
 
 在 Windows 上，控制台事件映射为信号：Ctrl-C → `Interrupt`（2），关闭控制台 / 注销 / 关机 → `Hangup`（1）。Ctrl-Break 没有对应的 `Signal`；由 `os::windows::process::on_ctrl_break` 转发它（[3.10.7](310-os.md#3107-oswindowsprocessctrl-break)）。`send_signal` 只发送 `Signal::Kill`，作为 `TerminateProcess`；`raise` 只引发 `Interrupt` 和 `Hangup`；其他任何 `Signal` 都是 `IoError`（`Unsupported`），对 `Interrupt` 或 `Hangup` 以外的信号调用 `on_signal` 是 `SignalError`。
 
