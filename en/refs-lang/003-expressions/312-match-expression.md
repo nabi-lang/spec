@@ -6,7 +6,7 @@
 
 ```
 match_expr  ::= "match" expr "{" match_arm ("," match_arm)* ","? "}"
-match_arm   ::= pattern ("if" expr)? "=>" expr
+match_arm   ::= pattern (":" type_expr)? ("if" expr)? "=>" expr
 ```
 
 ```nabi
@@ -43,6 +43,17 @@ match v {                        // v: i32 | none
 ```
 
 The value of the last expression of a block arm is the result of that arm.
+
+A block-like body (a block, `if`, `match`, a loop, `unsafe { .. }`) ends its arm at its `}`, as a block-like statement ends its statement ([3.9](309-block-expressions.md)): the comma after it may be left out, and what follows starts the next arm. So `0 => {}` followed by `-1 => ..` or `("b", 1) => ..` is two arms, not a subtraction or a call. A postfix link (`.m()`, `?`) still continues the body.
+
+As in `if let` ([3.10.5](310-if-expression.md#3105-if-let-combining-with-pattern-matching)), `pattern: T =>` first narrows the value to `T`, then destructures it by `pattern`, which must be irrefutable for `T`. Its names are visible in the guard and the body.
+
+```nabi
+match x {                        // x: (str, str) | i32
+    (k, v): (str, str) => println(f"{k}{v}"),
+    n: i32 => println(f"{n}"),
+}
+```
 
 ## 3.12.3. Matching order
 

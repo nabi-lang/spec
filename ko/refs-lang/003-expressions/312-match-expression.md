@@ -6,7 +6,7 @@
 
 ```
 match_expr  ::= "match" expr "{" match_arm ("," match_arm)* ","? "}"
-match_arm   ::= pattern ("if" expr)? "=>" expr
+match_arm   ::= pattern (":" type_expr)? ("if" expr)? "=>" expr
 ```
 
 ```nabi
@@ -43,6 +43,17 @@ match v {                        // v: i32 | none
 ```
 
 블록 가지의 마지막 식 값이 그 가지의 결과입니다.
+
+블록 같은 본체(블록, `if`, `match`, 반복문, `unsafe { .. }`)는 블록 같은 문장이 문장을 끝내듯([3.9](309-block-expressions.md)) 그 `}`에서 가지를 끝냅니다. 그래서 뒤의 콤마는 생략할 수 있고, 뒤따르는 것은 다음 가지를 시작합니다. `0 => {}` 다음의 `-1 => ..`이나 `("b", 1) => ..`은 뺄셈이나 호출이 아니라 가지 둘입니다. 후위 연결(`.m()`, `?`)은 여전히 본체를 이어 갑니다.
+
+`if let`([3.10.5](310-if-expression.md#3105-if-let-패턴-매칭과-결합))처럼 `pattern: T =>`는 값을 먼저 `T`로 좁힌 다음 `pattern`으로 분해합니다. `pattern`은 `T`에 대해 반박 불가능해야 합니다. 그 이름은 가드와 본체에서 보입니다.
+
+```nabi
+match x {                        // x: (str, str) | i32
+    (k, v): (str, str) => println(f"{k}{v}"),
+    n: i32 => println(f"{n}"),
+}
+```
 
 ## 3.12.3. 매칭 순서
 

@@ -6,7 +6,7 @@
 
 ```
 match_expr  ::= "match" expr "{" match_arm ("," match_arm)* ","? "}"
-match_arm   ::= pattern ("if" expr)? "=>" expr
+match_arm   ::= pattern (":" type_expr)? ("if" expr)? "=>" expr
 ```
 
 ```nabi
@@ -43,6 +43,17 @@ match v {                        // v: i32 | none
 ```
 
 块分支最后一个表达式的值是该分支的结果。
+
+类块的主体（块、`if`、`match`、循环、`unsafe { .. }`）在其 `}` 处结束分支，就像类块语句结束其语句一样（[3.9](309-block-expressions.md)）：其后的逗号可以省略，后面的内容开始下一个分支。因此 `0 => {}` 之后的 `-1 => ..` 或 `("b", 1) => ..` 是两个分支，而不是减法或调用。后缀链接（`.m()`、`?`）仍然延续主体。
+
+与 `if let`（[3.10.5](310-if-expression.md#3105-if-let与模式匹配结合)）一样，`pattern: T =>` 先把值收窄为 `T`，再按 `pattern` 解构；`pattern` 对 `T` 必须是不可反驳的。其名字在守卫和主体中可见。
+
+```nabi
+match x {                        // x: (str, str) | i32
+    (k, v): (str, str) => println(f"{k}{v}"),
+    n: i32 => println(f"{n}"),
+}
+```
 
 ## 3.12.3. 匹配顺序
 
