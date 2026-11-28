@@ -251,6 +251,7 @@ The default level of every lint is `warn`, except `nan_comparison` and `self_ass
 | `unused_variables`       | 0.1.0   | Local variables or parameters that are never read. A `ref` parameter that is assigned, or captured by `ref` (`[ref n]`), is used: the write reaches the caller |
 | `unused_imports`         | 0.1.0   | A `use` whose name the module never uses                            |
 | `dead_code`              | 0.1.0   | Non-`pub` functions nobody calls                                    |
+| `unused_fields`          | 0.1.9   | A private field of a named struct that no code reads (a field access or a struct pattern; writes and struct literals are not reads). Not checked: `pub` fields, `_`-prefixed ones, and structs with a derive, `repr` or another attribute that may read them, or that reflection describes |
 | `unreachable_code`       | 0.1.0   | Statements after `return` / `break` / `continue` / `throw` / `panic` |
 | `unused_must_use`        | 0.1.0   | Discarding the result of a `#[must_use]` function, or a value of a `#[must_use]` type ([6.2.11](#6211-unused-results-unused_result-discardable-must_use)) |
 | `unused_result`          | 0.1.0   | An expression statement whose value is not `()`, `none` or `Never`, unless it calls a `#[discardable]` function; write `_ = expr;` to drop the value on purpose ([6.2.11](#6211-unused-results-unused_result-discardable-must_use)) |
@@ -277,11 +278,12 @@ The default level of every lint is `warn`, except `nan_comparison` and `self_ass
 | `assoc_type_shadowing`   | 0.1.0   | An associated type named like an outer type, which it hides inside its trait or `impl` (2.8.3) |
 | `plain_module_doc`       | 0.1.0   | A library's root file, or the file of a public module (every module on its path `pub`), that has no `//!` doc but starts with `//` lines: they read as the module's doc and are not one ([9.10.8](../009-tools/910-nabi-frontend.md#nabi-doc-documentation-generation)); the help shows the `//!` line to write |
 | `missing_docs`           | 0.1.0   | A `pub` item, a `pub` method of an inherent impl, a method of a `pub` trait or an inline `pub mod` without a `///` doc comment; `#[doc(hidden)]` counts as documented, a trait impl's methods are not checked (allow) |
+| `borrowed_ref_call`      | 0.1.9   | A `ref self` method called on a `Drop` parameter the function only borrows (plain data, not kept, read nowhere else in the body): the change is lost with the callee's copy; take `ref x` ([stdlib 2.13.4](../../refs-standard-libraries/200-core/213-marker.md#2134-drop---cleanup-on-release)) |
 | `resize_while_iterating` | 0.1.0   | `for x in xs` over a `List` whose body changes the length of `xs` (`push`, `remove`, ...) with no `break`, `return` or `throw` after it in the same block: the loop sees the new length ([3.13.3](../003-expressions/313-loop-expressions.md#3133-for-iterator-based-repetition)) |
 
 | Group               | Includes                                                                                     |
 |---------------------|----------------------------------------------------------------------------------------------|
-| `unused`            | `unused_variables`, `unused_imports`, `dead_code`, `unreachable_code`, `unused_must_use`, `unused_result`, `unused_doc_comments` |
+| `unused`            | `unused_variables`, `unused_imports`, `dead_code`, `unused_fields`, `unreachable_code`, `unused_must_use`, `unused_result`, `unused_doc_comments` |
 | `nonstandard_style` | `non_snake_case`, `non_camel_case_types`, `non_upper_case_globals`, `sup_path`, `local_use` |
 | `warnings`          | Every lint whose level is warn, including those later releases add                           |
 | `all`               | Every lint, including those later releases add                                               |

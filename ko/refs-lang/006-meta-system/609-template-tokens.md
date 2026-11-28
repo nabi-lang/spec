@@ -46,6 +46,7 @@ template_token  ::= "@" identifier
 | `@accept(kind, ..)`                                      | 대상 종류 제한 (속성 정의 전용)             | 6.9.5 |
 | `@where_all(Trait)`                                      | 타입 매개변수마다 `T: Trait`                | 6.9.5 |
 | `@has_derive_attr(a)`, `@derive_attr(a)`                 | 필드의 derive 속성 (부울 / 인자)            | 6.9.6 |
+| `@has_derive_attr(a, k)`, `@derive_attr(a, k)`           | 필드 `#[a(..)]`의 키 `k` (부울 / 값)        | 6.9.6 |
 | `@Self.has_derive_key(k)`                                | 타입의 `#[attr(..)]`에 키 `k`가 있는지 (부울) | 6.9.6 |
 | `@item`, `@item.name` / `.params` / `.return_type` / `.body` | 부착 대상 항목과 그 부분 (속성 정의 전용) | 6.9.7 |
 | `@attribute`                                             | 사용처의 속성 인자 (속성 정의 전용)         | 6.9.7 |
@@ -313,6 +314,37 @@ let made: @Self = @Self.pattern;
 
 `@derive_attr(name)`은 필드에 붙은 그 속성의 인자입니다.
 
+### `@has_derive_attr(name, k)` / `@derive_attr(name, k)`: 키 하나
+
+필드의 `#[name(..)]` 인자로는 리터럴 값이 붙은 키(`k = "v"`)와 값 없는 키(`k`)를 쓸 수 있습니다. 두 번째 인자로 키를 주면 `@has_derive_attr(name, k)`는 필드의 속성에 `k`가 있는지이고, `@derive_attr(name, k)`는 `k =` 뒤에 쓴 값입니다. 그 값은 사용처의 토큰입니다(값 없는 `k`는 `true`). 속성이 받는 키를 선언했으면(`attr(k, ..)`, [6.8.4](608-meta-blocks.md#684-impl_derive_attributetrait-attr-필드별-derive-속성)) `k`는 그중 하나여야 하고, 아니면 템플릿에서 에러입니다. 속성에 `k`가 없는 필드에서 `@derive_attr(name, k)`를 쓰면 에러이고, `@apply_if(@has_derive_attr(name, k))`로 감싸라고 알려 줍니다.
+
+```nabi
+#[impl_derive_attribute(Args, arg(short, help))] pub @derive {
+    impl Args for @Self {
+        fn specs() -> List<Spec> {
+            [@for_fields {
+                Spec {
+                    name: @field.name.as_str(),
+                    @apply_if(@has_derive_attr(arg, short)) { short: @derive_attr(arg, short), }
+                    @apply_if(@has_derive_attr(arg, help)) { help: @derive_attr(arg, help), }
+                },
+            }]
+        }
+    }
+}
+
+// 사용처
+#[derive(Args)]
+struct Opts {
+    #[arg(short = "v", help = "print more")]
+    verbose: bool;
+    #[arg(help = "files to read")]
+    files: List<str>;
+}
+// → `Spec { name: "verbose", short: "v", help: "print more" }`,
+//   `Spec { name: "files", help: "files to read" }`
+```
+
 ### `@Self.has_derive_key(k)`
 
 타입 자신의 `#[attr(..)]`에 키 `k`가 있는지 나타냅니다. `k`는 `#[impl_derive_attribute(Trait, attr(k, ..))]`로 선언해야 하며([6.8.4](608-meta-blocks.md#684-impl_derive_attributetrait-attr-필드별-derive-속성)), 선언하지 않은 키는 에러입니다. `#[derive(Nabion)]`은 이 토큰으로 `#[nabion(deny_unknown_fields)]`를 읽습니다.
@@ -500,11 +532,11 @@ pub(pkg) fn combine(h: u64, x: u64) -> u64 { .. }
 
 ### 진단 위치
 
-확장 중의 에러와 확장 결과의 파싱 에러는 템플릿의 위치를 가리킵니다. 사용처(`#[derive(X)]` / `#[x]`)는 참고(note)로 덧붙입니다. 템플릿 토큰을 거쳐 항목에서 온 토큰은 항목의 위치를 가리킵니다.
+확장 중의 에러, 확장 결과의 파싱 에러, 생성된 코드의 타입 에러는 템플릿의 위치를 가리킵니다. 사용처(`#[derive(X)]` / `#[x]`)는 참고(note)로 덧붙입니다. 한 필드에서 온 에러(필드의 타입, 속성에 쓴 값)는 그 필드도 가리킵니다(``for field `x` ``). 템플릿 토큰을 거쳐 항목에서 온 토큰은 항목의 위치를 가리킵니다.
 
 ## 6.9.10. 디버깅
 
-`nabic build --emit=expansions`([9.9.10](../009-tools/909-debug-tools.md#9910-메타-블록-디버그))는 사용자 패키지의 확장 결과를 소스 텍스트로 `target/<profile>/build/<name>.expanded.nabi`(또는 `-o` 경로)에 씁니다. 확장마다 ``// expanded from this `#[derive(X)]` (file:line:col)`` 주석 뒤에 생성된 소스가 나옵니다. 생성물이 다시 확장되면 그 결과는 바깥 확장 뒤에 나옵니다.
+`nabic build --emit=expansions`([9.9.10](../009-tools/909-debug-tools.md#9910-메타-블록-디버그))는 사용자 패키지의 확장 결과를 소스 텍스트로 `target/<profile>/build/<name>.expanded.nabi`(또는 `-o` 경로)에 씁니다. 확장마다 ``// expanded from this `#[derive(X)]` (file:line:col)`` 주석 뒤에 생성된 소스가 나옵니다. 생성물이 다시 확장되면 그 결과는 바깥 확장 뒤에 나옵니다. 확장 안의 매크로 호출은 그 자리에 확장된 모습으로 나옵니다.
 
 ## 6.9.11. 정리
 

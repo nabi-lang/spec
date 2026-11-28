@@ -46,6 +46,7 @@ template_token  ::= "@" identifier
 | `@accept(kind, ..)`                                      | 限制目标种类（仅用于属性）                             | 6.9.5 |
 | `@where_all(Trait)`                                      | 为每个类型参数生成 `T: Trait`                          | 6.9.5 |
 | `@has_derive_attr(a)`、`@derive_attr(a)`                 | 字段的 derive 属性（布尔值 / 参数）                    | 6.9.6 |
+| `@has_derive_attr(a, k)`、`@derive_attr(a, k)`           | 字段 `#[a(..)]` 的键 `k`（布尔值 / 值）                | 6.9.6 |
 | `@Self.has_derive_key(k)`                                | 类型的 `#[attr(..)]` 中是否列出了键 `k`（布尔值）      | 6.9.6 |
 | `@item`、`@item.name` / `.params` / `.return_type` / `.body` | 所附加的项及其各部分（仅用于属性）                 | 6.9.7 |
 | `@attribute`                                             | 使用处的属性参数（仅用于属性）                         | 6.9.7 |
@@ -313,6 +314,37 @@ let made: @Self = @Self.pattern;
 
 `@derive_attr(name)` 表示所附加 attr 的参数。
 
+### `@has_derive_attr(name, k)` / `@derive_attr(name, k)`：单个键
+
+字段的 `#[name(..)]` 的参数可以是带字面量值的键（`k = "v"`）和不带值的键（`k`）。第二个参数给出键时，`@has_derive_attr(name, k)` 表示字段的属性是否列出了 `k`，`@derive_attr(name, k)` 是写在 `k =` 之后的值，作为来自使用处的记号（不带值的 `k` 为 `true`）。属性声明了它接受的键时（`attr(k, ..)`，[6.8.4](608-meta-blocks.md#684-impl_derive_attributetrait-attr-逐字段-derive-属性)），`k` 必须是其中之一，否则在模板处报错。对属性中没有 `k` 的字段使用 `@derive_attr(name, k)` 是错误，报错会提示用 `@apply_if(@has_derive_attr(name, k))` 包起来。
+
+```nabi
+#[impl_derive_attribute(Args, arg(short, help))] pub @derive {
+    impl Args for @Self {
+        fn specs() -> List<Spec> {
+            [@for_fields {
+                Spec {
+                    name: @field.name.as_str(),
+                    @apply_if(@has_derive_attr(arg, short)) { short: @derive_attr(arg, short), }
+                    @apply_if(@has_derive_attr(arg, help)) { help: @derive_attr(arg, help), }
+                },
+            }]
+        }
+    }
+}
+
+// use site
+#[derive(Args)]
+struct Opts {
+    #[arg(short = "v", help = "print more")]
+    verbose: bool;
+    #[arg(help = "files to read")]
+    files: List<str>;
+}
+// → `Spec { name: "verbose", short: "v", help: "print more" }`,
+//   `Spec { name: "files", help: "files to read" }`
+```
+
 ### `@Self.has_derive_key(k)`
 
 表示类型自身的 `#[attr(..)]` 中是否列出了键 `k`。`k` 必须用 `#[impl_derive_attribute(Trait, attr(k, ..))]` 声明（[6.8.4](608-meta-blocks.md#684-impl_derive_attributetrait-attr-逐字段-derive-属性)）；未声明的键是错误。`#[derive(Nabion)]` 就是这样读取 `#[nabion(deny_unknown_fields)]` 的。
@@ -500,11 +532,11 @@ pub(pkg) fn combine(h: u64, x: u64) -> u64 { .. }
 
 ### 诊断位置
 
-展开过程中的错误以及展开结果的解析错误指向模板的位置，并把使用处（`#[derive(X)]` / `#[x]`）作为附注（note）附上。经由模板记号来自该项的词法单元，指向该项的位置。
+展开过程中的错误、展开结果的解析错误以及生成代码中的类型错误指向模板的位置，并把使用处（`#[derive(X)]` / `#[x]`）作为附注（note）附上。来自某个字段的错误（字段的类型、属性中写的值）也指向该字段（``for field `x` ``）。经由模板记号来自该项的词法单元，指向该项的位置。
 
 ## 6.9.10. 调试
 
-`nabic build --emit=expansions`（[9.9.10](../009-tools/909-debug-tools.md#9910-元块调试)）把用户包的展开结果作为源文本写入 `target/<profile>/build/<name>.expanded.nabi`（或 `-o` 指定的路径）。每个展开结果都是一条 ``// expanded from this `#[derive(X)]` (file:line:col)`` 注释，后跟生成的源代码；如果输出再次被展开，它会跟在外层展开之后。
+`nabic build --emit=expansions`（[9.9.10](../009-tools/909-debug-tools.md#9910-元块调试)）把用户包的展开结果作为源文本写入 `target/<profile>/build/<name>.expanded.nabi`（或 `-o` 指定的路径）。每个展开结果都是一条 ``// expanded from this `#[derive(X)]` (file:line:col)`` 注释，后跟生成的源代码；如果输出再次被展开，它会跟在外层展开之后。展开中的宏调用会在原处显示为展开后的样子。
 
 ## 6.9.11. 小结
 
