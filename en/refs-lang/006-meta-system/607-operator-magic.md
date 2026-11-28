@@ -108,8 +108,6 @@ trait Before {
 }
 ```
 
-`->` goes the other way. Between two values it is the ASCII spelling of `→`: `a -> b` calls the method registered for `→`, at its level, so `bag -> g` and `bag → g` are one expression. A return type keeps `->` (`fn f() -> T`). In a match guard, outside brackets, `->` is not `→`: `n if n > 2 -> 1` is a mistyped `=>` and reported as one; `n if (q -> u).v > 2 => ..` converts. With no `→` in scope, `->` between two values is a syntax error that says so. `->` cannot be registered (`#[infix("->")]` is a compile error that names `→`), as `≤` cannot.
-
 ## 6.7.5. Conflict checking
 
 If different traits are attached to the same (token, position) combination, it is an ERROR at registration.
@@ -195,7 +193,9 @@ A token may start like a fixed one: `#[infix("<-", like = "+")]` makes `c <- 3` 
 
 Binary `@` may be bound too, with `like`: `#[infix("@", like = "*")]` makes `a @ b` a matrix product, as in NumPy. `@` stays the fixed token, and the grammar has no other binary `@`: the language writes it only where no operand ends before it, ahead of meta syntax (`@derive`, `@Self`), after a binding name in a pattern (`n @ (a, b)`) and glued to `return` (`return@f`). An `@` after a complete operand is therefore the operator wherever its trait is visible, and those other uses keep their meaning in the same file. `@` cannot be bound as a prefix or postfix operator, since those positions are meta syntax.
 
-Binary `~` is free the same way: the language reads `~` only as the prefix bitwise not (`~x`), never after an operand, so `#[infix("~", like = "==")]` makes `x ~ d` ("distributed as", or a model formula `y ~ x`) an operator, and `~x` keeps its meaning. Any other fixed token can be bound only where the 3.2 table gives it a form: postfix `%` is an error that points to a number suffix (`95pct`, [6.5.7](605-literal-magic.md#657-user-defined-literals)), and `->` or `|>` are syntax. Postfix `!` (a factorial `n!`) is an error too: after a name `!` starts a macro call (`name!(..)`), and before an operand it is `not`; write a function or a method (`factorial(n)`, `n.factorial()`).
+Binary `~` is free the same way: the language reads `~` only as the prefix bitwise not (`~x`), never after an operand, so `#[infix("~", like = "==")]` makes `x ~ d` ("distributed as", or a model formula `y ~ x`) an operator, and `~x` keeps its meaning. Any other fixed token can be bound only where the 3.2 table gives it a form: postfix `%` is an error that points to a number suffix (`95pct`, [6.5.7](605-literal-magic.md#657-user-defined-literals)), and `|>` is syntax. Postfix `!` (a factorial `n!`) is an error too: after a name `!` starts a macro call (`name!(..)`), and before an operand it is `not`; write a function or a method (`factorial(n)`, `n.factorial()`).
+
+Binary `->` is free too: the language writes `->` only before a return type (`fn f() -> T`, `|x| -> T { .. }`), never between two values, so `#[infix("->", like = "|")]` makes `bag -> g` an operator (a unit conversion, a state transition) and return types keep their meaning. It needs `like`, as `@` and `~` do. In a match guard, outside brackets, `->` is not the operator: `n if n > 2 -> 1` is a mistyped `=>` and reported as one, and `n if (q -> u).v > 2 => ..` calls it. With no binding in scope, `->` between two values is a syntax error that names the attribute to write.
 
 A token holds no identifier character: `′` (`f′` is a name) and `ℱ` (a letter) cannot be operators. Write a method (`a.t()`) or a function (`fourier(x)`), or pick a symbol such as `†` ([1.10.4](../001-lexical/110-punctuation-and-operator-tokens.md#1104-extension-tokens)).
 

@@ -138,7 +138,7 @@
 |       ||      |>      ->      =>
 ```
 
-`|>` 是管線：`x |> f(a)` 是 `f(x, a)`（[3.18](../003-expressions/318-pipe-expression.md)）。`|` 依上下文用作位元 OR、和型別分隔符以及 lambda 參數界定符。`||` 用於邏輯 OR，或開始一個沒有參數的 lambda。`->` 是函式回傳型別的箭頭，`=>` 是 `match` 分支的箭頭。
+`|>` 是管線：`x |> f(a)` 是 `f(x, a)`（[3.18](../003-expressions/318-pipe-expression.md)）。`|` 依上下文用作位元 OR、和型別分隔符以及 lambda 參數界定符。`||` 用於邏輯 OR，或開始一個沒有參數的 lambda。`->` 是函式回傳型別的箭頭，在 trait 繫結它之處也是兩個值之間的運算子（[6.7.4](../006-meta-system/607-operator-magic.md)），`=>` 是 `match` 分支的箭頭。
 
 ### 標點
 
