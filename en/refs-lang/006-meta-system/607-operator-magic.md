@@ -108,6 +108,8 @@ trait Before {
 }
 ```
 
+`->` goes the other way. Between two values it is the ASCII spelling of `→`: `a -> b` calls the method registered for `→`, at its level, so `bag -> g` and `bag → g` are one expression. A return type keeps `->` (`fn f() -> T`). In a match guard, outside brackets, `->` is not `→`: `n if n > 2 -> 1` is a mistyped `=>` and reported as one; `n if (q -> u).v > 2 => ..` converts. With no `→` in scope, `->` between two values is a syntax error that says so. `->` cannot be registered (`#[infix("->")]` is a compile error that names `→`), as `≤` cannot.
+
 ## 6.7.5. Conflict checking
 
 If different traits are attached to the same (token, position) combination, it is an ERROR at registration.
