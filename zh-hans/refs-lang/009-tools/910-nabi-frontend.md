@@ -293,7 +293,7 @@ Lock {
 ```
 nabi add <name> --path <dir> [--dev]
 nabi add <name> --git <url> [--rev <rev> | --tag <tag> | --branch <branch>] [--dev]
-nabi add <name>[@<req>] [--registry <url>] [--dev]      # from the index
+nabi add <name>[@<req>]... [--registry <url>] [--dev]   # from the index
 nabi add <name> .. [--features <f,..>] [--no-default-features] [--optional]   # with any of the above
 nabi remove <name>
 nabi add .. <file.nabi>                    # into a script's //! nabion block
@@ -304,6 +304,7 @@ nabi deps [--dev] [--features <f,..>] [--all-features] [--no-default-features] [
 
 - `add` / `remove` 编辑包的 `nabi.nabion`，保留注释和布局。`--dev` 添加到 `dev_deps`。最后一个实参是脚本文件时，`add` / `remove` 改为编辑该文件的 `//! nabion` 块（9.10.7）：缺少的块会创建在 shebang 行和开头的 `//!` 行之后（以规范形式写出；已有的块保留其布局和注释），变空的块会被删除，路径写成相对于脚本的形式，`--dev` / `--optional` 是错误。位于包内的脚本是错误（它使用包的 `nabi.nabion`）。在包外且没有脚本，或者使用了 `--env` 时，它们是错误，错误消息会指出 `nabi add <name> <file.nabi>` 和 `nabi install` / `nabi uninstall`（[9.10.5a](#9105a-nabi-install--nabi-uninstall)）。添加包而不带要求时写入 `^<newest version>`。`--features`、`--no-default-features` 和 `--optional` 写入 `Dep::..` 中；`--optional` 还会添加特性 `"<name>": ["dep:<name>"]`，除非该包已有同名特性。
 - 对包执行 `add` 时报告 `Added <name> v<version>`，即依赖的 `nabi.nabion` 中的 `version`（对尚未解析的注册表包，为所固定的版本），没有版本时报告 `Added <name>`；`--dev` 会加上 ` (dev_deps)`。
+- `add` 一次可以接受多个索引包（`nabi add ode units plot`），每个都使用相同的选项：索引只更新一次，`nabi.nabion` 也只写入并解析一次，因此其中一个失败时什么都不会添加。`--path` 和 `--git` 给出的是一个包的来源；名称多于一个时是错误：`` `--path <dir>` is one package's source, and 2 packages are named: give it one, as `nabi add a --path <dir>`, and the others in a command of their own ``。
 - 构建使用 `nabi.lock` 中的提交和版本。新声明的依赖会加入锁文件，被删除的依赖会被清理，但只有 `update` 会改变已固定的内容。给出名称时，`update` 只重新解析这些包；否则重新解析所有 git 和注册表依赖。
 - `deps` 以 `<code name>=<path of its src/lib.nabi>` 行的形式打印解析后的依赖包（代码名中的 `-` 换成 `_`），依赖在前（`--dev` 包含开发依赖）。依赖方以其他名称（`package`）称呼的包，每多一个名称就多一行。每个包的行之后跟着它的 `--extern-feature=<code name>=<f>` 行；`deps` 接受特性选项和 `--dev`。对每个原生包（依赖方在前，针对主机），它还打印 `# native <name> <version>`，后面跟着它的 `nabic` 实参，每行一个。没有依赖时不打印任何内容。
 - `deps --format json` 改为按相同顺序每行打印一个 JSON 对象，每个都带有 `schema`（目前为 `1`）和 `type`。`package` 记录有 `name`、`version`（注册表包为解析得到的版本，否则为依赖的 `nabi.nabion` 中的 `version`，再否则为 `null`）、`source`（`path+<dir>`、`git+<url>#<commit>` 或 `registry+<index url>`）、`path`（它的 `src/lib.nabi`）和 `features`。`native` 记录有 `name`、`version` 和 `args`（它的 `nabic` 实参）。最后一条 `summary` 记录统计 `packages` 和 `natives`，因此没有依赖的包只打印这一条。记录遵循 JSON 诊断的 `schema` 规则（[9.9.4](909-debug-tools.md#994-诊断--错误消息)）。`--format human` 是默认值；其他值是 CLI 错误。
@@ -880,11 +881,11 @@ nabi fmt [path..] [--check] [--diff]
 `nabi fmt` 的标准格式是一种**保留词法单元的布局规则**。它不改变一行之内的词法单元或注释；它设定行缩进和空行，并对模块顶部的 `mod` / `use` 项排序。`nabi fmt` 有意不提供配置：所有 Nabi 代码只有一种标准格式。
 
 1. 缩进为每层括号（`(` `[` `{` `#[`）深度 4 个空格。以闭括号开头的行取打开它的那一行的深度。制表符变为空格。
-2. 续行，即前一个词法单元不是 `;`、`,` 或括号的行（例如拆分长表达式的行），保持原文件中超出块缩进的那部分缩进量。
+2. 续行，即前一个词法单元不是 `;`、`,` 或括号的行（例如拆分长表达式的行），保持原文件中超出块缩进的那部分缩进量。以 `catch` 或 `finally` 开头的行也是续行；在同一链中紧跟前一子句的 `}` 的这种行取那个子句的缩进，因此一条链的各子句对齐。
 3. 删除行尾空白。
 4. 连续的空行合并为一行，删除文件开头的空行。
 5. 文件以恰好一个换行结尾。
-6. 文件顶部以及内联 `mod name { }` 顶部（在其第一个其他项之前）的 `mod name;` 和 `use` 项按 `pub mod`、`mod`、`pub use`、`use` 的顺序分组，任何 `pub(..)` 都算作 `pub`。每组内排序（`mod` 按名称，`use` 按路径逐段排序，`self`、`sup` 和 `pkg` 在前），组与组之间以一个空行分隔，组内没有空行。项正上方的注释、文档注释和属性随项移动；第一个项上方的注释留在原处。与另一个项共享一行的项结束顶部区域。
+6. 文件顶部以及内联 `mod name { }` 顶部（在其第一个其他项之前）的 `mod name;` 和 `use` 项按 `pub mod`、`mod`、`pub use`、`use` 的顺序分组，任何 `pub(..)` 都算作 `pub`。每组内排序（`mod` 按名称，`use` 按路径逐段排序，`self`、`sup` 和 `pkg` 在前），组与组之间以一个空行分隔，组内没有空行。项正上方的注释、文档注释和属性随项移动；第一个项上方的注释留在原处。与另一个项共享一行的项结束顶部区域。文件中任何位置的 `use a::{..}` 组内的名称也以同样方式排序；组内有注释时保持原样。
 
 除规则 6 外，格式化工具不移动行，不拆分或合并行，也不改变一行之内的间距。因此注释完全保持原样，词法单元序列除规则 6 排序的项的顺序外保持不变。多行字符串和块注释的内部也保持原样。
 

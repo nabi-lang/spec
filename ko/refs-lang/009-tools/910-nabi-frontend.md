@@ -300,7 +300,7 @@ Lock {
 ```
 nabi add <name> --path <dir> [--dev]
 nabi add <name> --git <url> [--rev <rev> | --tag <tag> | --branch <branch>] [--dev]
-nabi add <name>[@<req>] [--registry <url>] [--dev]      # index에서
+nabi add <name>[@<req>]... [--registry <url>] [--dev]   # index에서
 nabi add <name> .. [--features <f,..>] [--no-default-features] [--optional]   # 위의 어느 것과도
 nabi remove <name>
 nabi add .. <file.nabi>                    # 스크립트의 //! nabion 블록에
@@ -314,6 +314,7 @@ nabi deps [--dev] [--features <f,..>] [--all-features] [--no-default-features] [
 - `add` / `remove`를 스크립트 없이 패키지 밖에서 쓰거나 `--env`와 함께 쓰면 에러입니다. 에러는 `nabi add <name> <file.nabi>`과 `nabi install` / `nabi uninstall`을 알립니다([9.10.5a](#9105a-nabi-install--nabi-uninstall)).
 - 레지스트리 패키지를 요구 없이 더하면 `^<newest version>`을 적습니다. `--features`, `--no-default-features`, `--optional`은 `Dep::..`에 적습니다. 패키지에 같은 이름의 feature가 없으면 `--optional`은 feature `"<name>": ["dep:<name>"]`도 더합니다.
 - 패키지에 `add`하면 `Added <name> v<version>`을 알립니다. 버전은 의존 패키지 `nabi.nabion`의 `version`입니다(아직 해석되지 않은 레지스트리 패키지는 고정한 버전). 버전이 없으면 `Added <name>`입니다. `--dev`는 ` (dev_deps)`를 덧붙입니다.
+- `add`는 index 패키지 여럿을 한 번에 받고(`nabi add ode units plot`), 옵션은 모두에 똑같이 적용됩니다. index는 한 번 갱신하고 `nabi.nabion`도 한 번 쓰고 해소하므로, 그중 하나가 실패하면 아무것도 추가되지 않습니다. `--path`와 `--git`은 패키지 하나의 출처이므로 이름이 둘 이상이면 오류입니다: `` `--path <dir>` is one package's source, and 2 packages are named: give it one, as `nabi add a --path <dir>`, and the others in a command of their own ``.
 - 빌드는 `nabi.lock`의 커밋과 버전을 씁니다. 새로 선언된 의존은 lock에 더하고 지운 의존은 정리합니다. 하지만 이미 고정된 것을 옮기는 것은 `update`뿐입니다. `update`는 이름을 주면 그 패키지만, 없으면 모든 git 의존과 레지스트리 의존을 다시 해소합니다.
 - `deps`는 해소한 의존 패키지를 `<code name>=<path of its src/lib.nabi>` 줄로 출력합니다. 코드 이름은 `-`를 `_`로 바꾼 것이고, 의존되는 쪽이 먼저 옵니다(`--dev`면 dev 의존 포함). 의존하는 쪽이 다른 이름(`package`)으로 부르는 패키지는 이름마다 이런 줄이 하나씩 더 있습니다. 각 패키지의 줄 뒤에는 그 `--extern-feature=<code name>=<f>` 줄이 옵니다. `deps`는 feature 옵션과 `--dev`를 받습니다. native 패키지마다(의존하는 쪽이 먼저, 호스트용) `# native <name> <version>`와 그 `nabic` 인자를 한 줄에 하나씩 출력합니다. 의존성이 없으면 아무것도 출력하지 않습니다.
 - `deps --format json`은 같은 순서로 JSON 객체를 한 줄에 하나씩 대신 출력합니다. 객체마다 `schema`(지금은 `1`)와 `type`이 있습니다. `package` 레코드에는 `name`, `version`(레지스트리 패키지면 해소한 버전, 아니면 그 의존성 `nabi.nabion`의 `version`, 그것도 없으면 `null`), `source`(`path+<dir>`, `git+<url>#<commit>`, `registry+<index url>`), `path`(그 `src/lib.nabi`), `features`가 있습니다. `native` 레코드에는 `name`, `version`, `args`(그 `nabic` 인자)가 있습니다. 마지막 `summary` 레코드는 `packages`와 `natives`의 수를 세므로, 의존성이 없는 패키지는 이것만 출력합니다. 레코드는 JSON 진단의 `schema` 규칙([9.9.4](909-debug-tools.md#994-진단--에러-메시지))을 따릅니다. 기본값은 `--format human`이고, 다른 값은 CLI 에러입니다.
@@ -922,11 +923,11 @@ nabi fmt [path..] [--check] [--diff]
 `nabi fmt`의 표준 포맷은 **토큰을 보존하는 배치 규칙**입니다. 줄 안의 토큰과 주석은 바꾸지 않고, 줄의 들여쓰기와 빈 줄을 정하며, 모듈 맨 위의 `mod` / `use` 항목을 정렬합니다. `nabi fmt`에는 일부러 설정이 없습니다. 모든 Nabi 코드의 표준 포맷은 하나입니다.
 
 1. 들여쓰기는 괄호(`(` `[` `{` `#[`) 깊이마다 공백 4칸입니다. 닫는 괄호로 시작하는 줄은 여는 줄의 깊이를 따릅니다. 탭은 공백으로 바뀝니다.
-2. 이어지는 줄은 원래 파일에서 블록 들여쓰기보다 더 들여쓴 만큼을 유지합니다. 이어지는 줄은 앞 토큰이 `;` `,`나 괄호가 아닌 줄입니다(긴 식을 나눈 줄 등).
+2. 이어지는 줄은 원래 파일에서 블록 들여쓰기보다 더 들여쓴 만큼을 유지합니다. 이어지는 줄은 앞 토큰이 `;` `,`나 괄호가 아닌 줄입니다(긴 식을 나눈 줄 등). `catch`나 `finally`로 시작하는 줄도 이어지는 줄이며, 같은 사슬에서 앞 절의 `}` 다음에 오는 줄은 그 절의 들여쓰기를 따르므로 사슬의 절들이 나란히 섭니다.
 3. 줄 끝 공백을 지웁니다.
 4. 연속된 빈 줄은 하나로 줄이고, 파일 처음의 빈 줄은 지웁니다.
 5. 파일은 줄바꿈 하나로 끝납니다.
-6. 파일과 인라인 `mod name { }` 맨 위(다른 첫 항목 앞)의 `mod name;`과 `use` 항목은 `pub mod`, `mod`, `pub use`, `use` 순서로 묶습니다. `pub(..)`은 모두 `pub`으로 칩니다. 묶음마다 정렬하고(`mod`는 이름순, `use`는 경로를 마디마다 비교하되 `self`, `sup`, `pkg`가 먼저), 묶음 사이에는 빈 줄 하나를 두고 묶음 안에는 빈 줄을 두지 않습니다. 항목 바로 위의 주석, 문서 주석, 속성은 항목과 함께 움직입니다. 첫 항목 위의 주석은 제자리에 남습니다. 다른 항목과 한 줄에 있는 항목에서 맨 위가 끝납니다.
+6. 파일과 인라인 `mod name { }` 맨 위(다른 첫 항목 앞)의 `mod name;`과 `use` 항목은 `pub mod`, `mod`, `pub use`, `use` 순서로 묶습니다. `pub(..)`은 모두 `pub`으로 칩니다. 묶음마다 정렬하고(`mod`는 이름순, `use`는 경로를 마디마다 비교하되 `self`, `sup`, `pkg`가 먼저), 묶음 사이에는 빈 줄 하나를 두고 묶음 안에는 빈 줄을 두지 않습니다. 항목 바로 위의 주석, 문서 주석, 속성은 항목과 함께 움직입니다. 첫 항목 위의 주석은 제자리에 남습니다. 다른 항목과 한 줄에 있는 항목에서 맨 위가 끝납니다. 파일 어디에 있든 `use a::{..}` 묶음 안의 이름도 같은 방식으로 정렬합니다. 안에 주석이 있는 묶음은 쓴 그대로 둡니다.
 
 6번을 빼면 포매터는 줄을 옮기지 않고, 줄을 나누거나 합치지 않으며, 줄 안의 간격을 바꾸지 않습니다. 따라서 주석은 적힌 그대로 남고, 토큰 순서는 6번이 정렬하는 항목의 순서 말고는 바뀌지 않습니다. 여러 줄에 걸친 문자열과 블록 주석의 안쪽도 그대로 둡니다.
 
